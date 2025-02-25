@@ -51,10 +51,22 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         //    return _table;
         //}
 
-        public IQueryable<T> GetAll()
+
+        public IQueryable<T> GetAll(Expression<Func<T, bool>> predicate = null)
         {
-            return _context.Set<T>().AsQueryable(); // Trả về IQueryable để hỗ trợ Include()
+            // Start with the DbSet directly to ensure it's an EF Core queryable
+            var query = _context.Set<T>().AsQueryable();
+
+            // Apply predicate if provided
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            return query;
         }
+
+
         public async Task<T> GetByIdGuid(Guid Id)
         {
             return await _table.FindAsync(Id);

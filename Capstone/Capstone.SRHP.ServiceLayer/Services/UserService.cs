@@ -1,4 +1,5 @@
 ﻿
+using Azure.Core;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -59,9 +60,12 @@ namespace Capstone.HPTY.ServiceLayer.Services
                         throw new ValidationException("Email already in use");
                     }
 
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(entity.Password);
+
                     // Reactivate the soft-deleted user
                     existingUser.IsDelete = false;
                     existingUser.Name = entity.Name;
+                    existingUser.Password = hashedPassword;
                     existingUser.PhoneNumber = entity.PhoneNumber;
                     existingUser.Address = entity.Address;
                     existingUser.ImageURL = entity.ImageURL;
@@ -95,7 +99,6 @@ namespace Capstone.HPTY.ServiceLayer.Services
 
         public async Task UpdateAsync(int id, User entity)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var existingUser = await _unitOfWork.Repository<User>()
@@ -118,18 +121,15 @@ namespace Capstone.HPTY.ServiceLayer.Services
                 existingUser.SetUpdateDate();
 
                 await _unitOfWork.CommitAsync();
-                await transaction.CommitAsync();
             }
             catch (Exception)
             {
-                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         public async Task DeleteAsync(int id)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var user = await _unitOfWork.Repository<User>()
@@ -152,11 +152,9 @@ namespace Capstone.HPTY.ServiceLayer.Services
                 user.SetUpdateDate();
 
                 await _unitOfWork.CommitAsync();
-                await transaction.CommitAsync();
             }
             catch (Exception)
             {
-                await transaction.RollbackAsync();
                 throw;
             }
         }
@@ -197,9 +195,20 @@ namespace Capstone.HPTY.ServiceLayer.Services
 
         public async Task<IEnumerable<User>> GetByRoleAsync(int roleId)
         {
-            return await _unitOfWork.Repository<User>()
-                .FindAll(u => u.RoleID == roleId && !u.IsDelete)
-                .ToListAsync();
+            try
+            {
+                // Use the repository method that returns an EF Core queryable
+                var query = _unitOfWork.Repository<User>()
+                    .GetAll(u => u.RoleID == roleId && !u.IsDelete)
+                    .Include(u => u.Role);
+
+                // Now ToListAsync will work
+                return await query.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         public async Task<bool> IsEmailUniqueAsync(string email)
@@ -278,79 +287,87 @@ namespace Capstone.HPTY.ServiceLayer.Services
 
         private async Task CreateRoleSpecificEntryAsync(User user)
         {
-            var role = await _unitOfWork.Repository<Role>()
-                .FindAsync(r => r.RoleId == user.RoleID);
-
-            if (role == null)
-                throw new ValidationException("Role not found");
-
-            switch (role.Name.ToLower())
+            try
             {
-                case "customer":
-                    var existingCustomer = await _unitOfWork.Repository<Customer>()
-                        .FindAsync(c => c.UserID == user.UserId);
+                var role = await _unitOfWork.Repository<Role>()
+                    .FindAsync(r => r.RoleId == user.RoleID);
 
-                    if (existingCustomer != null)
-                    {
-                        existingCustomer.IsDelete = false;
-                        existingCustomer.SetUpdateDate();
-                    }
-                    else
-                    {
-                        var customer = new Customer
+                if (role == null)
+                    throw new ValidationException($"Role with ID {user.RoleID} not found");
+
+                // Create or reactivate role-specific record based on role
+                switch (role.Name.ToLower())
+                {
+                    case "customer":
+                        var existingCustomer = await _unitOfWork.Repository<Customer>()
+                            .FindAsync(c => c.UserID == user.UserId);
+
+                        if (existingCustomer != null)
                         {
-                            UserID = user.UserId,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        _unitOfWork.Repository<Customer>().Insert(customer);
-                    }
-                    break;
-
-                case "staff":
-                    var existingStaff = await _unitOfWork.Repository<Staff>()
-                        .FindAsync(s => s.UserID == user.UserId);
-
-                    if (existingStaff != null)
-                    {
-                        existingStaff.IsDelete = false;
-                        existingStaff.SetUpdateDate();
-                    }
-                    else
-                    {
-                        var staff = new Staff
+                            existingCustomer.IsDelete = false;
+                            existingCustomer.SetUpdateDate();
+                        }
+                        else
                         {
-                            UserID = user.UserId,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        _unitOfWork.Repository<Staff>().Insert(staff);
-                    }
-                    break;
+                            var customer = new Customer
+                            {
+                                UserID = user.UserId,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _unitOfWork.Repository<Customer>().Insert(customer);
+                        }
+                        break;
 
-                case "manager":
-                    var existingManager = await _unitOfWork.Repository<Manager>()
-                        .FindAsync(m => m.UserID == user.UserId);
+                    case "staff":
+                        var existingStaff = await _unitOfWork.Repository<Staff>()
+                            .FindAsync(s => s.UserID == user.UserId);
 
-                    if (existingManager != null)
-                    {
-                        existingManager.IsDelete = false;
-                        existingManager.SetUpdateDate();
-                    }
-                    else
-                    {
-                        var manager = new Manager
+                        if (existingStaff != null)
                         {
-                            UserID = user.UserId,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        _unitOfWork.Repository<Manager>().Insert(manager);
-                    }
-                    break;
+                            existingStaff.IsDelete = false;
+                            existingStaff.SetUpdateDate();
+                        }
+                        else
+                        {
+                            var staff = new Staff
+                            {
+                                UserID = user.UserId,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _unitOfWork.Repository<Staff>().Insert(staff);
+                        }
+                        break;
+
+                    case "manager":
+                        var existingManager = await _unitOfWork.Repository<Manager>()
+                            .FindAsync(m => m.UserID == user.UserId);
+
+                        if (existingManager != null)
+                        {
+                            existingManager.IsDelete = false;
+                            existingManager.SetUpdateDate();
+                        }
+                        else
+                        {
+                            var manager = new Manager
+                            {
+                                UserID = user.UserId,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _unitOfWork.Repository<Manager>().Insert(manager);
+                        }
+                        break;
+                }
+
+                await _unitOfWork.CommitAsync();
             }
-
-            await _unitOfWork.CommitAsync();
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating role-specific entry for user", ex);
+            }
         }
     }
 }

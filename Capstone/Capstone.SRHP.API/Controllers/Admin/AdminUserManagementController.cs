@@ -28,7 +28,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
-        #region User Management
+
         [HttpGet("users")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<UserDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<UserDto>>>> GetAllUsers()
@@ -170,14 +170,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Data = true
             });
         }
-        #endregion
 
 
-
-    
-
-
-        #region Additional User Management Features
         [HttpGet("users/by-role/{roleId}")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<UserDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<UserDto>>>> GetUsersByRole(int roleId)
@@ -194,7 +188,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
 
 
-        #endregion
+
 
         private static UserDto MapToUserDto(User user)
         {

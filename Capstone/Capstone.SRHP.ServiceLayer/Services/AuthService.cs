@@ -37,59 +37,89 @@ namespace Capstone.HPTY.ServiceLayer.Services
             return await GenerateAuthResponseAsync(user);
         }
 
+
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
             try
             {
-                if (await _unitOfWork.Repository<User>().AnyAsync(u => u.Email == request.Email))
-                    throw new ValidationException("Email already exists");
+                // Check if user exists (including soft-deleted)
+                var existingUser = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.Email == request.Email);
+
+                if (existingUser != null && !existingUser.IsDelete)
+                {
+                    throw new ValidationException("Email already in use");
+                }
 
                 // Hash password
                 string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-                // Get default role (Customer)
+                // Get Customer role
                 var customerRole = await _unitOfWork.Repository<Role>()
                     .FindAsync(r => r.Name == "Customer");
                 if (customerRole == null)
-                    throw new ValidationException("Default role not found");
+                    throw new ValidationException("Customer role not found");
 
-                // Create user
-                var user = new User
+                User resultUser;
+
+                if (existingUser != null)
                 {
-                    Email = request.Email,
-                    Password = hashedPassword,
-                    Name = request.Name,
-                    PhoneNumber = request.PhoneNumber,
-                    RoleID = customerRole.RoleId,
+                    // Only reactivate if the existing user was a Customer
+                    if (existingUser.RoleID != customerRole.RoleId)
+                    {
+                        throw new ValidationException("Email already registered with a different role");
+                    }
 
-                };
-
-                try
-                {
-                    _unitOfWork.Repository<User>().Insert(user);
+                    // Reactivate soft-deleted user
+                    existingUser.IsDelete = false;
+                    existingUser.Name = request.Name;
+                    existingUser.PhoneNumber = request.PhoneNumber;
+                    existingUser.Password = hashedPassword; // Update password
+                    existingUser.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
+
+                    // Reactivate customer record
+                    await CreateCustomerEntryAsync(existingUser);
+                    resultUser = existingUser;
                 }
-                catch (DbUpdateException dbEx)
+                else
                 {
-                    throw new ValidationException($"Database error: {GetMostInnerExceptionMessage(dbEx)}");
+                    // Create new user with Customer role
+                    var newUser = new User
+                    {
+                        Email = request.Email,
+                        Password = hashedPassword,
+                        Name = request.Name,
+                        PhoneNumber = request.PhoneNumber,
+                        RoleID = customerRole.RoleId, // Always set to Customer role
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    _unitOfWork.Repository<User>().Insert(newUser);
+                    await _unitOfWork.CommitAsync();
+
+                    // Create customer record
+                    await CreateCustomerEntryAsync(newUser);
+                    resultUser = newUser;
                 }
 
-                return await GenerateAuthResponseAsync(user);
+                return await GenerateAuthResponseAsync(resultUser);
+            }
+            catch (ValidationException)
+            {
+                // Rethrow validation exceptions directly
+                throw;
             }
             catch (Exception ex)
             {
-                throw;
+                throw new Exception("Error registering customer", ex);
             }
         }
 
-        private string GetMostInnerExceptionMessage(Exception ex)
-        {
-            while (ex.InnerException != null)
-            {
-                ex = ex.InnerException;
-            }
-            return ex.Message;
-        }
+
+
+
 
         public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
         {
@@ -154,6 +184,37 @@ namespace Capstone.HPTY.ServiceLayer.Services
                 throw new ValidationException("Default role not found");
 
             return customerRole.RoleId;
+        }
+
+        private async Task CreateCustomerEntryAsync(User user)
+        {
+            try
+            {
+                var existingCustomer = await _unitOfWork.Repository<Customer>()
+                    .FindAsync(c => c.UserID == user.UserId);
+
+                if (existingCustomer != null)
+                {
+                    existingCustomer.IsDelete = false;
+                    existingCustomer.SetUpdateDate();
+                }
+                else
+                {
+                    var customer = new Customer
+                    {
+                        UserID = user.UserId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _unitOfWork.Repository<Customer>().Insert(customer);
+                }
+
+                await _unitOfWork.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating customer entry", ex);
+            }
         }
     }
 }

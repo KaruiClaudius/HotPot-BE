@@ -20,7 +20,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         //DbSet<TEntity> GetAll();
         // Thêm mới
-        IQueryable<TEntity> GetAll(); // Trả về IEnumerable thay vì IQueryable hoặc DbSet
+        IQueryable<TEntity> GetAll(Expression<Func<TEntity, bool>> predicate = null);
         IQueryable<TEntity> GetAllApart();
         Task<IEnumerable<TEntity>> GetWhere(Expression<Func<TEntity, bool>> predicate);
 
