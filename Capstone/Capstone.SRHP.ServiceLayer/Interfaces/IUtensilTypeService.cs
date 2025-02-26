@@ -9,7 +9,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces
 {
     public interface IUtensilTypeService : IBaseService<UtensilType>
     {
-        Task<bool> IsTypeInUseAsync(int id);
-        Task<int> GetUtensilCountAsync(int id);
+        Task<int> GetUtensilCountByTypeAsync(int typeId);
+        Task<bool> IsTypeInUseAsync(int typeId);
+        Task<bool> IsNameUniqueAsync(string name, int? excludeId = null);
     }
 }

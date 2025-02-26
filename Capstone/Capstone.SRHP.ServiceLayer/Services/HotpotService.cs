@@ -180,45 +180,16 @@ namespace Capstone.HPTY.ServiceLayer.Services
             var hotpot = await GetByIdAsync(id);
             return hotpot != null && hotpot.Status && hotpot.Quantity > 0;
         }
-        public async Task LogMaintenanceAsync(int id, string description, MaintenanceStatus status)
+        public async Task<IEnumerable<Hotpot>> GetByTutorialVideoAsync(int tutorialVideoId)
         {
-            //var hotpot = await GetByIdAsync(id);
-            //if (hotpot == null)
-            //    throw new NotFoundException($"Hotpot with ID {id} not found");
-
-            //var log = new ConditionLog
-            //{
-            //    Name = $"Maintenance for {hotpot.Name}",
-            //    Description = description,
-            //    ItemType = MaintenanceItemType.Hotpot,
-            //    ItemID = id,
-            //    LoggedDate = DateTime.UtcNow,
-            //    Status = status,
-            //    ScheduleType = MaintenanceScheduleType.Regular
-            //};
-
-            //_unitOfWork.Repository<ConditionLog>().Insert(log);
-
-            //// Update LastMaintainDate of the hotpot
-            //hotpot.LastMaintainDate = DateTime.UtcNow;
-            //hotpot.SetUpdateDate();
-
-            //await _unitOfWork.CommitAsync();
+            return await _unitOfWork.Repository<Hotpot>()
+                .FindList(h => h.TurtorialVideoID == tutorialVideoId && !h.IsDelete);
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetMaintenanceHistoryAsync(int id)
+        public async Task<int> GetCountByTutorialVideoAsync(int tutorialVideoId)
         {
-            //var hotpot = await GetByIdAsync(id);
-            //if (hotpot == null)
-            //    throw new NotFoundException($"Hotpot with ID {id} not found");
-
-            //return await _unitOfWork.Repository<ConditionLog>()
-            //    .FindAll(l => l.ItemType == MaintenanceItemType.Hotpot
-            //              && l.ItemID == id
-            //              && !l.IsDelete)
-            //    .ToListAsync();
-
-            return null;
+            var hotpots = await GetByTutorialVideoAsync(tutorialVideoId);
+            return hotpots.Count();
         }
     }
 }

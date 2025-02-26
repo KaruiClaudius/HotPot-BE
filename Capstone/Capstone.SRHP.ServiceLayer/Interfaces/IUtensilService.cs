@@ -15,7 +15,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces
         Task UpdateStatusAsync(int id, bool status);
         Task UpdateQuantityAsync(int id, int quantity);
         Task<bool> IsAvailableAsync(int id);
-        Task LogMaintenanceAsync(int id, string description, MaintenanceStatus status);
-        Task<IEnumerable<ConditionLog>> GetMaintenanceHistoryAsync(int id);
     }
 }

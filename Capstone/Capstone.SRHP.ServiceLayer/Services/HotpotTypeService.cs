@@ -23,43 +23,22 @@ namespace Capstone.HPTY.ServiceLayer.Services
         public async Task<IEnumerable<HotpotType>> GetAllAsync()
         {
             return await _unitOfWork.Repository<HotpotType>()
-                .Include(ht => ht.Hotpot)
-                .Where(ht => !ht.IsDelete)
+                .FindAll(ht => !ht.IsDelete)
                 .ToListAsync();
         }
 
-        public async Task<HotpotType?> GetByIdAsync(int id)
+        public async Task<HotpotType> GetByIdAsync(int id)
         {
             return await _unitOfWork.Repository<HotpotType>()
-                .Include(ht => ht.Hotpot)
-                .FirstOrDefaultAsync(ht => ht.HotpotTypeId == id && !ht.IsDelete);
+                .FindAsync(ht => ht.HotpotTypeId == id && !ht.IsDelete);
         }
-
 
         public async Task<HotpotType> CreateAsync(HotpotType entity)
         {
-            // Validate name
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("HotpotType name cannot be empty");
-
-            // Check for existing type (including soft-deleted)
-            var existingType = await _unitOfWork.Repository<HotpotType>()
-                .FindAsync(ht => ht.Name == entity.Name);
-
-            if (existingType != null)
+            // Check if name is unique
+            if (!await IsNameUniqueAsync(entity.Name))
             {
-                if (!existingType.IsDelete)
-                {
-                    throw new ValidationException($"HotpotType with name {entity.Name} already exists");
-                }
-                else
-                {
-                    // Reactivate the soft-deleted type
-                    existingType.IsDelete = false;
-                    existingType.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
-                    return existingType;
-                }
+                throw new ValidationException($"Hotpot type with name '{entity.Name}' already exists");
             }
 
             _unitOfWork.Repository<HotpotType>().Insert(entity);
@@ -67,59 +46,68 @@ namespace Capstone.HPTY.ServiceLayer.Services
             return entity;
         }
 
-
         public async Task UpdateAsync(int id, HotpotType entity)
         {
             var existingType = await GetByIdAsync(id);
             if (existingType == null)
-                throw new NotFoundException($"HotpotType with ID {id} not found");
+            {
+                throw new NotFoundException($"Hotpot type with ID {id} not found");
+            }
 
-            // Validate name
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("HotpotType name cannot be empty");
+            // Check if name is unique (excluding current entity)
+            if (!await IsNameUniqueAsync(entity.Name, id))
+            {
+                throw new ValidationException($"Another hotpot type with name '{entity.Name}' already exists");
+            }
 
-            // Check for duplicate names (excluding current type)
-            var exists = await _unitOfWork.Repository<HotpotType>()
-                .FindAsync(ht => ht.Name == entity.Name && ht.HotpotTypeId != id && !ht.IsDelete);
-
-            if (exists != null)
-                throw new ValidationException($"HotpotType with name {entity.Name} already exists");
-
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<HotpotType>().Update(entity, id);
+            existingType.Name = entity.Name;
+            existingType.SetUpdateDate();
             await _unitOfWork.CommitAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var hotpotType = await GetByIdAsync(id);
-            if (hotpotType == null)
-                throw new NotFoundException($"HotpotType with ID {id} not found");
+            var type = await GetByIdAsync(id);
+            if (type == null)
+            {
+                throw new NotFoundException($"Hotpot type with ID {id} not found");
+            }
 
-            // Check if type has any active hotpots
+            // Check if type is in use
             if (await IsTypeInUseAsync(id))
-                throw new ValidationException("Cannot delete hotpot type that has active hotpots");
+            {
+                throw new ValidationException("Cannot delete hotpot type that is in use by hotpots");
+            }
 
-            hotpotType.SoftDelete();
+            type.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<bool> IsTypeInUseAsync(int id)
+        public async Task<int> GetHotpotCountByTypeAsync(int typeId)
         {
-            var hotpot = await _unitOfWork.Repository<Hotpot>()
-                .FindAsync(h => h.HotpotTypeID == id && !h.IsDelete);
-            return hotpot != null;
+            return await _unitOfWork.Repository<Hotpot>()
+                .AsQueryable(h => h.HotpotTypeID == typeId && !h.IsDelete)
+                .CountAsync();
         }
 
-        public async Task<int> GetHotpotCountAsync(int id)
+        public async Task<bool> IsTypeInUseAsync(int typeId)
         {
-            var hotpotType = await GetByIdAsync(id);
-            if (hotpotType == null)
-                throw new NotFoundException($"HotpotType with ID {id} not found");
-
             return await _unitOfWork.Repository<Hotpot>()
-                .FindAll(h => h.HotpotTypeID == id && !h.IsDelete)
-                .CountAsync();
+                .AnyAsync(h => h.HotpotTypeID == typeId && !h.IsDelete);
+        }
+
+        public async Task<bool> IsNameUniqueAsync(string name, int? excludeId = null)
+        {
+            if (excludeId.HasValue)
+            {
+                return !await _unitOfWork.Repository<HotpotType>()
+                    .AnyAsync(ht => ht.Name == name && ht.HotpotTypeId != excludeId && !ht.IsDelete);
+            }
+            else
+            {
+                return !await _unitOfWork.Repository<HotpotType>()
+                    .AnyAsync(ht => ht.Name == name && !ht.IsDelete);
+            }
         }
     }
 }

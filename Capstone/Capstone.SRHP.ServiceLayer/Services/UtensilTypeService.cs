@@ -23,43 +23,22 @@ namespace Capstone.HPTY.ServiceLayer.Services
         public async Task<IEnumerable<UtensilType>> GetAllAsync()
         {
             return await _unitOfWork.Repository<UtensilType>()
-                .Include(ut => ut.Utensils)
-                .Where(ut => !ut.IsDelete)
+                .FindAll(ut => !ut.IsDelete)
                 .ToListAsync();
         }
 
-        public async Task<UtensilType?> GetByIdAsync(int id)
+        public async Task<UtensilType> GetByIdAsync(int id)
         {
             return await _unitOfWork.Repository<UtensilType>()
-                .Include(ut => ut.Utensils)
-                .FirstOrDefaultAsync(ut => ut.UtensilTypeId == id && !ut.IsDelete);
+                .FindAsync(ut => ut.UtensilTypeId == id && !ut.IsDelete);
         }
-
 
         public async Task<UtensilType> CreateAsync(UtensilType entity)
         {
-            // Validate name
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("UtensilType name cannot be empty");
-
-            // Check for existing type (including soft-deleted)
-            var existingType = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.Name == entity.Name);
-
-            if (existingType != null)
+            // Check if name is unique
+            if (!await IsNameUniqueAsync(entity.Name))
             {
-                if (!existingType.IsDelete)
-                {
-                    throw new ValidationException($"UtensilType with name {entity.Name} already exists");
-                }
-                else
-                {
-                    // Reactivate the soft-deleted type
-                    existingType.IsDelete = false;
-                    existingType.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
-                    return existingType;
-                }
+                throw new ValidationException($"Utensil type with name '{entity.Name}' already exists");
             }
 
             _unitOfWork.Repository<UtensilType>().Insert(entity);
@@ -67,59 +46,68 @@ namespace Capstone.HPTY.ServiceLayer.Services
             return entity;
         }
 
-
         public async Task UpdateAsync(int id, UtensilType entity)
         {
             var existingType = await GetByIdAsync(id);
             if (existingType == null)
-                throw new NotFoundException($"UtensilType with ID {id} not found");
+            {
+                throw new NotFoundException($"Utensil type with ID {id} not found");
+            }
 
-            // Validate name
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("UtensilType name cannot be empty");
+            // Check if name is unique (excluding current entity)
+            if (!await IsNameUniqueAsync(entity.Name, id))
+            {
+                throw new ValidationException($"Another utensil type with name '{entity.Name}' already exists");
+            }
 
-            // Check for duplicate names (excluding current type)
-            var exists = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.Name == entity.Name && ut.UtensilTypeId != id && !ut.IsDelete);
-
-            if (exists != null)
-                throw new ValidationException($"UtensilType with name {entity.Name} already exists");
-
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<UtensilType>().Update(entity, id);
+            existingType.Name = entity.Name;
+            existingType.SetUpdateDate();
             await _unitOfWork.CommitAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var utensilType = await GetByIdAsync(id);
-            if (utensilType == null)
-                throw new NotFoundException($"UtensilType with ID {id} not found");
+            var type = await GetByIdAsync(id);
+            if (type == null)
+            {
+                throw new NotFoundException($"Utensil type with ID {id} not found");
+            }
 
-            // Check if type has any active utensils
+            // Check if type is in use
             if (await IsTypeInUseAsync(id))
-                throw new ValidationException("Cannot delete utensil type that has active utensils");
+            {
+                throw new ValidationException("Cannot delete utensil type that is in use by utensils");
+            }
 
-            utensilType.SoftDelete();
+            type.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<bool> IsTypeInUseAsync(int id)
+        public async Task<int> GetUtensilCountByTypeAsync(int typeId)
         {
-            var utensil = await _unitOfWork.Repository<Utensil>()
-                .FindAsync(u => u.UtensilTypeID == id && !u.IsDelete);
-            return utensil != null;
+            return await _unitOfWork.Repository<Utensil>()
+                .AsQueryable(u => u.UtensilTypeID == typeId && !u.IsDelete)
+                .CountAsync();
         }
 
-        public async Task<int> GetUtensilCountAsync(int id)
+        public async Task<bool> IsTypeInUseAsync(int typeId)
         {
-            var utensilType = await GetByIdAsync(id);
-            if (utensilType == null)
-                throw new NotFoundException($"UtensilType with ID {id} not found");
-
             return await _unitOfWork.Repository<Utensil>()
-                .FindAll(u => u.UtensilTypeID == id && !u.IsDelete)
-                .CountAsync();
+                .AnyAsync(u => u.UtensilTypeID == typeId && !u.IsDelete);
+        }
+
+        public async Task<bool> IsNameUniqueAsync(string name, int? excludeId = null)
+        {
+            if (excludeId.HasValue)
+            {
+                return !await _unitOfWork.Repository<UtensilType>()
+                    .AnyAsync(ut => ut.Name == name && ut.UtensilTypeId != excludeId && !ut.IsDelete);
+            }
+            else
+            {
+                return !await _unitOfWork.Repository<UtensilType>()
+                    .AnyAsync(ut => ut.Name == name && !ut.IsDelete);
+            }
         }
     }
 }

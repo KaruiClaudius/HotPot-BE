@@ -3,6 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,124 +15,120 @@ namespace Capstone.HPTY.ServiceLayer.Services
     public class TurtorialVideoService : ITurtorialVideoService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<TurtorialVideoService> _logger;
 
-        public TurtorialVideoService(IUnitOfWork unitOfWork)
+        public TurtorialVideoService(IUnitOfWork unitOfWork, ILogger<TurtorialVideoService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<TurtorialVideo>> GetAllAsync()
         {
             return await _unitOfWork.Repository<TurtorialVideo>()
-                .Include(tv => tv.Hotpot)
-                .Where(tv => !tv.IsDelete)
-                .ToListAsync();
+                .FindList(tv => !tv.IsDelete);
         }
 
-        public async Task<TurtorialVideo?> GetByIdAsync(int id)
+        public async Task<TurtorialVideo> GetByIdAsync(int id)
         {
             return await _unitOfWork.Repository<TurtorialVideo>()
-                .Include(tv => tv.Hotpot)
-                .FirstOrDefaultAsync(tv => tv.TurtorialVideoId == id && !tv.IsDelete);
+                .FindAsync(tv => tv.TurtorialVideoId == id && !tv.IsDelete);
         }
 
-        public async Task<TurtorialVideo> CreateAsync(TurtorialVideo entity)
+        public async Task<IEnumerable<TurtorialVideo>> GetByHotpotTypeAsync(int hotpotTypeId)
         {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Video name cannot be empty");
+            // Get all tutorial videos used by hotpots of a specific type
+            var hotpots = await _unitOfWork.Repository<Hotpot>()
+                .FindList(h => h.HotpotTypeID == hotpotTypeId && !h.IsDelete);
 
-            if (string.IsNullOrWhiteSpace(entity.VideoURL))
-                throw new ValidationException("Video URL cannot be empty");
+            var tutorialVideoIds = hotpots
+                .Where(h => h.TurtorialVideoID > 0)  
+                .Select(h => h.TurtorialVideoID)
+                .Distinct();
 
-            if (!Uri.TryCreate(entity.VideoURL, UriKind.Absolute, out _))
-                throw new ValidationException("Invalid video URL format");
+            var tutorialVideos = new List<TurtorialVideo>();
 
-            // Check if video exists (including soft-deleted)
-            var existingVideo = await _unitOfWork.Repository<TurtorialVideo>()
-                .FindAsync(v => v.VideoURL == entity.VideoURL);
-
-            if (existingVideo != null)
+            foreach (var videoId in tutorialVideoIds)
             {
-                if (!existingVideo.IsDelete)
+                var video = await GetByIdAsync(videoId);
+                if (video != null)
                 {
-                    throw new ValidationException("Video URL already exists");
-                }
-                else
-                {
-                    // Reactivate and update the soft-deleted video
-                    existingVideo.IsDelete = false;
-                    existingVideo.Name = entity.Name;
-                    existingVideo.Description = entity.Description;
-                    existingVideo.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
-                    return existingVideo;
+                    tutorialVideos.Add(video);
                 }
             }
 
-            _unitOfWork.Repository<TurtorialVideo>().Insert(entity);
-            await _unitOfWork.CommitAsync();
-            return entity;
+            return tutorialVideos;
         }
 
-        public async Task UpdateAsync(int id, TurtorialVideo entity)
+        public async Task<TurtorialVideo> CreateAsync(TurtorialVideo tutorialVideo)
+        {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(tutorialVideo.Name))
+            {
+                throw new ValidationException("Tutorial video name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(tutorialVideo.VideoURL))
+            {
+                throw new ValidationException("Tutorial video URL is required");
+            }
+
+            _unitOfWork.Repository<TurtorialVideo>().Insert(tutorialVideo);
+            await _unitOfWork.CommitAsync();
+
+            return tutorialVideo;
+        }
+
+        public async Task UpdateAsync(int id, TurtorialVideo tutorialVideo)
         {
             var existingVideo = await GetByIdAsync(id);
             if (existingVideo == null)
+            {
                 throw new NotFoundException($"Tutorial video with ID {id} not found");
+            }
 
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Tutorial video name cannot be empty");
+            // Update only the properties that are provided
+            if (!string.IsNullOrWhiteSpace(tutorialVideo.Name))
+            {
+                existingVideo.Name = tutorialVideo.Name;
+            }
 
-            if (string.IsNullOrWhiteSpace(entity.VideoURL))
-                throw new ValidationException("Video URL cannot be empty");
+            if (!string.IsNullOrWhiteSpace(tutorialVideo.VideoURL))
+            {
+                existingVideo.VideoURL = tutorialVideo.VideoURL;
+            }
 
-            // Validate URL format
-            if (!Uri.TryCreate(entity.VideoURL, UriKind.Absolute, out _))
-                throw new ValidationException("Invalid video URL format");
+            if (tutorialVideo.Description != null)
+            {
+                existingVideo.Description = tutorialVideo.Description;
+            }
 
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<TurtorialVideo>().Update(entity, id);
+            existingVideo.SetUpdateDate();
             await _unitOfWork.CommitAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var video = await GetByIdAsync(id);
-            if (video == null)
+            var tutorialVideo = await GetByIdAsync(id);
+            if (tutorialVideo == null)
+            {
                 throw new NotFoundException($"Tutorial video with ID {id} not found");
+            }
 
-            // Check if video is used by any hotpots
-            var hotpots = await _unitOfWork.Repository<Hotpot>()
-                .FindAsync(h => h.TurtorialVideoID == id && !h.IsDelete);
+            // Check if any hotpots are using this tutorial video
+            if (await IsInUseAsync(id))
+            {
+                throw new ValidationException("Cannot delete tutorial video that is in use by hotpots");
+            }
 
-            if (hotpots != null)
-                throw new ValidationException("Cannot delete tutorial video that is associated with hotpots");
-
-            video.SoftDelete();
+            tutorialVideo.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<IEnumerable<TurtorialVideo>> GetByNameAsync(string name)
+        public async Task<bool> IsInUseAsync(int id)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ValidationException("Search name cannot be empty");
-
-            return await _unitOfWork.Repository<TurtorialVideo>()
-                .FindAll(tv => tv.Name.Contains(name) && !tv.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Hotpot>> GetAssociatedHotpotsAsync(int videoId)
-        {
-            var video = await GetByIdAsync(videoId);
-            if (video == null)
-                throw new NotFoundException($"Tutorial video with ID {videoId} not found");
-
             return await _unitOfWork.Repository<Hotpot>()
-                .FindAll(h => h.TurtorialVideoID == videoId && !h.IsDelete)
-                .ToListAsync();
+                .AnyAsync(h => h.TurtorialVideoID == id && !h.IsDelete);
         }
     }
 }

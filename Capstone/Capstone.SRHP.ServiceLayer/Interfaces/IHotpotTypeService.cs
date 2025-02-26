@@ -9,7 +9,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces
 {
     public interface IHotpotTypeService : IBaseService<HotpotType>
     {
-        Task<bool> IsTypeInUseAsync(int id);
-        Task<int> GetHotpotCountAsync(int id);
+        Task<int> GetHotpotCountByTypeAsync(int typeId);
+        Task<bool> IsTypeInUseAsync(int typeId);
+        Task<bool> IsNameUniqueAsync(string name, int? excludeId = null);
     }
 }

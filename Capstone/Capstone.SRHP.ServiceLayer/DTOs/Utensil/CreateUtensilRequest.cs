@@ -1,19 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ModelLayer.Entities
+namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
 {
-    public class Utensil : BaseEntity
+    public class CreateUtensilRequest
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int UtensilId { get; set; }
-
         [Required]
         [StringLength(100)]
         public string Name { get; set; }
@@ -29,7 +24,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string? ImageURL { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
         [Range(0, double.MaxValue)]
         public decimal Price { get; set; }
 
@@ -41,26 +35,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int Quantity { get; set; }
 
         [Required]
-        public DateTime LastMaintainDate { get; set; }
-
-        [Required]
-        [ForeignKey("UtensilType")]
         public int UtensilTypeID { get; set; }
-
-        public virtual UtensilType? UtensilType { get; set; }
-        public virtual OrderDetail? OrderDetail { get; set; }
-
-        public Utensil()
-        {
-            LastMaintainDate = DateTime.UtcNow.AddHours(7);
-        }
-
-        public virtual void SetMaintainDate()
-        {
-            LastMaintainDate = DateTime.UtcNow.AddHours(7);
-        }
-
     }
-
-
 }

@@ -9,9 +9,10 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces
 {
     public interface IHotPotInventoryService : IBaseService<HotPotInventory>
     {
-        Task<IEnumerable<HotPotInventory>> GetAvailableInventoryAsync();
-        Task<string> GenerateSeriesNumberAsync();
-        Task<HotPotInventory?> GetBySeriesNumberAsync(string seriesNumber);
-        Task<IEnumerable<Hotpot>> GetAssociatedHotpotsAsync(int inventoryId);
+        Task<HotPotInventory> GetBySeriesNumberAsync(string seriesNumber);
+        Task<IEnumerable<HotPotInventory>> GetByHotpotIdAsync(int hotpotId);
+        Task<IEnumerable<HotPotInventory>> CreateBulkAsync(int hotpotId, int quantity, string seriesNumberPrefix);
+        Task<bool> IsSeriesNumberUniqueAsync(string seriesNumber, int? excludeId = null);
+        Task<int> GetInventoryCountByHotpotIdAsync(int hotpotId);
     }
 }

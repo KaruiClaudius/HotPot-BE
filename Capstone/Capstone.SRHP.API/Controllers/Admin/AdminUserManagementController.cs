@@ -94,7 +94,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 return CreatedAtAction(
                     nameof(GetUser),
-                    new { id = userDto.Id },
+                    new { id = userDto.UserId },
                     new ApiResponse<UserDto>
                     {
                         Success = true,
@@ -196,7 +196,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new UserDto
             {
-                Id = user.UserId,
+                UserId = user.UserId,
                 Name = user.Name,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,

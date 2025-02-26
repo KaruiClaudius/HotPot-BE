@@ -157,7 +157,7 @@ namespace Capstone.HPTY.ServiceLayer.Services
             // Manual mapping to UserDto
             var userDto = new UserDto
             {
-                Id = user.UserId,
+                UserId = user.UserId,
                 Name = user.Name,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,

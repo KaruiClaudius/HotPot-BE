@@ -3,6 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -13,11 +14,13 @@ namespace Capstone.HPTY.API.Controllers.Auth
     [Route("api/auth")]
     public class AuthController : ControllerBase
     {
+        private readonly IUserService _userService;
         private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(IUserService userService, IAuthService authService, ILogger<AuthController> logger)
         {
+            _userService = userService;
             _authService = authService;
             _logger = logger;
         }
@@ -115,6 +118,76 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 Success = true,
                 Message = "Logged out successfully"
             });
+        }
+
+        [HttpPut("change-password")]
+        [Authorize] // Requires authentication
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<string>>> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                // Get the current user's ID from the token
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+                {
+                    return Unauthorized(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "User not authenticated"
+                    });
+                }
+
+                // Verify current password
+                var user = await _userService.GetByIdAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "User not found"
+                    });
+                }
+
+                // Verify the current password
+                if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Current password is incorrect"
+                    });
+                }
+
+                // Update the password
+                await _userService.UpdatePasswordAsync(id, request.NewPassword);
+
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Password updated successfully",
+                    Data = "Password has been changed"
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "An error occurred while changing the password"
+                });
+            }
         }
     }
 }

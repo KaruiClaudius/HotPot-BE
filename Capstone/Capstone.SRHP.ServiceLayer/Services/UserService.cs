@@ -17,6 +17,7 @@ namespace Capstone.HPTY.ServiceLayer.Services
 {
     public class UserService : IUserService
     {
+
         private readonly IUnitOfWork _unitOfWork;
 
         public UserService(IUnitOfWork unitOfWork)

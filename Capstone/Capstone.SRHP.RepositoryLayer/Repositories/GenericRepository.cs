@@ -16,22 +16,29 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         private readonly HPTYContext _context;
-        private readonly DbSet<T> _table;
+        private readonly DbSet<T> _dbSet;
 
         public GenericRepository(HPTYContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            _table = _context.Set<T>();
+            _dbSet = _context.Set<T>();
         }
 
         public IEnumerable<T> Find(Expression<Func<T, bool>> predicate)
         {
             return _context.Set<T>().AsQueryable().Where(predicate).ToList();
         }
-        public async Task<T> FindAsync(Expression<Func<T, bool>> predicate)
+        public async Task<T> FindAsync(Expression<Func<T, bool>> predicate,
+                Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
         {
-            return
-                await _table.SingleOrDefaultAsync(predicate);
+            IQueryable<T> query = _dbSet;
+
+            if (include != null)
+            {
+                query = include(query);
+            }
+
+            return await query.FirstOrDefaultAsync(predicate);
         }
 
         public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
@@ -41,7 +48,12 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public IQueryable<T> FindAll(Func<T, bool> predicate)
         {
-            return _table.Where(predicate).AsQueryable();
+            return _dbSet.Where(predicate).AsQueryable();
+        }
+
+        public async Task<IEnumerable<T>> FindList(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet.Where(predicate).ToListAsync();
         }
 
 
@@ -69,77 +81,77 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public async Task<T> GetByIdGuid(Guid Id)
         {
-            return await _table.FindAsync(Id);
+            return await _dbSet.FindAsync(Id);
         }
 
         public async Task<T> GetById(int Id)
         {
-            return await _table.FindAsync(Id);
+            return await _dbSet.FindAsync(Id);
         }
 
         public async Task HardDeleteGuid(Guid key)
         {
             var rs = await GetByIdGuid(key);
-            _table.Remove(rs);
+            _dbSet.Remove(rs);
         }
 
 
         public async Task HardDelete(int key)
         {
             var rs = await GetById(key);
-            _table.Remove(rs);
+            _dbSet.Remove(rs);
         }
 
         public void Insert(T entity)
         {
-            _table.Add(entity);
+            _dbSet.Add(entity);
         }
 
         public async Task UpdateGuid(T entity, Guid Id)
         {
             var existEntity = await GetByIdGuid(Id);
             _context.Entry(existEntity).CurrentValues.SetValues(entity);
-            _table.Update(existEntity);
+            _dbSet.Update(existEntity);
         }
 
         public async Task Update(T entity, int Id)
         {
             var existEntity = await GetById(Id);
             _context.Entry(existEntity).CurrentValues.SetValues(entity);
-            _table.Update(existEntity);
+            _dbSet.Update(existEntity);
         }
 
 
         public void UpdateRange(IQueryable<T> entities)
         {
-            _table.UpdateRange(entities);
+            _dbSet.UpdateRange(entities);
         }
 
         public void DeleteRange(IQueryable<T> entities)
         {
-            _table.RemoveRange(entities);
+            _dbSet.RemoveRange(entities);
         }
 
         public void InsertRange(IQueryable<T> entities)
         {
-            _table.AddRange(entities);
+            _dbSet.AddRange(entities);
         }
 
         public EntityEntry<T> Delete(T entity)
         {
-            return _table.Remove(entity);
+            return _dbSet.Remove(entity);
         }
 
         //async
 
         public async Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
         {
-            return await _table.AnyAsync(predicate);
+            return await _dbSet.AnyAsync(predicate);
         }
 
         public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<T, bool>> predicate = null)
         {
-            var query = predicate != null ? _table.Where(predicate) : _table;
+            var query = predicate != null ? _dbSet.Where(predicate) : _dbSet;
             var totalCount = await query.CountAsync();
             var items = await query
                 .Skip((pageIndex - 1) * pageSize)
@@ -151,27 +163,27 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public async Task InsertAsync(T entity)
         {
-            await _table.AddAsync(entity);
+            await _dbSet.AddAsync(entity);
         }
 
         public async Task AddRangeAsync(IEnumerable<T> entities)
         {
-            await _table.AddRangeAsync(entities);
+            await _dbSet.AddRangeAsync(entities);
         }
 
         public async Task InsertRangeAsync(IQueryable<T> entities)
         {
-            await _table.AddRangeAsync(entities);
+            await _dbSet.AddRangeAsync(entities);
         }
 
         public async Task<IEnumerable<T>> GetWhere(Expression<Func<T, bool>> predicate)
         {
-            return await _table.Where(predicate).ToListAsync();
+            return await _dbSet.Where(predicate).ToListAsync();
         }
 
         public IQueryable<T> GetAllApart()
         {
-            return _table.Take(100);
+            return _dbSet.Take(100);
         }
         public async Task<IDbContextTransaction> BeginTransaction(CancellationToken cancellationToken = default)
         {
@@ -180,7 +192,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public async Task UpdateDetached(T entity)
         {
-            _table.Update(entity);
+            _dbSet.Update(entity);
         }
 
         public async Task DetachEntity(T entity)
@@ -190,7 +202,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public IQueryable<T> AsNoTracking()
         {
-            return _table.AsNoTracking();
+            return _dbSet.AsNoTracking();
         }
 
         public IQueryable<T> AsQueryable()
@@ -205,7 +217,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public IQueryable<TResult?> ObjectMapper<TResult>(Expression<Func<T, TResult>> selector, Expression<Func<T, bool>> predicate = null, Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
         {
-            IQueryable<T> query = _table;
+            IQueryable<T> query = _dbSet;
             if (include != null) query = include(query);
 
             if (predicate != null) query = query.Where(predicate);
@@ -215,7 +227,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         public IQueryable<T> Include(params Expression<Func<T, object>>[] includes)
         {
-            IQueryable<T> query = _table;
+            IQueryable<T> query = _dbSet;
 
             foreach (var include in includes)
             {

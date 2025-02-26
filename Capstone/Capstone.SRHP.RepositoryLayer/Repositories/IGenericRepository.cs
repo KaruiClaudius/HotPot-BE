@@ -26,8 +26,11 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         IQueryable<TEntity> FindAll(Func<TEntity, bool> predicate);
 
+        Task<IEnumerable<TEntity>> FindList(Expression<Func<TEntity, bool>> predicate);
+
         IEnumerable<TEntity> Find(Expression<Func<TEntity, bool>> predicate);
-        Task<TEntity> FindAsync(Expression<Func<TEntity, bool>> predicate);
+        Task<TEntity> FindAsync(Expression<Func<TEntity, bool>> predicate,
+                Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null);
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
 
         Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate);

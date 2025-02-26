@@ -170,44 +170,5 @@ namespace Capstone.HPTY.ServiceLayer.Services
             return utensil != null && utensil.Status && utensil.Quantity > 0;
         }
 
-        public async Task LogMaintenanceAsync(int id, string description, MaintenanceStatus status)
-        {
-            //var utensil = await GetByIdAsync(id);
-            //if (utensil == null)
-            //    throw new NotFoundException($"Utensil with ID {id} not found");
-
-            //var log = new ConditionLog
-            //{
-            //    Name = $"Maintenance for {utensil.Name}",
-            //    Description = description,
-            //    ItemType = MaintenanceItemType.Utensil,
-            //    ItemID = id,
-            //    LoggedDate = DateTime.UtcNow,
-            //    Status = status,
-            //    ScheduleType = MaintenanceScheduleType.Regular
-            //};
-
-            //_unitOfWork.Repository<ConditionLog>().Insert(log);
-
-            //// Update LastMaintainDate of the utensil
-            //utensil.LastMaintainDate = DateTime.UtcNow;
-            //utensil.SetUpdateDate();
-
-            //await _unitOfWork.CommitAsync();
-        }
-
-        public async Task<IEnumerable<ConditionLog>> GetMaintenanceHistoryAsync(int id)
-        {
-            //var utensil = await GetByIdAsync(id);
-            //if (utensil == null)
-            //    throw new NotFoundException($"Utensil with ID {id} not found");
-
-            //return await _unitOfWork.Repository<ConditionLog>()
-            //    .FindAll(l => l.ItemType == MaintenanceItemType.Utensil
-            //              && l.ItemID == id
-            //              && !l.IsDelete)
-            //    .ToListAsync();
-            return null;
-        }
     }
 }

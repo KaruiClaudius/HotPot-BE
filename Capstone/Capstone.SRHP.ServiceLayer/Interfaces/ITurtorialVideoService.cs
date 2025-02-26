@@ -9,7 +9,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces
 {
     public interface ITurtorialVideoService : IBaseService<TurtorialVideo>
     {
-        Task<IEnumerable<TurtorialVideo>> GetByNameAsync(string name);
-        Task<IEnumerable<Hotpot>> GetAssociatedHotpotsAsync(int videoId);
+        Task<IEnumerable<TurtorialVideo>> GetByHotpotTypeAsync(int hotpotTypeId);
+        Task<bool> IsInUseAsync(int id);
     }
 }
