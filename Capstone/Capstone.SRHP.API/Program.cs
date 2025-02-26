@@ -92,6 +92,7 @@ app.UseEndpoints(endpoints =>
     endpoints.MapHub<ChatHub>("/chatHub");
     endpoints.MapHub<EquipmentHub>("/equipmentHub");
     endpoints.MapHub<FeedbackHub>("/feedbackHub");
+    endpoints.MapHub<ScheduleHub>("/scheduleHub");
 });
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));

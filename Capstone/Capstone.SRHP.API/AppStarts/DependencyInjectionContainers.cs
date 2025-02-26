@@ -5,9 +5,11 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Services;
 using Capstone.HPTY.ServiceLayer.Services.Chat;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
+using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
@@ -45,7 +47,6 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IConditionLogService, ConditionLogService>();
             services.AddScoped<ICustomizationService, CustomizationService>();
             services.AddScoped<IDiscountService, DiscountService>();
-            services.AddScoped<IFeedbackService, FeedbackService>();
             services.AddScoped<IHotPotInventoryService, HotPotInventoryService>();
             services.AddScoped<IHotpotService, HotpotService>();
             services.AddScoped<IHotpotTypeService, HotpotTypeService>();
@@ -66,7 +67,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IChatService, ChatService>();
             services.AddScoped<IEquipmentService, EquipmentService>();
             services.AddScoped<IManagerFeedbackService, ManagerFeedbackService>();
-
+            services.AddScoped<IScheduleService, ScheduleService>();
 
             // External Services
             services.AddHttpClient();
