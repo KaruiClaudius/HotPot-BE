@@ -28,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\Manager\" />
     <Folder Include="Controllers\Customer\" />
     <Folder Include="Controllers\Staff\" />
   </ItemGroup>

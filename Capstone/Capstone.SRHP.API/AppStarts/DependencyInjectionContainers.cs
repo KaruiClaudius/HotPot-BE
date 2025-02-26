@@ -57,6 +57,9 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUtensilTypeService, UtensilTypeService>();
             services.AddScoped<IWorkShiftService, WorkShiftService>();
 
+            // Manager Services
+            services.AddScoped<IOrderManagementService, OrderManagementService>();
+
             // External Services
             services.AddHttpClient();
             services.AddMemoryCache();
