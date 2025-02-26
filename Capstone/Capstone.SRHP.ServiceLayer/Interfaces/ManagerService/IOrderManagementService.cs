@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces
+namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
    public interface IOrderManagementService
     {

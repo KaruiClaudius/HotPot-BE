@@ -23,6 +23,8 @@ builder.Services.InstallService(builder.Configuration);
 // Configure Authentication
 builder.Services.ConfigureAuthService(builder.Configuration);
 
+// Add SignalR
+builder.Services.AddSignalR();
 
 
 // Configure Swagger

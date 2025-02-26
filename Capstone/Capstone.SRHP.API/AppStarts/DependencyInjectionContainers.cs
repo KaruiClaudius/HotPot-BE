@@ -3,7 +3,11 @@ using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services;
+using Capstone.HPTY.ServiceLayer.Services.Chat;
+using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
@@ -59,6 +63,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
+            services.AddScoped<IChatService, ChatService>();    
 
             // External Services
             services.AddHttpClient();

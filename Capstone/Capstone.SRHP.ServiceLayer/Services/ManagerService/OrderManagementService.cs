@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
 
-namespace Capstone.HPTY.ServiceLayer.Services
+namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 {
      public class OrderManagementService : IOrderManagementService
     {
