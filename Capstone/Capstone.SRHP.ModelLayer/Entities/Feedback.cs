@@ -35,6 +35,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
             set => ImageURL = value != null ? JsonSerializer.Serialize(value) : null;
         }
 
+        [StringLength(2000)]
+        public string? Response { get; set; }
+
+        public DateTime? ResponseDate { get; set; }
+
+        [ForeignKey("Manager")]
+        public int? ManagerId { get; set; }
+
         [Required]
         [ForeignKey("Order")]
         public int OrderID { get; set; }
@@ -45,6 +53,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public virtual User? User { get; set; }
         public virtual Order? Order { get; set; }
+        public virtual Manager? Manager { get; set; }
 
     }
 }
