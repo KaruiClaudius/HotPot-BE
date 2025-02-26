@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
-namespace Capstone.HPTY.API.Hubs
+namespace Capstone.HPTY.API.Controllers.Chat
 {
     [Route("api/[controller]")]
     [ApiController]

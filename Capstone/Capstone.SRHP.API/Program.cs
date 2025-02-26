@@ -1,4 +1,5 @@
 using Capstone.HPTY.API.AppStarts;
+using Capstone.HPTY.API.Hubs;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -81,12 +82,16 @@ app.UseRouting();
 
 app.UseCors("CorsPolicy");
 
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-
-app.MapControllers();
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapHub<ChatHub>("/chatHub");
+    endpoints.MapHub<EquipmentHub>("/equipmentHub");
+});
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
 

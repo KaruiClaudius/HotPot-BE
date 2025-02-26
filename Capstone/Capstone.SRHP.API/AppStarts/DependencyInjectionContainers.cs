@@ -63,7 +63,9 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
-            services.AddScoped<IChatService, ChatService>();    
+            services.AddScoped<IChatService, ChatService>();
+            services.AddScoped<IEquipmentService, EquipmentService>();
+
 
             // External Services
             services.AddHttpClient();
