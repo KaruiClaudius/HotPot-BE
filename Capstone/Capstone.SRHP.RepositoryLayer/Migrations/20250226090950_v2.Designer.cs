@@ -4,6 +4,7 @@ using Capstone.HPTY.RepositoryLayer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Capstone.HPTY.RepositoryLayer.Migrations
 {
     [DbContext(typeof(HPTYContext))]
-    partial class HPTYContextModelSnapshot : ModelSnapshot
+    [Migration("20250226090950_v2")]
+    partial class v2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -442,18 +445,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("ManagerId")
-                        .HasColumnType("int");
-
                     b.Property<int>("OrderID")
                         .HasColumnType("int");
-
-                    b.Property<string>("Response")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<DateTime?>("ResponseDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -467,8 +460,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("FeedbackId");
-
-                    b.HasIndex("ManagerId");
 
                     b.HasIndex("OrderID")
                         .IsUnique();
@@ -926,28 +917,28 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             RoleId = 1,
-                            CreatedAt = new DateTime(2025, 2, 26, 18, 25, 28, 94, DateTimeKind.Utc).AddTicks(5167),
+                            CreatedAt = new DateTime(2025, 2, 26, 16, 9, 49, 639, DateTimeKind.Utc).AddTicks(4250),
                             IsDelete = false,
                             Name = "Admin"
                         },
                         new
                         {
                             RoleId = 2,
-                            CreatedAt = new DateTime(2025, 2, 26, 18, 25, 28, 94, DateTimeKind.Utc).AddTicks(5177),
+                            CreatedAt = new DateTime(2025, 2, 26, 16, 9, 49, 639, DateTimeKind.Utc).AddTicks(4258),
                             IsDelete = false,
                             Name = "Manager"
                         },
                         new
                         {
                             RoleId = 3,
-                            CreatedAt = new DateTime(2025, 2, 26, 18, 25, 28, 94, DateTimeKind.Utc).AddTicks(5178),
+                            CreatedAt = new DateTime(2025, 2, 26, 16, 9, 49, 639, DateTimeKind.Utc).AddTicks(4258),
                             IsDelete = false,
                             Name = "Staff"
                         },
                         new
                         {
                             RoleId = 4,
-                            CreatedAt = new DateTime(2025, 2, 26, 18, 25, 28, 94, DateTimeKind.Utc).AddTicks(5179),
+                            CreatedAt = new DateTime(2025, 2, 26, 16, 9, 49, 639, DateTimeKind.Utc).AddTicks(4259),
                             IsDelete = false,
                             Name = "Customer"
                         });
@@ -1406,10 +1397,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Feedback", b =>
                 {
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Manager", "Manager")
-                        .WithMany()
-                        .HasForeignKey("ManagerId");
-
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
                         .WithOne("Feedback")
                         .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Feedback", "OrderID")
@@ -1421,8 +1408,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Manager");
 
                     b.Navigation("Order");
 

@@ -38,6 +38,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Manager> Managers { get; set; }
         public virtual DbSet<Customer> Customers { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
+        public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+        public virtual DbSet<ChatSession> ChatSessions { get; set; }
 
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
@@ -322,6 +324,72 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasIndex(hi => hi.SeriesNumber)
                 .IsUnique();
 
+            modelBuilder.Entity<ChatSession>(entity =>
+            {
+                // Primary key
+                entity.HasKey(e => e.ChatSessionId);
+
+                // Relationship with Customer (required)
+                entity.HasOne(e => e.Customer)
+                    .WithMany() // Assuming Customer doesn't have a navigation property back to ChatSession
+                    .HasForeignKey(e => e.CustomerId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+
+                // Relationship with Manager (optional)
+                entity.HasOne(e => e.Manager)
+                    .WithMany() // Assuming Manager doesn't have a navigation property back to ChatSession
+                    .HasForeignKey(e => e.ManagerId)
+                    .IsRequired(false) // Optional relationship
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+
+                // Configure properties
+                entity.Property(e => e.Topic)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.IsActive)
+                    .IsRequired();
+            });
+
+            // Configure ChatMessage entity
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                // Primary key
+                entity.HasKey(e => e.ChatMessageId);
+
+                // Relationship with User as Sender
+                entity.HasOne(e => e.SenderUser)
+                    .WithMany() // Assuming User doesn't have a navigation property back to sent messages
+                    .HasForeignKey(e => e.SenderUserId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+
+                // Relationship with User as Receiver
+                entity.HasOne(e => e.ReceiverUser)
+                    .WithMany() // Assuming User doesn't have a navigation property back to received messages
+                    .HasForeignKey(e => e.ReceiverUserId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+
+                // Configure properties
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(2000);
+
+                entity.Property(e => e.IsRead)
+                    .IsRequired();
+            });
+
+            if (modelBuilder.Model.FindEntityType(typeof(ChatMessage))
+                .FindProperty("SessionId") != null)
+            {
+                modelBuilder.Entity<ChatSession>()
+                    .HasMany(e => e.Messages)
+                    .WithOne() // Assuming ChatMessage doesn't have a navigation property back to ChatSession
+                    .HasForeignKey("SessionId")
+                    .IsRequired(false) // Optional relationship
+                    .OnDelete(DeleteBehavior.Cascade); // Messages are deleted when session is deleted
+            }
 
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleId = 1, Name = "Admin" },
