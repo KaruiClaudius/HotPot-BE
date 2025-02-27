@@ -5,8 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
@@ -14,6 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
     public class ManagerFeedbackService : IManagerFeedbackService
     {
         private readonly IUnitOfWork _unitOfWork;
+
 
         public ManagerFeedbackService(IUnitOfWork unitOfWork)
         {
@@ -120,5 +123,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .GetAll(f => f.Response == null)
                 .CountAsync();
         }
+
+        public async Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request)
+        {
+            // Create a new feedback entity
+            var feedback = new Feedback
+            {
+                Title = request.Title,
+                Comment = request.Comment,
+                ImageURLs = request.ImageURLs,
+                OrderID = request.OrderId,
+                UserID = request.UserId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Save the feedback
+            _unitOfWork.Repository<Feedback>().Insert(feedback);
+            await _unitOfWork.CommitAsync();
+
+            // Load related entities for the response
+            feedback = await GetFeedbackByIdAsync(feedback.FeedbackId);
+
+            return feedback;
+        }
+
+
     }
 }

@@ -6,6 +6,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -16,15 +17,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [ApiController]
     public class ManagerFeedbackController : ControllerBase
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IManagerFeedbackService _managerFeedbackService;
         private readonly IHubContext<FeedbackHub> _feedbackHubContext;
 
-        public ManagerFeedbackController(IManagerFeedbackService managerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext, IUnitOfWork unitOfWork)
+        public ManagerFeedbackController(IManagerFeedbackService managerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext)
         {
             _managerFeedbackService = managerFeedbackService;
             _feedbackHubContext = feedbackHubContext;
-            _unitOfWork = unitOfWork;
         }
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -109,6 +108,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
         // FeedbackController.cs (continued)
         [HttpPost("{id}/respond")]
+        [Authorize(Roles = "Manager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -116,14 +116,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         public async Task<ActionResult<ApiResponse<Feedback>>> RespondToFeedback(int id, [FromBody] RespondToFeedbackRequest request)
         {
             try
-            {
-                // Check if the current user is a manager
-                // This would typically be handled by authorization middleware
-                // For demonstration purposes, we'll assume the role check is done here
-                if (!IsManager(request.ManagerId))
-                {
-                    return Forbid();
-                }
+            {             
 
                 var feedback = await _managerFeedbackService.RespondToFeedbackAsync(id, request.ManagerId, request.Response);
 
@@ -160,23 +153,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                // Create a new feedback entity
-                var feedback = new Feedback
-                {
-                    Title = request.Title,
-                    Comment = request.Comment,
-                    ImageURLs = request.ImageURLs,
-                    OrderID = request.OrderId,
-                    UserID = request.UserId,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                // Save the feedback
-                _unitOfWork.Repository<Feedback>().Insert(feedback);
-                await _unitOfWork.CommitAsync();
-
-                // Load related entities for the response
-                feedback = await _managerFeedbackService.GetFeedbackByIdAsync(feedback.FeedbackId);
+                var feedback = await _managerFeedbackService.CreateFeedbackAsync(request);
 
                 // Get customer name for notification
                 string customerName = "Customer";
@@ -218,17 +195,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
             return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
         }
-
-        // Helper method to check if a user is a manager
-        private bool IsManager(int userId)
-        {
-            // In a real application, this would check the user's role
-            // For demonstration purposes, we'll assume any user with a Manager entity is a manager
-            var manager = _unitOfWork.Repository<Capstone.HPTY.ModelLayer.Entities.Manager>()
-                .FindAsync(m => m.UserID == userId)
-                .Result;
-
-            return manager != null;
-        }
+     
+       
     }
 }

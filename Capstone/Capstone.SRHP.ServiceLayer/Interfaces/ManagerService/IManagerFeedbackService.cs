@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
@@ -17,5 +18,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<Feedback> RespondToFeedbackAsync(int feedbackId, int managerId, string response);
         Task<int> GetTotalFeedbackCountAsync();
         Task<int> GetUnrespondedFeedbackCountAsync();
+        Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request);
     }
 }
