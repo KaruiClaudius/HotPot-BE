@@ -20,6 +20,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public int HotpotId { get; set; }
 
+        public bool Status { get; set; }
 
         public virtual Hotpot? Hotpot { get; set; }
 

@@ -23,7 +23,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<HotpotDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<PagedResult<HotpotDto>>>> GetAllHotpots(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)

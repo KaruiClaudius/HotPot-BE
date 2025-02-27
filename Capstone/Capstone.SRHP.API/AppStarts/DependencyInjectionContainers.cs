@@ -2,6 +2,7 @@
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.BackgroundServices;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
@@ -78,6 +79,11 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IEquipmentService, EquipmentService>();
             services.AddScoped<IManagerFeedbackService, ManagerFeedbackService>();
             services.AddScoped<IScheduleService, ScheduleService>();
+            services.AddScoped<IEquipmentConditionService, EquipmentConditionService>();
+            services.AddScoped<IEquipmentStockService, EquipmentStockService>();
+
+            // Background Services
+            services.AddHostedService<EquipmentStockMonitorService>();
 
             // External Services
             services.AddHttpClient();
