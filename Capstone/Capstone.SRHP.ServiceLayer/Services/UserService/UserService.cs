@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -30,6 +31,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .Include(u => u.Role)
                 .Where(u => !u.IsDelete)
                 .ToListAsync();
+        }
+
+        public async Task<PagedResult<User>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<User>()
+                .Include(u => u.Role)
+                .Where(u => !u.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(u => u.UserId) // Ensure consistent ordering
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<User>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<User> GetByIdAsync(int id)

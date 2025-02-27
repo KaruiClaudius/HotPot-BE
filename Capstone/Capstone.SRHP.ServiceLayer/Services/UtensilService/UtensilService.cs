@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -27,6 +28,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
                 .Include(u => u.UtensilType)
                 .Where(u => !u.IsDelete)
                 .ToListAsync();
+        }
+
+        public async Task<PagedResult<Utensil>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<Utensil>()
+                .Include(u => u.UtensilType)
+                .Where(u => !u.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(u => u.UtensilId) // Ensure consistent ordering
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Utensil>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<Utensil?> GetByIdAsync(int id)

@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -25,6 +26,48 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             return await _unitOfWork.Repository<UtensilType>()
                 .FindAll(ut => !ut.IsDelete)
                 .ToListAsync();
+        }
+
+        public async Task<PagedResult<UtensilType>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<UtensilType>()
+                .FindAll(ut => !ut.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(ut => ut.UtensilTypeId) // Ensure consistent ordering
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<UtensilType>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<Dictionary<int, int>> GetUtensilCountsByTypesAsync(IEnumerable<int> typeIds)
+        {
+            var counts = await _unitOfWork.Repository<Utensil>()
+                .FindAll(u => !u.IsDelete && typeIds.Contains(u.UtensilTypeID))
+                .GroupBy(u => u.UtensilTypeID)
+                .Select(g => new { TypeId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.TypeId, x => x.Count);
+
+            // Ensure all requested type IDs are in the dictionary, even if they have no utensils
+            foreach (var typeId in typeIds)
+            {
+                if (!counts.ContainsKey(typeId))
+                {
+                    counts[typeId] = 0;
+                }
+            }
+
+            return counts;
         }
 
         public async Task<UtensilType> GetByIdAsync(int id)

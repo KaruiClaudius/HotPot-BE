@@ -410,59 +410,59 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("search")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<TurtorialVideoDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<TurtorialVideoDto>>>> SearchTutorialVideos([FromQuery] string searchTerm)
-        {
-            try
-            {
-                _logger.LogInformation("Admin searching tutorial videos with term: {SearchTerm}", searchTerm);
+        //[HttpGet("search")]
+        //[ProducesResponseType(typeof(ApiResponse<IEnumerable<TurtorialVideoDto>>), StatusCodes.Status200OK)]
+        //public async Task<ActionResult<ApiResponse<IEnumerable<TurtorialVideoDto>>>> SearchTutorialVideos([FromQuery] string searchTerm)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Admin searching tutorial videos with term: {SearchTerm}", searchTerm);
 
-                if (string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    return await GetAllTutorialVideos();
-                }
+        //        if (string.IsNullOrWhiteSpace(searchTerm))
+        //        {
+        //            return await GetAllTutorialVideos();
+        //        }
 
-                var allVideos = await _tutorialVideoService.GetAllAsync();
-                var filteredVideos = allVideos.Where(v =>
-                    v.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    (v.Description != null && v.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                ).ToList();
+        //        var allVideos = await _tutorialVideoService.GetAllAsync();
+        //        var filteredVideos = allVideos.Where(v =>
+        //            v.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+        //            (v.Description != null && v.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        //        ).ToList();
 
-                var videoDtos = new List<TurtorialVideoDto>();
+        //        var videoDtos = new List<TurtorialVideoDto>();
 
-                foreach (var video in filteredVideos)
-                {
-                    var hotpotCount = await _hotpotService.GetCountByTutorialVideoAsync(video.TurtorialVideoId);
+        //        foreach (var video in filteredVideos)
+        //        {
+        //            var hotpotCount = await _hotpotService.GetCountByTutorialVideoAsync(video.TurtorialVideoId);
 
-                    videoDtos.Add(new TurtorialVideoDto
-                    {
-                        TurtorialVideoId = video.TurtorialVideoId,
-                        Name = video.Name,
-                        VideoURL = video.VideoURL,
-                        Description = video.Description,
-                        HotpotCount = hotpotCount,
-                        CreatedAt = video.CreatedAt,
-                        UpdatedAt = video.UpdatedAt
-                    });
-                }
+        //            videoDtos.Add(new TurtorialVideoDto
+        //            {
+        //                TurtorialVideoId = video.TurtorialVideoId,
+        //                Name = video.Name,
+        //                VideoURL = video.VideoURL,
+        //                Description = video.Description,
+        //                HotpotCount = hotpotCount,
+        //                CreatedAt = video.CreatedAt,
+        //                UpdatedAt = video.UpdatedAt
+        //            });
+        //        }
 
-                return Ok(new ApiResponse<IEnumerable<TurtorialVideoDto>>
-                {
-                    Success = true,
-                    Message = $"Found {videoDtos.Count} tutorial videos matching '{searchTerm}'",
-                    Data = videoDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching tutorial videos with term: {SearchTerm}", searchTerm);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to search tutorial videos"
-                });
-            }
-        }
+        //        return Ok(new ApiResponse<IEnumerable<TurtorialVideoDto>>
+        //        {
+        //            Success = true,
+        //            Message = $"Found {videoDtos.Count} tutorial videos matching '{searchTerm}'",
+        //            Data = videoDtos
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error searching tutorial videos with term: {SearchTerm}", searchTerm);
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = "Failed to search tutorial videos"
+        //        });
+        //    }
+        //}
     }
 }

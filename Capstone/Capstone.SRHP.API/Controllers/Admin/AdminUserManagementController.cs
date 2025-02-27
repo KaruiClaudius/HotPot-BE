@@ -31,18 +31,50 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
 
         [HttpGet("users")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<UserDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<UserDto>>>> GetAllUsers()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<UserDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetAllUsers(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var users = await _userService.GetAllAsync();
-            var userDtos = users.Select(MapToUserDto);
-
-            return Ok(new ApiResponse<IEnumerable<UserDto>>
+            try
             {
-                Success = true,
-                Message = "Users retrieved successfully",
-                Data = userDtos
-            });
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
+
+                _logger.LogInformation($"Admin retrieving users - Page {pageNumber}, Size {pageSize}");
+                var pagedUsers = await _userService.GetPagedAsync(pageNumber, pageSize);
+                var userDtos = pagedUsers.Items.Select(MapToUserDto).ToList();
+
+                var result = new PagedResult<UserDto>
+                {
+                    Items = userDtos,
+                    PageNumber = pagedUsers.PageNumber,
+                    PageSize = pagedUsers.PageSize,
+                    TotalCount = pagedUsers.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<UserDto>>
+                {
+                    Success = true,
+                    Message = "Users retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving users");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve users"
+                });
+            }
         }
 
         [HttpGet("users/{id}")]

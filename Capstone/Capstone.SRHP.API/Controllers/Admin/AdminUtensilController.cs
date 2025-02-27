@@ -22,22 +22,40 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _utensilService = utensilService;
             _logger = logger;
         }
-
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<UtensilDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetAllUtensils()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<UtensilDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<UtensilDto>>>> GetAllUtensils(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all utensils");
-                var utensils = await _utensilService.GetAllAsync();
-                var utensilDtos = utensils.Select(MapToUtensilDto);
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
 
-                return Ok(new ApiResponse<IEnumerable<UtensilDto>>
+                _logger.LogInformation($"Admin retrieving utensils - Page {pageNumber}, Size {pageSize}");
+                var pagedUtensils = await _utensilService.GetPagedAsync(pageNumber, pageSize);
+                var utensilDtos = pagedUtensils.Items.Select(MapToUtensilDto).ToList();
+
+                var result = new PagedResult<UtensilDto>
+                {
+                    Items = utensilDtos,
+                    PageNumber = pagedUtensils.PageNumber,
+                    PageSize = pagedUtensils.PageSize,
+                    TotalCount = pagedUtensils.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<UtensilDto>>
                 {
                     Success = true,
                     Message = "Utensils retrieved successfully",
-                    Data = utensilDtos
+                    Data = result
                 });
             }
             catch (Exception ex)
