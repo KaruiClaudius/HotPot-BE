@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Utensil;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -2,7 +2,8 @@
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

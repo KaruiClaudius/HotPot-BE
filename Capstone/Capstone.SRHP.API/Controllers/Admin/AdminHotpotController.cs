@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,21 +22,38 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
-        [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<HotpotDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotpotDto>>>> GetAllHotpots()
+        public async Task<ActionResult<ApiResponse<PagedResult<HotpotDto>>>> GetAllHotpots(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all hotpots");
-                var hotpots = await _hotpotService.GetAllAsync();
-                var hotpotDtos = hotpots.Select(MapToHotpotDto);
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
 
-                return Ok(new ApiResponse<IEnumerable<HotpotDto>>
+                _logger.LogInformation($"Admin retrieving hotpots - Page {pageNumber}, Size {pageSize}");
+                var pagedHotpots = await _hotpotService.GetPagedAsync(pageNumber, pageSize);
+                var hotpotDtos = pagedHotpots.Items.Select(MapToHotpotDto).ToList();
+
+                var result = new PagedResult<HotpotDto>
+                {
+                    Items = hotpotDtos,
+                    PageNumber = pagedHotpots.PageNumber,
+                    PageSize = pagedHotpots.PageSize,
+                    TotalCount = pagedHotpots.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<HotpotDto>>
                 {
                     Success = true,
                     Message = "Hotpots retrieved successfully",
-                    Data = hotpotDtos
+                    Data = result
                 });
             }
             catch (Exception ex)

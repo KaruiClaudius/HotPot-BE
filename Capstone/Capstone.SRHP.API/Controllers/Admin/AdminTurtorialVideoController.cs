@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 using Capstone.HPTY.ServiceLayer.DTOs.Video;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

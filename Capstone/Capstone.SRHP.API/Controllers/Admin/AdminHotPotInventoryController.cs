@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
-using Capstone.HPTY.ServiceLayer.Interfaces;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,20 +29,39 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<HotPotInventoryDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotPotInventoryDto>>>> GetAllInventory()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<HotPotInventoryDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<HotPotInventoryDto>>>> GetAllInventory(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all hotpot inventory units");
-                var inventories = await _inventoryService.GetAllAsync();
-                var inventoryDtos = inventories.Select(MapToInventoryDto);
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
 
-                return Ok(new ApiResponse<IEnumerable<HotPotInventoryDto>>
+                _logger.LogInformation($"Admin retrieving hotpot inventory units - Page {pageNumber}, Size {pageSize}");
+                var pagedInventories = await _inventoryService.GetPagedAsync(pageNumber, pageSize);
+                var inventoryDtos = pagedInventories.Items.Select(MapToInventoryDto).ToList();
+
+                var result = new PagedResult<HotPotInventoryDto>
+                {
+                    Items = inventoryDtos,
+                    PageNumber = pagedInventories.PageNumber,
+                    PageSize = pagedInventories.PageSize,
+                    TotalCount = pagedInventories.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<HotPotInventoryDto>>
                 {
                     Success = true,
                     Message = "Hotpot inventory units retrieved successfully",
-                    Data = inventoryDtos
+                    Data = result
                 });
             }
             catch (Exception ex)

@@ -8,7 +8,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Microsoft.EntityFrameworkCore;
 
-namespace Capstone.HPTY.ServiceLayer.Services.Chat
+namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 {
     public class ChatService : IChatService
     {

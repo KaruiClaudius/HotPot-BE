@@ -2,14 +2,24 @@
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
-using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
-using Capstone.HPTY.ServiceLayer.Services;
-using Capstone.HPTY.ServiceLayer.Services.Chat;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
+using Capstone.HPTY.ServiceLayer.Services.ChatService;
+using Capstone.HPTY.ServiceLayer.Services.ComboService;
+using Capstone.HPTY.ServiceLayer.Services.HotpotService;
+using Capstone.HPTY.ServiceLayer.Services.IngredientService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
+using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
+using Capstone.HPTY.ServiceLayer.Services.UserService;
+using Capstone.HPTY.ServiceLayer.Services.UtensilService;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
