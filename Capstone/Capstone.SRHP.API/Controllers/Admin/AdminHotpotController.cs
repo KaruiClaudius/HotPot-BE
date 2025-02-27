@@ -22,6 +22,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<HotpotDto>>>> GetAllHotpots(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)

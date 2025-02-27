@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
         {
             return await _unitOfWork.Repository<TurtorialVideo>()
                 .FindList(tv => !tv.IsDelete);
+        }
+
+        public async Task<PagedResult<TurtorialVideo>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<TurtorialVideo>()
+                .FindAll(tv => !tv.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(tv => tv.TurtorialVideoId) // Ensure consistent ordering
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<TurtorialVideo>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<Dictionary<int, bool>> GetVideosInUseStatusAsync(IEnumerable<int> videoIds)
+        {
+            var inUseVideos = await _unitOfWork.Repository<Hotpot>()
+                .FindAll(h => !h.IsDelete && videoIds.Contains(h.TurtorialVideoID))
+                .Select(h => h.TurtorialVideoID)
+                .Distinct()
+                .ToListAsync();
+
+            return videoIds.ToDictionary(id => id, id => inUseVideos.Contains(id));
         }
 
         public async Task<TurtorialVideo> GetByIdAsync(int id)

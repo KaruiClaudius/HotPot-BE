@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -26,6 +27,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return await _unitOfWork.Repository<ConditionLog>()
                 .FindAll(cl => !cl.IsDelete)
                 .ToListAsync();
+        }
+        public async Task<PagedResult<ConditionLog>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<ConditionLog>()
+                .FindAll(l => !l.IsDelete);
+
+            // If you have any includes or other query modifications, add them here
+            // For example:
+            // query = query.Include(l => l.Hotpot);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(l => l.CreatedAt) // Most recent logs first
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<ConditionLog>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<ConditionLog?> GetByIdAsync(int id)

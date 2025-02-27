@@ -216,5 +216,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             var hotpots = await GetByTutorialVideoAsync(tutorialVideoId);
             return hotpots.Count();
         }
+
+        public async Task<Dictionary<int, int>> GetCountsByTutorialVideosAsync(IEnumerable<int> videoIds)
+        {
+            var counts = await _unitOfWork.Repository<Hotpot>()
+                .FindAll(h => !h.IsDelete && videoIds.Contains(h.TurtorialVideoID))
+                .GroupBy(h => h.TurtorialVideoID)
+                .Select(g => new { VideoId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.VideoId, x => x.Count);
+
+            // Ensure all requested video IDs are in the dictionary, even if they have no hotpots
+            foreach (var videoId in videoIds)
+            {
+                if (!counts.ContainsKey(videoId))
+                {
+                    counts[videoId] = 0;
+                }
+            }
+
+            return counts;
+        }
     }
 }

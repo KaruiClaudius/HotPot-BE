@@ -21,6 +21,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             _unitOfWork = unitOfWork;
         }
 
+        public async Task<IEnumerable<Ingredient>> GetAllAsync()
+        {
+            return await _unitOfWork.Repository<Ingredient>()
+                .Include(i => i.IngredientType)
+                .Include(i => i.IngredientPrices)
+                .Where(i => !i.IsDelete)
+                .ToListAsync();
+        }
+
         public async Task<(IEnumerable<Ingredient> Ingredients, int TotalCount)> GetAllPagedAsync(
             int pageIndex = 1,
             int pageSize = 10,
@@ -201,10 +210,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.CommitAsync();
         }
 
-        public Task<IEnumerable<Ingredient>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
+
     }
 
     public static class PredicateBuilder

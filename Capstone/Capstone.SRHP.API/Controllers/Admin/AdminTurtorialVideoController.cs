@@ -29,20 +29,42 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<TurtorialVideoDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<TurtorialVideoDto>>>> GetAllTutorialVideos()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<TurtorialVideoDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<TurtorialVideoDto>>>> GetAllTutorialVideos(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all tutorial videos");
-                var videos = await _tutorialVideoService.GetAllAsync();
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
+
+                _logger.LogInformation($"Admin retrieving tutorial videos - Page {pageNumber}, Size {pageSize}");
+                var pagedVideos = await _tutorialVideoService.GetPagedAsync(pageNumber, pageSize);
                 var videoDtos = new List<TurtorialVideoDto>();
 
-                foreach (var video in videos)
+                // Get all video IDs from the current page
+                var videoIds = pagedVideos.Items.Select(v => v.TurtorialVideoId).ToList();
+
+                // Get all videos in use status in a single query
+                var videosInUseStatus = await _tutorialVideoService.GetVideosInUseStatusAsync(videoIds);
+
+                // Get all hotpot counts in a single query
+                var hotpotCounts = await _hotpotService.GetCountsByTutorialVideosAsync(videoIds);
+
+                foreach (var video in pagedVideos.Items)
                 {
-                    var isInUse = await _tutorialVideoService.IsInUseAsync(video.TurtorialVideoId);
-                    var hotpotCount = isInUse ?
-                        await _hotpotService.GetCountByTutorialVideoAsync(video.TurtorialVideoId) : 0;
+                    var isInUse = videosInUseStatus.ContainsKey(video.TurtorialVideoId) ?
+                        videosInUseStatus[video.TurtorialVideoId] : false;
+
+                    var hotpotCount = isInUse && hotpotCounts.ContainsKey(video.TurtorialVideoId) ?
+                        hotpotCounts[video.TurtorialVideoId] : 0;
 
                     videoDtos.Add(new TurtorialVideoDto
                     {
@@ -56,11 +78,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                return Ok(new ApiResponse<IEnumerable<TurtorialVideoDto>>
+                var result = new PagedResult<TurtorialVideoDto>
+                {
+                    Items = videoDtos,
+                    PageNumber = pagedVideos.PageNumber,
+                    PageSize = pagedVideos.PageSize,
+                    TotalCount = pagedVideos.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<TurtorialVideoDto>>
                 {
                     Success = true,
                     Message = "Tutorial videos retrieved successfully",
-                    Data = videoDtos
+                    Data = result
                 });
             }
             catch (Exception ex)

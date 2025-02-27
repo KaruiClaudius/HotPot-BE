@@ -400,14 +400,24 @@ namespace Capstone.HPTY.RepositoryLayer
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
-                new User { Name = "Manager", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { Name = "Manager", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { Name = "Staff", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { Name = "Staff", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { Name = "Staff", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { Name = "Staff", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 }
+                new User { UserId = 1, Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
+                new User { UserId = 2, Name = "Manager", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = 3, Name = "Manager", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = 4, Name = "Staff", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 5, Name = "Staff", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 6, Name = "Staff", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 7, Name = "Staff", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 }
+            );
+            modelBuilder.Entity<Manager>().HasData(
+                new Manager { ManagerId = 1, UserID = 2 },
+                new Manager { ManagerId = 2, UserID = 3 }
+            );
 
+            modelBuilder.Entity<Staff>().HasData(
+                new Staff { StaffId = 1, UserID = 4 },
+                new Staff { StaffId = 2, UserID = 5 },
+                new Staff { StaffId = 3, UserID = 6 },
+                new Staff { StaffId = 4, UserID = 7 }
             );
 
             modelBuilder.Entity<HotpotType>().HasData(

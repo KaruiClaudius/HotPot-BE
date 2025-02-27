@@ -21,5 +21,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
 
         Task<IEnumerable<Hotpot>> GetByTutorialVideoAsync(int tutorialVideoId);
         Task<int> GetCountByTutorialVideoAsync(int tutorialVideoId);
+
+        Task<Dictionary<int, int>> GetCountsByTutorialVideosAsync(IEnumerable<int> videoIds);
     }
 }

@@ -33,20 +33,39 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConditionLogDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLogDto>>>> GetAllLogs()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<ConditionLogDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<ConditionLogDto>>>> GetAllLogs(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all maintenance logs");
-                var logs = await _conditionLogService.GetAllAsync();
-                var logDtos = logs.Select(MapToConditionLogDto);
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
 
-                return Ok(new ApiResponse<IEnumerable<ConditionLogDto>>
+                _logger.LogInformation($"Admin retrieving maintenance logs - Page {pageNumber}, Size {pageSize}");
+                var pagedLogs = await _conditionLogService.GetPagedAsync(pageNumber, pageSize);
+                var logDtos = pagedLogs.Items.Select(MapToConditionLogDto).ToList();
+
+                var result = new PagedResult<ConditionLogDto>
+                {
+                    Items = logDtos,
+                    PageNumber = pagedLogs.PageNumber,
+                    PageSize = pagedLogs.PageSize,
+                    TotalCount = pagedLogs.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<ConditionLogDto>>
                 {
                     Success = true,
                     Message = "Maintenance logs retrieved successfully",
-                    Data = logDtos
+                    Data = result
                 });
             }
             catch (Exception ex)

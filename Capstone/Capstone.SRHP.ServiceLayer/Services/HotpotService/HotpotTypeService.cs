@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -25,6 +26,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return await _unitOfWork.Repository<HotpotType>()
                 .FindAll(ht => !ht.IsDelete)
                 .ToListAsync();
+        }
+        public async Task<PagedResult<HotpotType>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<HotpotType>()
+                .FindAll(ht => !ht.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(ht => ht.HotpotTypeId) // Ensure consistent ordering
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<HotpotType>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<HotpotType> GetByIdAsync(int id)

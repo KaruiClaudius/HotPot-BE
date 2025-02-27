@@ -23,17 +23,28 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<HotpotTypeDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotpotTypeDto>>>> GetAllHotpotTypes()
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<HotpotTypeDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResult<HotpotTypeDto>>>> GetAllHotpotTypes(
+     [FromQuery] int pageNumber = 1,
+     [FromQuery] int pageSize = 10)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving all hotpot types");
+                if (pageNumber < 1 || pageSize < 1)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Page number and page size must be greater than 0"
+                    });
+                }
 
-                var types = await _hotpotTypeService.GetAllAsync();
+                _logger.LogInformation($"Admin retrieving hotpot types - Page {pageNumber}, Size {pageSize}");
+
+                var pagedTypes = await _hotpotTypeService.GetPagedAsync(pageNumber, pageSize);
                 var typeDtos = new List<HotpotTypeDto>();
 
-                foreach (var type in types)
+                foreach (var type in pagedTypes.Items)
                 {
                     var hotpotCount = await _hotpotTypeService.GetHotpotCountByTypeAsync(type.HotpotTypeId);
 
@@ -47,11 +58,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                return Ok(new ApiResponse<IEnumerable<HotpotTypeDto>>
+                var result = new PagedResult<HotpotTypeDto>
+                {
+                    Items = typeDtos,
+                    PageNumber = pagedTypes.PageNumber,
+                    PageSize = pagedTypes.PageSize,
+                    TotalCount = pagedTypes.TotalCount
+                };
+
+                return Ok(new ApiResponse<PagedResult<HotpotTypeDto>>
                 {
                     Success = true,
                     Message = "Hotpot types retrieved successfully",
-                    Data = typeDtos
+                    Data = result
                 });
             }
             catch (Exception ex)
