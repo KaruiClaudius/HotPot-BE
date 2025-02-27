@@ -93,6 +93,8 @@ app.UseEndpoints(endpoints =>
     endpoints.MapHub<EquipmentHub>("/equipmentHub");
     endpoints.MapHub<FeedbackHub>("/feedbackHub");
     endpoints.MapHub<ScheduleHub>("/scheduleHub");
+    endpoints.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
+    endpoints.MapHub<EquipmentStockHub>("/equipmentStockHub");
 });
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
