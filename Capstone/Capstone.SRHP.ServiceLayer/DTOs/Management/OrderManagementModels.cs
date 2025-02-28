@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         [Required]
         public int StaffId { get; set; }
     }
-    public class UpdateOrderStatusRequest
+    public class ManagerOrderStatusUpdateRequest
     {
         [Required]
         public OrderStatus Status { get; set; }
