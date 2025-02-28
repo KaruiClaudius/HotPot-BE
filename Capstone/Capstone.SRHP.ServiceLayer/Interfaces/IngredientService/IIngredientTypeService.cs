@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,9 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
 {
     public interface IIngredientTypeService : IBaseService<IngredientType>
     {
-        Task<bool> IsTypeInUseAsync(int id);
-        Task<int> GetIngredientCountAsync(int id);
+        Task<PagedResult<IngredientType>> GetPagedAsync(int pageNumber, int pageSize);
+        Task<int> GetIngredientCountByTypeAsync(int typeId);
+        Task<Dictionary<int, int>> GetIngredientCountsByTypesAsync(IEnumerable<int> typeIds);
+        Task<PagedResult<IngredientType>> SearchAsync(string searchTerm, int pageNumber, int pageSize);
     }
 }

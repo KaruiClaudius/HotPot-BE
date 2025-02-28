@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -30,78 +31,114 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .ToListAsync();
         }
 
-        public async Task<(IEnumerable<Ingredient> Ingredients, int TotalCount)> GetAllPagedAsync(
-            int pageIndex = 1,
-            int pageSize = 10,
-            string searchTerm = null,
-            int? ingredientTypeId = null)
+        public async Task<PagedResult<Ingredient>> GetPagedAsync(int pageNumber, int pageSize)
         {
-            try
+            var query = _unitOfWork.Repository<Ingredient>()
+                .Include(i => i.IngredientType)
+                .Include(i => i.IngredientPrices)
+                .Where(i => !i.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(i => i.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Ingredient>
             {
-                Expression<Func<Ingredient, bool>> predicate = i => !i.IsDelete;
-
-                // Add search term filter if provided
-                if (!string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    predicate = predicate.And(i =>
-                        i.Name.Contains(searchTerm) ||
-                        (i.Description != null && i.Description.Contains(searchTerm)));
-                }
-
-                // Add ingredient type filter if provided
-                if (ingredientTypeId.HasValue)
-                {
-                    predicate = predicate.And(i => i.IngredientTypeID == ingredientTypeId.Value);
-                }
-
-                var result = await _unitOfWork.Repository<Ingredient>()
-                    .GetPagedAsync(pageIndex, pageSize, predicate);
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-        public async Task<Ingredient?> GetByIdAsync(int id)
+        public async Task<Ingredient> GetByIdAsync(int id)
         {
-            var ingredient = await _unitOfWork.Repository<Ingredient>()
+            return await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientPrices)
                 .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
-
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            return ingredient;
         }
 
-        public async Task<Ingredient> CreateAsync(Ingredient entity)
+        public Task<Ingredient> CreateAsync(Ingredient entity)
         {
-            // Validate minimum stock level
+            throw new NotImplementedException();
+        }
+
+        public async Task<Ingredient> CreateAsync(Ingredient entity, decimal initialPrice)
+        {
+            // Validate basic properties
+            if (string.IsNullOrWhiteSpace(entity.Name))
+                throw new ValidationException("Ingredient name cannot be empty");
+
             if (entity.MinStockLevel < 0)
                 throw new ValidationException("Minimum stock level cannot be negative");
 
-            // Validate initial quantity
             if (entity.Quantity < 0)
                 throw new ValidationException("Quantity cannot be negative");
 
+            if (initialPrice < 0)
+                throw new ValidationException("Price cannot be negative");
 
-            // Create initial price history
-            var priceHistory = new IngredientPrice
+            // Check if ingredient type exists
+            var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+
+            if (ingredientType == null)
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+
+            // Check if ingredient exists (including soft-deleted)
+            var existingIngredient = await _unitOfWork.Repository<Ingredient>()
+                .FindAsync(i => i.Name == entity.Name);
+
+            if (existingIngredient != null)
             {
-                EffectiveDate = DateTime.UtcNow,
-                IngredientID = entity.IngredientId
-            };
+                if (!existingIngredient.IsDelete)
+                {
+                    throw new ValidationException($"Ingredient with name {entity.Name} already exists");
+                }
+                else
+                {
+                    // Reactivate and update the soft-deleted ingredient
+                    existingIngredient.IsDelete = false;
+                    existingIngredient.Description = entity.Description;
+                    existingIngredient.ImageURL = entity.ImageURL;
+                    existingIngredient.MinStockLevel = entity.MinStockLevel;
+                    existingIngredient.Quantity = entity.Quantity;
+                    existingIngredient.IngredientTypeID = entity.IngredientTypeID;
+                    existingIngredient.SetUpdateDate();
 
+                    // Add new price
+                    var price = new IngredientPrice
+                    {
+                        IngredientID = existingIngredient.IngredientId,
+                        Price = initialPrice,
+                        EffectiveDate = DateTime.UtcNow
+                    };
+
+                    _unitOfWork.Repository<IngredientPrice>().Insert(price);
+                    await _unitOfWork.CommitAsync();
+
+                    return existingIngredient;
+                }
+            }
+
+            // Create new ingredient
             _unitOfWork.Repository<Ingredient>().Insert(entity);
             await _unitOfWork.CommitAsync();
 
-            // Add price history after ingredient is created
-            priceHistory.IngredientID = entity.IngredientId;
-            _unitOfWork.Repository<IngredientPrice>().Insert(priceHistory);
+            // Add initial price
+            var initialPriceEntity = new IngredientPrice
+            {
+                IngredientID = entity.IngredientId,
+                Price = initialPrice,
+                EffectiveDate = DateTime.UtcNow
+            };
+
+            _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
             await _unitOfWork.CommitAsync();
 
             return entity;
@@ -110,11 +147,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         public async Task UpdateAsync(int id, Ingredient entity)
         {
             var existingIngredient = await GetByIdAsync(id);
-
             if (existingIngredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
 
+            // Validate basic properties
+            if (string.IsNullOrWhiteSpace(entity.Name))
+                throw new ValidationException("Ingredient name cannot be empty");
 
+            if (entity.MinStockLevel < 0)
+                throw new ValidationException("Minimum stock level cannot be negative");
+
+            if (entity.Quantity < 0)
+                throw new ValidationException("Quantity cannot be negative");
+
+            // Check if ingredient type exists
+            var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+
+            if (ingredientType == null)
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+
+            // Check for name uniqueness if name is changed
+            if (entity.Name != existingIngredient.Name)
+            {
+                var nameExists = await _unitOfWork.Repository<Ingredient>()
+                    .AnyAsync(i => i.Name == entity.Name && i.IngredientId != id && !i.IsDelete);
+
+                if (nameExists)
+                    throw new ValidationException($"Ingredient with name {entity.Name} already exists");
+            }
 
             entity.SetUpdateDate();
             await _unitOfWork.Repository<Ingredient>().Update(entity, id);
@@ -124,127 +185,150 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         public async Task DeleteAsync(int id)
         {
             var ingredient = await GetByIdAsync(id);
-
             if (ingredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
 
-            // Check if ingredient is used in any active combos
-            var usedInCombos = await _unitOfWork.Repository<ComboIngredient>()
+            // Check if ingredient is in use
+            var isUsedInCustomization = await _unitOfWork.Repository<CustomizationIngredient>()
                 .AnyAsync(ci => ci.IngredientID == id && !ci.IsDelete);
 
-            if (usedInCombos)
-                throw new ValidationException("Cannot delete ingredient that is used in active combos");
+            var isUsedInCombo = await _unitOfWork.Repository<ComboIngredient>()
+                .AnyAsync(ci => ci.IngredientID == id && !ci.IsDelete);
+
+            var isUsedAsBrothInCombo = await _unitOfWork.Repository<Combo>()
+                .AnyAsync(c => c.HotpotBrothID == id && !c.IsDelete);
+
+            var isUsedAsBrothInCustomization = await _unitOfWork.Repository<Customization>()
+                .AnyAsync(c => c.HotpotBrothID == id && !c.IsDelete);
+
+            if (isUsedInCustomization || isUsedInCombo || isUsedAsBrothInCombo || isUsedAsBrothInCustomization)
+                throw new ValidationException("Cannot delete ingredient that is in use");
 
             ingredient.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<IEnumerable<Ingredient>> GetByTypeAsync(int typeId)
-        {
-            return await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientPrices)
-                .Where(i => i.IngredientTypeID == typeId && !i.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task<bool> UpdateStockAsync(int id, int quantity)
-        {
-            var ingredient = await GetByIdAsync(id);
-
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            // Prevent negative stock
-            if (ingredient.Quantity + quantity < 0)
-                throw new ValidationException("Cannot reduce stock below zero");
-
-            ingredient.Quantity += quantity;
-            ingredient.SetUpdateDate();
-
-            await _unitOfWork.CommitAsync();
-
-            // Return true if stock is below minimum level
-            return ingredient.Quantity <= ingredient.MinStockLevel;
-        }
-
         public async Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync()
         {
             return await _unitOfWork.Repository<Ingredient>()
-                .FindAll(i => !i.IsDelete && i.Quantity <= i.MinStockLevel)
+                .Include(i => i.IngredientType)
+                .Include(i => i.IngredientPrices)
+                .Where(i => !i.IsDelete && i.Quantity <= i.MinStockLevel)
                 .ToListAsync();
         }
 
-        public async Task<decimal> GetCurrentPriceAsync(int id)
+        public async Task<IEnumerable<Ingredient>> GetByTypeAsync(int typeId)
         {
-            //var ingredient = await GetByIdAsync(id);
-
-            //if (ingredient == null)
-            //    throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            //return ingredient.Price;
-            return 0;
+            return await _unitOfWork.Repository<Ingredient>()
+                .Include(i => i.IngredientType)
+                .Include(i => i.IngredientPrices)
+                .Where(i => !i.IsDelete && i.IngredientTypeID == typeId)
+                .ToListAsync();
         }
 
-        public async Task UpdatePriceAsync(int id, decimal newPrice)
+        public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
-            if (newPrice <= 0)
-                throw new ValidationException("Price must be greater than zero");
+            var latestPrice = await _unitOfWork.Repository<IngredientPrice>()
+                .FindAll(p => p.IngredientID == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                .OrderByDescending(p => p.EffectiveDate)
+                .FirstOrDefaultAsync();
 
-            var ingredient = await GetByIdAsync(id);
+            if (latestPrice == null)
+                throw new NotFoundException($"No price found for ingredient with ID {ingredientId}");
 
+            return latestPrice.Price;
+        }
+
+        public async Task<Dictionary<int, decimal>> GetCurrentPricesAsync(IEnumerable<int> ingredientIds)
+        {
+            var idList = ingredientIds.ToList();
+            var now = DateTime.UtcNow;
+
+            // Get all prices for the specified ingredients
+            var allPrices = await _unitOfWork.Repository<IngredientPrice>()
+                .FindAll(p => idList.Contains(p.IngredientID) && !p.IsDelete && p.EffectiveDate <= now)
+                .ToListAsync();
+
+            // Group by ingredient ID and get the latest price for each
+            var result = new Dictionary<int, decimal>();
+
+            foreach (var id in idList)
+            {
+                var latestPrice = allPrices
+                    .Where(p => p.IngredientID == id)
+                    .OrderByDescending(p => p.EffectiveDate)
+                    .FirstOrDefault();
+
+                if (latestPrice != null)
+                {
+                    result[id] = latestPrice.Price;
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId)
+        {
+            return await _unitOfWork.Repository<IngredientPrice>()
+                .Include(p => p.Ingredient)
+                .Where(p => p.IngredientID == ingredientId && !p.IsDelete)
+                .OrderByDescending(p => p.EffectiveDate)
+                .ToListAsync();
+        }
+
+        public async Task<IngredientPrice> AddPriceAsync(IngredientPrice price)
+        {
+            // Validate
+            if (price.Price < 0)
+                throw new ValidationException("Price cannot be negative");
+
+            var ingredient = await GetByIdAsync(price.IngredientID);
             if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
+                throw new NotFoundException($"Ingredient with ID {price.IngredientID} not found");
 
-            // Create price history record
-            var priceHistory = new IngredientPrice
-            {
-                IngredientID = id,
-                Price = newPrice,
-                EffectiveDate = DateTime.UtcNow
-            };
+            // Check if there's already a price with the same effective date
+            var existingPrice = await _unitOfWork.Repository<IngredientPrice>()
+                .FindAsync(p => p.IngredientID == price.IngredientID &&
+                               p.EffectiveDate == price.EffectiveDate &&
+                               !p.IsDelete);
 
-            //ingredient.Price = newPrice;
-            ingredient.SetUpdateDate();
+            if (existingPrice != null)
+                throw new ValidationException($"A price for this ingredient with effective date {price.EffectiveDate} already exists");
 
-            _unitOfWork.Repository<IngredientPrice>().Insert(priceHistory);
+            _unitOfWork.Repository<IngredientPrice>().Insert(price);
             await _unitOfWork.CommitAsync();
+            return price;
         }
-
-
-    }
-
-    public static class PredicateBuilder
-    {
-        public static Expression<Func<T, bool>> And<T>(this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second)
+        public async Task<PagedResult<Ingredient>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
         {
-            var parameter = Expression.Parameter(typeof(T));
+            searchTerm = searchTerm?.ToLower() ?? "";
 
-            var leftVisitor = new ReplaceExpressionVisitor(first.Parameters[0], parameter);
-            var left = leftVisitor.Visit(first.Body);
+            var query = _unitOfWork.Repository<Ingredient>()
+                .Include(i => i.IngredientType)
+                .Include(i => i.IngredientPrices)
+                .Where(i => !i.IsDelete &&
+                           (i.Name.ToLower().Contains(searchTerm) ||
+                            (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
+                            i.IngredientType.Name.ToLower().Contains(searchTerm)));
 
-            var rightVisitor = new ReplaceExpressionVisitor(second.Parameters[0], parameter);
-            var right = rightVisitor.Visit(second.Body);
+            var totalCount = await query.CountAsync();
 
-            return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left, right), parameter);
+            var items = await query
+                .OrderBy(i => i.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Ingredient>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-        private class ReplaceExpressionVisitor : ExpressionVisitor
-        {
-            private readonly Expression _oldValue;
-            private readonly Expression _newValue;
 
-            public ReplaceExpressionVisitor(Expression oldValue, Expression newValue)
-            {
-                _oldValue = oldValue;
-                _newValue = newValue;
-            }
-
-            public override Expression Visit(Expression node)
-            {
-                if (node == _oldValue)
-                    return _newValue;
-                return base.Visit(node);
-            }
-        }
     }
 }

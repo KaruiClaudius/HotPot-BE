@@ -1,8 +1,8 @@
-﻿using Capstone.HPTY.ModelLayer;
+﻿using Capstone.HPTY.API.BackgroundServices;
+using Capstone.HPTY.ModelLayer;
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
-using Capstone.HPTY.ServiceLayer.BackgroundServices;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
