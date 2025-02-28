@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.RepositoryLayer.Utils;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
@@ -32,8 +33,28 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>>> GetMyReplacementRequests()
         {
-            // Get the current customer ID from the authenticated user
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            // Get the current customer ID using your custom AuthenTools
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            if (claimsIdentity == null)
+            {
+                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "User is not authenticated"));
+            }
+
+            var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "User identity not found. Please login again."));
+            }
+
+
+            if (!int.TryParse(userIdString, out var userId))
+            {
+                return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "Invalid user identity format"));
+            }
+
             var customer = await _userService.GetByIdAsync(userId);
 
             if (customer == null)
@@ -52,8 +73,26 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> GetReplacementRequestById(int id)
         {
-            // Get the current customer ID from the authenticated user
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            // Get the current customer ID using your custom AuthenTools
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            if (claimsIdentity == null)
+            {
+                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "User is not authenticated"));
+            }
+
+            var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "User identity not found. Please login again."));
+            }
+
+            if (!int.TryParse(userIdString, out var userId))
+            {
+                return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    "Invalid user identity format"));
+            }
             var customer = await _userService.GetByIdAsync(userId);
 
             if (customer == null)
@@ -82,8 +121,27 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                // Get the current customer ID from the authenticated user
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                // Get the current customer ID using your custom AuthenTools
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                if (claimsIdentity == null)
+                {
+                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "User is not authenticated"));
+                }
+
+                var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
+                if (string.IsNullOrEmpty(userIdString))
+                {
+                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "User identity not found. Please login again."));
+                }
+          
+
+                if (!int.TryParse(userIdString, out var userId))
+                {
+                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "Invalid user identity format"));
+                }
                 var customer = await _userService.GetByIdAsync(userId);
 
                 if (customer == null)
@@ -133,7 +191,26 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Get the current customer ID from the authenticated user
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                if (claimsIdentity == null)
+                {
+                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "User is not authenticated"));
+                }
+
+                var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
+                if (string.IsNullOrEmpty(userIdString))
+                {
+                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "User identity not found. Please login again."));
+                }
+
+
+                if (!int.TryParse(userIdString, out var userId))
+                {
+                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "Invalid user identity format"));
+                }
                 var customer = await _userService.GetByIdAsync(userId);
 
                 if (customer == null)

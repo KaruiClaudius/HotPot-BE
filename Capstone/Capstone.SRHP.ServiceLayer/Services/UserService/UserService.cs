@@ -60,6 +60,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             var user = await _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
+                .Include(u=> u.Customer)
+                .Include(u=>u.Manager)
+                .Include(u=>u.Staff)
                 .FirstOrDefaultAsync(u => u.UserId == id && !u.IsDelete);
 
             if (user == null)
