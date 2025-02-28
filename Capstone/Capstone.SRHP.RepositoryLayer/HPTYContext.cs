@@ -41,7 +41,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Role> Roles { get; set; }
         public virtual DbSet<ChatMessage> ChatMessages { get; set; }
         public virtual DbSet<ChatSession> ChatSessions { get; set; }
-
+        public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -392,6 +392,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     .OnDelete(DeleteBehavior.Cascade); // Messages are deleted when session is deleted
             }
 
+            // Seed Data
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleId = 1, Name = "Admin" },
                 new Role { RoleId = 2, Name = "Manager" },
