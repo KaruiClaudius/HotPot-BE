@@ -174,7 +174,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<TurtorialVideoDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<TurtorialVideoDto>>> CreateTutorialVideo([FromBody] CreateTurtorialVideoRequest request)
+        public async Task<ActionResult<ApiResponse<TurtorialVideoDto>>> CreateTutorialVideo([FromBody] TurtorialVideoRequest request)
         {
             try
             {
@@ -233,7 +233,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<TurtorialVideoDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<TurtorialVideoDto>>> UpdateTutorialVideo(int id, [FromBody] UpdateTurtorialVideoRequest request)
+        public async Task<ActionResult<ApiResponse<TurtorialVideoDto>>> UpdateTutorialVideo(int id, [FromBody] TurtorialVideoRequest request)
         {
             try
             {

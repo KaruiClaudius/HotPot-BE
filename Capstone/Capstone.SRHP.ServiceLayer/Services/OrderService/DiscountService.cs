@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -26,6 +27,55 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .Include(d => d.Order)
                 .Where(d => !d.IsDelete)
                 .ToListAsync();
+        }
+        public async Task<PagedResult<Discount>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.Repository<Discount>()
+                .Include(d => d.Order)
+                .Where(d => !d.IsDelete);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(d => d.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Discount>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<PagedResult<Discount>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
+        {
+            searchTerm = searchTerm?.ToLower() ?? "";
+
+            var query = _unitOfWork.Repository<Discount>()
+                .Include(d => d.Order)
+                .Where(d => !d.IsDelete &&
+                           (d.Title.ToLower().Contains(searchTerm) ||
+                            d.Description.ToLower().Contains(searchTerm)));
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(d => d.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Discount>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<Discount?> GetByIdAsync(int id)
@@ -175,6 +225,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 throw new NotFoundException($"Discount with ID {discountId} not found");
 
             return userPoints >= discount.PointCost;
+        }
+
+        public async Task<int> GetOrderCountByDiscountAsync(int discountId)
+        {
+            return await _unitOfWork.Repository<Order>()
+                .CountAsync(o => !o.IsDelete && o.DiscountID == discountId);
+        }
+
+        public async Task<Dictionary<int, int>> GetOrderCountsByDiscountsAsync(IEnumerable<int> discountIds)
+        {
+            var counts = await _unitOfWork.Repository<Order>()
+                .FindAll(o => !o.IsDelete && discountIds.Contains(o.DiscountID.Value))
+                .GroupBy(o => o.DiscountID.Value)
+                .Select(g => new { DiscountId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.DiscountId, x => x.Count);
+
+            // Ensure all requested discount IDs are in the dictionary, even if they have no orders
+            foreach (var discountId in discountIds)
+            {
+                if (!counts.ContainsKey(discountId))
+                {
+                    counts[discountId] = 0;
+                }
+            }
+
+            return counts;
         }
 
         private void ValidateDiscount(Discount discount)

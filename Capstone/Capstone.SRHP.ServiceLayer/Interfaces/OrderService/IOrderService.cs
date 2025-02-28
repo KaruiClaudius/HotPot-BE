@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IOrderService : IBaseService<Order>
     {
+        Task<PagedResult<Order>> GetAllPagedAsync(int pageNumber, int pageSize);
+        Task<PagedResult<Order>> GetUserOrdersPagedAsync(int userId, int pageNumber, int pageSize);
         Task<IEnumerable<Order>> GetUserOrdersAsync(int userId);
         Task<Order> UpdateStatusAsync(int id, OrderStatus status);
         Task<decimal> CalculateTotalPriceAsync(ICollection<OrderDetail> orderDetails, int? discountId);

@@ -717,7 +717,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientType
                 {
                     IngredientTypeId = 1,
-                    Name = "Meat",
+                    Name = "Broth",
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -759,7 +759,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientType
                 {
                     IngredientTypeId = 7,
-                    Name = "Broths",
+                    Name = "Meats",
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },

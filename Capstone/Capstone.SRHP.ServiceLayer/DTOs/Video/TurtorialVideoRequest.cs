@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Video
 {
-    public class CreateTurtorialVideoRequest
+    public class TurtorialVideoRequest
     {
         [Required]
         [StringLength(100)]

@@ -1,24 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 {
-    public class IngredientDto
+    public class IngredientRequest
     {
-        public int IngredientId { get; set; }
+        [Required]
+        [StringLength(100)]
         public string Name { get; set; }
+
+        [StringLength(1000)]
         public string Description { get; set; }
+
+        [StringLength(2000)]
         public string ImageURL { get; set; }
+
+        [Required]
+        [Range(0, int.MaxValue)]
         public int MinStockLevel { get; set; }
+
+        [Required]
+        [Range(0, int.MaxValue)]
         public int Quantity { get; set; }
+
+        [Required]
         public int IngredientTypeID { get; set; }
-        public string IngredientTypeName { get; set; }
-        public decimal CurrentPrice { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
-        public bool IsLowStock { get; set; }
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal Price { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -23,59 +24,91 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         public async Task<IEnumerable<IngredientType>> GetAllAsync()
         {
             return await _unitOfWork.Repository<IngredientType>()
-                .Include(it => it.Ingredients)
-                .Where(it => !it.IsDelete)
+                .Include(t => t.Ingredients)
+                .Where(t => !t.IsDelete)
                 .ToListAsync();
         }
 
-        public async Task<IngredientType?> GetByIdAsync(int id)
+        public async Task<PagedResult<IngredientType>> GetPagedAsync(int pageNumber, int pageSize)
         {
-            var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .Include(it => it.Ingredients)
-                .FirstOrDefaultAsync(it => it.IngredientTypeId == id && !it.IsDelete);
+            var query = _unitOfWork.Repository<IngredientType>()
+                .Include(t => t.Ingredients)
+                .Where(t => !t.IsDelete);
 
-            if (ingredientType == null)
-                throw new NotFoundException($"IngredientType with ID {id} not found");
+            var totalCount = await query.CountAsync();
 
-            return ingredientType;
+            var items = await query
+                .OrderBy(t => t.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<IngredientType>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<IngredientType> GetByIdAsync(int id)
+        {
+            return await _unitOfWork.Repository<IngredientType>()
+                .Include(t => t.Ingredients)
+                .FirstOrDefaultAsync(t => t.IngredientTypeId == id && !t.IsDelete);
         }
 
         public async Task<IngredientType> CreateAsync(IngredientType entity)
         {
-            // Validate name
+            // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("IngredientType name cannot be empty");
+                throw new ValidationException("Ingredient type name cannot be empty");
 
-            // Check for duplicate names
-            var exists = await _unitOfWork.Repository<IngredientType>()
-                .AnyAsync(it => it.Name == entity.Name && !it.IsDelete);
+            // Check if ingredient type exists (including soft-deleted)
+            var existingType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.Name == entity.Name);
 
-            if (exists)
-                throw new ValidationException($"IngredientType with name {entity.Name} already exists");
+            if (existingType != null)
+            {
+                if (!existingType.IsDelete)
+                {
+                    throw new ValidationException($"Ingredient type with name {entity.Name} already exists");
+                }
+                else
+                {
+                    // Reactivate the soft-deleted ingredient type
+                    existingType.IsDelete = false;
+                    existingType.SetUpdateDate();
+                    await _unitOfWork.CommitAsync();
+                    return existingType;
+                }
+            }
 
             _unitOfWork.Repository<IngredientType>().Insert(entity);
             await _unitOfWork.CommitAsync();
-
             return entity;
         }
 
         public async Task UpdateAsync(int id, IngredientType entity)
         {
             var existingType = await GetByIdAsync(id);
-
             if (existingType == null)
-                throw new NotFoundException($"IngredientType with ID {id} not found");
+                throw new NotFoundException($"Ingredient type with ID {id} not found");
 
-            // Validate name
+            // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("IngredientType name cannot be empty");
+                throw new ValidationException("Ingredient type name cannot be empty");
 
-            // Check for duplicate names (excluding current type)
-            var exists = await _unitOfWork.Repository<IngredientType>()
-                .AnyAsync(it => it.Name == entity.Name && it.IngredientTypeId != id && !it.IsDelete);
+            // Check for name uniqueness if name is changed
+            if (entity.Name != existingType.Name)
+            {
+                var nameExists = await _unitOfWork.Repository<IngredientType>()
+                    .AnyAsync(t => t.Name == entity.Name && t.IngredientTypeId != id && !t.IsDelete);
 
-            if (exists)
-                throw new ValidationException($"IngredientType with name {entity.Name} already exists");
+                if (nameExists)
+                    throw new ValidationException($"Ingredient type with name {entity.Name} already exists");
+            }
 
             entity.SetUpdateDate();
             await _unitOfWork.Repository<IngredientType>().Update(entity, id);
@@ -85,34 +118,75 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         public async Task DeleteAsync(int id)
         {
             var ingredientType = await GetByIdAsync(id);
-
             if (ingredientType == null)
-                throw new NotFoundException($"IngredientType with ID {id} not found");
+                throw new NotFoundException($"Ingredient type with ID {id} not found");
 
-            // Check if type has any active ingredients
-            if (await IsTypeInUseAsync(id))
-                throw new ValidationException("Cannot delete ingredient type that has active ingredients");
+            // Check if ingredient type is in use
+            var isInUse = await _unitOfWork.Repository<Ingredient>()
+                .AnyAsync(i => i.IngredientTypeID == id && !i.IsDelete);
+
+            if (isInUse)
+                throw new ValidationException("Cannot delete ingredient type that is in use by ingredients");
 
             ingredientType.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<bool> IsTypeInUseAsync(int id)
+        public async Task<int> GetIngredientCountByTypeAsync(int typeId)
         {
             return await _unitOfWork.Repository<Ingredient>()
-                .AnyAsync(i => i.IngredientTypeID == id && !i.IsDelete);
+                .CountAsync(i => i.IngredientTypeID == typeId && !i.IsDelete);
         }
 
-        public async Task<int> GetIngredientCountAsync(int id)
+        public async Task<Dictionary<int, int>> GetIngredientCountsByTypesAsync(IEnumerable<int> typeIds)
         {
-            var ingredientType = await GetByIdAsync(id);
+            var idList = typeIds.ToList();
 
-            if (ingredientType == null)
-                throw new NotFoundException($"IngredientType with ID {id} not found");
+            // Get all ingredients for the specified types
+            var ingredients = await _unitOfWork.Repository<Ingredient>()
+                .FindAll(i => idList.Contains(i.IngredientTypeID) && !i.IsDelete)
+                .ToListAsync();
 
-            return await _unitOfWork.Repository<Ingredient>()
-                .FindAll(i => i.IngredientTypeID == id && !i.IsDelete)
-                .CountAsync();
+            // Group by type ID and count
+            var counts = ingredients
+                .GroupBy(i => i.IngredientTypeID)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Ensure all requested type IDs are in the dictionary, even if they have no ingredients
+            foreach (var typeId in idList)
+            {
+                if (!counts.ContainsKey(typeId))
+                {
+                    counts[typeId] = 0;
+                }
+            }
+
+            return counts;
+        }
+
+        public async Task<PagedResult<IngredientType>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
+        {
+            searchTerm = searchTerm?.ToLower() ?? "";
+
+            var query = _unitOfWork.Repository<IngredientType>()
+                .Include(t => t.Ingredients)
+                .Where(t => !t.IsDelete && t.Name.ToLower().Contains(searchTerm));
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(t => t.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<IngredientType>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }

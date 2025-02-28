@@ -20,6 +20,8 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 
         //DbSet<TEntity> GetAll();
         // Thêm mới
+
+
         IQueryable<TEntity> GetAll(Expression<Func<TEntity, bool>> predicate = null);
         IQueryable<TEntity> GetAllApart();
         Task<IEnumerable<TEntity>> GetWhere(Expression<Func<TEntity, bool>> predicate);
@@ -32,6 +34,8 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         Task<TEntity> FindAsync(Expression<Func<TEntity, bool>> predicate,
                 Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null);
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
+
+        Task<int> CountAsync(Expression<Func<TEntity, bool>> predicate);
 
         Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate);
 
