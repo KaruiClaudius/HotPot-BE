@@ -22,5 +22,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public double LoyatyPoint { get; set; } = 0;
 
         public virtual User? User { get; set; }
+        public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
+
     }
 }

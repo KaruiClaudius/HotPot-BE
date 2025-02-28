@@ -43,6 +43,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey(nameof(UtensilID))]
         public virtual Utensil? Utensil { get; set; }
 
+        public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
 
     }
 }
