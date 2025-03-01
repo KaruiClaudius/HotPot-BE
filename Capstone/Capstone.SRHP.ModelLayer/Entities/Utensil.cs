@@ -50,6 +50,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual UtensilType? UtensilType { get; set; }
         public virtual OrderDetail? OrderDetail { get; set; }
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
+        public virtual ICollection<ConditionLog>? ConditionLogs { get; set; }
 
         public Utensil()
         {

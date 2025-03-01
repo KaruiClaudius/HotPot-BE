@@ -12,6 +12,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
+using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
@@ -23,6 +24,7 @@ using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Services.ShippingService;
+using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Capstone.HPTY.ServiceLayer.Services.UtensilService;
 using Microsoft.EntityFrameworkCore;
@@ -95,6 +97,10 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Shipping Services
             services.AddScoped<IStaffShippingService, StaffShippingService>();
+
+            // Equipment Services
+            services.AddScoped<IStaffEquipmentService, StaffEquipmentService>();
+
 
             // External Services
             services.AddHttpClient();

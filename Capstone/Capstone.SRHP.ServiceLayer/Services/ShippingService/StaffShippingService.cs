@@ -218,5 +218,122 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
             return dto;
         }
+
+        public async Task<ProofOfDeliveryResponse> SaveProofOfDeliveryAsync(int shippingOrderId, ProofOfDeliveryRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Saving proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+                // Find the shipping order
+                var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .FindAsync(so => so.ShippingOrderId == shippingOrderId);
+
+                if (shippingOrder == null)
+                {
+                    throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+                }
+
+                // Update the shipping order with proof of delivery data
+                if (!string.IsNullOrEmpty(request.Base64Image))
+                {
+                    shippingOrder.ProofImage = Convert.FromBase64String(request.Base64Image);
+                    shippingOrder.ProofImageType = request.ImageType ?? "image/jpeg";
+                }
+
+                if (!string.IsNullOrEmpty(request.Base64Signature))
+                {
+                    shippingOrder.SignatureData = Convert.FromBase64String(request.Base64Signature);
+                }
+
+                if (!string.IsNullOrEmpty(request.DeliveryNotes))
+                {
+                    shippingOrder.DeliveryNotes = request.DeliveryNotes;
+                }
+
+                // Mark as delivered and set timestamps
+                shippingOrder.IsDelivered = true;
+                shippingOrder.ProofTimestamp = DateTime.UtcNow;
+
+                if (shippingOrder.DeliveryTime == null)
+                {
+                    shippingOrder.DeliveryTime = DateTime.UtcNow;
+                }
+
+                // Save changes
+                await _unitOfWork.CommitAsync();
+
+                // Return response
+                return new ProofOfDeliveryResponse
+                {
+                    ShippingOrderId = shippingOrder.ShippingOrderId,
+                    IsDelivered = shippingOrder.IsDelivered,
+                    DeliveryTime = shippingOrder.DeliveryTime,
+                    ProofTimestamp = shippingOrder.ProofTimestamp,
+                    DeliveryNotes = shippingOrder.DeliveryNotes,
+                    HasProofImage = shippingOrder.ProofImage != null && shippingOrder.ProofImage.Length > 0,
+                    HasSignature = shippingOrder.SignatureData != null && shippingOrder.SignatureData.Length > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+                throw;
+            }
+        }
+
+        public async Task<ProofOfDeliveryDto> GetProofOfDeliveryAsync(int shippingOrderId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+                // Find the shipping order
+                var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .FindAsync(so => so.ShippingOrderId == shippingOrderId);
+
+                if (shippingOrder == null)
+                {
+                    throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+                }
+
+                // Check if proof of delivery exists
+                if (shippingOrder.ProofImage == null && shippingOrder.SignatureData == null)
+                {
+                    throw new NotFoundException($"No proof of delivery found for shipping order with ID {shippingOrderId}");
+                }
+
+                // Convert binary data to base64 strings
+                string? base64Image = null;
+                string? base64Signature = null;
+
+                if (shippingOrder.ProofImage != null && shippingOrder.ProofImage.Length > 0)
+                {
+                    base64Image = Convert.ToBase64String(shippingOrder.ProofImage);
+                }
+
+                if (shippingOrder.SignatureData != null && shippingOrder.SignatureData.Length > 0)
+                {
+                    base64Signature = Convert.ToBase64String(shippingOrder.SignatureData);
+                }
+
+                // Return DTO
+                return new ProofOfDeliveryDto
+                {
+                    ShippingOrderId = shippingOrder.ShippingOrderId,
+                    Base64Image = base64Image,
+                    ImageType = shippingOrder.ProofImageType,
+                    Base64Signature = base64Signature,
+                    DeliveryNotes = shippingOrder.DeliveryNotes,
+                    ProofTimestamp = shippingOrder.ProofTimestamp
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+                throw;
+            }
+        }
+
     }
 }
