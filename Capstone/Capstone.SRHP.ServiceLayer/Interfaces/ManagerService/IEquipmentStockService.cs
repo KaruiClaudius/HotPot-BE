@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {

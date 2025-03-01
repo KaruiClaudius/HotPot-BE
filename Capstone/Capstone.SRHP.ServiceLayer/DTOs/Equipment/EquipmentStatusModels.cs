@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Management
+namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
 {
     public class EquipmentStatusDto
     {

@@ -13,6 +13,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public DateTime? DeliveryTime { get; set; }
         public string DeliveryNotes { get; set; }
         public bool IsDelivered { get; set; }
+
+        // Location information
         public string DeliveryAddress { get; set; }
         public string CustomerName { get; set; }
         public string CustomerPhone { get; set; }

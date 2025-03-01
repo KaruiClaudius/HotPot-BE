@@ -312,6 +312,11 @@ namespace Capstone.HPTY.RepositoryLayer
                 entity.Property(e => e.ScheduleType)
                     .IsRequired()
                     .HasConversion<int>();
+
+                modelBuilder.Entity<ConditionLog>()
+                     .HasOne(c => c.Utensil)
+                     .WithMany(u => u.ConditionLogs)
+                     .HasForeignKey(c => c.UtensilID);
             });
 
             modelBuilder.Entity<TurtorialVideo>()
