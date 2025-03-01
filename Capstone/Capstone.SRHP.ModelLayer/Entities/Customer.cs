@@ -21,6 +21,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Range(0, double.MaxValue)]
         public double LoyatyPoint { get; set; } = 0;
 
+        [StringLength(1000)]
+        public string? Note { get; set; }
+
         public virtual User? User { get; set; }
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
 
