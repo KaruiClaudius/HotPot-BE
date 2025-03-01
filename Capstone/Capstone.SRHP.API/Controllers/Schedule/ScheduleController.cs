@@ -85,7 +85,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         }
 
         // CreateWorkShift
-        [HttpPost]
+        [HttpPost("createWorkShift")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<WorkShift>>> CreateWorkShift([FromBody] CreateWorkShiftRequest request)
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         }
 
         // UpdateWorkShift
-        [HttpPut("{id}")]
+        [HttpPut("updateWorkShift/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

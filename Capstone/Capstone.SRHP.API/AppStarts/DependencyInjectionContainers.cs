@@ -9,7 +9,9 @@ using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
@@ -18,7 +20,9 @@ using Capstone.HPTY.ServiceLayer.Services.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.IngredientService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
+using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
+using Capstone.HPTY.ServiceLayer.Services.ShippingService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Capstone.HPTY.ServiceLayer.Services.UtensilService;
 using Microsoft.EntityFrameworkCore;
@@ -81,9 +85,16 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IScheduleService, ScheduleService>();
             services.AddScoped<IEquipmentConditionService, EquipmentConditionService>();
             services.AddScoped<IEquipmentStockService, EquipmentStockService>();
+            services.AddScoped<IReplacementRequestService, ReplacementRequestService>();
+
+            // Notification Services
+            services.AddScoped<INotificationService, SignalRNotificationService>();
 
             // Background Services
             services.AddHostedService<EquipmentStockMonitorService>();
+
+            // Shipping Services
+            services.AddScoped<IStaffShippingService, StaffShippingService>();
 
             // External Services
             services.AddHttpClient();

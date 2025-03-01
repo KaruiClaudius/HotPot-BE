@@ -24,8 +24,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public virtual Hotpot? Hotpot { get; set; }
 
-
         public virtual ICollection<ConditionLog>? ConditionLogs { get; set; }
+        public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
+
 
     }
 }

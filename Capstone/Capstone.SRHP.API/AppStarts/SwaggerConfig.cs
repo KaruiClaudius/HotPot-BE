@@ -22,6 +22,8 @@ namespace Capstone.HPTY.API.AppStarts
                         Email = "your.email@example.com"
                     }
                 });
+                c.CustomSchemaIds(type => type.FullName);
+
 
                 // JWT Authentication
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

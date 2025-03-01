@@ -22,6 +22,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual User? User { get; set; }
         public virtual ICollection<WorkShift>? WorkShifts { get; set; }
         public virtual ICollection<ShippingOrder>? ShippingOrders { get; set; }
+        public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
 
     }
 }
