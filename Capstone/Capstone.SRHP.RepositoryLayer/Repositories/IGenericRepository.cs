@@ -21,6 +21,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         //DbSet<TEntity> GetAll();
         // Thêm mới
 
+        IQueryable<TEntity> IncludeNested(Func<IQueryable<TEntity>, IQueryable<TEntity>> includeFunc);
 
         IQueryable<TEntity> GetAll(Expression<Func<TEntity, bool>> predicate = null);
         IQueryable<TEntity> GetAllApart();

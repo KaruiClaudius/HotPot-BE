@@ -66,7 +66,10 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         //    return _table;
         //}
 
-
+        public IQueryable<T> IncludeNested(Func<IQueryable<T>, IQueryable<T>> includeFunc)
+        {
+            return includeFunc(_dbSet);
+        }
 
 
         public IQueryable<T> GetAll(Expression<Func<T, bool>> predicate = null)
