@@ -637,8 +637,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ShiftTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
-                    ManagerID = table.Column<int>(type: "int", nullable: false),
-                    StaffID = table.Column<int>(type: "int", nullable: false),
+                    ManagerID = table.Column<int>(type: "int", nullable: true),
+                    StaffID = table.Column<int>(type: "int", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsDelete = table.Column<bool>(type: "bit", nullable: false)

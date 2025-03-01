@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
     public class OrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
@@ -32,6 +32,27 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _orderManagementService.AllocateOrderToStaff(request.OrderId, request.StaffId);
                 return Ok(ApiResponse<ShippingOrder>.SuccessResponse(result, "Order allocated successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+            }
+        }
+
+        [HttpPost("allocate/auto")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<ShippingOrder>>> AllocateOrderToOptimalStaff([FromBody] AutoAllocateOrderRequest request)
+        {
+            try
+            {
+                var result = await _orderManagementService.AllocateOrderToOptimalStaff(request.OrderId);
+                return Ok(ApiResponse<ShippingOrder>.SuccessResponse(result, "Order automatically allocated to optimal staff"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -65,6 +86,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return NotFound(ApiResponse<IEnumerable<ShippingOrder>>.ErrorResponse(ex.Message));
             }
+        }
+
+        // Staff workload endpoints
+        [HttpGet("staff/workloads")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffWorkloadDto>>>> GetStaffWorkloads()
+        {
+            var workloads = await _orderManagementService.GetStaffWorkloads();
+            return Ok(ApiResponse<IEnumerable<StaffWorkloadDto>>.SuccessResponse(workloads, "Staff workloads retrieved successfully"));
         }
 
         // Order status tracking endpoints
@@ -171,5 +201,29 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+        // Staff allocation statistics endpoints
+        [HttpGet("staff/{staffId}/stats")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<StaffAllocationStatsDto>>> GetStaffAllocationStats(int staffId)
+        {
+            try
+            {
+                var stats = await _orderManagementService.GetStaffAllocationStats(staffId);
+                return Ok(ApiResponse<StaffAllocationStatsDto>.SuccessResponse(stats, "Staff allocation statistics retrieved successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<StaffAllocationStatsDto>.ErrorResponse(ex.Message));
+            }
+        }
+
+        [HttpGet("staff/stats")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffAllocationStatsDto>>>> GetAllStaffAllocationStats()
+        {
+            var stats = await _orderManagementService.GetAllStaffAllocationStats();
+            return Ok(ApiResponse<IEnumerable<StaffAllocationStatsDto>>.SuccessResponse(stats, "All staff allocation statistics retrieved successfully"));
+        }
     }
 }
