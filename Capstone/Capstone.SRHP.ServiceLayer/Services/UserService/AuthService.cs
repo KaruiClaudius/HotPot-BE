@@ -5,6 +5,7 @@ using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -214,6 +215,73 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             catch (Exception ex)
             {
                 throw new Exception($"Error creating customer entry", ex);
+            }
+        }
+
+        public async Task<AuthResponse> GoogleLoginAsync(string idToken)
+        {
+            try
+            {             
+                // Verify the Google token
+                var payload = await _jwtService.VerifyGoogleTokenAsync(idToken);
+
+                // Check if user exists by email
+                var user = await _unitOfWork.Repository<User>()
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Email == payload.Email && !u.IsDelete);
+
+                if (user == null)
+                {
+                    // Check if user exists but is deleted
+                    var existingUser = await _unitOfWork.Repository<User>()
+                        .FindAsync(u => u.Email == payload.Email);
+
+                    if (existingUser != null && existingUser.IsDelete)
+                    {
+                        // Reactivate user
+                        existingUser.IsDelete = false;
+                        existingUser.Name = payload.Name;
+                        existingUser.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+
+                        // Reactivate customer record
+                        await CreateCustomerEntryAsync(existingUser);
+
+                        return await GenerateAuthResponseAsync(existingUser);
+                    }
+
+                    // Get Customer role
+                    var customerRole = await _unitOfWork.Repository<Role>()
+                        .FindAsync(r => r.Name == "Customer");
+
+                    if (customerRole == null)
+                        throw new ValidationException("Customer role not found");
+
+                    // Create new user
+                    user = new User
+                    {
+                        Email = payload.Email,
+                        Name = payload.Name,
+                        // Generate a random password since the user won't use it
+                        Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                        RoleID = customerRole.RoleId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    _unitOfWork.Repository<User>().Insert(user);
+                    await _unitOfWork.CommitAsync();
+
+                    // Create customer record
+                    await CreateCustomerEntryAsync(user);
+                }
+
+                // Generate JWT token and return auth response
+                return await GenerateAuthResponseAsync(user);
+            }
+            catch (Exception ex)
+            {
+                throw new UnauthorizedException("Google authentication failed: " + ex.Message);
             }
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -85,6 +86,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             var handler = new JwtSecurityTokenHandler();
             var jwtToken = handler.ReadJwtToken(token);
             return jwtToken.ValidTo;
+        }
+
+        public async Task<GoogleJsonWebSignature.Payload> VerifyGoogleTokenAsync(string idToken)
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _configuration["Authentication:Google:ClientId"] }
+            };
+
+            return await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
         }
     }
 }

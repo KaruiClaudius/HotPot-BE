@@ -49,7 +49,13 @@ namespace Capstone.HPTY.API.AppStarts
                             return Task.CompletedTask;
                         }
                     };
-                });
+                }).AddGoogle(options =>
+                {
+                    options.ClientId = configuration["Authentication:Google:ClientId"];
+                    options.ClientSecret = configuration["Authentication:Google:ClientSecret"];
+                    options.CallbackPath = "/signin-google"; // This is the default path
+                })
+                ;
 
             services.AddAuthorization(options =>
             {
