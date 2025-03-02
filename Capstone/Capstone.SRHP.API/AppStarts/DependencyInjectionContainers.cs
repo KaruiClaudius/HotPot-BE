@@ -101,6 +101,9 @@ namespace Capstone.HPTY.API.AppStarts
             // Equipment Services
             services.AddScoped<IStaffEquipmentService, StaffEquipmentService>();
 
+            // Oder History Services
+            services.AddScoped<ICustomerOrderHistoryService, CustomerOrderHistoryService>();
+            services.AddScoped<IOrderHistoryService, OrderHistoryService>();
 
             // External Services
             services.AddHttpClient();
