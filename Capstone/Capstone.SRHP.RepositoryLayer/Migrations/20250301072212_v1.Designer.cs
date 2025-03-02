@@ -150,7 +150,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int>("Size")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("TotalPrice")
+                    b.Property<decimal>("BasePrice ")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -342,7 +342,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<decimal>("TotalPrice")
+                    b.Property<decimal>("BasePrice ")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1600,7 +1600,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("TotalPrice")
+                    b.Property<decimal>("BasePrice ")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")

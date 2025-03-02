@@ -60,7 +60,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     // Override the CurrentPrice with the actual price from our bulk query
                     if (currentPrices.ContainsKey(ingredient.IngredientId))
                     {
-                        dto.CurrentPrice = currentPrices[ingredient.IngredientId];
+                        dto.Price = currentPrices[ingredient.IngredientId];
                     }
                     return dto;
                 }).ToList();
@@ -113,7 +113,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
                 var ingredientDto = MapToIngredientDto(ingredient);
-                ingredientDto.CurrentPrice = currentPrice;
+                ingredientDto.Price = currentPrice;
 
                 return Ok(new ApiResponse<IngredientDto>
                 {
@@ -163,7 +163,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var createdIngredient = await _ingredientService.CreateAsync(ingredient, request.Price);
                 var ingredientDto = MapToIngredientDto(createdIngredient);
-                ingredientDto.CurrentPrice = request.Price;
+                ingredientDto.Price = request.Price;
 
                 return CreatedAtAction(
                     nameof(GetIngredientById),
@@ -239,7 +239,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var updatedIngredient = await _ingredientService.GetByIdAsync(id);
                 var ingredientDto = MapToIngredientDto(updatedIngredient);
-                ingredientDto.CurrentPrice = request.Price;
+                ingredientDto.Price = request.Price;
 
                 return Ok(new ApiResponse<IngredientDto>
                 {
@@ -341,7 +341,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     var dto = MapToIngredientDto(ingredient);
                     if (currentPrices.ContainsKey(ingredient.IngredientId))
                     {
-                        dto.CurrentPrice = currentPrices[ingredient.IngredientId];
+                        dto.Price = currentPrices[ingredient.IngredientId];
                     }
                     return dto;
                 }).ToList();
@@ -381,7 +381,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     var dto = MapToIngredientDto(ingredient);
                     if (currentPrices.ContainsKey(ingredient.IngredientId))
                     {
-                        dto.CurrentPrice = currentPrices[ingredient.IngredientId];
+                        dto.Price = currentPrices[ingredient.IngredientId];
                     }
                     return dto;
                 }).ToList();
@@ -434,7 +434,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     var dto = MapToIngredientDto(ingredient);
                     if (currentPrices.ContainsKey(ingredient.IngredientId))
                     {
-                        dto.CurrentPrice = currentPrices[ingredient.IngredientId];
+                        dto.Price = currentPrices[ingredient.IngredientId];
                     }
                     return dto;
                 }).ToList();
@@ -630,7 +630,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
                 var ingredientDto = MapToIngredientDto(existingIngredient);
-                ingredientDto.CurrentPrice = currentPrice;
+                ingredientDto.Price = currentPrice;
 
                 return Ok(new ApiResponse<IngredientDto>
                 {
@@ -683,7 +683,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Quantity = ingredient.Quantity,
                 IngredientTypeID = ingredient.IngredientTypeID,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
-                CurrentPrice = 0, // This will be set by the caller
+                Price = 0, // This will be set by the caller
                 CreatedAt = ingredient.CreatedAt,
                 UpdatedAt = ingredient.UpdatedAt,
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
