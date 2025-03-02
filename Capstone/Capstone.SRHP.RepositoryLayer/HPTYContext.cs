@@ -43,6 +43,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<ChatSession> ChatSessions { get; set; }
         public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
         public virtual DbSet<ComboAllowedIngredientType> ComboAllowedIngredientTypes { get; set; }
+        public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {

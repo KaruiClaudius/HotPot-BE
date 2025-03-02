@@ -9,6 +9,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,14 +19,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
     public class CustomerOrderHistoryService : ICustomerOrderHistoryService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomizationService _customizationService;
         private readonly ILogger<CustomerOrderHistoryService> _logger;
 
         public CustomerOrderHistoryService(
             IUnitOfWork unitOfWork,
-            ILogger<CustomerOrderHistoryService> logger)
+            ILogger<CustomerOrderHistoryService> logger,
+            ICustomizationService customizationService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _customizationService = customizationService;
         }
 
         // Capstone.HPTY.ServiceLayer.Services.CustomerService/CustomerOrderHistoryService.cs (continued)

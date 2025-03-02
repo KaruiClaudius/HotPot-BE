@@ -25,6 +25,11 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public decimal BasePrice { get; set; }
 
         [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal TotalPrice { get; set; }
+
+
+        [Required]
         [Range(1, int.MaxValue)]
         public int Size { get; set; }
 

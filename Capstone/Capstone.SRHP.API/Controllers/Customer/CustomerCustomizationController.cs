@@ -334,20 +334,13 @@ public class CustomizationController : ControllerBase
     {
         if (customization == null) return null;
 
-        // Calculate total price based on base price and discount
-        decimal totalPrice = customization.BasePrice;
-        if (customization.AppliedDiscount != null)
-        {
-            totalPrice = customization.BasePrice * (1 - (customization.AppliedDiscount.DiscountPercentage / 100m));
-        }
-
         return new CustomizationDto
         {
             CustomizationId = customization.CustomizationId,
             Name = customization.Name,
             Note = customization.Note,
             BasePrice = customization.BasePrice,
-            TotalPrice = totalPrice,
+            TotalPrice = customization.TotalPrice, // Use the stored total price
             Size = customization.Size,
             UserID = customization.UserID,
             UserName = customization.User?.Name ?? "Unknown",

@@ -26,6 +26,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal BasePrice  { get; set; }
 
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal TotalPrice { get; set; }
+
         [StringLength(1000)]
         public string? Description { get; set; }
 
