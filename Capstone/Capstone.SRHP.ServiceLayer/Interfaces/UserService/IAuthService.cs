@@ -13,5 +13,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.UserService
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
         Task<AuthResponse> RefreshTokenAsync(string refreshToken);
         Task LogoutAsync(int userId);
+        Task<AuthResponse> GoogleLoginAsync(string idToken);
     }
 }

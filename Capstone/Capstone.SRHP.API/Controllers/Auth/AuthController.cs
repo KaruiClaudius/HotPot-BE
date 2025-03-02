@@ -190,5 +190,31 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 });
             }
         }
+
+        [HttpPost("google-login")]
+        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        {
+            try
+            {
+                var response = await _authService.GoogleLoginAsync(request.IdToken);
+                return Ok(new ApiResponse<AuthResponse>
+                {
+                    Success = true,
+                    Message = "Google login successful",
+                    Data = response
+                });
+            }
+            catch (UnauthorizedException ex)
+            {
+                _logger.LogWarning(ex, "Google login failed");
+                return Unauthorized(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+        }
     }
 }

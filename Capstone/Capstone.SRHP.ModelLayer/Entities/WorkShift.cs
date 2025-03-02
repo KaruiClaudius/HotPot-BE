@@ -21,13 +21,11 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public AttendanceStatus? Status { get; set; }
 
-        [Required]
         [ForeignKey("Managers")]
-        public int ManagerID { get; set; }
+        public int? ManagerID { get; set; }
 
-        [Required]
         [ForeignKey("Staffs")]
-        public int StaffID { get; set; }
+        public int? StaffID { get; set; }
 
         public virtual Staff? Staff { get; set; }
         public virtual Manager? Manager { get; set; }

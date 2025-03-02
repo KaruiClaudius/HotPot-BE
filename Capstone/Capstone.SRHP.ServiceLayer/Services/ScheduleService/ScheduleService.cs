@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -102,19 +103,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
         public async Task<WorkShift> CreateWorkShiftAsync(WorkShift workShift)
         {
-            // Verify staff exists
-            var staff = await _unitOfWork.Repository<Staff>()
-                .FindAsync(s => s.StaffId == workShift.StaffID);
+            // Validate that at least one of StaffID or ManagerID is provided
+            if (workShift.StaffID == null && workShift.ManagerID == null)
+            {
+                throw new ValidationException("Either Staff or Manager must be assigned to the work shift");
+            }
 
-            if (staff == null)
-                throw new KeyNotFoundException($"Staff with ID {workShift.StaffID} not found");
+            // Verify staff exists if StaffID is provided
+            if (workShift.StaffID != null)
+            {
+                var staff = await _unitOfWork.Repository<Staff>()
+                    .FindAsync(s => s.StaffId == workShift.StaffID);
 
-            // Verify manager exists
-            var manager = await _unitOfWork.Repository<Manager>()
-                .FindAsync(m => m.ManagerId == workShift.ManagerID);
+                if (staff == null)
+                    throw new KeyNotFoundException($"Staff with ID {workShift.StaffID} not found");
+            }
 
-            if (manager == null)
-                throw new KeyNotFoundException($"Manager with ID {workShift.ManagerID} not found");
+            // Verify manager exists if ManagerID is provided
+            if (workShift.ManagerID != null)
+            {
+                var manager = await _unitOfWork.Repository<Manager>()
+                    .FindAsync(m => m.ManagerId == workShift.ManagerID);
+
+                if (manager == null)
+                    throw new KeyNotFoundException($"Manager with ID {workShift.ManagerID} not found");
+            }
 
             workShift.CreatedAt = DateTime.UtcNow;
 
