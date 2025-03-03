@@ -1,0 +1,53 @@
+
+services:
+  capstone.hpty.api:
+    image: ${DOCKER_REGISTRY-}capstonehptyapi
+    build:
+      context: .
+      dockerfile: Capstone.SRHP.API/Dockerfile
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      - capstone.hpty.db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=capstone.hpty.db;Database=Capstone.HPTY;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    networks:
+      - capstone.hpty
+ 
+  capstone.hpty.db:
+    image: "mcr.microsoft.com/mssql/server:2019-latest"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong!Passw0rd
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - capstone.hpty
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    privileged: true
+    user: root
+    ports:
+      - 8080:8080
+      - 50000:50000
+    container_name: jenkins
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/local/bin/docker:/usr/local/bin/docker
+
+
+networks:
+  capstone.hpty:
+    driver: bridge
+
+volumes:
+  mssql-data:
+  jenkins_home:
+  
