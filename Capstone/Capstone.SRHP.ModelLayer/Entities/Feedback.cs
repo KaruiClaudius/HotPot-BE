@@ -23,7 +23,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string Comment { get; set; }
 
 
-        [StringLength(200)]
+        [StringLength(2000)]
         public string? ImageURL { get; set; }
 
         [NotMapped]

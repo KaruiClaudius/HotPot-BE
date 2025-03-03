@@ -16,7 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public int Quantity { get; set; }
         public int IngredientTypeID { get; set; }
         public string IngredientTypeName { get; set; }
-        public decimal CurrentPrice { get; set; }
+        public decimal Price { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsLowStock { get; set; }

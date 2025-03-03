@@ -24,21 +24,30 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
+        public decimal BasePrice  { get; set; }
+
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
         public decimal TotalPrice { get; set; }
 
-        [Range(0, 100)]
-        public double Discount { get; set; }
-
         [StringLength(1000)]
-        public string? Description { get; set; }  
+        public string? Description { get; set; }
+
+        [Required]
+        public bool IsCustomizable { get; set; } = false;
 
         [ForeignKey("HotpotBroth")]
         public int HotpotBrothID { get; set; }
+
+        [ForeignKey("AppliedDiscount")]
+        public int? AppliedDiscountID { get; set; }
 
         public virtual Ingredient? HotpotBroth { get; set; }
         public virtual Customization? Customization { get; set; }
         public virtual OrderDetail? OrderDetail { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; } = new List<ComboIngredient>();
+        public virtual ICollection<ComboAllowedIngredientType> AllowedIngredientTypes { get; set; } = new List<ComboAllowedIngredientType>();
+        public virtual SizeDiscount AppliedDiscount { get; set; }
 
     }
 }

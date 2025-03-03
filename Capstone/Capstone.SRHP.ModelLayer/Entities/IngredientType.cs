@@ -19,5 +19,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string Name { get; set; }
 
         public virtual ICollection<Ingredient>? Ingredients { get; set; }
+
     }
 }

@@ -42,6 +42,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<ChatMessage> ChatMessages { get; set; }
         public virtual DbSet<ChatSession> ChatSessions { get; set; }
         public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
+        public virtual DbSet<ComboAllowedIngredientType> ComboAllowedIngredientTypes { get; set; }
+        public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -190,11 +192,11 @@ namespace Capstone.HPTY.RepositoryLayer
 
 
             modelBuilder.Entity<Customization>()
-                .Property(c => c.TotalPrice)
+                .Property(c => c.BasePrice)
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<Combo>()
-                .Property(c => c.TotalPrice)
+                .Property(c => c.BasePrice )
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<ComboIngredient>(entity =>
