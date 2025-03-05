@@ -1,0 +1,39 @@
+
+services:
+  capstone.hpty.api:
+    image: ${DOCKER_REGISTRY-}capstonehptyapi
+    build:
+      context: .
+      dockerfile: Capstone.SRHP.API/Dockerfile
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      - capstone.hpty.db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=capstone.hpty.db;Database=Capstone.HPTY;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    networks:
+      - capstone.hpty
+ 
+  capstone.hpty.db:
+    image: "mcr.microsoft.com/mssql/server:2019-latest"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong!Passw0rd
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - capstone.hpty
+
+
+networks:
+  capstone.hpty:
+    driver: bridge
+
+volumes:
+  mssql-data:
+  
