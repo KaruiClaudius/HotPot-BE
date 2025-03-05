@@ -137,7 +137,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
     string? note,
     int size,
     int brothId,
-    List<CustomizationIngredientDto> ingredients)
+    List<CustomizationIngredientDto> ingredients,
+    string[]? imageURLs = null) 
         {
             // Get the combo
             var combo = await _comboService.GetByIdAsync(comboId);
@@ -158,6 +159,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (size <= 0)
                 throw new ValidationException("Size must be greater than 0");
 
+            // Validate image URLs if provided
+            if (imageURLs != null && imageURLs.Length > 0)
+            {
+                foreach (var url in imageURLs)
+                {
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        throw new ValidationException("Image URLs cannot be empty");
+                    }
+
+                    // Optional: Add URL format validation if needed
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                    {
+                        throw new ValidationException($"Invalid image URL format: {url}");
+                    }
+                }
+            }
+
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
@@ -174,8 +193,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     HotpotBrothID = brothId,
                     Size = size,
                     AppliedDiscountID = applicableDiscount?.SizeDiscountId,
-                    BasePrice = 0, 
-                    TotalPrice = 0 
+                    BasePrice = 0,
+                    TotalPrice = 0,
+                    ImageURLs = imageURLs // Set image URLs
                 };
 
                 _unitOfWork.Repository<Customization>().Insert(customization);
@@ -313,6 +333,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (customization.Size <= 0)
                 throw new ValidationException("Size must be greater than 0");
 
+            // Validate image URLs if provided
+            if (customization.ImageURLs != null && customization.ImageURLs.Length > 0)
+            {
+                foreach (var url in customization.ImageURLs)
+                {
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        throw new ValidationException("Image URLs cannot be empty");
+                    }
+
+                    // Optional: Add URL format validation if needed
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                    {
+                        throw new ValidationException($"Invalid image URL format: {url}");
+                    }
+                }
+            }
+
             // Validate HotpotBroth if it's being changed
             if (existingCustomization.HotpotBrothID != customization.HotpotBrothID)
             {
@@ -362,6 +400,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Validate basic properties
                 if (string.IsNullOrWhiteSpace(entity.Name))
                     throw new ValidationException("Customization name cannot be empty");
+
+                // Validate image URLs if provided
+                if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
+                {
+                    foreach (var url in entity.ImageURLs)
+                    {
+                        if (string.IsNullOrWhiteSpace(url))
+                        {
+                            throw new ValidationException("Image URLs cannot be empty");
+                        }
+
+                        // Optional: Add URL format validation if needed
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                        {
+                            throw new ValidationException($"Invalid image URL format: {url}");
+                        }
+                    }
+                }
 
                 // Validate HotpotBroth if it's being changed
                 if (existingCustomization.HotpotBrothID != entity.HotpotBrothID)

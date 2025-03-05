@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -32,6 +33,18 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [Range(1, int.MaxValue)]
         public int Size { get; set; }
+
+        [StringLength(2000)]
+        public string? ImageURL { get; set; }
+
+        [NotMapped]
+        public string[]? ImageURLs
+        {
+            get => string.IsNullOrEmpty(ImageURL)
+                ? null
+                : JsonSerializer.Deserialize<string[]>(ImageURL);
+            set => ImageURL = value != null ? JsonSerializer.Serialize(value) : null;
+        }
 
 
         [Required]

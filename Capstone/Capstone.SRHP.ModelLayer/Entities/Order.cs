@@ -36,9 +36,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("Discount")]
         public int? DiscountID { get; set; }  
 
-        [ForeignKey("Payment")]
-        public int? PaymentID { get; set; }
-
         public virtual User? User { get; set; }
         public virtual ShippingOrder? ShippingOrder { get; set; }
         public virtual Feedback? Feedback { get; set; }

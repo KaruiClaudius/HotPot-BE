@@ -32,7 +32,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
             string? note,
             int size,
             int brothId,
-            List<CustomizationIngredientDto> ingredients);
+            List<CustomizationIngredientDto> ingredients,
+            string[]? imageURLs = null);
         Task UpdateAsync(int id, Customization customization);
         Task DeleteAsync(int id);
         Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(

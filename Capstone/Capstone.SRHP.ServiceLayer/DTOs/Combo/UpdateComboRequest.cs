@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
-    public class ComboUpdateDto
+    public class UpdateComboRequest
     {
         [Required]
         [StringLength(100)]
@@ -15,6 +15,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 
         [StringLength(1000)]
         public string Description { get; set; }
+
+        [StringLength(1000)]
+        public string[] ImageURLs { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]

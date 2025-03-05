@@ -236,5 +236,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             return counts;
         }
+
+        public async Task<PagedResult<Hotpot>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
+        {
+            searchTerm = searchTerm?.ToLower() ?? "";
+
+            var query = _unitOfWork.Repository<Hotpot>()
+                .Include(h => h.HotpotType)
+                .Include(h => h.TurtorialVideo)
+                .Where(h => !h.IsDelete && h.Status && h.Quantity > 0 &&
+                           (h.Name.ToLower().Contains(searchTerm) ||
+                            h.Description.ToLower().Contains(searchTerm) ||
+                            h.Material.ToLower().Contains(searchTerm) ||
+                            h.HotpotType.Name.ToLower().Contains(searchTerm)));
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(h => h.HotpotId)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Hotpot>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
     }
 }

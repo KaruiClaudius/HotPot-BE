@@ -80,7 +80,8 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IUtensilTypeService, UtensilTypeService>();
-            services.AddScoped<IWorkShiftService, WorkShiftService>();
+            services.AddScoped<IWorkShiftService, WorkShiftService>(); 
+            services.AddScoped<IPaymentService, PaymentService>();
 
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();

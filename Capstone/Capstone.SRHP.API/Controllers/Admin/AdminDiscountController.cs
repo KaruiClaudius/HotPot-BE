@@ -138,7 +138,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Title = request.Title,
                     Description = request.Description,
-                    Percent = request.Percent,
+                    DiscountPercentage = request.DiscountPercentage,
                     Date = request.Date,
                     Duration = request.Duration,
                     PointCost = request.PointCost
@@ -199,7 +199,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 existingDiscount.Title = request.Title;
                 existingDiscount.Description = request.Description;
-                existingDiscount.Percent = request.Percent;
+                existingDiscount.DiscountPercentage = request.DiscountPercentage;
                 existingDiscount.Date = request.Date;
                 existingDiscount.Duration = request.Duration;
                 existingDiscount.PointCost = request.PointCost;
@@ -448,11 +448,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet("calculate")]
-        [ProducesResponseType(typeof(ApiResponse<double>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<decimal>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<double>>> CalculateDiscountAmount(
+        public async Task<ActionResult<ApiResponse<decimal>>> CalculateDiscountAmount(
             [FromQuery] int discountId,
-            [FromQuery] double originalPrice)
+            [FromQuery] decimal originalPrice)
         {
             try
             {
@@ -470,7 +470,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var discountAmount = await _discountService.CalculateDiscountAmountAsync(discountId, originalPrice);
 
-                return Ok(new ApiResponse<double>
+                return Ok(new ApiResponse<decimal>
                 {
                     Success = true,
                     Message = "Discount amount calculated successfully",
@@ -628,7 +628,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 DiscountId = discount.DiscountId,
                 Title = discount.Title,
                 Description = discount.Description,
-                Percent = discount.Percent,
+                DiscountPercentage = discount.DiscountPercentage,
                 Date = discount.Date,
                 Duration = discount.Duration,
                 PointCost = discount.PointCost,
