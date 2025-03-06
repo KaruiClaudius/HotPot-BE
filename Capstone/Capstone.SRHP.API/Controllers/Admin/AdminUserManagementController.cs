@@ -12,7 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin")]
-    [Authorize(Roles = "Admin")]   
+    //[Authorize(Roles = "Admin")]   
     public class AdminUserManagementController : ControllerBase
     {
         private readonly IUserService _userService;
