@@ -12,9 +12,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Navigate to Capstone directory
-      run: cd Capstone && ls
  
     - name: Run `docker compose`
+      working-directory: ./Capstone
       run: docker compose up --build -d
