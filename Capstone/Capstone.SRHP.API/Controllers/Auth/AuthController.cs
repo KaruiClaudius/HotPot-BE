@@ -191,7 +191,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
             }
         }
 
-        [HttpPost("google-login")]
+        [HttpPost("signin-google")]
         [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)

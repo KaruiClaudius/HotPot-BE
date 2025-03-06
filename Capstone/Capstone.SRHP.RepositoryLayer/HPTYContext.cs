@@ -63,7 +63,8 @@ namespace Capstone.HPTY.RepositoryLayer
                 .AddJsonFile("appsettings.json", true, true)
                 .Build();
 
-            return configuration.GetConnectionString("DefaultConnection");
+            //return configuration.GetConnectionString("Server");
+            return configuration.GetConnectionString("Local");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

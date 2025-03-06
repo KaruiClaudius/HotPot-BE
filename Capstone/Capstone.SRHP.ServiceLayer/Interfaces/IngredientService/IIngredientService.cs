@@ -19,5 +19,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
         Task<IngredientPrice> AddPriceAsync(IngredientPrice price);
         Task<Dictionary<int, decimal>> GetCurrentPricesAsync(IEnumerable<int> ingredientIds);
         Task<PagedResult<Ingredient>> SearchAsync(string searchTerm, int pageNumber, int pageSize);
+        Task UpdateQuantityAsync(int id, int quantity);
     }
 }

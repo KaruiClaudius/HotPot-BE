@@ -24,6 +24,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
         public async Task<IEnumerable<Ingredient>> GetAllAsync()
         {
+
             return await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientPrices)
@@ -329,6 +330,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             };
         }
 
+        public async Task UpdateQuantityAsync(int id, int quantity)
+        {
+            var ingredient = await GetByIdAsync(id);
+            if (ingredient == null)
+                throw new NotFoundException($"Ingredient with ID {id} not found");
 
+            if (ingredient.Quantity + quantity < 0)
+                throw new ValidationException("Cannot reduce quantity below 0");
+
+            ingredient.Quantity += quantity;
+            ingredient.SetUpdateDate();
+
+        }
     }
 }
