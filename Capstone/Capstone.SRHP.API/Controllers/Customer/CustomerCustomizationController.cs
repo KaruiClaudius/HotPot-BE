@@ -5,11 +5,14 @@ using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Customer")]
+
 public class CustomizationController : ControllerBase
 {
     private readonly ICustomizationService _customizationService;

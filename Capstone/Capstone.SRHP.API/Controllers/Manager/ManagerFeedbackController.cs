@@ -4,7 +4,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
-using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,12 +15,14 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Manager")]
+
     public class ManagerFeedbackController : ControllerBase
     {
-        private readonly IManagerFeedbackService _managerFeedbackService;
+        private readonly IFeedbackService _managerFeedbackService;
         private readonly IHubContext<FeedbackHub> _feedbackHubContext;
 
-        public ManagerFeedbackController(IManagerFeedbackService managerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext)
+        public ManagerFeedbackController(IFeedbackService managerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext)
         {
             _managerFeedbackService = managerFeedbackService;
             _feedbackHubContext = feedbackHubContext;
@@ -63,19 +65,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             };
 
             return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Unresponded feedback retrieved successfully"));
-        }
-
-        [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<Feedback>>> GetFeedbackById(int id)
-        {
-            var feedback = await _managerFeedbackService.GetFeedbackByIdAsync(id);
-            if (feedback == null)
-                return NotFound(ApiResponse<Feedback>.ErrorResponse($"Feedback with ID {id} not found"));
-
-            return Ok(ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback retrieved successfully"));
-        }
+        }      
 
         [HttpGet("user/{userId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -146,37 +136,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Feedback>>> CreateFeedback([FromBody] CreateFeedbackRequest request)
-        {
-            try
-            {
-                var feedback = await _managerFeedbackService.CreateFeedbackAsync(request);
-
-                // Get customer name for notification
-                string customerName = "Customer";
-                if (feedback.User != null)
-                {
-                    customerName = feedback.User.Name;
-                }
-
-                // Notify managers about the new feedback via SignalR
-                await _feedbackHubContext.Clients.Group("Managers").SendAsync("ReceiveNewFeedback",
-                    feedback.FeedbackId,
-                    customerName,
-                    feedback.Title,
-                    feedback.CreatedAt);
-
-                return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId },
-                    ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback created successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<Feedback>.ErrorResponse(ex.Message));
-            }
-        }
+        
 
         [HttpGet("stats")]
         [ProducesResponseType(StatusCodes.Status200OK)]

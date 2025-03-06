@@ -7,18 +7,18 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
-using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
+namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 {
-    public class ManagerFeedbackService : IManagerFeedbackService
+    public class FeedbackService : IFeedbackService
     {
         private readonly IUnitOfWork _unitOfWork;
 
 
-        public ManagerFeedbackService(IUnitOfWork unitOfWork)
+        public FeedbackService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
@@ -126,6 +126,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         public async Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request)
         {
+            // First, verify that the OrderId exists
+            var orderExists = await _unitOfWork.Repository<Order>().GetById(request.OrderId) != null;
+            if (!orderExists)
+            {
+                throw new InvalidOperationException($"Order with ID {request.OrderId} does not exist. Cannot create feedback for a non-existent order.");
+            }
+
+            // Also verify that the UserId exists
+            var userExists = await _unitOfWork.Repository<User>().GetById(request.UserId) != null;
+            if (!userExists)
+            {
+                throw new InvalidOperationException($"User with ID {request.UserId} does not exist. Cannot create feedback for a non-existent user.");
+            }
+
             // Create a new feedback entity
             var feedback = new Feedback
             {

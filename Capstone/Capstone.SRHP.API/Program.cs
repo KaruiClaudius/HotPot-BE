@@ -75,10 +75,15 @@ else
     app.UseHsts();
 }
 
+// Use in deployment, comment it if in development
+//app.UseSwagger();
+//app.UseSwaggerUI();
+
+
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseStaticFiles();
-app.UseRouting();
+app.UseHttpsRedirection();
 
 app.UseCors("CorsPolicy");
 
