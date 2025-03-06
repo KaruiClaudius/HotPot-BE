@@ -64,7 +64,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 .Build();
 
             //return configuration.GetConnectionString("Server");
-            return configuration.GetConnectionString("Local");
+            return configuration.GetConnectionString("Server");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
