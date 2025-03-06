@@ -3,8 +3,10 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Order;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,401 +18,400 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
     public class OrderService : IOrderService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IUnitOfWork unitOfWork)
+        public OrderService(IUnitOfWork unitOfWork, ILogger<OrderService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<Order>> GetAllAsync()
         {
-            return await _unitOfWork.Repository<Order>()
-                .Include(o => o.User)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Hotpot)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Customization)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Combo)
-                .Include(o => o.Payment)
-                .Include(o => o.Discount)
-                .Where(o => !o.IsDelete)
-                .ToListAsync();
+            try
+            {
+                return await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => !o.IsDelete)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all orders");
+                throw;
+            }
         }
 
         public async Task<PagedResult<Order>> GetAllPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _unitOfWork.Repository<Order>()
-                .Include(o => o.User)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Hotpot)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Customization)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Combo)
-                .Include(o => o.Payment)
-                .Include(o => o.Discount)
-                .Where(o => !o.IsDelete);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(o => o.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Order>
+            try
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                var query = _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => !o.IsDelete)
+                    .OrderByDescending(o => o.CreatedAt);
+
+                var totalCount = await query.CountAsync();
+                var items = await query
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Order>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paged orders");
+                throw;
+            }
         }
 
-        public async Task<Order?> GetByIdAsync(int id)
+        public async Task<Order> GetByIdAsync(int id)
         {
-            var order = await _unitOfWork.Repository<Order>()
-                .Include(o => o.User)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Hotpot)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Customization)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Combo)
-                .Include(o => o.Payment)
-                .Include(o => o.Discount)
-                .FirstOrDefaultAsync(o => o.OrderId == id && !o.IsDelete);
+            try
+            {
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .FirstOrDefaultAsync(o => o.OrderId == id && !o.IsDelete);
 
-            if (order == null)
-                throw new NotFoundException($"Order with ID {id} not found");
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {id} not found");
 
-            return order;
+                return order;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving order {OrderId}", id);
+                throw;
+            }
         }
 
         public async Task<Order> CreateAsync(Order entity)
         {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Address))
-                throw new ValidationException("Delivery address cannot be empty");
-
-            if (entity.TotalPrice < 0)
-                throw new ValidationException("Total price cannot be negative");
-
-            // Validate User exists
-            var user = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == entity.UserID && !u.IsDelete);
-            if (user == null)
-                throw new ValidationException("User not found");
-
-            // Validate Discount if provided
-            if (entity.DiscountID.HasValue)
+            try
             {
-                var discount = await _unitOfWork.Repository<Discount>()
-                    .FindAsync(d => d.DiscountId == entity.DiscountID && !d.IsDelete);
-                if (discount == null)
-                    throw new ValidationException("Invalid discount");
+                // Validate order
+                if (entity.UserID <= 0)
+                    throw new ValidationException("User ID is required");
 
-                // Validate discount is still valid
-                if (DateTime.UtcNow < discount.Date || DateTime.UtcNow > discount.Duration)
-                    throw new ValidationException("Discount is not valid at this time");
-            }
+                if (string.IsNullOrWhiteSpace(entity.Address))
+                    throw new ValidationException("Delivery address is required");
 
-            // Check for existing pending order
-            var existingOrder = await _unitOfWork.Repository<Order>()
-                .Include(o => o.OrderDetails)
-                .FirstOrDefaultAsync(o =>
-                    o.UserID == entity.UserID &&
-                    o.Status == OrderStatus.Pending);
+                if (entity.OrderDetails == null || !entity.OrderDetails.Any())
+                    throw new ValidationException("Order must contain at least one item");
 
-            if (existingOrder != null)
-            {
-                if (!existingOrder.IsDelete)
-                {
-                    throw new ValidationException("User already has a pending order");
-                }
-                else
-                {
-                    // Reactivate and update the soft-deleted order
-                    existingOrder.IsDelete = false;
-                    existingOrder.Address = entity.Address;
-                    existingOrder.Notes = entity.Notes;
-                    existingOrder.TotalPrice = entity.TotalPrice;
-                    existingOrder.Status = OrderStatus.Pending;
-                    existingOrder.DiscountID = entity.DiscountID;
+                // Set initial status
+                entity.Status = OrderStatus.Pending;
 
-                    // Remove existing order details
-                    var existingDetails = await _unitOfWork.Repository<OrderDetail>()
-                        .FindAll(od => od.OrderID == existingOrder.OrderId)
-                        .ToListAsync();
-
-                    foreach (var detail in existingDetails)
-                    {
-                        detail.SoftDelete();
-                    }
-
-                    // Add new order details
-                    foreach (var detail in entity.OrderDetails)
-                    {
-                        detail.OrderID = existingOrder.OrderId;
-                        _unitOfWork.Repository<OrderDetail>().Insert(detail);
-                    }
-
-                    existingOrder.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
-                    return existingOrder;
-                }
-            }
-
-            // Set initial status
-            entity.Status = OrderStatus.Pending;
-
-            // Create the order first
-            _unitOfWork.Repository<Order>().Insert(entity);
-            await _unitOfWork.CommitAsync();
-
-            // Now add order details with the correct OrderID
-            if (entity.OrderDetails != null && entity.OrderDetails.Any())
-            {
-                foreach (var detail in entity.OrderDetails)
-                {
-                    detail.OrderID = entity.OrderId;
-                    _unitOfWork.Repository<OrderDetail>().Insert(detail);
-                }
+                // Insert order
+                _unitOfWork.Repository<Order>().Insert(entity);
                 await _unitOfWork.CommitAsync();
-            }
 
-            return entity;
+                // Reload order with all related entities
+                return await GetByIdAsync(entity.OrderId);
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating order");
+                throw;
+            }
         }
 
         public async Task UpdateAsync(int id, Order entity)
         {
-            var existingOrder = await GetByIdAsync(id);
-
-            if (existingOrder == null)
-                throw new NotFoundException($"Order with ID {id} not found");
-
-            // Update order properties
-            existingOrder.Address = entity.Address;
-            existingOrder.Notes = entity.Notes;
-            existingOrder.TotalPrice = entity.TotalPrice;
-            existingOrder.Status = entity.Status;
-            existingOrder.DiscountID = entity.DiscountID;
-            existingOrder.PaymentID = entity.PaymentID;
-            existingOrder.SetUpdateDate();
-
-            // Handle order details if they've changed
-            if (entity.OrderDetails != null)
+            try
             {
-                // Get existing order details
-                var existingDetails = await _unitOfWork.Repository<OrderDetail>()
-                    .FindAll(od => od.OrderID == id && !od.IsDelete)
-                    .ToListAsync();
+                var existingOrder = await GetByIdAsync(id);
+                if (existingOrder == null)
+                    throw new NotFoundException($"Order with ID {id} not found");
 
-                // Identify details to delete (those in existing but not in updated)
-                var detailsToDelete = existingDetails
-                    .Where(ed => !entity.OrderDetails.Any(nd => nd.OrderDetailId == ed.OrderDetailId))
-                    .ToList();
+                // Validate order
+                if (entity.UserID <= 0)
+                    throw new ValidationException("User ID is required");
 
-                // Soft delete removed details
-                foreach (var detail in detailsToDelete)
-                {
-                    detail.SoftDelete();
-                    await _unitOfWork.Repository<OrderDetail>().Update(detail, detail.OrderDetailId);
-                }
+                if (string.IsNullOrWhiteSpace(entity.Address))
+                    throw new ValidationException("Delivery address is required");
 
-                // Update existing details and add new ones
-                foreach (var detail in entity.OrderDetails)
-                {
-                    if (detail.OrderDetailId > 0)
-                    {
-                        // Update existing detail
-                        var existingDetail = existingDetails.FirstOrDefault(ed => ed.OrderDetailId == detail.OrderDetailId);
-                        if (existingDetail != null)
-                        {
-                            existingDetail.Quantity = detail.Quantity;
-                            existingDetail.UnitPrice = detail.UnitPrice;
-                            existingDetail.UtensilID = detail.UtensilID;
-                            existingDetail.IngredientID = detail.IngredientID;
-                            existingDetail.HotpotID = detail.HotpotID;
-                            existingDetail.CustomizationID = detail.CustomizationID;
-                            existingDetail.ComboID = detail.ComboID;
-                            existingDetail.SetUpdateDate();
-
-                            await _unitOfWork.Repository<OrderDetail>().Update(existingDetail, existingDetail.OrderDetailId);
-                        }
-                    }
-                    else
-                    {
-                        // Add new detail
-                        detail.OrderID = id;
-                        _unitOfWork.Repository<OrderDetail>().Insert(detail);
-                    }
-                }
+                // Update order
+                entity.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(entity, id);
+                await _unitOfWork.CommitAsync();
             }
-
-            await _unitOfWork.Repository<Order>().Update(existingOrder, id);
-            await _unitOfWork.CommitAsync();
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating order {OrderId}", id);
+                throw;
+            }
         }
 
         public async Task DeleteAsync(int id)
         {
-            var order = await GetByIdAsync(id);
-
-            if (order == null)
-                throw new NotFoundException($"Order with ID {id} not found");
-
-            // Soft delete order details first
-            var orderDetails = await _unitOfWork.Repository<OrderDetail>()
-                .FindAll(od => od.OrderID == id && !od.IsDelete)
-                .ToListAsync();
-
-            foreach (var detail in orderDetails)
+            try
             {
-                detail.SoftDelete();
-                await _unitOfWork.Repository<OrderDetail>().Update(detail, detail.OrderDetailId);
-            }
+                var order = await GetByIdAsync(id);
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {id} not found");
 
-            // Then soft delete the order
-            order.SoftDelete();
-            await _unitOfWork.Repository<Order>().Update(order, id);
-            await _unitOfWork.CommitAsync();
+                // Soft delete
+                order.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting order {OrderId}", id);
+                throw;
+            }
         }
 
         public async Task<PagedResult<Order>> GetUserOrdersPagedAsync(int userId, int pageNumber, int pageSize)
         {
-            // First get the orders with basic includes
-            var query = _unitOfWork.Repository<Order>()
-                .Include(o => o.OrderDetails)
-                .Include(o => o.Payment)
-                .Include(o => o.Discount)
-                .Where(o => o.UserID == userId && !o.IsDelete);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(o => o.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            // Then load the related entities for each order detail
-            foreach (var order in items)
+            try
             {
-                foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
+                var query = _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => o.UserID == userId && !o.IsDelete)
+                    .OrderByDescending(o => o.CreatedAt);
+
+                var totalCount = await query.CountAsync();
+                var items = await query
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Order>
                 {
-                    if (detail.UtensilID.HasValue)
-                    {
-                        detail.Utensil = await _unitOfWork.Repository<Utensil>()
-                            .FindAsync(u => u.UtensilId == detail.UtensilID && !u.IsDelete);
-                    }
-                    if (detail.IngredientID.HasValue)
-                    {
-                        detail.Ingredient = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == detail.IngredientID && !i.IsDelete);
-                    }
-                    if (detail.HotpotID.HasValue)
-                    {
-                        detail.Hotpot = await _unitOfWork.Repository<Hotpot>()
-                            .FindAsync(h => h.HotpotId == detail.HotpotID && !h.IsDelete);
-                    }
-                    if (detail.CustomizationID.HasValue)
-                    {
-                        detail.Customization = await _unitOfWork.Repository<Customization>()
-                            .FindAsync(c => c.CustomizationId == detail.CustomizationID && !c.IsDelete);
-                    }
-                    if (detail.ComboID.HasValue)
-                    {
-                        detail.Combo = await _unitOfWork.Repository<Combo>()
-                            .FindAsync(c => c.ComboId == detail.ComboID && !c.IsDelete);
-                    }
-                }
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
             }
-
-            return new PagedResult<Order>
+            catch (Exception ex)
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                _logger.LogError(ex, "Error retrieving paged orders for user {UserId}", userId);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status)
+        {
+            try
+            {
+                return await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => o.Status == status && !o.IsDelete)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving orders with status {Status}", status);
+                throw;
+            }
+        }
+
+        public async Task<PagedResult<Order>> GetOrdersByStatusPagedAsync(OrderStatus status, int pageNumber, int pageSize)
+        {
+            try
+            {
+                var query = _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => o.Status == status && !o.IsDelete)
+                    .OrderByDescending(o => o.CreatedAt);
+
+                var totalCount = await query.CountAsync();
+                var items = await query
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Order>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paged orders with status {Status}", status);
+                throw;
+            }
         }
 
         public async Task<IEnumerable<Order>> GetUserOrdersAsync(int userId)
         {
-            // First get the orders
-            var orders = await _unitOfWork.Repository<Order>()
-                .Include(o => o.OrderDetails)
-                .Include(o => o.Payment)
-                .Include(o => o.Discount)
-                .Where(o => o.UserID == userId && !o.IsDelete)
-                .ToListAsync();
-
-            // Then load the related entities for each order detail
-            foreach (var order in orders)
+            try
             {
-                foreach (var detail in order.OrderDetails)
-                {
-                    if (detail.UtensilID.HasValue)
-                    {
-                        detail.Utensil = await _unitOfWork.Repository<Utensil>()
-                            .FindAsync(u => u.UtensilId == detail.UtensilID);
-                    }
-                    if (detail.IngredientID.HasValue)
-                    {
-                        detail.Ingredient = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == detail.IngredientID);
-                    }
-                    if (detail.HotpotID.HasValue)
-                    {
-                        detail.Hotpot = await _unitOfWork.Repository<Hotpot>()
-                            .FindAsync(h => h.HotpotId == detail.HotpotID);
-                    }
-                    if (detail.CustomizationID.HasValue)
-                    {
-                        detail.Customization = await _unitOfWork.Repository<Customization>()
-                            .FindAsync(c => c.CustomizationId == detail.CustomizationID);
-                    }
-                    if (detail.ComboID.HasValue)
-                    {
-                        detail.Combo = await _unitOfWork.Repository<Combo>()
-                            .FindAsync(c => c.ComboId == detail.ComboID);
-                    }
-                }
+                return await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Include(o => o.User)
+                    .Include(o => o.Discount)
+                    .Include(o => o.Payment)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Ingredient)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Hotpot)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Where(o => o.UserID == userId && !o.IsDelete)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .ToListAsync();
             }
-
-            return orders;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving orders for user {UserId}", userId);
+                throw;
+            }
         }
 
-        public async Task UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
+        public async Task<OrderStatistics> GetOrderStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-            var order = await _unitOfWork.Repository<Order>()
-                .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
+            try
+            {
+                // Set default date range if not provided
+                startDate ??= DateTime.UtcNow.AddDays(-30);
+                endDate ??= DateTime.UtcNow;
 
-            if (order == null)
-                throw new NotFoundException($"Order with ID {orderId} not found");
+                // Get orders within date range
+                var orders = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => !o.IsDelete && o.CreatedAt >= startDate && o.CreatedAt <= endDate)
+                    .ToListAsync();
 
-            // Validate status transition
-            ValidateStatusTransition(order.Status, newStatus);
+                // Calculate statistics
+                var statistics = new OrderStatistics
+                {
+                    TotalOrders = orders.Count,
+                    PendingOrders = orders.Count(o => o.Status == OrderStatus.Pending),
+                    ProcessingOrders = orders.Count(o => o.Status == OrderStatus.Processing),
+                    ShippingOrders = orders.Count(o => o.Status == OrderStatus.Shipping),
+                    DeliveredOrders = orders.Count(o => o.Status == OrderStatus.Delivered),
+                    FinishedOrders = orders.Count(o => o.Status == OrderStatus.Finished),
+                    CancelledOrders = orders.Count(o => o.Status == OrderStatus.Cancelled),
+                    TotalRevenue = orders.Where(o => o.Status == OrderStatus.Delivered || o.Status == OrderStatus.Finished)
+                                        .Sum(o => o.TotalPrice),
+                    AverageOrderValue = orders.Any() ? orders.Average(o => o.TotalPrice) : 0,
+                    StartDate = startDate.Value,
+                    EndDate = endDate.Value
+                };
 
-            order.Status = newStatus;
-            order.SetUpdateDate();
-
-            await _unitOfWork.Repository<Order>().Update(order, orderId);
-            await _unitOfWork.CommitAsync();
+                return statistics;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating order statistics");
+                throw;
+            }
         }
 
         public async Task<decimal> CalculateTotalPriceAsync(ICollection<OrderDetail> orderDetails, int? discountId)
@@ -428,51 +429,64 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .FindAsync(d => d.DiscountId == discountId && !d.IsDelete);
                 if (discount != null)
                 {
-                    total -= total * (decimal)(discount.Percent / 100.0);
+                    total -= total * (discount.DiscountPercentage / 100.0m);
                 }
             }
 
             return total;
         }
 
-        public async Task<Order> UpdateStatusAsync(int id, OrderStatus status)
+        public async Task<Order> UpdateStatusAsync(int orderId, OrderStatus status)
         {
-            var order = await GetByIdAsync(id);
+            try
+            {
+                var order = await GetByIdAsync(orderId);
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderId} not found");
 
-            if (order == null)
-                throw new NotFoundException($"Order with ID {id} not found");
+                // Validate status transition
+                ValidateStatusTransition(order.Status, status);
 
-            // Validate status transition
-            ValidateStatusTransition(order.Status, status);
+                // Update status
+                order.Status = status;
+                order.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(order, orderId);
+                await _unitOfWork.CommitAsync();
 
-            order.Status = status;
-            order.SetUpdateDate();
-
-            await _unitOfWork.Repository<Order>().Update(order, id);
-            await _unitOfWork.CommitAsync();
-            return order;
+                return order;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating status for order {OrderId}", orderId);
+                throw;
+            }
         }
 
         private void ValidateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
         {
-            // Add your status transition rules here
-            switch (currentStatus)
+            // Define valid status transitions
+            bool isValidTransition = (currentStatus, newStatus) switch
             {
-                case OrderStatus.Pending:
-                    if (newStatus != OrderStatus.Processing && newStatus != OrderStatus.Cancelled)
-                        throw new ValidationException("Invalid status transition");
-                    break;
-                case OrderStatus.Processing:
-                    if (newStatus != OrderStatus.Shipping && newStatus != OrderStatus.Cancelled)
-                        throw new ValidationException("Invalid status transition");
-                    break;
-                case OrderStatus.Shipping:
-                    if (newStatus != OrderStatus.Delivered && newStatus != OrderStatus.Cancelled)
-                        throw new ValidationException("Invalid status transition");
-                    break;
-                case OrderStatus.Delivered:
-                case OrderStatus.Cancelled:
-                    throw new ValidationException("Cannot change status of completed or cancelled orders");
+                (OrderStatus.Pending, OrderStatus.Processing) => true,
+                (OrderStatus.Pending, OrderStatus.Cancelled) => true,
+                (OrderStatus.Processing, OrderStatus.Shipping) => true,
+                (OrderStatus.Processing, OrderStatus.Cancelled) => true,
+                (OrderStatus.Shipping, OrderStatus.Delivered) => true,
+                (OrderStatus.Delivered, OrderStatus.Finished) => true,
+                _ => false
+            };
+
+            if (!isValidTransition)
+            {
+                throw new ValidationException($"Invalid status transition from {currentStatus} to {newStatus}");
             }
         }
     }

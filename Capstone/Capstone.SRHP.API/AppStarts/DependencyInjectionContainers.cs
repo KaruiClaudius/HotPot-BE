@@ -30,6 +30,7 @@ using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Capstone.HPTY.ServiceLayer.Services.UtensilService;
 using Microsoft.EntityFrameworkCore;
+using Net.payOS;
 using System.Threading.RateLimiting;
 
 namespace Capstone.HPTY.API.AppStarts
@@ -52,6 +53,12 @@ namespace Capstone.HPTY.API.AppStarts
                 options.UseSqlServer(connectionString,
                     sqlOptions => sqlOptions.EnableRetryOnFailure());
             });
+
+            PayOS payOS = new PayOS(configuration["Environment:PAYOS_CLIENT_ID"] ?? throw new Exception("Cannot find environment"),
+                    configuration["Environment:PAYOS_API_KEY"] ?? throw new Exception("Cannot find environment"),
+                    configuration["Environment:PAYOS_CHECKSUM_KEY"] ?? throw new Exception("Cannot find environment"));
+
+            services.AddSingleton(payOS);
 
             // Core Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -83,6 +90,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IUtensilTypeService, UtensilTypeService>();
             services.AddScoped<IWorkShiftService, WorkShiftService>();
+            services.AddScoped<IPaymentService, PaymentService>();
 
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();

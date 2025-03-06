@@ -119,7 +119,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
             modelBuilder.Entity<Discount>(entity =>
             {
-                entity.Property(d => d.Percent)
+                entity.Property(d => d.DiscountPercentage)
                     .HasDefaultValue(0);
 
                 entity.Property(d => d.PointCost)
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 entity.HasOne(p => p.Order)
                     .WithOne(o => o.Payment)
-                    .HasForeignKey<Order>(o => o.PaymentID)
+                    .HasForeignKey<Payment>(p => p.OrderID)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

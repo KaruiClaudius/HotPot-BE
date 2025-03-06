@@ -16,6 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public bool IsCustomizable { get; set; }
         public int HotpotBrothID { get; set; }
         public string HotpotBrothName { get; set; }
+        public string[] ImageURLs { get; set; }
         public int? AppliedDiscountID { get; set; }
         public decimal AppliedDiscountPercentage { get; set; }
         public List<ComboIngredientDto> Ingredients { get; set; }

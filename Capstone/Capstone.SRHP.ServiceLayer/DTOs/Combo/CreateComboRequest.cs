@@ -16,6 +16,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [StringLength(1000)]
         public string Description { get; set; }
 
+        [StringLength(1000)]
+        public string[] ImageURLs { get; set; }
+
         [Required]
         [Range(1, int.MaxValue)]
         public int Size { get; set; }

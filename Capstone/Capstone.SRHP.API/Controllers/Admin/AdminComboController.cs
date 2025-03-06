@@ -108,7 +108,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Size = comboDto.Size,
                     BasePrice = comboDto.BasePrice,
                     IsCustomizable = false,
-                    HotpotBrothID = comboDto.HotpotBrothID
+                    HotpotBrothID = comboDto.HotpotBrothID,
+                    ImageURLs = comboDto.ImageURLs // Add this line to handle images
                 };
 
                 var comboIngredients = comboDto.Ingredients.Select(i => new ComboIngredient
@@ -130,8 +131,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
         [HttpPost("customizable")]
-        public async Task<ActionResult<ComboDto>> CreateCustomizable(CustomizableComboCreateDto comboDto)
+        public async Task<ActionResult<ComboDto>> CreateCustomizable(CreateCustomizableComboRequest comboDto)
         {
             try
             {
@@ -142,7 +144,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Size = comboDto.Size,
                     BasePrice = comboDto.BasePrice,
                     IsCustomizable = true,
-                    HotpotBrothID = comboDto.HotpotBrothID
+                    HotpotBrothID = comboDto.HotpotBrothID,
+                    ImageURLs = comboDto.ImageURLs // Add this line to handle images
                 };
 
                 var allowedTypes = comboDto.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
@@ -166,7 +169,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult> Update(int id, ComboUpdateDto comboDto)
+        public async Task<ActionResult> Update(int id, UpdateComboRequest comboDto)
         {
             try
             {
@@ -179,6 +182,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingCombo.Size = comboDto.Size;
                 existingCombo.BasePrice = comboDto.BasePrice;
                 existingCombo.HotpotBrothID = comboDto.HotpotBrothID;
+                existingCombo.ImageURLs = comboDto.ImageURLs; // Add this line to handle images
 
                 await _comboService.UpdateAsync(id, existingCombo);
 
@@ -439,6 +443,120 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+        [HttpPost("{id}/images")]
+        public async Task<ActionResult> UploadComboImages(int id, [FromForm] List<IFormFile> images)
+        {
+            try
+            {
+                var combo = await _comboService.GetByIdAsync(id);
+                if (combo == null)
+                    return NotFound(new { message = $"Combo with ID {id} not found" });
+
+                // List to store uploaded image URLs
+                var imageUrls = new List<string>();
+
+                // Add existing images if any
+                if (combo.ImageURLs != null)
+                {
+                    imageUrls.AddRange(combo.ImageURLs);
+                }
+
+                // Process each uploaded file
+                foreach (var image in images)
+                {
+                    if (image.Length > 0)
+                    {
+                        // Generate a unique filename
+                        var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(image.FileName)}";
+
+                        // Define the path where to save the file
+                        var filePath = Path.Combine("wwwroot", "images", "combos", fileName);
+
+                        // Ensure directory exists
+                        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
+                        // Save the file
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await image.CopyToAsync(stream);
+                        }
+
+                        // Add the URL to the list
+                        var url = $"/images/combos/{fileName}";
+                        imageUrls.Add(url);
+                    }
+                }
+
+                // Update the combo with the new image URLs
+                combo.ImageURLs = imageUrls.ToArray();
+                await _comboService.UpdateAsync(id, combo);
+
+                return Ok(new { message = "Images uploaded successfully", imageUrls = combo.ImageURLs });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}/images")]
+        public async Task<ActionResult> DeleteComboImages(int id, [FromBody] DeleteImagesRequest request)
+        {
+            try
+            {
+                var combo = await _comboService.GetByIdAsync(id);
+                if (combo == null)
+                    return NotFound(new { message = $"Combo with ID {id} not found" });
+
+                if (combo.ImageURLs == null || combo.ImageURLs.Length == 0)
+                    return BadRequest(new { message = "Combo has no images to delete" });
+
+                // Filter out the URLs to delete
+                var remainingUrls = combo.ImageURLs
+                    .Where(url => !request.ImageURLs.Contains(url))
+                    .ToArray();
+
+                // Update the combo with the remaining URLs
+                combo.ImageURLs = remainingUrls;
+                await _comboService.UpdateAsync(id, combo);
+
+                // Optionally, delete the physical files
+                foreach (var url in request.ImageURLs)
+                {
+                    if (url.StartsWith("/images/"))
+                    {
+                        var filePath = Path.Combine("wwwroot", url.TrimStart('/'));
+                        if (System.IO.File.Exists(filePath))
+                        {
+                            System.IO.File.Delete(filePath);
+                        }
+                    }
+                }
+
+                return Ok(new { message = "Images deleted successfully", imageUrls = combo.ImageURLs });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
         private ComboDto MapToComboDto(Combo combo)
         {
             if (combo == null) return null;
@@ -455,6 +573,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                 AppliedDiscountID = combo.AppliedDiscountID,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
+                ImageURLs = combo.ImageURLs ?? new string[0], // Add this line to include images
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,
@@ -483,6 +602,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                 AppliedDiscountID = combo.AppliedDiscountID,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
+                ImageURLs = combo.ImageURLs ?? new string[0], // Add this line to include images
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,

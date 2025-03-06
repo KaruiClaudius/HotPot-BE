@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.OrderStaff
+namespace Capstone.HPTY.ServiceLayer.DTOs.Order
 {
     public class UpdateOrderStatusRequest
     {

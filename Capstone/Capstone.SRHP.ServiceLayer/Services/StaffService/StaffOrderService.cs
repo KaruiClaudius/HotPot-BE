@@ -71,7 +71,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new NotFoundException($"Order with ID {orderId} not found");
 
             // Update status
-            await _orderService.UpdateOrderStatusAsync(orderId, newStatus);
+            await _orderService.UpdateStatusAsync(orderId, newStatus);
 
             // Update notes if provided
             if (!string.IsNullOrWhiteSpace(notes))
@@ -98,7 +98,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new ValidationException("Cannot cancel an order that is already delivered or cancelled");
 
             // Update status to cancelled
-            await _orderService.UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled);
+            await _orderService.UpdateStatusAsync(orderId, OrderStatus.Cancelled);
 
             // Add cancellation reason to notes
             order.Notes = string.IsNullOrWhiteSpace(order.Notes)

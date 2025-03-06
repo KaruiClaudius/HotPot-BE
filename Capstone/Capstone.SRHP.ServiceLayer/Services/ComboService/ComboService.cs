@@ -145,6 +145,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (combo.BasePrice <= 0)
                     throw new ValidationException("Combo base price must be greater than 0");
 
+                // Validate image URLs if provided
+                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+                {
+                    foreach (var url in combo.ImageURLs)
+                    {
+                        if (string.IsNullOrWhiteSpace(url))
+                        {
+                            throw new ValidationException("Image URLs cannot be empty");
+                        }
+
+                        // Optional: Add URL format validation if needed
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                        {
+                            throw new ValidationException($"Invalid image URL format: {url}");
+                        }
+                    }
+                }
+
                 // Check if combo name exists
                 var nameExists = await _unitOfWork.Repository<Combo>()
                     .AnyAsync(c => c.Name == combo.Name && !c.IsDelete);
@@ -203,6 +221,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 if (combo.BasePrice <= 0)
                     throw new ValidationException("Combo base price must be greater than 0");
+
+                // Validate image URLs if provided
+                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+                {
+                    foreach (var url in combo.ImageURLs)
+                    {
+                        if (string.IsNullOrWhiteSpace(url))
+                        {
+                            throw new ValidationException("Image URLs cannot be empty");
+                        }
+
+                        // Optional: Add URL format validation if needed
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                        {
+                            throw new ValidationException($"Invalid image URL format: {url}");
+                        }
+                    }
+                }
 
                 // Set as customizable
                 combo.IsCustomizable = true;
@@ -266,6 +302,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             if (combo.BasePrice <= 0)
                 throw new ValidationException("Combo base price must be greater than 0");
+
+            // Validate image URLs if provided
+            if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+            {
+                foreach (var url in combo.ImageURLs)
+                {
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        throw new ValidationException("Image URLs cannot be empty");
+                    }
+
+                    // Optional: Add URL format validation if needed
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                    {
+                        throw new ValidationException($"Invalid image URL format: {url}");
+                    }
+                }
+            }
 
             // Check if combo name exists (excluding this one)
             var nameExists = await _unitOfWork.Repository<Combo>()

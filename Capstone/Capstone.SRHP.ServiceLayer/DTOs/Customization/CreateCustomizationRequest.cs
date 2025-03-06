@@ -14,22 +14,21 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         public string Name { get; set; }
 
         [StringLength(500)]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]
         public int Size { get; set; }
 
         [Required]
-        public int UserID { get; set; }
+        public int ComboId { get; set; }
 
         [Required]
-        public int HotpotBrothID { get; set; }
-
-        [Required]
-        public int ComboID { get; set; }
+        public int BrothId { get; set; }
 
         [Required]
         public List<CustomizationIngredientDto> Ingredients { get; set; }
+
+        public string[]? ImageURLs { get; set; }
     }
 }

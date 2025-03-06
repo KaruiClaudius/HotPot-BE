@@ -91,7 +91,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             if (string.IsNullOrWhiteSpace(entity.Title))
                 throw new ValidationException("Discount title cannot be empty");
 
-            if (entity.Percent < 0 || entity.Percent > 100)
+            if (entity.DiscountPercentage < 0 || entity.DiscountPercentage > 100)
                 throw new ValidationException("Discount percentage must be between 0 and 100");
 
             if (entity.PointCost < 0)
@@ -115,7 +115,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Reactivate and update the soft-deleted discount
                     existingDiscount.IsDelete = false;
                     existingDiscount.Description = entity.Description;
-                    existingDiscount.Percent = entity.Percent;
+                    existingDiscount.DiscountPercentage = entity.DiscountPercentage;
                     existingDiscount.Date = entity.Date;
                     existingDiscount.Duration = entity.Duration;
                     existingDiscount.PointCost = entity.PointCost;
@@ -206,7 +206,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
 
-        public async Task<double> CalculateDiscountAmountAsync(int discountId, double originalPrice)
+        public async Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice)
         {
             var discount = await GetByIdAsync(discountId);
             if (discount == null)
@@ -215,7 +215,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             if (!await IsDiscountValidAsync(discountId))
                 throw new ValidationException("Discount is not valid");
 
-            return originalPrice * discount.Percent / 100;
+            return originalPrice * discount.DiscountPercentage / 100;
         }
 
         public async Task<bool> HasSufficientPointsAsync(int discountId, double userPoints)
@@ -261,7 +261,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             if (string.IsNullOrWhiteSpace(discount.Description))
                 throw new ValidationException("Discount description cannot be empty");
 
-            if (discount.Percent < 0 || discount.Percent > 100)
+            if (discount.DiscountPercentage < 0 || discount.DiscountPercentage > 100)
                 throw new ValidationException("Discount percentage must be between 0 and 100");
 
             if (discount.PointCost < 0)

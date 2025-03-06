@@ -13,5 +13,6 @@ namespace Capstone.HPTY.ModelLayer.Enum
         Shipping = 3,
         Delivered = 4,
         Cancelled = 5,
+        Finished = 6
     }
 }

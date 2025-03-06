@@ -18,7 +18,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Discount
 
         [Required]
         [Range(0, 100)]
-        public double Percent { get; set; }
+        public decimal DiscountPercentage { get; set; }
 
         [Required]
         public DateTime Date { get; set; }

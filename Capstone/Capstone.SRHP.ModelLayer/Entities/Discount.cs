@@ -21,8 +21,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string Description { get; set; }
 
         [Required]
-        [Range(0, 100)]
-        public double Percent { get; set; }
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal DiscountPercentage { get; set; }
 
         [Required]
         public DateTime Date { get; set; }
