@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
+namespace Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService
 {
-    public interface IManagerFeedbackService
+    public interface IFeedbackService
     {
         Task<Feedback> GetFeedbackByIdAsync(int feedbackId);
         Task<IEnumerable<Feedback>> GetAllFeedbackAsync(int pageNumber = 1, int pageSize = 10);

@@ -50,34 +50,34 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseDeveloperExceptionPage();
-//    app.UseSwagger();
-//    app.UseSwaggerUI(c =>
-//    {
-//        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HPTY API v1");
-//        c.RoutePrefix = string.Empty; // Swagger at root URL
-//    });
-//}
-//else
-//{
-//    // Production swagger with basic auth (optional)
-//    app.UseSwagger();
-//    app.UseSwaggerUI(c =>
-//    {
-//        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HPTY API v1");
-//        c.RoutePrefix = string.Empty;
-//        c.EnablePersistAuthorization();
-//    });
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HPTY API v1");
+        c.RoutePrefix = string.Empty; // Swagger at root URL
+    });
+}
+else
+{
+    // Production swagger with basic auth (optional)
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HPTY API v1");
+        c.RoutePrefix = string.Empty;
+        c.EnablePersistAuthorization();
+    });
 
-//    app.UseExceptionHandler("/Error");
-//    app.UseHsts();
-//}
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
 
 // Use in deployment, comment it if in development
-app.UseSwagger();
-app.UseSwaggerUI();
+//app.UseSwagger();
+//app.UseSwaggerUI();
 
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
