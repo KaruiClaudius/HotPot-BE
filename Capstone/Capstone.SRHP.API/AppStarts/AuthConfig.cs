@@ -49,13 +49,22 @@ namespace Capstone.HPTY.API.AppStarts
                             return Task.CompletedTask;
                         }
                     };
-                }).AddGoogle(options =>
-                {
-                    options.ClientId = configuration["Authentication:Google:ClientId"];
-                    options.ClientSecret = configuration["Authentication:Google:ClientSecret"];
-                    options.CallbackPath = "/signin-google"; // This is the default path
-                })
-                ;
+                });
+
+            // Only add Google authentication if configuration exists
+            var googleClientId = configuration["Authentication:Google:ClientId"];
+            var googleClientSecret = configuration["Authentication:Google:ClientSecret"];
+
+            if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+            {
+                services.AddAuthentication()
+                    .AddGoogle(options =>
+                    {
+                        options.ClientId = googleClientId;
+                        options.ClientSecret = googleClientSecret;
+                        options.CallbackPath = "/signin-google";
+                    });
+            }
 
             services.AddAuthorization(options =>
             {
