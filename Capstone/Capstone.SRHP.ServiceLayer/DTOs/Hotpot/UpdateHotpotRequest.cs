@@ -9,31 +9,45 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
 {
     public class UpdateHotpotRequest
     {
+        [Required]
         [StringLength(100)]
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
+        [Required]
         [StringLength(50)]
-        public string? Material { get; set; }
+        public string Material { get; set; }
 
+        [Required]
         [Range(1, int.MaxValue)]
-        public int? Size { get; set; }
+        public int Size { get; set; }
 
         [StringLength(1000)]
         public string? Description { get; set; }
 
-        [StringLength(2000)]
-        public string? ImageURL { get; set; }
+        public string[]? ImageURLs { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public decimal? Price { get; set; }
+        [Required]
+        [Range(0.01, double.MaxValue)]
+        public decimal Price { get; set; }
 
-        public bool? Status { get; set; }
+        [Required]
+        [Range(0.01, double.MaxValue)]
+        public decimal BasePrice { get; set; }
 
+        [Required]
+        public bool Status { get; set; }
+
+        [Required]
         [Range(0, int.MaxValue)]
-        public int? Quantity { get; set; }
+        public int Quantity { get; set; }
 
-        public int? HotpotTypeID { get; set; }
+        [Required]
+        public int HotpotTypeID { get; set; }
 
-        public int? TurtorialVideoID { get; set; }
+        [Required]
+        public int InventoryID { get; set; }
+
+        [Required]
+        public int TurtorialVideoID { get; set; }
     }
 }

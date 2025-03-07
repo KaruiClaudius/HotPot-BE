@@ -1,418 +1,333 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
+    [Route("api/hotpots")]
     [ApiController]
-    [Route("api/admin/hotpots")]
-    [Authorize(Roles = "Admin")]
-    public class AdminHotpotController : ControllerBase
+    public class HotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
-        private readonly ILogger<AdminHotpotController> _logger;
+        private readonly ILogger<HotpotController> _logger;
 
-        public AdminHotpotController(IHotpotService hotpotService, ILogger<AdminHotpotController> logger)
+        public HotpotController(IHotpotService hotpotService, ILogger<HotpotController> logger)
         {
             _hotpotService = hotpotService;
             _logger = logger;
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<HotpotDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<PagedResult<HotpotDto>>>> GetAllHotpots(
+        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetAll()
+        {
+            try
+            {
+                var hotpots = await _hotpotService.GetAllAsync();
+                var response = hotpots.Select(MapToResponse).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all hotpots");
+                return StatusCode(500, new { message = "An error occurred while retrieving hotpots" });
+            }
+        }
+
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResult<HotpotDto>>> GetPaged(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
             try
             {
-                if (pageNumber < 1 || pageSize < 1)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
-                    });
-                }
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 50) pageSize = 50;
 
-                _logger.LogInformation($"Admin retrieving hotpots - Page {pageNumber}, Size {pageSize}");
-                var pagedHotpots = await _hotpotService.GetPagedAsync(pageNumber, pageSize);
-                var hotpotDtos = pagedHotpots.Items.Select(MapToHotpotDto).ToList();
+                var pagedResult = await _hotpotService.GetPagedAsync(pageNumber, pageSize);
 
-                var result = new PagedResult<HotpotDto>
-                {
-                    Items = hotpotDtos,
-                    PageNumber = pagedHotpots.PageNumber,
-                    PageSize = pagedHotpots.PageSize,
-                    TotalCount = pagedHotpots.TotalCount
-                };
+                var items = pagedResult.Items.Select(MapToResponse).ToList();
 
-                return Ok(new ApiResponse<PagedResult<HotpotDto>>
+                return Ok(new PagedResult<HotpotDto>
                 {
-                    Success = true,
-                    Message = "Hotpots retrieved successfully",
-                    Data = result
+                    Items = items,
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving hotpots");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve hotpots"
-                });
+                _logger.LogError(ex, "Error retrieving paged hotpots");
+                return StatusCode(500, new { message = "An error occurred while retrieving hotpots" });
             }
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<HotpotDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<HotpotDto>>> GetHotpotById(int id)
+        public async Task<ActionResult<HotpotDto>> GetById(int id)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving hotpot with ID: {HotpotId}", id);
                 var hotpot = await _hotpotService.GetByIdAsync(id);
-
                 if (hotpot == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Hotpot with ID {id} not found"
-                    });
-                }
+                    return NotFound(new { message = $"Hotpot with ID {id} not found" });
 
-                var hotpotDto = MapToHotpotDto(hotpot);
-                return Ok(new ApiResponse<HotpotDto>
+                var response = MapToResponse(hotpot);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while retrieving the hotpot" });
+            }
+        }
+
+        [HttpGet("available")]
+        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetAvailable()
+        {
+            try
+            {
+                var hotpots = await _hotpotService.GetAvailableHotpotsAsync();
+                var response = hotpots.Select(MapToResponse).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving available hotpots");
+                return StatusCode(500, new { message = "An error occurred while retrieving available hotpots" });
+            }
+        }
+
+        [HttpGet("type/{typeId}")]
+        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetByType(int typeId)
+        {
+            try
+            {
+                var hotpots = await _hotpotService.GetByTypeAsync(typeId);
+                var response = hotpots.Select(MapToResponse).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving hotpots by type ID {TypeId}", typeId);
+                return StatusCode(500, new { message = "An error occurred while retrieving hotpots by type" });
+            }
+        }
+
+        [HttpGet("search")]
+        public async Task<ActionResult<PagedResult<HotpotDto>>> Search(
+            [FromQuery] string searchTerm,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 50) pageSize = 50;
+
+                var pagedResult = await _hotpotService.SearchAsync(searchTerm, pageNumber, pageSize);
+
+                var items = pagedResult.Items.Select(MapToResponse).ToList();
+
+                return Ok(new PagedResult<HotpotDto>
                 {
-                    Success = true,
-                    Message = "Hotpot retrieved successfully",
-                    Data = hotpotDto
+                    Items = items,
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
+                _logger.LogError(ex, "Error searching hotpots with term {SearchTerm}", searchTerm);
+                return StatusCode(500, new { message = "An error occurred while searching hotpots" });
+            }
+        }
+
+        [HttpGet("{id}/deposit")]
+        public async Task<ActionResult<DepositResponse>> CalculateDeposit(int id, [FromQuery] int quantity = 1)
+        {
+            try
+            {
+                if (quantity < 1)
+                    return BadRequest(new { message = "Quantity must be at least 1" });
+
+                var deposit = await _hotpotService.CalculateDepositAsync(id, quantity);
+
+                return Ok(new DepositResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve hotpot"
+                    HotpotId = id,
+                    Quantity = quantity,
+                    DepositAmount = deposit,
+                    DepositPercentage = 70 // 70% of base price
                 });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating deposit for hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while calculating the deposit" });
             }
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<HotpotDto>), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<HotpotDto>>> CreateHotpot([FromBody] CreateHotpotRequest request)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<HotpotDto>> Create([FromBody] CreateHotpotRequest request)
         {
             try
             {
-                _logger.LogInformation("Admin creating new hotpot: {HotpotName}", request.Name);
-
                 var hotpot = new Hotpot
                 {
                     Name = request.Name,
                     Material = request.Material,
                     Size = request.Size,
                     Description = request.Description,
-                    ImageURL = request.ImageURL,
+                    ImageURL = request.ImageURLs != null ? JsonSerializer.Serialize(request.ImageURLs) : null,
                     Price = request.Price,
+                    BasePrice = request.BasePrice,
                     Status = request.Status,
                     Quantity = request.Quantity,
+                    LastMaintainDate = DateTime.UtcNow,
                     HotpotTypeID = request.HotpotTypeID,
-                    TurtorialVideoID = request.TurtorialVideoID
+                    TurtorialVideoID = request.TurtorialVideoID,
+                    InventoryID = request.InventoryID
                 };
 
                 var createdHotpot = await _hotpotService.CreateAsync(hotpot);
-                var hotpotDto = MapToHotpotDto(createdHotpot);
+                var response = MapToResponse(createdHotpot);
 
-                return CreatedAtAction(
-                    nameof(GetHotpotById),
-                    new { id = createdHotpot.HotpotId },
-                    new ApiResponse<HotpotDto>
-                    {
-                        Success = true,
-                        Message = "Hotpot created successfully",
-                        Data = hotpotDto
-                    });
+                return CreatedAtAction(nameof(GetById), new { id = createdHotpot.HotpotId }, response);
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error creating hotpot: {HotpotName}", request.Name);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating hotpot: {HotpotName}", request.Name);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to create hotpot"
-                });
+                _logger.LogError(ex, "Error creating hotpot");
+                return StatusCode(500, new { message = "An error occurred while creating the hotpot" });
             }
         }
 
         [HttpPut("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<HotPotInventoryDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<HotpotDto>>> UpdateHotpot(int id, [FromBody] UpdateHotpotRequest request)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> Update(int id, [FromBody] UpdateHotpotRequest request)
         {
             try
             {
-                _logger.LogInformation("Admin updating hotpot with ID: {HotpotId}", id);
-
                 var existingHotpot = await _hotpotService.GetByIdAsync(id);
                 if (existingHotpot == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Hotpot with ID {id} not found"
-                    });
-                }
+                    return NotFound(new { message = $"Hotpot with ID {id} not found" });
 
-                // Update only the properties that are provided
-                if (request.Name != null) existingHotpot.Name = request.Name;
-                if (request.Material != null) existingHotpot.Material = request.Material;
-                if (request.Size.HasValue) existingHotpot.Size = request.Size.Value;
-                if (request.Description != null) existingHotpot.Description = request.Description;
-                if (request.ImageURL != null) existingHotpot.ImageURL = request.ImageURL;
-                if (request.Price.HasValue) existingHotpot.Price = request.Price.Value;
-                if (request.Status.HasValue) existingHotpot.Status = request.Status.Value;
-                if (request.Quantity.HasValue) existingHotpot.Quantity = request.Quantity.Value;
-                if (request.HotpotTypeID.HasValue) existingHotpot.HotpotTypeID = request.HotpotTypeID.Value;
-                if (request.TurtorialVideoID.HasValue) existingHotpot.TurtorialVideoID = request.TurtorialVideoID.Value;
+                existingHotpot.Name = request.Name;
+                existingHotpot.Material = request.Material;
+                existingHotpot.Size = request.Size;
+                existingHotpot.Description = request.Description;
+                existingHotpot.ImageURL = request.ImageURLs != null ? JsonSerializer.Serialize(request.ImageURLs) : null;
+                existingHotpot.Price = request.Price;
+                existingHotpot.BasePrice = request.BasePrice;
+                existingHotpot.Status = request.Status;
+                existingHotpot.Quantity = request.Quantity;
+                existingHotpot.HotpotTypeID = request.HotpotTypeID;
+                existingHotpot.TurtorialVideoID = request.TurtorialVideoID;
+                existingHotpot.InventoryID = request.InventoryID;
 
                 await _hotpotService.UpdateAsync(id, existingHotpot);
-                var updatedHotpot = await _hotpotService.GetByIdAsync(id);
-                var hotpotDto = MapToHotpotDto(updatedHotpot);
 
-                return Ok(new ApiResponse<HotpotDto>
-                {
-                    Success = true,
-                    Message = "Hotpot updated successfully",
-                    Data = hotpotDto
-                });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error updating hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
+                return NoContent();
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Hotpot not found with ID: {HotpotId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to update hotpot"
-                });
+                _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while updating the hotpot" });
             }
         }
 
         [HttpDelete("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<string>>> DeleteHotpot(int id)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> Delete(int id)
         {
             try
             {
-                _logger.LogInformation("Admin deleting hotpot with ID: {HotpotId}", id);
                 await _hotpotService.DeleteAsync(id);
-
-                return Ok(new ApiResponse<string>
-                {
-                    Success = true,
-                    Message = "Hotpot deleted successfully",
-                    Data = $"Hotpot with ID {id} has been deleted"
-                });
+                return NoContent();
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Hotpot not found with ID: {HotpotId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to delete hotpot"
-                });
+                _logger.LogError(ex, "Error deleting hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while deleting the hotpot" });
             }
         }
 
-        [HttpGet("available")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<HotpotDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotpotDto>>>> GetAvailableHotpots()
+        [HttpPut("{id}/status/{status}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> UpdateStatus(int id, bool status)
         {
             try
             {
-                _logger.LogInformation("Admin retrieving available hotpots");
-                var hotpots = await _hotpotService.GetAvailableHotpotsAsync();
-                var hotpotDtos = hotpots.Select(MapToHotpotDto);
-
-                return Ok(new ApiResponse<IEnumerable<HotpotDto>>
-                {
-                    Success = true,
-                    Message = "Available hotpots retrieved successfully",
-                    Data = hotpotDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving available hotpots");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve available hotpots"
-                });
-            }
-        }
-
-        [HttpGet("type/{typeId}")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<HotpotDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotpotDto>>>> GetHotpotsByType(int typeId)
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving hotpots by type ID: {TypeId}", typeId);
-                var hotpots = await _hotpotService.GetByTypeAsync(typeId);
-                var hotpotDtos = hotpots.Select(MapToHotpotDto);
-
-                return Ok(new ApiResponse<IEnumerable<HotpotDto>>
-                {
-                    Success = true,
-                    Message = "Hotpots retrieved successfully",
-                    Data = hotpotDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving hotpots by type ID: {TypeId}", typeId);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve hotpots by type"
-                });
-            }
-        }
-
-        [HttpPatch("{id}/status")]
-        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<string>>> UpdateHotpotStatus(int id, [FromBody] bool status)
-        {
-            try
-            {
-                _logger.LogInformation("Admin updating status for hotpot with ID: {HotpotId} to {Status}", id, status);
                 await _hotpotService.UpdateStatusAsync(id, status);
-
-                return Ok(new ApiResponse<string>
-                {
-                    Success = true,
-                    Message = "Hotpot status updated successfully",
-                    Data = $"Hotpot with ID {id} status set to {status}"
-                });
+                return NoContent();
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Hotpot not found with ID: {HotpotId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating status for hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to update hotpot status"
-                });
+                _logger.LogError(ex, "Error updating status for hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while updating the hotpot status" });
             }
         }
 
-        [HttpPatch("{id}/quantity")]
-        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<string>>> UpdateHotpotQuantity(int id, [FromBody] int quantityChange)
+        [HttpPut("{id}/quantity/{quantityChange}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> UpdateQuantity(int id, int quantityChange)
         {
             try
             {
-                _logger.LogInformation("Admin updating quantity for hotpot with ID: {HotpotId} by {QuantityChange}", id, quantityChange);
                 await _hotpotService.UpdateQuantityAsync(id, quantityChange);
-
-                return Ok(new ApiResponse<string>
-                {
-                    Success = true,
-                    Message = "Hotpot quantity updated successfully",
-                    Data = $"Hotpot with ID {id} quantity changed by {quantityChange}"
-                });
+                return NoContent();
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Hotpot not found with ID: {HotpotId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error updating quantity for hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating quantity for hotpot with ID: {HotpotId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to update hotpot quantity"
-                });
+                _logger.LogError(ex, "Error updating quantity for hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = "An error occurred while updating the hotpot quantity" });
             }
         }
 
-        private static HotpotDto MapToHotpotDto(Hotpot hotpot)
+        // Helper methods
+        private HotpotDto MapToResponse(Hotpot hotpot)
         {
             if (hotpot == null) return null;
 
@@ -423,26 +338,27 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Material = hotpot.Material,
                 Size = hotpot.Size,
                 Description = hotpot.Description,
-                ImageURL = hotpot.ImageURL,
+                ImageURLs = hotpot.ImageURLs,
                 Price = hotpot.Price,
+                BasePrice = hotpot.BasePrice,
+                DepositAmount = Math.Round(hotpot.BasePrice * 0.7m, 2), // Calculate deposit amount (70% of base price)
                 Status = hotpot.Status,
                 Quantity = hotpot.Quantity,
-                HotpotTypeName = hotpot.HotpotType?.Name,
-                HotpotTypeID = hotpot.HotpotTypeID,
-                TurtorialVideoID = hotpot.TurtorialVideoID,
-                TurtorialVideoName = hotpot.TurtorialVideo?.Name,
                 LastMaintainDate = hotpot.LastMaintainDate,
-                CreatedAt = hotpot.CreatedAt,
-                UpdatedAt = hotpot.UpdatedAt,
-                InventoryUnits = hotpot.InventoryUnits?.Select(i => new HotPotInventoryDto
+                HotpotType = hotpot.HotpotType != null ? new HotpotTypeDto
                 {
-                    HotPotInventoryId = i.HotPotInventoryId,
-                    SeriesNumber = i.SeriesNumber,
-                    HotpotId = i.HotpotId,
-                    HotpotName = hotpot.Name,
-                    CreatedAt = i.CreatedAt,
-                    UpdatedAt = i.UpdatedAt
-                }).ToList()
+                    HotpotTypeId = hotpot.HotpotType.HotpotTypeId,
+                    Name = hotpot.HotpotType.Name
+                } : null,
+                TurtorialVideo = hotpot.TurtorialVideo != null ? new TurtorialVideoResponse
+                {
+                    TurtorialVideoId = hotpot.TurtorialVideo.TurtorialVideoId,
+                    Title = hotpot.TurtorialVideo.Name,
+                    Description = hotpot.TurtorialVideo.Description,
+                    VideoUrl = hotpot.TurtorialVideo.VideoURL
+                } : null,
+                CreatedAt = hotpot.CreatedAt,
+                UpdatedAt = hotpot.UpdatedAt
             };
         }
     }

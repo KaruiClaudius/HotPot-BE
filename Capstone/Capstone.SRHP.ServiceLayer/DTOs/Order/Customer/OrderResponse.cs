@@ -12,9 +12,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public string Address { get; set; }
         public string? Notes { get; set; }
         public decimal TotalPrice { get; set; }
+        public decimal IngredientsDeposit { get; set; }
+        public decimal HotpotDeposit { get; set; }
+        public decimal TotalDeposit => IngredientsDeposit + HotpotDeposit;
         public string Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public UserInfo User { get; set; }
         public List<OrderItemResponse> Items { get; set; }
         public DiscountInfo? Discount { get; set; }
         public PaymentInfo? Payment { get; set; }

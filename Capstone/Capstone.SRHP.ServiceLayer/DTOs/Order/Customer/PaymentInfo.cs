@@ -12,7 +12,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public string Type { get; set; }
         public string Status { get; set; }
         public decimal Amount { get; set; }
-        public string? PaymentLink { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 }

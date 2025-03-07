@@ -182,15 +182,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [Authorize]
         public async Task<IActionResult> CheckOrder([FromBody] CheckOrderRequest request, [FromQuery] string userPhone)
         {
-            // Verify the user is checking their own payment
-            var currentUserPhone = User.FindFirstValue(ClaimTypes.MobilePhone);
-            var isAdmin = User.IsInRole("Admin");
-
-            if (currentUserPhone != userPhone && !isAdmin)
-            {
-                return Forbid();
-            }
-
             var response = await _paymentService.CheckOrder(request, userPhone);
             if (response.error == 0)
             {
