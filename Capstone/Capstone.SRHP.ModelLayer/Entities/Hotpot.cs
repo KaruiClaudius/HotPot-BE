@@ -47,6 +47,11 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public decimal Price { get; set; }
 
         [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        [Range(0, double.MaxValue)]
+        public decimal BasePrice { get; set; }
+
+        [Required]
         public bool Status { get; set; }
 
         [Required]

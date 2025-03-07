@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,13 +13,19 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IOrderService : IBaseService<Order>
     {
-        Task<PagedResult<Order>> GetAllPagedAsync(int pageNumber, int pageSize);
-        Task<PagedResult<Order>> GetUserOrdersPagedAsync(int userId, int pageNumber, int pageSize);
-        Task<IEnumerable<Order>> GetUserOrdersAsync(int userId);
+        Task<PagedResult<Order>> GetPagedAsync(int pageNumber, int pageSize);
+        Task<Order> CreateAsync(CreateOrderRequest request, int userId);
         Task<Order> UpdateStatusAsync(int id, OrderStatus status);
-        Task<decimal> CalculateTotalPriceAsync(ICollection<OrderDetail> orderDetails, int? discountId);
+
+        // User-specific operations
+        Task<IEnumerable<Order>> GetUserOrdersAsync(int userId);
+        Task<PagedResult<Order>> GetUserOrdersPagedAsync(int userId, int pageNumber, int pageSize);
+
+        // Status-specific operations
         Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status);
         Task<PagedResult<Order>> GetOrdersByStatusPagedAsync(OrderStatus status, int pageNumber, int pageSize);
-        Task<OrderStatistics> GetOrderStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null);
+
+        // Deposit calculation
+        Task<(decimal ingredientsDeposit, decimal hotpotDeposit)> CalculateDepositsAsync(List<OrderItemRequest> items);
     }
 }

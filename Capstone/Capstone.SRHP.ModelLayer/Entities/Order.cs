@@ -30,6 +30,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public OrderStatus Status { get; set; }
 
         [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? IngredientsDeposit { get; set; }
+
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? HotpotDeposit { get; set; }
+
+        [Required]
         [ForeignKey("User")]
         public int UserID { get; set; }
 

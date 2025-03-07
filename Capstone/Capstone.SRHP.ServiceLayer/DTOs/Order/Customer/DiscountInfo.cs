@@ -11,7 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public int DiscountId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public double Percent { get; set; }
+        public decimal Percent { get; set; }
         public decimal DiscountAmount { get; set; }
     }
 }

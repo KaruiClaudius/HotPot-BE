@@ -131,14 +131,31 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Material = h.Material,
                     Size = h.Size,
                     Description = h.Description,
-                    ImageURL = h.ImageURL,
+                    ImageURLs = h.ImageURLs,
                     Price = h.Price,
+                    BasePrice = h.BasePrice,
+                    DepositAmount = Math.Round(h.BasePrice * 0.7m, 2), // Calculate deposit amount (70% of base price)
                     Status = h.Status,
                     Quantity = h.Quantity,
-                    HotpotTypeID = h.HotpotTypeID,
-                    HotpotTypeName = h.HotpotType?.Name,
-                    TurtorialVideoID = h.TurtorialVideoID,
-                    TurtorialVideoName = video.Name
+                    LastMaintainDate = h.LastMaintainDate,
+                    HotpotType = h.HotpotType != null ? new HotpotTypeDto
+                    {
+                        HotpotTypeId = h.HotpotType.HotpotTypeId,
+                        Name = h.HotpotType.Name,
+                        CreatedAt = h.HotpotType.CreatedAt,
+                        UpdatedAt = h.HotpotType.UpdatedAt
+                    } : null,
+                    TurtorialVideo = new TurtorialVideoResponse
+                    {
+                        TurtorialVideoId = video.TurtorialVideoId,
+                        Title = video.Name,
+                        Description = video.Description,
+                        VideoUrl = video.VideoURL,
+                        CreatedAt = video.CreatedAt,
+                        UpdatedAt = video.UpdatedAt
+                    },
+                    CreatedAt = h.CreatedAt,
+                    UpdatedAt = h.UpdatedAt
                 }).ToList();
 
                 var videoDto = new TurtorialVideoDetailDto
