@@ -5,6 +5,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Video;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
@@ -15,13 +16,16 @@ namespace Capstone.HPTY.API.Controllers.Customer
     {
         private readonly IHotpotService _hotpotService;
         private readonly IHotpotTypeService _hotpotTypeService;
+        private readonly ILogger<CustomerHotpotController> _logger;
 
         public CustomerHotpotController(
             IHotpotService hotpotService,
-            IHotpotTypeService hotpotTypeService)
+            IHotpotTypeService hotpotTypeService,
+            ILogger<CustomerHotpotController> logger)
         {
             _hotpotService = hotpotService;
             _hotpotTypeService = hotpotTypeService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -320,7 +324,17 @@ namespace Capstone.HPTY.API.Controllers.Customer
         private CustomerHotpotDto MapToCustomerHotpotDto(Hotpot hotpot)
         {
             if (hotpot == null) return null;
-
+            string[] imageUrls;
+            try
+            {
+                imageUrls = hotpot.ImageURLs ?? new string[0];
+            }
+            catch (JsonException)
+            {
+                // Log the error
+                _logger.LogWarning($"Failed to deserialize ImageURLs for hotpot {hotpot.HotpotId}");
+                imageUrls = new string[0];
+            }
             return new CustomerHotpotDto
             {
                 HotpotId = hotpot.HotpotId,
