@@ -49,7 +49,8 @@ RUN apk add --no-cache tzdata
 RUN apk add --no-cache icu-data-full icu-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_RUNNING_IN_CONTAINER=true
-
+ENV Authentication__Google__ClientId="1029155011338-nk8lq065n5dcld8pojgqu9lfl3kbarh2.apps.googleusercontent.com"
+ENV Authentication__Google__ClientSecret="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"
 # Copy everything needed to run the app from the "build" stage.
 COPY --from=build /app .
 
