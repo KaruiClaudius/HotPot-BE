@@ -50,6 +50,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     Message = ex.Message
                 });
             }
+
         }
 
         [HttpPost("register")]
