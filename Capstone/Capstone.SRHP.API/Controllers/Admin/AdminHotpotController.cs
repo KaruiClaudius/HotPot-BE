@@ -11,14 +11,14 @@ using System.Text.Json;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
-    [Route("api/hotpots")]
+    [Route("api/admin/hotpots")]
     [ApiController]
-    public class HotpotController : ControllerBase
+    public class AdminHotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
-        private readonly ILogger<HotpotController> _logger;
+        private readonly ILogger<AdminHotpotController> _logger;
 
-        public HotpotController(IHotpotService hotpotService, ILogger<HotpotController> logger)
+        public AdminHotpotController(IHotpotService hotpotService, ILogger<AdminHotpotController> logger)
         {
             _hotpotService = hotpotService;
             _logger = logger;

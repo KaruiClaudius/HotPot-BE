@@ -20,18 +20,18 @@ namespace Capstone.HPTY.API.Controllers.Customer
     [Route("api/orders")]
     [ApiController]
     [Authorize]
-    public class OrderController : ControllerBase
+    public class CustomerOrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
         private readonly IUserService _userService;
         private readonly IPaymentService _paymentService;
-        private readonly ILogger<OrderController> _logger;
+        private readonly ILogger<CustomerOrderController> _logger;
 
-        public OrderController(
+        public CustomerOrderController(
             IOrderService orderService,
             IPaymentService paymentService,
             IUserService userService,
-            ILogger<OrderController> logger)
+            ILogger<CustomerOrderController> logger)
         {
             _orderService = orderService;
             _paymentService = paymentService;
