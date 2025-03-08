@@ -10,15 +10,15 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/customer/Customizations")]
 [Authorize(Roles = "Customer")]
 
-public class CustomizationController : ControllerBase
+public class CustomerCustomizationController : ControllerBase
 {
     private readonly ICustomizationService _customizationService;
     private readonly ISizeDiscountService _sizeDiscountService;
 
-    public CustomizationController(
+    public CustomerCustomizationController(
         ICustomizationService customizationService,
         ISizeDiscountService sizeDiscountService)
     {
