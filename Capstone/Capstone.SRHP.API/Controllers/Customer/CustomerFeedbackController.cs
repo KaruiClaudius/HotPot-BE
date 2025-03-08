@@ -1,6 +1,8 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Customer")]
+    [Authorize(Roles = "Customer")]
 
     public class CustomerFeedbackController : ControllerBase
     {
@@ -37,6 +39,25 @@ namespace Capstone.HPTY.API.Controllers.Customer
             return Ok(ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback retrieved successfully"));
         }
 
+        [HttpGet("user/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<Feedback>>>> GetUserFeedback(
+            int userId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var feedback = await _customerFeedbackService.GetFeedbackByUserIdAsync(userId, pageNumber, pageSize);
+            return Ok(ApiResponse<IEnumerable<Feedback>>.SuccessResponse(feedback, "User feedback retrieved successfully"));
+        }
+
+        [HttpGet("order/{orderId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<Feedback>>>> GetOrderFeedback(int orderId)
+        {
+            var feedback = await _customerFeedbackService.GetFeedbackByOrderIdAsync(orderId);
+            return Ok(ApiResponse<IEnumerable<Feedback>>.SuccessResponse(feedback, "Order feedback retrieved successfully"));
+        }
+
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -53,15 +74,15 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     customerName = feedback.User.Name;
                 }
 
-                // Notify managers about the new feedback via SignalR
-                await _feedbackHubContext.Clients.Group("Managers").SendAsync("ReceiveNewFeedback",
+                // Notify admins about the new feedback that needs approval via SignalR
+                await _feedbackHubContext.Clients.Group("Admins").SendAsync("ReceiveNewFeedback",
                     feedback.FeedbackId,
                     customerName,
                     feedback.Title,
                     feedback.CreatedAt);
 
                 return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId },
-                    ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback created successfully"));
+                    ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback created successfully. It will be reviewed by an administrator."));
             }
             catch (InvalidOperationException ex)
             {
@@ -74,5 +95,25 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return BadRequest(ApiResponse<Feedback>.ErrorResponse(ex.Message));
             }
         }
+
+        [HttpGet("status")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<FeedbackStatusSummary>>> GetFeedbackStatusSummary(
+            [FromQuery] int userId)
+        {
+            var allFeedback = await _customerFeedbackService.GetFeedbackByUserIdAsync(userId);
+
+            var summary = new FeedbackStatusSummary
+            {
+                TotalFeedback = allFeedback.Count(),
+                PendingApproval = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Pending),
+                Approved = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved),
+                Rejected = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Rejected),
+                Responded = allFeedback.Count(f => f.Response != null)
+            };
+
+            return Ok(ApiResponse<FeedbackStatusSummary>.SuccessResponse(summary, "Feedback status summary retrieved successfully"));
+        }
     }
 }
+

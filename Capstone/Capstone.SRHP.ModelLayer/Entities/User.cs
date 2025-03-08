@@ -50,8 +50,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual Staff? Staff { get; set; }
         public virtual Manager? Manager { get; set; }
         public virtual ICollection<Customization>? Customizations { get; set; }
+
+        [InverseProperty("User")]
         public virtual ICollection<Feedback>? Feedbacks { get; set; }
         public virtual ICollection<Order>? Orders { get; set; }
+
+        [InverseProperty("ApprovedByUser")]
+        public virtual ICollection<Feedback>? ApprovedFeedbacks { get; set; }
 
     }
 }

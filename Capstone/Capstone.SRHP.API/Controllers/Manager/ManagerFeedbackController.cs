@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
@@ -16,7 +17,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Manager")]
-
     public class ManagerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _managerFeedbackService;
@@ -27,14 +27,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
             _managerFeedbackService = managerFeedbackService;
             _feedbackHubContext = feedbackHubContext;
         }
+
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetAllFeedback(
            [FromQuery] int pageNumber = 1,
            [FromQuery] int pageSize = 10)
         {
-            var feedback = await _managerFeedbackService.GetAllFeedbackAsync(pageNumber, pageSize);
-            var totalCount = await _managerFeedbackService.GetTotalFeedbackCountAsync();
+            // Only get approved feedback
+            var feedback = await _managerFeedbackService.GetApprovedFeedbackAsync(pageNumber, pageSize);
+            var totalCount = feedback.Count();
 
             var pagedResult = new PagedResult<Feedback>
             {
@@ -44,7 +46,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 PageSize = pageSize
             };
 
-            return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Feedback retrieved successfully"));
+            return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Approved feedback retrieved successfully"));
         }
 
         [HttpGet("unresponded")]
@@ -65,7 +67,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             };
 
             return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Unresponded feedback retrieved successfully"));
-        }      
+        }
 
         [HttpGet("user/{userId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -76,8 +78,9 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             var feedback = await _managerFeedbackService.GetFeedbackByUserIdAsync(userId, pageNumber, pageSize);
 
-            // For simplicity, we're not implementing a separate count method for user feedback
-            // In a real application, you would want to do this for better performance
+            // Filter to only show approved feedback
+            feedback = feedback.Where(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved).ToList();
+
             var pagedResult = new PagedResult<Feedback>
             {
                 Items = feedback,
@@ -94,11 +97,14 @@ namespace Capstone.HPTY.API.Controllers.Manager
         public async Task<ActionResult<ApiResponse<IEnumerable<Feedback>>>> GetFeedbackByOrderId(int orderId)
         {
             var feedback = await _managerFeedbackService.GetFeedbackByOrderIdAsync(orderId);
+
+            // Filter to only show approved feedback
+            feedback = feedback.Where(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved).ToList();
+
             return Ok(ApiResponse<IEnumerable<Feedback>>.SuccessResponse(feedback, "Order feedback retrieved successfully"));
         }
-        // FeedbackController.cs (continued)
+
         [HttpPost("{id}/respond")]
-        [Authorize(Roles = "Manager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -106,8 +112,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         public async Task<ActionResult<ApiResponse<Feedback>>> RespondToFeedback(int id, [FromBody] RespondToFeedbackRequest request)
         {
             try
-            {             
-
+            {
                 var feedback = await _managerFeedbackService.RespondToFeedbackAsync(id, request.ManagerId, request.Response);
 
                 // Get manager name for notification
@@ -130,32 +135,34 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return NotFound(ApiResponse<Feedback>.ErrorResponse(ex.Message));
             }
+            catch (InvalidOperationException ex)
+            {
+                // This will catch the error when trying to respond to unapproved feedback
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<Feedback>.ErrorResponse(ex.Message));
+            }
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<Feedback>.ErrorResponse(ex.Message));
             }
         }
 
-        
-
         [HttpGet("stats")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
-            var totalCount = await _managerFeedbackService.GetTotalFeedbackCountAsync();
+            // Only count approved feedback for managers
+            var approvedCount = (await _managerFeedbackService.GetApprovedFeedbackAsync()).Count();
             var unrespondedCount = await _managerFeedbackService.GetUnrespondedFeedbackCountAsync();
 
             var stats = new FeedbackStats
             {
-                TotalFeedbackCount = totalCount,
+                TotalFeedbackCount = approvedCount,
                 UnrespondedFeedbackCount = unrespondedCount,
-                RespondedFeedbackCount = totalCount - unrespondedCount,
-                ResponseRate = totalCount > 0 ? (double)(totalCount - unrespondedCount) / totalCount * 100 : 0
+                RespondedFeedbackCount = approvedCount - unrespondedCount,
+                ResponseRate = approvedCount > 0 ? (double)(approvedCount - unrespondedCount) / approvedCount * 100 : 0
             };
 
             return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
         }
-     
-       
     }
 }
