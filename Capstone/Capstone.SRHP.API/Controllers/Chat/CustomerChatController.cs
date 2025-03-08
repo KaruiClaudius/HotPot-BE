@@ -3,11 +3,14 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Customer")]
+
 public class CustomerChatController : ControllerBase
 {
     private readonly IChatService _chatService;

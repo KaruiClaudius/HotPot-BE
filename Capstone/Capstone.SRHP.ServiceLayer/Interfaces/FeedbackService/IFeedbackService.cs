@@ -19,5 +19,13 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService
         Task<int> GetTotalFeedbackCountAsync();
         Task<int> GetUnrespondedFeedbackCountAsync();
         Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request);
+
+        // Approval methods
+        Task<Feedback> ApproveFeedbackAsync(int feedbackId, int adminUserId);
+        Task<Feedback> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason);
+        Task<IEnumerable<Feedback>> GetPendingFeedbackAsync(int pageNumber = 1, int pageSize = 10);
+        Task<int> GetPendingFeedbackCountAsync();
+        Task<IEnumerable<Feedback>> GetApprovedFeedbackAsync(int pageNumber = 1, int pageSize = 10);
+        Task<IEnumerable<Feedback>> GetRejectedFeedbackAsync(int pageNumber = 1, int pageSize = 10);
     }
 }
