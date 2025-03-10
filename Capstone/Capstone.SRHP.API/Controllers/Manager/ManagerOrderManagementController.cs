@@ -12,11 +12,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Manager")]
-    public class OrderManagementController : ControllerBase
+    public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
 
-        public OrderManagementController(IOrderManagementService orderManagementService)
+        public ManagerOrderManagementController(IOrderManagementService orderManagementService)
         {
             _orderManagementService = orderManagementService;
         }
@@ -41,28 +41,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
             }
-        }
-
-        [HttpPost("allocate/auto")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrder>>> AllocateOrderToOptimalStaff([FromBody] AutoAllocateOrderRequest request)
-        {
-            try
-            {
-                var result = await _orderManagementService.AllocateOrderToOptimalStaff(request.OrderId);
-                return Ok(ApiResponse<ShippingOrder>.SuccessResponse(result, "Order automatically allocated to optimal staff"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
-            }
-        }
+        }      
 
         [HttpGet("unallocated")]
         [ProducesResponseType(StatusCodes.Status200OK)]

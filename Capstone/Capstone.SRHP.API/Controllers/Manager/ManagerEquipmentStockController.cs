@@ -14,13 +14,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [ApiController]
     [Authorize(Roles = "Manager")]
 
-    public class EquipmentStockController : ControllerBase
+    public class ManagerEquipmentStockController : ControllerBase
     {
         private readonly IEquipmentStockService _equipmentStockService;
         private readonly IHubContext<EquipmentStockHub> _hubContext;
         private const int DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
-        public EquipmentStockController(
+        public ManagerEquipmentStockController(
             IEquipmentStockService equipmentStockService,
             IHubContext<EquipmentStockHub> hubContext)
         {

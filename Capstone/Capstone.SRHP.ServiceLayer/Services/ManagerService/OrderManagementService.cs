@@ -77,43 +77,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             await _unitOfWork.CommitAsync();
 
             return shippingOrder;
-        }
-
-        public async Task<ShippingOrder> AllocateOrderToOptimalStaff(int orderId)
-        {
-            // Check if order exists
-            var order = await _unitOfWork.Repository<Order>()
-                .FindAsync(o => o.OrderId == orderId);
-
-            if (order == null)
-                throw new KeyNotFoundException($"Order with ID {orderId} not found");
-
-            // Get all active staff members
-            var activeStaffQuery = _unitOfWork.Repository<Staff>()
-                .GetAll(s => !s.IsDelete);
-
-            var activeStaff = await activeStaffQuery
-                .Include(s => s.User)
-                .ToListAsync();
-
-            if (!activeStaff.Any())
-                throw new InvalidOperationException("No active staff members available for delivery");
-
-            // Get workloads for all staff
-            var staffWorkloads = await GetStaffWorkloads();
-
-            // Find the staff member with the lowest workload
-            var optimalStaff = staffWorkloads
-                .OrderBy(w => w.ActiveDeliveries)  // First prioritize by active deliveries
-                .ThenBy(w => w.TotalDeliveriesToday)  // Then by total deliveries today
-                .FirstOrDefault();
-
-            if (optimalStaff == null)
-                throw new InvalidOperationException("Could not determine optimal staff for allocation");
-
-            // Allocate the order to the optimal staff
-            return await AllocateOrderToStaff(orderId, optimalStaff.StaffId);
-        }
+        }       
 
         public async Task<IEnumerable<Order>> GetUnallocatedOrders()
         {

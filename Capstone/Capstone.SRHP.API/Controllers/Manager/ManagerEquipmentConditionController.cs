@@ -15,12 +15,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [ApiController]
     [Authorize(Roles = "Manager")]
 
-    public class EquipmentConditionController : ControllerBase
+    public class ManagerEquipmentConditionController : ControllerBase
     {
         private readonly IEquipmentConditionService _equipmentConditionService;
         private readonly IHubContext<EquipmentConditionHub> _hubContext;
 
-        public EquipmentConditionController(
+        public ManagerEquipmentConditionController(
             IEquipmentConditionService equipmentConditionService,
             IHubContext<EquipmentConditionHub> hubContext)
         {

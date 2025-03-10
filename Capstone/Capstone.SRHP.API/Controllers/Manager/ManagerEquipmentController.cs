@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +16,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
     [ApiController]
     [Authorize(Roles = "Manager")]
 
-    public class EquipmentController : ControllerBase
+    public class ManagerEquipmentController : ControllerBase
     {
         private readonly IEquipmentService _equipmentService;
         private readonly IHubContext<EquipmentHub> _equipmentHubContext;
 
-        public EquipmentController(IEquipmentService equipmentService, IHubContext<EquipmentHub> equipmentHubContext)
+        public ManagerEquipmentController(IEquipmentService equipmentService, IHubContext<EquipmentHub> equipmentHubContext)
         {
             _equipmentService = equipmentService;
             _equipmentHubContext = equipmentHubContext;
@@ -29,10 +30,24 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpPost("failures")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ConditionLog>>> LogEquipmentFailure([FromBody] ConditionLog conditionLog)
+        public async Task<ActionResult<ApiResponse<ConditionLog>>> LogEquipmentFailure([FromBody] EquipmentFailureDto failureDto)
         {
             try
             {
+                // Validate that exactly one equipment type is specified
+                bool hasUtensil = failureDto.UtensilID.HasValue && failureDto.UtensilID.Value > 0;
+                bool hasHotPot = failureDto.HotPotInventoryId.HasValue && failureDto.HotPotInventoryId.Value > 0;
+
+                if ((!hasUtensil && !hasHotPot) || (hasUtensil && hasHotPot))
+                {
+                    return BadRequest(ApiResponse<ConditionLog>.ErrorResponse(
+                        "Exactly one equipment type (either UtensilID or HotPotInventoryId) must be specified with a valid ID"));
+                }
+
+
+                // Map DTO to entity using Mapster
+                var conditionLog = failureDto.Adapt<ConditionLog>();
+
                 var result = await _equipmentService.LogEquipmentFailureAsync(conditionLog);
 
                 // Notify staff about the new equipment failure

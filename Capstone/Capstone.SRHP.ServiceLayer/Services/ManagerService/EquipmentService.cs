@@ -22,8 +22,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         public async Task<ConditionLog> LogEquipmentFailureAsync(ConditionLog conditionLog)
         {
+            // Validate foreign keys before attempting to save
+            if (conditionLog.HotPotInventoryId.HasValue)
+            {
+                var hotPotExists = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .AnyAsync(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value);
+
+                if (!hotPotExists)
+                {
+                    throw new InvalidOperationException($"Hot Pot with ID {conditionLog.HotPotInventoryId.Value} does not exist.");
+                }
+            }
+
+            if (conditionLog.UtensilID.HasValue)
+            {
+                var utensilExists = await _unitOfWork.Repository<Utensil>()
+                    .AsQueryable()
+                    .AnyAsync(u => u.UtensilId == conditionLog.UtensilID.Value);
+
+                if (!utensilExists)
+                {
+                    throw new InvalidOperationException($"Utensil with ID {conditionLog.UtensilID.Value} does not exist.");
+                }
+            }
+
+            // Ensure at least one equipment type is specified
+            if (!conditionLog.HotPotInventoryId.HasValue && !conditionLog.UtensilID.HasValue)
+            {
+                throw new InvalidOperationException("Either HotPotInventoryId or UtensilID must be specified.");
+            }
+
+            // Set default values
             conditionLog.LoggedDate = DateTime.UtcNow;
             conditionLog.Status = MaintenanceStatus.Pending;
+
+            // If ScheduleType isn't set, default to Emergency for failures
+            if (conditionLog.ScheduleType == 0)
+            {
+                conditionLog.ScheduleType = MaintenanceScheduleType.Emergency;
+            }
 
             _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
