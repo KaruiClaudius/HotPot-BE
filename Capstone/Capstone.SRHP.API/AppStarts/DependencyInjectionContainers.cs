@@ -90,7 +90,6 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IUtensilTypeService, UtensilTypeService>();
-            services.AddScoped<IWorkShiftService, WorkShiftService>();
             services.AddScoped<IPaymentService, PaymentService>();
 
             // Manager Services
@@ -102,6 +101,11 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IEquipmentConditionService, EquipmentConditionService>();
             services.AddScoped<IEquipmentStockService, EquipmentStockService>();
             services.AddScoped<IReplacementRequestService, ReplacementRequestService>();
+            services.AddScoped<IManagerService, ManagerService>();
+
+            // Staff Services
+            services.AddScoped<IStaffService, StaffService>();
+
 
             // Notification Services
             services.AddScoped<INotificationService, SignalRNotificationService>();

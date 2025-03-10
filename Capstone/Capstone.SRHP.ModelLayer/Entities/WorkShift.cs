@@ -15,19 +15,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required]
-        [DataType(DataType.DateTime)]
-        public DateTime ShiftTime { get; set; }
+        public TimeSpan? ShiftStartTime { get; set; }
 
+        [Required]
+        public WorkDays DaysOfWeek { get; set; }
         public AttendanceStatus? Status { get; set; }
 
-        [ForeignKey("Managers")]
-        public int? ManagerID { get; set; }
-
-        [ForeignKey("Staffs")]
-        public int? StaffID { get; set; }
-
-        public virtual Staff? Staff { get; set; }
-        public virtual Manager? Manager { get; set; }
+        public virtual ICollection<Staff> Staff { get; set; } = new List<Staff>();
+        public virtual ICollection<Manager> Managers { get; set; } = new List<Manager>();
     }
 }

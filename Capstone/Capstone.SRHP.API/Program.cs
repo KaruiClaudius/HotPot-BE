@@ -1,5 +1,7 @@
+using System.Reflection;
 using Capstone.HPTY.API.AppStarts;
 using Capstone.HPTY.API.Hubs;
+using Mapster;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +29,8 @@ builder.Services.ConfigureAuthService(builder.Configuration);
 // Add SignalR
 builder.Services.AddSignalR();
 
+// Add Mapster
+TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
 // Configure Swagger
 builder.Services.ConfigureSwaggerServices("HPTY API");

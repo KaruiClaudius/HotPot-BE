@@ -1,55 +1,68 @@
-﻿using System;
+﻿using Capstone.HPTY.ModelLayer.Enum;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 {
-    public class CreateWorkShiftRequest
+    public class WorkShiftDto
     {
-        [Required]
-        public DateTime ShiftTime { get; set; }
+        public int WorkShiftId { get; set; }
+        public TimeSpan ShiftStartTime { get; set; }
+        public WorkDays DaysOfWeek { get; set; }
+        public string? Status { get; set; }
+        public List<StaffDto>? Staff { get; set; }
+        public List<ManagerDto>? Managers { get; set; }
+    }
 
-        public AttendanceStatus? Status { get; set; }
-
-        [Required]
+    public class StaffDto
+    {
         public int StaffId { get; set; }
+        public int UserId { get; set; }
+        public string? UserName { get; set; }
+        public string? Email { get; set; }
+        public WorkDays WorkDays { get; set; }
+    }
 
-        [Required]
+    public class ManagerDto
+    {
         public int ManagerId { get; set; }
+        public int UserId { get; set; }
+        public string? UserName { get; set; }
+        public string? Email { get; set; }
+        public WorkDays WorkDays { get; set; }
+        public List<WorkShiftDto>? WorkShifts { get; set; }
     }
 
-    public class UpdateWorkShiftRequest
+    public class StaffScheduleDto
     {
-        [Required]
-        public DateTime ShiftTime { get; set; }
-
-        public AttendanceStatus? Status { get; set; }
+        public StaffDto Staff { get; set; }
+        public List<WorkShiftDto> WorkShifts { get; set; } = new List<WorkShiftDto>();
     }
 
-    public class UpdateWorkShiftStatusRequest
+    public class CreateWorkShiftDto
     {
-        [Required]
-        public AttendanceStatus Status { get; set; }
+        public TimeSpan ShiftStartTime { get; set; }
+        public WorkDays DaysOfWeek { get; set; }
+        public string? Status { get; set; }
     }
 
-    public class WeeklyScheduleResponse
+    public class UpdateWorkShiftDto
     {
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public Dictionary<string, List<WorkShift>> DailySchedules { get; set; }
+        public TimeSpan ShiftStartTime { get; set; }
+        public WorkDays DaysOfWeek { get; set; }
+        public string? Status { get; set; }
     }
 
-    public class MonthlyScheduleResponse
+    public class AssignStaffWorkDaysDto
     {
-        public int Year { get; set; }
-        public int Month { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public Dictionary<string, List<WorkShift>> DailySchedules { get; set; }
+        public int StaffId { get; set; }
+        public WorkDays WorkDays { get; set; }
+    }
+
+    public class AssignManagerWorkDaysAndShiftsDto
+    {
+        public int ManagerId { get; set; }
+        public WorkDays WorkDays { get; set; }
+        public List<int> WorkShiftIds { get; set; } = new List<int>();
     }
 }
