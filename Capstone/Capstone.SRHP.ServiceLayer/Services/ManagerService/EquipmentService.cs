@@ -25,6 +25,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             conditionLog.LoggedDate = DateTime.UtcNow;
             conditionLog.Status = MaintenanceStatus.Pending;
 
+            if (conditionLog.ScheduleType == 0)
+            {
+                conditionLog.ScheduleType = MaintenanceScheduleType.Regular;
+            }
+
             _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 

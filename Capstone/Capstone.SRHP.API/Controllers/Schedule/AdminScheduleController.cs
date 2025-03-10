@@ -81,6 +81,10 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 };
 
                 var createdShift = await _scheduleService.CreateWorkShiftAsync(workShift);
+
+                // Notify all managers about the new shift
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
+
                 return CreatedAtAction(nameof(GetWorkShiftById), new { shiftId = createdShift.Id }, createdShift.Adapt<WorkShiftDto>());
             }
             catch (Exception ex)
@@ -107,10 +111,27 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     updateDto.DaysOfWeek,
                     status);
 
-                    return Ok(updatedShift.Adapt<WorkShiftDto>());
-                }
-                catch (KeyNotFoundException ex)
+                // Get the staff members assigned to this shift
+                var staffMembers = updatedShift.Staff;
+                if (staffMembers != null)
                 {
+                    foreach (var staff in staffMembers)
+                    {
+                        // Notify each staff member about their schedule update
+                        await _scheduleHubContext.Clients.Group($"Staff_{staff.StaffId}").SendAsync(
+                            "ReceiveScheduleUpdate",
+                            staff.StaffId,
+                            DateTime.Now);
+                    }
+                }
+
+                // Notify all managers about the schedule update
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
+
+                return Ok(updatedShift.Adapt<WorkShiftDto>());
+            }
+            catch (KeyNotFoundException ex)
+            {
                 return NotFound(ex.Message);
             }
             catch (Exception ex)
@@ -127,9 +148,31 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         {
             try
             {
+                // Get the shift before deleting to know which staff members to notify
+                var shift = await _scheduleService.GetWorkShiftByIdAsync(shiftId);
+                if (shift == null)
+                    return NotFound($"Work shift with ID {shiftId} not found");
+
+                var staffMembers = shift.Staff;
+
                 var result = await _scheduleService.DeleteWorkShiftAsync(shiftId);
                 if (!result)
                     return NotFound($"Work shift with ID {shiftId} not found");
+
+                // Notify staff members about the deleted shift
+                if (staffMembers != null)
+                {
+                    foreach (var staff in staffMembers)
+                    {
+                        await _scheduleHubContext.Clients.Group($"Staff_{staff.StaffId}").SendAsync(
+                            "ReceiveScheduleUpdate",
+                            staff.StaffId,
+                            DateTime.Now);
+                    }
+                }
+
+                // Notify all managers about the schedule update
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
 
                 return NoContent();
             }
@@ -148,6 +191,16 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             try
             {
                 var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
+
+                // Notify the staff member about their schedule update
+                await _scheduleHubContext.Clients.Group($"Staff_{staff.StaffId}").SendAsync(
+                    "ReceiveScheduleUpdate",
+                    staff.StaffId,
+                    DateTime.Now);
+
+                // Notify all managers about the schedule update
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
+
                 return Ok(staff.Adapt<StaffDto>());
             }
             catch (KeyNotFoundException ex)
@@ -183,6 +236,15 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     assignDto.WorkDays,
                     workShifts);
 
+                // Notify the manager about their schedule update
+                await _scheduleHubContext.Clients.Group($"Manager_{manager.ManagerId}").SendAsync(
+                    "ReceiveScheduleUpdate",
+                    manager.ManagerId,
+                    DateTime.Now);
+
+                // Notify all managers about the schedule update
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
+
                 return Ok(manager.Adapt<ManagerDto>());
             }
             catch (KeyNotFoundException ex)
@@ -197,7 +259,50 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-        }        
+        }
+        /// <summary>
+        /// Manually send a notification to all users about schedule updates
+        /// </summary>
+        [HttpPost("notify-all")]
+        public async Task<ActionResult> NotifyAllUsers()
+        {
+            try
+            {
+                // Notify all managers about schedule updates
+                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
+
+                // Notify all staff members about schedule updates
+                await _scheduleHubContext.Clients.Group("Staff").SendAsync("ReceiveAllScheduleUpdates");
+
+                return Ok(new { message = "Notifications sent successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Manually send a notification to a specific staff member
+        /// </summary>
+        [HttpPost("notify-staff/{staffId}")]
+        public async Task<ActionResult> NotifyStaff(int staffId)
+        {
+            try
+            {
+                // Notify the specific staff member about their schedule update
+                await _scheduleHubContext.Clients.Group($"Staff_{staffId}").SendAsync(
+                    "ReceiveScheduleUpdate",
+                    staffId,
+                    DateTime.Now);
+
+                return Ok(new { message = $"Notification sent to staff {staffId}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }
 

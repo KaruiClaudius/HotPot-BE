@@ -49,4 +49,22 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         [Required]
         public DateTime EstimatedResolutionTime { get; set; }
     }
+
+    public class EquipmentFailureDto
+    {
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; }
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
+
+        // We'll set Status to Pending in the service
+        // We'll set ScheduleType based on the context (likely Emergency for failures)
+
+        // Equipment identifiers - only one should be provided
+        public int? UtensilID { get; set; }
+        public int? HotPotInventoryId { get; set; }
+    }
+
 }
