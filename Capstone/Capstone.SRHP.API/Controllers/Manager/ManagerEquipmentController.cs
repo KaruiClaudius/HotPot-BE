@@ -35,12 +35,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
             try
             {
                 // Validate that exactly one equipment type is specified
-                if ((failureDto.UtensilID == null && failureDto.HotPotInventoryId == null) ||
-                    (failureDto.UtensilID != null && failureDto.HotPotInventoryId != null))
+                bool hasUtensil = failureDto.UtensilID.HasValue && failureDto.UtensilID.Value > 0;
+                bool hasHotPot = failureDto.HotPotInventoryId.HasValue && failureDto.HotPotInventoryId.Value > 0;
+
+                if ((!hasUtensil && !hasHotPot) || (hasUtensil && hasHotPot))
                 {
                     return BadRequest(ApiResponse<ConditionLog>.ErrorResponse(
-                        "Exactly one equipment type (either UtensilID or HotPotInventoryId) must be specified"));
+                        "Exactly one equipment type (either UtensilID or HotPotInventoryId) must be specified with a valid ID"));
                 }
+
 
                 // Map DTO to entity using Mapster
                 var conditionLog = failureDto.Adapt<ConditionLog>();
