@@ -189,39 +189,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 .Take(pageSize)
                 .ToListAsync();
         }
-
-        public async Task<int> GetPendingFeedbackCountAsync()
+        public async Task<IEnumerable<Feedback>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10)
         {
             return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.ApprovalStatus == FeedbackApprovalStatus.Pending)
-                .CountAsync();
-        }
-
-        public async Task<IEnumerable<Feedback>> GetApprovedFeedbackAsync(int pageNumber = 1, int pageSize = 10)
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved)
+                .GetAll(f => f.ApprovalStatus == status)
                 .Include(f => f.User)
                 .Include(f => f.Order)
                 .Include(f => f.Manager)
-                .OrderByDescending(f => f.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Feedback>> GetRejectedFeedbackAsync(int pageNumber = 1, int pageSize = 10)
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.ApprovalStatus == FeedbackApprovalStatus.Rejected)
-                .Include(f => f.User)
-                .Include(f => f.Order)
                 .Include(f => f.ApprovedByUser)
                 .OrderByDescending(f => f.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
         }
+
+
 
         // Update existing methods to respect approval status
         public async Task<IEnumerable<Feedback>> GetUnrespondedFeedbackAsync(int pageNumber = 1, int pageSize = 10)
@@ -276,6 +258,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
             return feedback;
         }
-
+        public async Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status)
+        {
+            return await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.ApprovalStatus == status)
+                .CountAsync();
+        }
     }
 }

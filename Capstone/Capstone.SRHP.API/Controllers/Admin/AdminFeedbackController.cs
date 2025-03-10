@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
@@ -24,62 +25,36 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _feedbackHubContext = feedbackHubContext;
         }
 
-        [HttpGet("pending")]
+        [HttpGet("by-status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetPendingFeedback(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetFeedbackByStatus(
+     [FromRoute] FeedbackApprovalStatus status,
+     [FromQuery] int pageNumber = 1,
+     [FromQuery] int pageSize = 10)
         {
-            var feedback = await _feedbackService.GetPendingFeedbackAsync(pageNumber, pageSize);
-            var totalCount = await _feedbackService.GetPendingFeedbackCountAsync();
-
-            var pagedResult = new PagedResult<Feedback>
+            try
             {
-                Items = feedback,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                var feedback = await _feedbackService.GetFeedbackByStatusAsync(status, pageNumber, pageSize);
+                var totalCount = await _feedbackService.GetFeedbackCountByStatusAsync(status);
 
-            return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Pending feedback retrieved successfully"));
-        }
+                var pagedResult = new PagedResult<Feedback>
+                {
+                    Items = feedback,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
 
-        [HttpGet("approved")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetApprovedFeedback(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var feedback = await _feedbackService.GetApprovedFeedbackAsync(pageNumber, pageSize);
-
-            var pagedResult = new PagedResult<Feedback>
+                string statusName = status.ToString().ToLower();
+                return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(
+                    pagedResult,
+                    $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} feedback retrieved successfully"));
+            }
+            catch (Exception ex)
             {
-                Items = feedback,
-                TotalCount = feedback.Count(),
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
-
-            return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Approved feedback retrieved successfully"));
-        }
-
-        [HttpGet("rejected")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetRejectedFeedback(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var feedback = await _feedbackService.GetRejectedFeedbackAsync(pageNumber, pageSize);
-
-            var pagedResult = new PagedResult<Feedback>
-            {
-                Items = feedback,
-                TotalCount = feedback.Count(),
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
-
-            return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(pagedResult, "Rejected feedback retrieved successfully"));
+                return BadRequest(ApiResponse<PagedResult<Feedback>>.ErrorResponse(ex.Message));
+            }
         }
 
         [HttpPost("{id}/approve")]
@@ -166,13 +141,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
             var totalCount = await _feedbackService.GetTotalFeedbackCountAsync();
-            var pendingCount = await _feedbackService.GetPendingFeedbackCountAsync();
+            var pendingCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Pending));
             var unrespondedCount = await _feedbackService.GetUnrespondedFeedbackCountAsync();
 
             // Calculate approved and rejected counts
-            // Note: This is a simplified approach. For better performance, you might want to add specific methods to count these
-            var approvedCount = totalCount - pendingCount - (await _feedbackService.GetRejectedFeedbackAsync()).Count();
-            var rejectedCount = totalCount - pendingCount - approvedCount;
+            var approvedCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Approved));
+            var rejectedCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Rejected));
 
             var stats = new FeedbackStats
             {

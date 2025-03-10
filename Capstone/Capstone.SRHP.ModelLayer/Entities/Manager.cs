@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {    
@@ -18,8 +19,11 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("User")]
         public int UserID { get; set; }
 
+        [Required]
+        public WorkDays WorkDays { get; set; }
+
         public virtual User? User { get; set; }
-        public virtual ICollection<WorkShift>? WorkShifts { get; set; }
+        public virtual ICollection<WorkShift>? WorkShifts { get; set; } = new List<WorkShift>();
     }
 
 }

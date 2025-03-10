@@ -35,7 +35,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
            [FromQuery] int pageSize = 10)
         {
             // Only get approved feedback
-            var feedback = await _managerFeedbackService.GetApprovedFeedbackAsync(pageNumber, pageSize);
+            var feedback = await _managerFeedbackService.GetFeedbackByStatusAsync(FeedbackApprovalStatus.Approved,pageNumber, pageSize);
             var totalCount = feedback.Count();
 
             var pagedResult = new PagedResult<Feedback>
@@ -151,7 +151,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
             // Only count approved feedback for managers
-            var approvedCount = (await _managerFeedbackService.GetApprovedFeedbackAsync()).Count();
+            var approvedCount = (await _managerFeedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Approved));
             var unrespondedCount = await _managerFeedbackService.GetUnrespondedFeedbackCountAsync();
 
             var stats = new FeedbackStats
