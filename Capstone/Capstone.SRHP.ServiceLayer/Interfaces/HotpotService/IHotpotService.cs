@@ -14,17 +14,10 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
     {
         Task<PagedResult<Hotpot>> GetPagedAsync(int pageNumber, int pageSize);
         Task<IEnumerable<Hotpot>> GetAvailableHotpotsAsync();
-        Task<IEnumerable<Hotpot>> GetByTypeAsync(int typeId);
         Task UpdateStatusAsync(int id, bool status);
         Task UpdateQuantityAsync(int id, int quantity);
         Task<bool> IsAvailableAsync(int id);
-
-        Task<IEnumerable<Hotpot>> GetByTutorialVideoAsync(int tutorialVideoId);
-        Task<int> GetCountByTutorialVideoAsync(int tutorialVideoId);
-
-        Task<Dictionary<int, int>> GetCountsByTutorialVideosAsync(IEnumerable<int> videoIds);
         Task<PagedResult<Hotpot>> SearchAsync(string searchTerm, int pageNumber, int pageSize);
-
         Task<decimal> CalculateDepositAsync(int id, int quantity);
     }
 }

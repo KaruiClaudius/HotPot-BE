@@ -29,7 +29,6 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<UtensilType> UtensilTypes { get; set; }
         public virtual DbSet<Hotpot> Hotpots { get; set; }
         public virtual DbSet<HotPotInventory> HotPotInventorys { get; set; }
-        public virtual DbSet<HotpotType> HotpotTypes { get; set; }
         public virtual DbSet<TurtorialVideo> TurtorialVideos { get; set; }
         public virtual DbSet<ConditionLog> ConditionLogs { get; set; }
         public virtual DbSet<Ingredient> Ingredients { get; set; }
@@ -280,12 +279,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasForeignKey(u => u.UtensilTypeID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Hotpot>()
-                .HasOne(h => h.HotpotType)
-                .WithMany(ht => ht.Hotpot)
-                .HasForeignKey(h => h.HotpotTypeID)
-                .OnDelete(DeleteBehavior.Restrict);
-
             modelBuilder.Entity<IngredientPrice>()
                 .Property(ip => ip.Price)
                 .HasColumnType("decimal(18,2)");
@@ -324,7 +317,7 @@ namespace Capstone.HPTY.RepositoryLayer
             });
 
             modelBuilder.Entity<TurtorialVideo>()
-                .HasMany(tv => tv.Hotpot)
+                .HasMany(tv => tv.Combo)
                 .WithOne(h => h.TurtorialVideo)
                 .HasForeignKey(h => h.TurtorialVideoID)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -410,16 +403,16 @@ namespace Capstone.HPTY.RepositoryLayer
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = -1, PhoneNumber = "0987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
-                new User { UserId = -2, PhoneNumber = "0999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = -3, PhoneNumber = "0888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = -4, PhoneNumber = "0777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -5, PhoneNumber = "0666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -6, PhoneNumber = "0555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -7, PhoneNumber = "0444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -8, PhoneNumber = "0333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = -9, PhoneNumber = "0222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = -10, PhoneNumber = "0111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 }
+                new User { UserId = -1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
+                new User { UserId = -2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = -3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = -4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = -5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = -6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = -7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = -8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
+                new User { UserId = -9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
+                new User { UserId = -10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 }
             );
 
             modelBuilder.Entity<Staff>().HasData(
@@ -440,13 +433,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new Customer { CustomerId = 3, UserID = -10, LoyatyPoint = 200 }
             );
 
-            modelBuilder.Entity<HotpotType>().HasData(
-                new HotpotType { HotpotTypeId = 1, Name = "Traditional" },
-                new HotpotType { HotpotTypeId = 2, Name = "Electric" },
-                new HotpotType { HotpotTypeId = 3, Name = "Portable" },
-                new HotpotType { HotpotTypeId = 4, Name = "Multi-compartment" },
-                new HotpotType { HotpotTypeId = 5, Name = "Ceramic" }
-            );
+
             modelBuilder.Entity<UtensilType>().HasData(
                 new UtensilType { UtensilTypeId = 1, Name = "Chopsticks", CreatedAt = DateTime.Now, IsDelete = false },
                 new UtensilType { UtensilTypeId = 2, Name = "Ladles", CreatedAt = DateTime.Now, IsDelete = false },
@@ -518,8 +505,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 89.99m,
                     Status = true,
                     Quantity = 25,
-                    HotpotTypeID = 1,
-                    TurtorialVideoID = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -535,8 +520,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 129.99m,
                     Status = true,
                     Quantity = 30,
-                    HotpotTypeID = 2,
-                    TurtorialVideoID = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -552,8 +535,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 69.99m,
                     Status = true,
                     Quantity = 40,
-                    HotpotTypeID = 3,
-                    TurtorialVideoID = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -569,8 +550,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 149.99m,
                     Status = true,
                     Quantity = 20,
-                    HotpotTypeID = 4,
-                    TurtorialVideoID = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -586,8 +565,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 79.99m,
                     Status = true,
                     Quantity = 15,
-                    HotpotTypeID = 5,
-                    TurtorialVideoID = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }

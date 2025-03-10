@@ -81,20 +81,12 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public DateTime LastMaintainDate { get; set; }
 
-        [Required]
-        [ForeignKey("HotpotType")]
-        public int HotpotTypeID { get; set; }
 
         [Required]
         [ForeignKey("HotPotInventory")]
         public int InventoryID { get; set; }
 
-        [Required]
-        [ForeignKey("TurtorialVideo")]
-        public int TurtorialVideoID { get; set; }
 
-        public virtual HotpotType? HotpotType { get; set; }
-        public virtual TurtorialVideo? TurtorialVideo { get; set; }
         public virtual OrderDetail? OrderDetail { get; set; }
         public virtual ICollection<HotPotInventory>? InventoryUnits { get; set; }
     }

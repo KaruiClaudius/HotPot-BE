@@ -24,9 +24,30 @@ public class Feedback : BaseEntity
     [NotMapped]
     public string[]? ImageURLs
     {
-        get => string.IsNullOrEmpty(ImageURL)
-            ? null
-            : JsonSerializer.Deserialize<string[]>(ImageURL);
+        get
+        {
+            if (string.IsNullOrEmpty(ImageURL))
+                return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<string[]>(ImageURL);
+            }
+            catch (JsonException)
+            {
+                // Log the error if you have a logger
+                // _logger.LogWarning($"Failed to deserialize ImageURL: {ImageURL}");
+
+                // If it looks like a single URL rather than a JSON array, return it as a single-element array
+                if (ImageURL.StartsWith("h") && (ImageURL.Contains("http://") || ImageURL.Contains("https://")))
+                {
+                    return new[] { ImageURL };
+                }
+
+                // Return an empty array as fallback
+                return Array.Empty<string>();
+            }
+        }
         set => ImageURL = value != null ? JsonSerializer.Serialize(value) : null;
     }
 
