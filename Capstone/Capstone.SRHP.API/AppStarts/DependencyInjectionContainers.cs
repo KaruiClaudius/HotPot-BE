@@ -76,7 +76,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IDiscountService, DiscountService>();
             services.AddScoped<IHotPotInventoryService, HotPotInventoryService>();
             services.AddScoped<IHotpotService, HotpotService>();
-            services.AddScoped<IHotpotTypeService, HotpotTypeService>();
+
             services.AddScoped<IIngredientService, IngredientService>();
             services.AddScoped<IIngredientTypeService, IngredientTypeService>();
             services.AddScoped<IComboService, ComboService>();
@@ -86,7 +86,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IRoleService, RoleService>();
 
-            services.AddScoped<ITurtorialVideoService, TurtorialVideoService>();
+
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IUtensilTypeService, UtensilTypeService>();

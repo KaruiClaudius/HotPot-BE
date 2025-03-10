@@ -25,6 +25,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(2000)]
         public string VideoURL { get; set; }
 
-        public virtual ICollection<Hotpot>? Hotpot { get; set; }
+        public virtual ICollection<Combo>? Combo { get; set; }
     }
 }

@@ -30,9 +30,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             try
             {
                 return await _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Include(h => h.TurtorialVideo)
-                    .Where(h => !h.IsDelete)
+                    .FindAll(h => !h.IsDelete)
                     .ToListAsync();
             }
             catch (Exception ex)
@@ -47,9 +45,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             try
             {
                 var query = _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Include(h => h.TurtorialVideo)
-                    .Where(h => !h.IsDelete);
+                    .FindAll(h => !h.IsDelete);
 
                 var totalCount = await query.CountAsync();
 
@@ -79,9 +75,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             try
             {
                 return await _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Include(h => h.TurtorialVideo)
-                    .FirstOrDefaultAsync(h => h.HotpotId == id && !h.IsDelete);
+                    .FindAsync(h => h.HotpotId == id && !h.IsDelete);
             }
             catch (Exception ex)
             {
@@ -113,22 +107,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (entity.Quantity < 0)
                     throw new ValidationException("Quantity cannot be negative");
 
-                // Validate HotpotType exists
-                var hotpotType = await _unitOfWork.Repository<HotpotType>()
-                    .FindAsync(ht => ht.HotpotTypeId == entity.HotpotTypeID && !ht.IsDelete);
-
-                if (hotpotType == null)
-                    throw new ValidationException("Invalid hotpot type");
-
-                // Validate TurtorialVideo exists if provided
-                if (entity.TurtorialVideoID != 0)
-                {
-                    var video = await _unitOfWork.Repository<TurtorialVideo>()
-                        .FindAsync(tv => tv.TurtorialVideoId == entity.TurtorialVideoID && !tv.IsDelete);
-
-                    if (video == null)
-                        throw new ValidationException("Invalid tutorial video");
-                }
 
                 entity.LastMaintainDate = DateTime.UtcNow;
                 _unitOfWork.Repository<Hotpot>().Insert(entity);
@@ -174,22 +152,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (entity.Quantity < 0)
                     throw new ValidationException("Quantity cannot be negative");
 
-                // Validate HotpotType exists
-                var hotpotType = await _unitOfWork.Repository<HotpotType>()
-                    .FindAsync(ht => ht.HotpotTypeId == entity.HotpotTypeID && !ht.IsDelete);
-
-                if (hotpotType == null)
-                    throw new ValidationException("Invalid hotpot type");
-
-                // Validate TurtorialVideo exists if provided
-                if (entity.TurtorialVideoID != 0)
-                {
-                    var video = await _unitOfWork.Repository<TurtorialVideo>()
-                        .FindAsync(tv => tv.TurtorialVideoId == entity.TurtorialVideoID && !tv.IsDelete);
-
-                    if (video == null)
-                        throw new ValidationException("Invalid tutorial video");
-                }
 
                 entity.SetUpdateDate();
                 await _unitOfWork.Repository<Hotpot>().Update(entity, id);
@@ -237,8 +199,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             try
             {
                 return await _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Where(h => !h.IsDelete && h.Status && h.Quantity > 0)
+                    .FindAll(h => !h.IsDelete && h.Status && h.Quantity > 0)
                     .ToListAsync();
             }
             catch (Exception ex)
@@ -248,21 +209,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
-        public async Task<IEnumerable<Hotpot>> GetByTypeAsync(int typeId)
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Where(h => h.HotpotTypeID == typeId && !h.IsDelete)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving hotpots by type ID {TypeId}", typeId);
-                throw;
-            }
-        }
+
 
         public async Task UpdateStatusAsync(int id, bool status)
         {
@@ -331,61 +278,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
-        public async Task<IEnumerable<Hotpot>> GetByTutorialVideoAsync(int tutorialVideoId)
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Hotpot>()
-                    .FindList(h => h.TurtorialVideoID == tutorialVideoId && !h.IsDelete);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving hotpots by tutorial video ID {VideoId}", tutorialVideoId);
-                throw;
-            }
-        }
 
-        public async Task<int> GetCountByTutorialVideoAsync(int tutorialVideoId)
-        {
-            try
-            {
-                var hotpots = await GetByTutorialVideoAsync(tutorialVideoId);
-                return hotpots.Count();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting count of hotpots by tutorial video ID {VideoId}", tutorialVideoId);
-                throw;
-            }
-        }
 
-        public async Task<Dictionary<int, int>> GetCountsByTutorialVideosAsync(IEnumerable<int> videoIds)
-        {
-            try
-            {
-                var counts = await _unitOfWork.Repository<Hotpot>()
-                    .FindAll(h => !h.IsDelete && videoIds.Contains(h.TurtorialVideoID))
-                    .GroupBy(h => h.TurtorialVideoID)
-                    .Select(g => new { VideoId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.VideoId, x => x.Count);
-
-                // Ensure all requested video IDs are in the dictionary, even if they have no hotpots
-                foreach (var videoId in videoIds)
-                {
-                    if (!counts.ContainsKey(videoId))
-                    {
-                        counts[videoId] = 0;
-                    }
-                }
-
-                return counts;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting counts of hotpots by tutorial video IDs");
-                throw;
-            }
-        }
 
         public async Task<PagedResult<Hotpot>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
         {
@@ -394,13 +288,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 searchTerm = searchTerm?.ToLower() ?? "";
 
                 var query = _unitOfWork.Repository<Hotpot>()
-                    .Include(h => h.HotpotType)
-                    .Include(h => h.TurtorialVideo)
-                    .Where(h => !h.IsDelete && h.Status && h.Quantity > 0 &&
+                    .FindAll(h => !h.IsDelete && h.Status && h.Quantity > 0 &&
                                (h.Name.ToLower().Contains(searchTerm) ||
                                 (h.Description != null && h.Description.ToLower().Contains(searchTerm)) ||
-                                h.Material.ToLower().Contains(searchTerm) ||
-                                h.HotpotType.Name.ToLower().Contains(searchTerm)));
+                                h.Material.ToLower().Contains(searchTerm)));
 
                 var totalCount = await query.CountAsync();
 

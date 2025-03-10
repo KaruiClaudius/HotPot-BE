@@ -15,16 +15,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
     public class CustomerHotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
-        private readonly IHotpotTypeService _hotpotTypeService;
         private readonly ILogger<CustomerHotpotController> _logger;
 
         public CustomerHotpotController(
             IHotpotService hotpotService,
-            IHotpotTypeService hotpotTypeService,
             ILogger<CustomerHotpotController> logger)
         {
             _hotpotService = hotpotService;
-            _hotpotTypeService = hotpotTypeService;
             _logger = logger;
         }
 
@@ -99,39 +96,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpGet("types")]
-        public async Task<ActionResult<IEnumerable<CustomerHotpotTypeDto>>> GetHotpotTypes()
-        {
-            try
-            {
-                var types = await _hotpotTypeService.GetAllAsync();
-                var typeDtos = types.Select(MapToCustomerHotpotTypeDto);
-                return Ok(typeDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("by-type/{typeId}")]
-        public async Task<ActionResult<IEnumerable<CustomerHotpotDto>>> GetByType(int typeId)
-        {
-            try
-            {
-                var hotpots = await _hotpotService.GetByTypeAsync(typeId);
-
-                // Filter to only show available hotpots to customers
-                var availableHotpots = hotpots.Where(h => h.Status && h.Quantity > 0);
-
-                var hotpotDtos = availableHotpots.Select(MapToCustomerHotpotDto);
-                return Ok(hotpotDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
 
         [HttpGet("check-availability/{id}")]
         public async Task<ActionResult<bool>> CheckAvailability(int id)
@@ -204,9 +168,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 if (maxPrice.HasValue)
                     filteredHotpots = filteredHotpots.Where(h => h.Price <= maxPrice.Value);
-
-                if (typeId.HasValue)
-                    filteredHotpots = filteredHotpots.Where(h => h.HotpotTypeID == typeId.Value);
 
                 if (size.HasValue)
                     filteredHotpots = filteredHotpots.Where(h => h.Size == size.Value);
@@ -286,35 +247,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpGet("tutorials")]
-        public async Task<ActionResult<IEnumerable<TutorialVideoDto>>> GetTutorialVideos()
-        {
-            try
-            {
-                // Get all available hotpots with their tutorial videos
-                var hotpots = await _hotpotService.GetAvailableHotpotsAsync();
-
-                // Extract unique tutorial videos
-                var tutorialVideos = hotpots
-                    .Where(h => h.TurtorialVideo != null)
-                    .Select(h => h.TurtorialVideo)
-                .DistinctBy(v => v.TurtorialVideoId)
-                    .Select(v => new TutorialVideoDto
-                    {
-                        TutorialVideoId = v.TurtorialVideoId,
-                        Title = v.Name,
-                        Description = v.Description,
-                        VideoUrl = v.VideoURL
-                    })
-                    .ToList();
-
-                return Ok(tutorialVideos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+      
 
         public class PriceRangeDto
         {
@@ -345,7 +278,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 ImageURLs = hotpot.ImageURLs ?? new string[0],
                 Price = hotpot.Price,
                 IsAvailable = hotpot.Status && hotpot.Quantity > 0,
-                HotpotTypeName = hotpot.HotpotType?.Name ?? "Unknown"
             };
         }
 
@@ -366,20 +298,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Price = baseDto.Price,
                 IsAvailable = baseDto.IsAvailable,
                 HotpotTypeName = baseDto.HotpotTypeName,
-                TurtorialVideoID = hotpot.TurtorialVideoID,
-                TurtorialVideoUrl = hotpot.TurtorialVideo?.VideoURL ?? string.Empty,
-                TurtorialVideoTitle = hotpot.TurtorialVideo?.Name ?? string.Empty
-            };
-        }
-
-        private CustomerHotpotTypeDto MapToCustomerHotpotTypeDto(HotpotType hotpotType)
-        {
-            if (hotpotType == null) return null;
-
-            return new CustomerHotpotTypeDto
-            {
-                HotpotTypeId = hotpotType.HotpotTypeId,
-                Name = hotpotType.Name,
             };
         }
     }
