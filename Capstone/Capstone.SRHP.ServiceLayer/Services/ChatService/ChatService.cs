@@ -42,18 +42,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 .FindAsync(m => m.ChatMessageId == messageId);
         }
 
-        public async Task<IEnumerable<ChatMessage>> GetChatHistoryAsync(int userId1, int userId2, int pageNumber = 1, int pageSize = 20)
-        {
-            var messages = await _unitOfWork.Repository<ChatMessage>()
-                .GetAll(m => m.SenderUserId == userId1 && m.ReceiverUserId == userId2 ||
-                             m.SenderUserId == userId2 && m.ReceiverUserId == userId1)
-                .OrderByDescending(m => m.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+        //public async Task<IEnumerable<ChatMessage>> GetChatHistoryAsync(int userId1, int userId2, int pageNumber = 1, int pageSize = 20)
+        //{
+        //    var messages = await _unitOfWork.Repository<ChatMessage>()
+        //        .GetAll(m => m.SenderUserId == userId1 && m.ReceiverUserId == userId2 ||
+        //                     m.SenderUserId == userId2 && m.ReceiverUserId == userId1)
+        //        .OrderByDescending(m => m.CreatedAt)
+        //        .Skip((pageNumber - 1) * pageSize)
+        //        .Take(pageSize)
+        //        .ToListAsync();
 
-            return messages.OrderBy(m => m.CreatedAt);
-        }
+        //    return messages.OrderBy(m => m.CreatedAt);
+        //}
 
         public async Task<ChatSession> CreateChatSessionAsync(int customerId, string topic)
         {
@@ -135,16 +135,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                     .ThenInclude(c => c.User)
                 .Include(s => s.Manager)
                 .ThenInclude(m => m.User)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<ChatSession>> GetCustomerChatHistoryAsync(int customerId)
-        {
-            return await _unitOfWork.Repository<ChatSession>()
-                .GetAll(s => s.CustomerId == customerId)
-                .Include(s => s.Manager)
-                    .ThenInclude(m => m.User)
-                .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
         }
 

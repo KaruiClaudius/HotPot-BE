@@ -16,6 +16,10 @@ namespace Capstone.HPTY.API.Hubs
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
             }
+            else if (userType.ToLower() == "admin")
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+            }
             else
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "Customers");
@@ -39,11 +43,21 @@ namespace Capstone.HPTY.API.Hubs
 
         public async Task NotifyNewFeedback(int feedbackId, string customerName, string feedbackTitle)
         {
-            // Notify all managers about new feedback
-            await Clients.Group("Managers").SendAsync("ReceiveNewFeedback",
+            // Notify all admins about new feedback that needs approval
+            await Clients.Group("Admins").SendAsync("ReceiveNewFeedback",
                 feedbackId,
                 customerName,
                 feedbackTitle,
+                DateTime.UtcNow);
+        }
+
+        public async Task NotifyFeedbackApproved(int feedbackId, string adminName, string feedbackTitle)
+        {
+            // Notify all managers about newly approved feedback
+            await Clients.Group("Managers").SendAsync("ReceiveApprovedFeedback",
+                feedbackId,
+                feedbackTitle,
+                adminName,
                 DateTime.UtcNow);
         }
 

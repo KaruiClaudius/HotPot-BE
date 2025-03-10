@@ -192,6 +192,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 .OnDelete(DeleteBehavior.Restrict);
 
 
+
             modelBuilder.Entity<Customization>()
                 .Property(c => c.BasePrice)
                 .HasColumnType("decimal(18,2)");
