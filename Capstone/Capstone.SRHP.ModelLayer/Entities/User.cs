@@ -21,7 +21,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [EmailAddress]
         [MaxLength(255)]
-        public string Email { get; set; } = null!;
+        public string? Email { get; set; } = null!;
 
         [Required]
         [StringLength(255)]

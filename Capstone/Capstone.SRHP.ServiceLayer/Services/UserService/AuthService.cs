@@ -28,9 +28,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
+
+
             var user = await _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDelete);
+                .FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber && !u.IsDelete);
 
             if (user == null || !PasswordTools.VerifyPassword(request.Password, user.Password))
                 throw new UnauthorizedException("Invalid email or password");
@@ -45,7 +47,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             {
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.Email == request.Email);
+                    .FindAsync(u => u.PhoneNumber == request.PhoneNumber);
 
                 if (existingUser != null && !existingUser.IsDelete)
                 {
@@ -88,7 +90,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     // Create new user with Customer role
                     var newUser = new User
                     {
-                        Email = request.Email,
                         Password = hashedPassword,
                         Name = request.Name,
                         PhoneNumber = request.PhoneNumber,
@@ -176,16 +177,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             };
         }
 
-        private async Task<int> GetDefaultRoleId()
-        {
-            var customerRole = await _unitOfWork.Repository<Role>()
-                .FindAsync(r => r.Name == "Customer" && !r.IsDelete);
-
-            if (customerRole == null)
-                throw new ValidationException("Default role not found");
-
-            return customerRole.RoleId;
-        }
 
         private async Task CreateCustomerEntryAsync(User user)
         {

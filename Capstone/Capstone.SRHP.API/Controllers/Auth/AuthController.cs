@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.API.AppStarts;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
@@ -13,6 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
 {
     [ApiController]
     [Route("api/auth")]
+    [SwaggerGroup("Auth")]
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -43,7 +45,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
             }
             catch (UnauthorizedException ex)
             {
-                _logger.LogWarning(ex, "Login failed for email: {Email}", request.Email);
+                _logger.LogWarning(ex, "Login failed for email: {PhoneNumber}", request.PhoneNumber);
                 return Unauthorized(new ApiErrorResponse
                 {
                     Status = "Error",
@@ -70,7 +72,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Registration failed for email: {Email}", request.Email);
+                _logger.LogWarning(ex, "Registration failed for email: {PhoneNumber}", request.PhoneNumber);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",

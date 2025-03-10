@@ -9,9 +9,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Auth
 {
     public class LoginRequest
     {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = null!;
+        [Phone]
+        [StringLength(15)]
+        public string? PhoneNumber { get; set; }
 
         [Required]
         [MinLength(6)]

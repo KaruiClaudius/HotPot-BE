@@ -1,9 +1,11 @@
 ﻿using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics;
 using System.Reflection;
 
 namespace Capstone.HPTY.API.AppStarts
 {
+
     public static class SwaggerConfig
     {
         public static void ConfigureSwaggerServices(this IServiceCollection services, string appName)
@@ -24,6 +26,14 @@ namespace Capstone.HPTY.API.AppStarts
                 });
                 c.CustomSchemaIds(type => type.FullName);
 
+                // Add operation filter to assign operations to groups
+                c.OperationFilter<SwaggerGroupOperationFilter>();
+
+                // Add document filter to order the tags
+                c.DocumentFilter<SwaggerGroupTagsFilter>();
+
+                // Order actions within each tag
+                c.OrderActionsBy(apiDesc => apiDesc.RelativePath);
 
                 // JWT Authentication
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -37,20 +47,19 @@ namespace Capstone.HPTY.API.AppStarts
                 });
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
             {
+                new OpenApiSecurityScheme
                 {
-                    new OpenApiSecurityScheme
+                    Reference = new OpenApiReference
                     {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    },
-                    Array.Empty<string>()
-                }
-            });
-
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
 
                 // Enum descriptions
                 c.SchemaFilter<EnumSchemaFilter>();
