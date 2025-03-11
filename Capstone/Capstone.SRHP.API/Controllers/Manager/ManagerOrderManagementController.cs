@@ -67,15 +67,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        // Staff workload endpoints
-        [HttpGet("staff/workloads")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffWorkloadDto>>>> GetStaffWorkloads()
-        {
-            var workloads = await _orderManagementService.GetStaffWorkloads();
-            return Ok(ApiResponse<IEnumerable<StaffWorkloadDto>>.SuccessResponse(workloads, "Staff workloads retrieved successfully"));
-        }
-
         // Order status tracking endpoints
         [HttpPut("status/{orderId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -179,30 +170,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
             }
         }
-
-        // Staff allocation statistics endpoints
-        [HttpGet("staff/{staffId}/stats")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<StaffAllocationStatsDto>>> GetStaffAllocationStats(int staffId)
-        {
-            try
-            {
-                var stats = await _orderManagementService.GetStaffAllocationStats(staffId);
-                return Ok(ApiResponse<StaffAllocationStatsDto>.SuccessResponse(stats, "Staff allocation statistics retrieved successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<StaffAllocationStatsDto>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpGet("staff/stats")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffAllocationStatsDto>>>> GetAllStaffAllocationStats()
-        {
-            var stats = await _orderManagementService.GetAllStaffAllocationStats();
-            return Ok(ApiResponse<IEnumerable<StaffAllocationStatsDto>>.SuccessResponse(stats, "All staff allocation statistics retrieved successfully"));
-        }
+             
     }
 }
