@@ -27,43 +27,94 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             _sizeDiscountService = sizeDiscountService;
         }
 
-        public async Task<IEnumerable<Combo>> GetAllAsync()
+        public async Task<PagedResult<Combo>> GetCombosAsync(
+            string searchTerm = null,
+            bool? isCustomizable = null,
+            bool activeOnly = true,
+            int? minSize = null,
+            int? maxSize = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "Name",
+            bool ascending = true)
         {
-            return await _unitOfWork.Repository<Combo>()
-                .IncludeNested(query =>
-                    query.Include(c => c.ComboIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => !c.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task<PagedResult<Combo>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            // Validate input parameters
+            // Validate pagination parameters
             if (pageNumber < 1)
                 pageNumber = 1;
 
             if (pageSize < 1)
                 pageSize = 10;
 
+            // Start building the query with includes
             var query = _unitOfWork.Repository<Combo>()
                 .IncludeNested(query =>
                     query.Include(c => c.ComboIngredients)
                          .ThenInclude(ci => ci.Ingredient)
                          .Include(c => c.HotpotBroth)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => !c.IsDelete);
+                         .Include(c => c.AppliedDiscount)
+                         .Include(c => c.TurtorialVideo)
+                         .Include(c => c.AllowedIngredientTypes)
+                         .ThenInclude(ait => ait.IngredientType));
 
+            // Apply active-only filter if requested
+            if (activeOnly)
+            {
+                query = query.Where(c => !c.IsDelete);
+            }
+
+            // Apply search term filter if provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(c =>
+                    c.Name.ToLower().Contains(searchTerm) ||
+                    (c.Description != null && c.Description.ToLower().Contains(searchTerm)) ||
+                    c.HotpotBroth.Name.ToLower().Contains(searchTerm));
+            }
+
+            // Apply customizable filter if provided
+            if (isCustomizable.HasValue)
+            {
+                query = query.Where(c => c.IsCustomizable == isCustomizable.Value);
+            }
+
+            // Apply size range filters if provided
+            if (minSize.HasValue)
+            {
+                query = query.Where(c => c.Size >= minSize.Value);
+            }
+
+            if (maxSize.HasValue)
+            {
+                query = query.Where(c => c.Size <= maxSize.Value);
+            }
+
+            // Apply price range filters if provided
+            if (minPrice.HasValue)
+            {
+                query = query.Where(c => c.BasePrice >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(c => c.BasePrice <= maxPrice.Value);
+            }
+
+            // Count total results before applying pagination
             var totalCount = await query.CountAsync();
 
+            // Apply sorting
+            query = ApplySorting(query, sortBy, ascending);
+
+            // Apply pagination
             var items = await query
-                .OrderBy(c => c.Name)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
+            // Return paged result
             return new PagedResult<Combo>
             {
                 Items = items,
@@ -71,6 +122,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        // Helper method to apply sorting based on property name
+        private IQueryable<Combo> ApplySorting(IQueryable<Combo> query, string sortBy, bool ascending)
+        {
+            // Default to sorting by Name if sortBy is invalid
+            switch (sortBy.ToLower())
+            {
+                case "name":
+                    return ascending
+                        ? query.OrderBy(c => c.Name)
+                        : query.OrderByDescending(c => c.Name);
+                case "size":
+                    return ascending
+                        ? query.OrderBy(c => c.Size)
+                        : query.OrderByDescending(c => c.Size);
+                case "price":
+                case "baseprice":
+                    return ascending
+                        ? query.OrderBy(c => c.BasePrice)
+                        : query.OrderByDescending(c => c.BasePrice);
+                case "totalprice":
+                    return ascending
+                        ? query.OrderBy(c => c.TotalPrice)
+                        : query.OrderByDescending(c => c.TotalPrice);
+                case "createdate":
+                case "created":
+                    return ascending
+                        ? query.OrderBy(c => c.CreatedAt)
+                        : query.OrderByDescending(c => c.CreatedAt);
+                case "updatedate":
+                case "updated":
+                    return ascending
+                        ? query.OrderBy(c => c.UpdatedAt)
+                        : query.OrderByDescending(c => c.UpdatedAt);
+                default:
+                    return ascending
+                        ? query.OrderBy(c => c.Name)
+                        : query.OrderByDescending(c => c.Name);
+            }
         }
 
         public async Task<Combo> GetByIdAsync(int id)
@@ -81,69 +172,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                          .ThenInclude(ci => ci.Ingredient)
                          .Include(c => c.HotpotBroth)
                          .Include(c => c.AppliedDiscount)
+                         .Include(c => c.TurtorialVideo)
                          .Include(c => c.AllowedIngredientTypes)
                          .ThenInclude(ait => ait.IngredientType))
                 .FirstOrDefaultAsync(c => c.ComboId == id && !c.IsDelete);
         }
-        public async Task<IEnumerable<Combo>> GetCustomizableCombosAsync()
-        {
-            return await _unitOfWork.Repository<Combo>()
-                .IncludeNested(query =>
-                    query.Include(c => c.AllowedIngredientTypes)
-                         .ThenInclude(ait => ait.IngredientType)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => c.IsCustomizable && !c.IsDelete)
-                .ToListAsync();
-        }
 
-        public async Task<Combo> CreateAsync(Combo entity)
-        {
-            //// Validate basic properties
-            //if (string.IsNullOrWhiteSpace(entity.Name))
-            //    throw new ValidationException("Combo name cannot be empty");
 
-            //if (entity.Size <= 0)
-            //    throw new ValidationException("Combo size must be greater than 0");
-
-            //if (entity.Discount < 0 || entity.Discount > 100)
-            //    throw new ValidationException("Discount must be between 0 and 100");
-
-            //// Check if combo name exists
-            //var nameExists = await _unitOfWork.Repository<Combo>()
-            //    .AnyAsync(c => c.Name == entity.Name && !c.IsDelete);
-
-            //if (nameExists)
-            //    throw new ValidationException($"Combo with name {entity.Name} already exists");
-
-            //// Validate HotpotBroth
-            //await ValidateHotpotBroth(entity.HotpotBrothID);
-
-            //// Calculate initial total price
-            //entity.BasePrice  = await CalculateTotalPriceAsync(entity);
-
-            //_unitOfWork.Repository<Combo>().Insert(entity);
-            //await _unitOfWork.CommitAsync();
-
-            //return entity;
-
-            throw new NotImplementedException();
-        }
-
-        public async Task<Combo> CreateAsync(Combo combo, List<ComboIngredient> ingredients)
+        public async Task<Combo> CreateComboWithVideoAsync(
+            Combo combo,
+            TurtorialVideo video,
+            List<ComboIngredient> baseIngredients = null,
+            List<ComboAllowedIngredientType> allowedTypes = null)
         {
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Validate basic properties
+                // Validate basic combo properties
                 if (string.IsNullOrWhiteSpace(combo.Name))
                     throw new ValidationException("Combo name cannot be empty");
 
                 if (combo.Size <= 0)
                     throw new ValidationException("Combo size must be greater than 0");
 
-                if (combo.BasePrice <= 0)
-                    throw new ValidationException("Combo base price must be greater than 0");
+                // Validate video properties
+                if (string.IsNullOrWhiteSpace(video.Name))
+                    throw new ValidationException("Video name cannot be empty");
+
+                if (string.IsNullOrWhiteSpace(video.VideoURL))
+                    throw new ValidationException("Video URL cannot be empty");
+
+                // Validate URL format
+                if (!Uri.TryCreate(video.VideoURL, UriKind.Absolute, out _) && !video.VideoURL.StartsWith("/"))
+                    throw new ValidationException($"Invalid video URL format: {video.VideoURL}");
 
                 // Validate image URLs if provided
                 if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
@@ -151,15 +212,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     foreach (var url in combo.ImageURLs)
                     {
                         if (string.IsNullOrWhiteSpace(url))
-                        {
                             throw new ValidationException("Image URLs cannot be empty");
-                        }
 
-                        // Optional: Add URL format validation if needed
                         if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
                             throw new ValidationException($"Invalid image URL format: {url}");
-                        }
                     }
                 }
 
@@ -173,6 +229,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Validate HotpotBroth
                 await ValidateHotpotBroth(combo.HotpotBrothID);
 
+                // If combo is customizable, ensure allowed types are provided
+                if (combo.IsCustomizable && (allowedTypes == null || allowedTypes.Count == 0))
+                    throw new ValidationException("Customizable combos must have at least one allowed ingredient type");
+
+                // First create the tutorial video
+                _unitOfWork.Repository<TurtorialVideo>().Insert(video);
+                await _unitOfWork.CommitAsync();
+
+                // Set the video ID on the combo
+                combo.TurtorialVideoID = video.TurtorialVideoId;
+
+                // Set initial base price (will be updated after ingredients are added)
+                combo.BasePrice = 0;
+                combo.TotalPrice = 0;
+
                 // Get applicable discount for this size
                 var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
                 combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
@@ -181,103 +252,51 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 _unitOfWork.Repository<Combo>().Insert(combo);
                 await _unitOfWork.CommitAsync();
 
-                // Add ingredients
-                foreach (var ingredient in ingredients)
+                // Add base ingredients if provided
+                if (baseIngredients != null && baseIngredients.Count > 0)
                 {
-                    // Validate ingredient exists
-                    var ingredientExists = await _unitOfWork.Repository<Ingredient>()
-                        .AnyAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
-
-                    if (!ingredientExists)
-                        throw new ValidationException($"Ingredient with ID {ingredient.IngredientID} not found");
-
-                    ingredient.ComboID = combo.ComboId;
-                    _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
-                }
-
-                await _unitOfWork.CommitAsync();
-                await transaction.CommitAsync();
-
-                return await GetByIdAsync(combo.ComboId);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
-        public async Task<Combo> CreateCustomizableComboAsync(Combo combo, List<ComboAllowedIngredientType> allowedTypes)
-        {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(combo.Name))
-                    throw new ValidationException("Combo name cannot be empty");
-
-                if (combo.Size <= 0)
-                    throw new ValidationException("Combo size must be greater than 0");
-
-                if (combo.BasePrice <= 0)
-                    throw new ValidationException("Combo base price must be greater than 0");
-
-                // Validate image URLs if provided
-                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
-                {
-                    foreach (var url in combo.ImageURLs)
+                    foreach (var ingredient in baseIngredients)
                     {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            throw new ValidationException("Image URLs cannot be empty");
-                        }
+                        // Validate ingredient exists
+                        var ingredientExists = await _unitOfWork.Repository<Ingredient>()
+                            .AnyAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
 
-                        // Optional: Add URL format validation if needed
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
-                            throw new ValidationException($"Invalid image URL format: {url}");
-                        }
+                        if (!ingredientExists)
+                            throw new ValidationException($"Ingredient with ID {ingredient.IngredientID} not found");
+
+                        ingredient.ComboID = combo.ComboId;
+                        _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
                     }
+                    await _unitOfWork.CommitAsync();
                 }
 
-                // Set as customizable
-                combo.IsCustomizable = true;
-
-                // Check if combo name exists
-                var nameExists = await _unitOfWork.Repository<Combo>()
-                    .AnyAsync(c => c.Name == combo.Name && !c.IsDelete);
-
-                if (nameExists)
-                    throw new ValidationException($"Combo with name {combo.Name} already exists");
-
-                // Validate HotpotBroth
-                await ValidateHotpotBroth(combo.HotpotBrothID);
-
-                // Get applicable discount for this size
-                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
-
-                // Insert combo
-                _unitOfWork.Repository<Combo>().Insert(combo);
-                await _unitOfWork.CommitAsync();
-
-                // Add allowed ingredient types
-                foreach (var allowedType in allowedTypes)
+                // Add allowed ingredient types if this is a customizable combo
+                if (combo.IsCustomizable && allowedTypes != null && allowedTypes.Count > 0)
                 {
-                    // Validate ingredient type exists
-                    var typeExists = await _unitOfWork.Repository<IngredientType>()
-                        .AnyAsync(it => it.IngredientTypeId == allowedType.IngredientTypeId && !it.IsDelete);
+                    foreach (var allowedType in allowedTypes)
+                    {
+                        // Validate ingredient type exists
+                        var typeExists = await _unitOfWork.Repository<IngredientType>()
+                            .AnyAsync(it => it.IngredientTypeId == allowedType.IngredientTypeId && !it.IsDelete);
 
-                    if (!typeExists)
-                        throw new ValidationException($"Ingredient type with ID {allowedType.IngredientTypeId} not found");
+                        if (!typeExists)
+                            throw new ValidationException($"Ingredient type with ID {allowedType.IngredientTypeId} not found");
 
-                    allowedType.ComboId = combo.ComboId;
-                    _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
+                        if (allowedType.MaxQuantity <= 0)
+                            throw new ValidationException($"Max quantity for ingredient type must be greater than 0");
+
+                        allowedType.ComboId = combo.ComboId;
+                        _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
+                    }
+                    await _unitOfWork.CommitAsync();
                 }
 
-                await _unitOfWork.CommitAsync();
+                // Calculate base price and total price
+                await UpdatePricesAsync(combo.ComboId);
+
                 await transaction.CommitAsync();
 
+                // Return the complete combo with all relationships loaded
                 return await GetByIdAsync(combo.ComboId);
             }
             catch
@@ -289,107 +308,148 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         public async Task UpdateAsync(int id, Combo combo)
         {
-            var existingCombo = await GetByIdAsync(id);
-            if (existingCombo == null)
-                throw new NotFoundException($"Combo with ID {id} not found");
-
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(combo.Name))
-                throw new ValidationException("Combo name cannot be empty");
-
-            if (combo.Size <= 0)
-                throw new ValidationException("Combo size must be greater than 0");
-
-            if (combo.BasePrice <= 0)
-                throw new ValidationException("Combo base price must be greater than 0");
-
-            // Validate image URLs if provided
-            if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                foreach (var url in combo.ImageURLs)
-                {
-                    if (string.IsNullOrWhiteSpace(url))
-                    {
-                        throw new ValidationException("Image URLs cannot be empty");
-                    }
+                var existingCombo = await GetByIdAsync(id);
+                if (existingCombo == null)
+                    throw new NotFoundException($"Combo with ID {id} not found");
 
-                    // Optional: Add URL format validation if needed
-                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(combo.Name))
+                    throw new ValidationException("Combo name cannot be empty");
+
+                if (combo.Size <= 0)
+                    throw new ValidationException("Combo size must be greater than 0");
+
+                // Note: We don't validate BasePrice here since we'll calculate it
+
+                // Validate image URLs if provided
+                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+                {
+                    foreach (var url in combo.ImageURLs)
                     {
-                        throw new ValidationException($"Invalid image URL format: {url}");
+                        if (string.IsNullOrWhiteSpace(url))
+                            throw new ValidationException("Image URLs cannot be empty");
+
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                            throw new ValidationException($"Invalid image URL format: {url}");
                     }
                 }
+
+                // Check if combo name exists (excluding this one)
+                var nameExists = await _unitOfWork.Repository<Combo>()
+                    .AnyAsync(c => c.Name == combo.Name && c.ComboId != id && !c.IsDelete);
+
+                if (nameExists)
+                    throw new ValidationException($"Another combo with name {combo.Name} already exists");
+
+                // Validate HotpotBroth if it's being changed
+                if (existingCombo.HotpotBrothID != combo.HotpotBrothID)
+                {
+                    await ValidateHotpotBroth(combo.HotpotBrothID);
+                }
+
+                // Validate TurtorialVideo if it's being changed
+                if (existingCombo.TurtorialVideoID != combo.TurtorialVideoID)
+                {
+                    await ValidateTurtorialVideo(combo.TurtorialVideoID);
+                }
+
+                // Get applicable discount for this size if size changed
+                if (existingCombo.Size != combo.Size || !combo.AppliedDiscountID.HasValue)
+                {
+                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
+                    combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
+                }
+
+                // Update combo
+                combo.SetUpdateDate();
+                await _unitOfWork.Repository<Combo>().Update(combo, id);
+                await _unitOfWork.CommitAsync();
+
+                // Recalculate prices
+                await UpdatePricesAsync(id);
+
+                await transaction.CommitAsync();
             }
-
-            // Check if combo name exists (excluding this one)
-            var nameExists = await _unitOfWork.Repository<Combo>()
-                .AnyAsync(c => c.Name == combo.Name && c.ComboId != id && !c.IsDelete);
-
-            if (nameExists)
-                throw new ValidationException($"Another combo with name {combo.Name} already exists");
-
-            // Validate HotpotBroth if it's being changed
-            if (existingCombo.HotpotBrothID != combo.HotpotBrothID)
+            catch
             {
-                await ValidateHotpotBroth(combo.HotpotBrothID);
+                await transaction.RollbackAsync();
+                throw;
             }
-
-            // Get applicable discount for this size if size changed
-            if (existingCombo.Size != combo.Size || !combo.AppliedDiscountID.HasValue)
-            {
-                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
-            }
-
-            // Update combo
-            combo.SetUpdateDate();
-            await _unitOfWork.Repository<Combo>().Update(combo, id);
-            await _unitOfWork.CommitAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var combo = await GetByIdAsync(id);
-            if (combo == null)
-                throw new NotFoundException($"Combo with ID {id} not found");
-
-            // Check if this combo is used by any customizations or orders
-            var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
-                .AnyAsync(c => c.ComboID == id && !c.IsDelete);
-
-            var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
-                .AnyAsync(od => od.ComboID == id && !od.IsDelete);
-
-            if (isUsedByCustomization || isUsedByOrder)
-                throw new ValidationException("Cannot delete this combo as it is used by existing customizations or orders");
-
-            // Soft delete combo and related entities
-            combo.SoftDelete();
-
-            // Soft delete combo ingredients
-            var comboIngredients = await _unitOfWork.Repository<ComboIngredient>()
-                .FindAll(ci => ci.ComboID == id && !ci.IsDelete)
-                .ToListAsync();
-
-            foreach (var ingredient in comboIngredients)
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                ingredient.SoftDelete();
-            }
+                var combo = await GetByIdAsync(id);
+                if (combo == null)
+                    throw new NotFoundException($"Combo with ID {id} not found");
 
-            // Soft delete allowed ingredient types if this is a customizable combo
-            if (combo.IsCustomizable)
-            {
-                var allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                    .FindAll(ait => ait.ComboId == id && !ait.IsDelete)
+                // Check if this combo is used by any customizations or orders
+                var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
+                    .AnyAsync(c => c.ComboID == id && !c.IsDelete);
+
+                var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
+                    .AnyAsync(od => od.ComboID == id && !od.IsDelete);
+
+                if (isUsedByCustomization || isUsedByOrder)
+                    throw new ValidationException("Cannot delete this combo as it is used by existing customizations or orders");
+
+                // Check if the tutorial video is used by other combos
+                var videoId = combo.TurtorialVideoID;
+                var videoUsedByOtherCombos = await _unitOfWork.Repository<Combo>()
+                    .AnyAsync(c => c.TurtorialVideoID == videoId && c.ComboId != id && !c.IsDelete);
+
+                // Soft delete combo and related entities
+                combo.SoftDelete();
+
+                // Soft delete combo ingredients
+                var comboIngredients = await _unitOfWork.Repository<ComboIngredient>()
+                    .FindAll(ci => ci.ComboID == id && !ci.IsDelete)
                     .ToListAsync();
 
-                foreach (var type in allowedTypes)
+                foreach (var ingredient in comboIngredients)
                 {
-                    type.SoftDelete();
+                    ingredient.SoftDelete();
                 }
-            }
 
-            await _unitOfWork.CommitAsync();
+                // Soft delete allowed ingredient types if this is a customizable combo
+                if (combo.IsCustomizable)
+                {
+                    var allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                        .FindAll(ait => ait.ComboId == id && !ait.IsDelete)
+                        .ToListAsync();
+
+                    foreach (var type in allowedTypes)
+                    {
+                        type.SoftDelete();
+                    }
+                }
+
+                // If the tutorial video is not used by other combos, soft delete it too
+                if (!videoUsedByOtherCombos)
+                {
+                    var video = await _unitOfWork.Repository<TurtorialVideo>()
+                        .FindAsync(tv => tv.TurtorialVideoId == videoId && !tv.IsDelete);
+
+                    if (video != null)
+                    {
+                        video.SoftDelete();
+                    }
+                }
+
+                await _unitOfWork.CommitAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<IEnumerable<ComboAllowedIngredientType>> GetAllowedIngredientTypesAsync(int comboId)
@@ -406,8 +466,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 .Where(ait => ait.ComboId == comboId && !ait.IsDelete)
                 .ToListAsync();
         }
-
-
 
         public async Task<IEnumerable<Ingredient>> GetAvailableIngredientsForTypeAsync(int comboId, int ingredientTypeId)
         {
@@ -447,17 +505,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 throw new ValidationException("Selected broth is out of stock");
         }
 
-        public async Task<IEnumerable<Combo>> GetActiveAsync()
-        {
-            return await _unitOfWork.Repository<Combo>()
-                .IncludeNested(query =>
-                    query.Include(c => c.ComboIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => !c.IsDelete)
-                .ToListAsync();
-        }
 
         public async Task<IEnumerable<ComboIngredient>> GetComboIngredientsAsync(int comboId)
         {
@@ -465,125 +512,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 .Include(ci => ci.Ingredient)
                 .Where(ci => ci.ComboID == comboId && !ci.IsDelete)
                 .ToListAsync();
-        }
-
-        public async Task AddIngredientToComboAsync(int comboId, int ingredientId, int quantity)
-        {
-            var combo = await GetByIdAsync(comboId);
-            if (combo == null)
-                throw new NotFoundException($"Combo with ID {comboId} not found");
-
-            var ingredient = await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .FirstOrDefaultAsync(i => i.IngredientId == ingredientId && !i.IsDelete);
-
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {ingredientId} not found");
-
-            // Don't allow adding broth as a regular ingredient
-            if (ingredient.IngredientTypeID == BROTH_TYPE_ID)
-                throw new ValidationException("Cannot add broth as a regular ingredient. Use HotpotBroth property instead.");
-
-            // Check if ingredient already exists in combo
-            var existingIngredient = await _unitOfWork.Repository<ComboIngredient>()
-                .FindAsync(ci => ci.ComboID == comboId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (existingIngredient != null)
-                throw new ValidationException("Ingredient already exists in combo");
-
-            var comboIngredient = new ComboIngredient
-            {
-                ComboID = comboId,
-                IngredientID = ingredientId,
-                Quantity = quantity
-            };
-
-            _unitOfWork.Repository<ComboIngredient>().Insert(comboIngredient);
-
-            // Update combo base price
-            combo.BasePrice = await CalculateBasePriceAsync(combo);
-            combo.SetUpdateDate();
-
-            await _unitOfWork.CommitAsync();
-        }
-
-        public async Task RemoveIngredientFromComboAsync(int comboId, int ingredientId)
-        {
-            var comboIngredient = await _unitOfWork.Repository<ComboIngredient>()
-                .FindAsync(ci => ci.ComboID == comboId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (comboIngredient == null)
-                throw new NotFoundException("Ingredient not found in combo");
-
-            comboIngredient.SoftDelete();
-
-            // Update combo base price
-            var combo = await GetByIdAsync(comboId);
-            if (combo != null)
-            {
-                combo.BasePrice = await CalculateBasePriceAsync(combo);
-                combo.SetUpdateDate();
-            }
-
-            await _unitOfWork.CommitAsync();
-        }
-
-        public async Task UpdateIngredientQuantityAsync(int comboId, int ingredientId, int newQuantity)
-        {
-            if (newQuantity <= 0)
-                throw new ValidationException("Quantity must be greater than 0");
-
-            var comboIngredient = await _unitOfWork.Repository<ComboIngredient>()
-                .FindAsync(ci => ci.ComboID == comboId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (comboIngredient == null)
-                throw new NotFoundException("Ingredient not found in combo");
-
-            comboIngredient.Quantity = newQuantity;
-            comboIngredient.SetUpdateDate();
-
-            // Update combo base price
-            var combo = await GetByIdAsync(comboId);
-            if (combo != null)
-            {
-                combo.BasePrice = await CalculateBasePriceAsync(combo);
-                combo.SetUpdateDate();
-            }
-
-            await _unitOfWork.CommitAsync();
-        }
-
-
-        public async Task<PagedResult<Combo>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
-        {
-            searchTerm = searchTerm?.ToLower() ?? "";
-
-            var query = _unitOfWork.Repository<Combo>()
-                .IncludeNested(query =>
-                    query.Include(c => c.ComboIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => !c.IsDelete &&
-                           (c.Name.ToLower().Contains(searchTerm) ||
-                            (c.Description != null && c.Description.ToLower().Contains(searchTerm)) ||
-                            c.HotpotBroth.Name.ToLower().Contains(searchTerm)));
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderBy(c => c.Name)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Combo>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
         }
 
         public async Task<decimal> CalculateTotalPriceAsync(int comboId, int size)
@@ -619,54 +547,92 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             return finalPrice;
         }
 
-        // This method calculates the base price for a single serving
-        private async Task<decimal> CalculateBasePriceAsync(Combo combo)
+        
+        private async Task ValidateTurtorialVideo(int turtorialVideoId)
         {
+            var turtorialVideo = await _unitOfWork.Repository<TurtorialVideo>()
+                .FindAsync(tv => tv.TurtorialVideoId == turtorialVideoId && !tv.IsDelete);
+
+            if (turtorialVideo == null)
+                throw new ValidationException($"Tutorial video with ID {turtorialVideoId} not found");
+        }
+
+
+        // Method to update prices when ingredients change
+        public async Task UpdatePricesAsync(int comboId)
+        {
+            var combo = await _unitOfWork.Repository<Combo>()
+                .IncludeNested(query =>
+                    query.Include(c => c.ComboIngredients)
+                         .ThenInclude(ci => ci.Ingredient)
+                         .Include(c => c.HotpotBroth)
+                         .Include(c => c.AppliedDiscount))
+                .FirstOrDefaultAsync(c => c.ComboId == comboId && !c.IsDelete);
+
+            if (combo == null)
+                throw new NotFoundException($"Combo with ID {comboId} not found");
+
+            // Calculate base price from ingredients
             decimal basePrice = 0;
 
             // Add hotpot broth price
             if (combo.HotpotBrothID > 0)
             {
-                try
+                var broth = await _unitOfWork.Repository<Ingredient>()
+                    .FindAsync(i => i.IngredientId == combo.HotpotBrothID && !i.IsDelete);
+
+                var IngredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothID);
+
+                if (broth != null)
                 {
-                    var brothPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothID);
-                    basePrice += brothPrice;
-                }
-                catch (NotFoundException)
-                {
-                    // Handle case where broth price is not found
-                    throw new ValidationException($"Price not found for broth with ID {combo.HotpotBrothID}");
+                    basePrice += IngredientPrice;
                 }
             }
 
-            // Add ingredients prices
-            var comboIngredients = await _unitOfWork.Repository<ComboIngredient>()
-                .Include(ci => ci.Ingredient)
-                .Where(ci => ci.ComboID == combo.ComboId && !ci.IsDelete)
-                .ToListAsync();
-
-            // Get all ingredient IDs
-            var ingredientIds = comboIngredients.Select(ci => ci.IngredientID).ToList();
-
-            // Get all current prices in a single query
-            var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-            foreach (var comboIngredient in comboIngredients)
+            // Add prices of all ingredients
+            foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
             {
-                if (currentPrices.TryGetValue(comboIngredient.IngredientID, out decimal price))
+                var IngredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.ComboIngredientId);
+                if (comboIngredient.Ingredient != null)
                 {
-                    basePrice += price * comboIngredient.Quantity;
-                }
-                else
-                {
-                    throw new ValidationException($"Price not found for ingredient with ID {comboIngredient.IngredientID}");
+                    basePrice += IngredientPrice * comboIngredient.Quantity;
                 }
             }
 
             // Calculate per-person base price
-            basePrice = basePrice / combo.Size;
+            if (combo.Size > 0)
+            {
+                basePrice = basePrice / combo.Size;
+            }
 
-            return basePrice;
+            // Update base price
+            combo.BasePrice = basePrice;
+
+            // Calculate total price (after discount)
+            decimal totalPrice = basePrice;
+            if (combo.AppliedDiscount != null)
+            {
+                decimal discountPercentage = combo.AppliedDiscount.DiscountPercentage;
+                totalPrice = basePrice * (1 - (discountPercentage / 100m));
+            }
+
+            // Update total price
+            combo.TotalPrice = totalPrice;
+
+            // Update the combo
+            combo.SetUpdateDate();
+            await _unitOfWork.Repository<Combo>().Update(combo, comboId);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public Task<IEnumerable<Combo>> GetAllAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Combo> CreateAsync(Combo entity)
+        {
+            throw new NotImplementedException();
         }
     }
 }

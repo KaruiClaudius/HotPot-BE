@@ -3,6 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.DTOs.Video;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Mvc;
@@ -22,28 +23,26 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _ingredientService = ingredientService;
         }
 
+
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ComboDto>>> GetAll()
+        public async Task<ActionResult<PagedResult<ComboDto>>> GetCombos(
+            [FromQuery] string searchTerm = null,
+            [FromQuery] bool? isCustomizable = null,
+            [FromQuery] bool activeOnly = true,
+            [FromQuery] int? minSize = null,
+            [FromQuery] int? maxSize = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "Name",
+            [FromQuery] bool ascending = true)
         {
             try
             {
-                var combos = await _comboService.GetAllAsync();
-                var comboDtos = combos.Select(MapToComboDto).ToList();
-
-                return Ok(comboDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<ComboDto>>> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var result = await _comboService.GetPagedAsync(pageNumber, pageSize);
+                var result = await _comboService.GetCombosAsync(
+                    searchTerm, isCustomizable, activeOnly, minSize, maxSize,
+                    minPrice, maxPrice, pageNumber, pageSize, sortBy, ascending);
 
                 var pagedResult = new PagedResult<ComboDto>
                 {
@@ -60,6 +59,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ComboDetailDto>> GetById(int id)
@@ -80,45 +80,40 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("customizable")]
-        public async Task<ActionResult<IEnumerable<ComboDto>>> GetCustomizableCombos()
-        {
-            try
-            {
-                var combos = await _comboService.GetCustomizableCombosAsync();
-                var comboDtos = combos.Select(MapToComboDto).ToList();
-
-                return Ok(comboDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
         [HttpPost]
-        public async Task<ActionResult<ComboDto>> Create(CreateComboRequest comboDto)
+        public async Task<ActionResult<ComboDto>> Create(CreateComboRequest request)
         {
             try
             {
+                // Create tutorial video if provided
+                TurtorialVideo tutorialVideo = null;
+                if (request.TutorialVideo != null)
+                {
+                    tutorialVideo = new TurtorialVideo
+                    {
+                        Name = request.TutorialVideo.Name,
+                        Description = request.TutorialVideo.Description,
+                        VideoURL = request.TutorialVideo.VideoURL
+                    };
+                }
+
                 var combo = new Combo
                 {
-                    Name = comboDto.Name,
-                    Description = comboDto.Description,
-                    Size = comboDto.Size,
-                    BasePrice = comboDto.BasePrice,
+                    Name = request.Name,
+                    Description = request.Description,
+                    Size = request.Size,
                     IsCustomizable = false,
-                    HotpotBrothID = comboDto.HotpotBrothID,
-                    ImageURLs = comboDto.ImageURLs // Add this line to handle images
+                    HotpotBrothID = request.HotpotBrothID,
+                    ImageURLs = request.ImageURLs
                 };
 
-                var comboIngredients = comboDto.Ingredients.Select(i => new ComboIngredient
+                var comboIngredients = request.Ingredients.Select(i => new ComboIngredient
                 {
                     IngredientID = i.IngredientID,
                     Quantity = i.Quantity
                 }).ToList();
 
-                var createdCombo = await _comboService.CreateAsync(combo, comboIngredients);
+                var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, comboIngredients);
 
                 return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, MapToComboDto(createdCombo));
             }
@@ -133,28 +128,39 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpPost("customizable")]
-        public async Task<ActionResult<ComboDto>> CreateCustomizable(CreateCustomizableComboRequest comboDto)
+        public async Task<ActionResult<ComboDto>> CreateCustomizable(CreateCustomizableComboRequest request)
         {
             try
             {
+                // Create tutorial video if provided
+                TurtorialVideo tutorialVideo = null;
+                if (request.TutorialVideo != null)
+                {
+                    tutorialVideo = new TurtorialVideo
+                    {
+                        Name = request.TutorialVideo.Name,
+                        Description = request.TutorialVideo.Description,
+                        VideoURL = request.TutorialVideo.VideoURL
+                    };
+                }
+
                 var combo = new Combo
                 {
-                    Name = comboDto.Name,
-                    Description = comboDto.Description,
-                    Size = comboDto.Size,
-                    BasePrice = comboDto.BasePrice,
+                    Name = request.Name,
+                    Description = request.Description,
+                    Size = request.Size,
                     IsCustomizable = true,
-                    HotpotBrothID = comboDto.HotpotBrothID,
-                    ImageURLs = comboDto.ImageURLs // Add this line to handle images
+                    HotpotBrothID = request.HotpotBrothID,
+                    ImageURLs = request.ImageURLs
                 };
 
-                var allowedTypes = comboDto.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
+                var allowedTypes = request.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
                 {
                     IngredientTypeId = t.IngredientTypeId,
                     MaxQuantity = t.MaxQuantity
                 }).ToList();
 
-                var createdCombo = await _comboService.CreateCustomizableComboAsync(combo, allowedTypes);
+                var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, null, allowedTypes);
 
                 return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, MapToComboDto(createdCombo));
             }
@@ -168,8 +174,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+
+
         [HttpPut("{id}")]
-        public async Task<ActionResult> Update(int id, UpdateComboRequest comboDto)
+        public async Task<ActionResult> Update(int id, UpdateComboRequest request)
         {
             try
             {
@@ -177,12 +185,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (existingCombo == null)
                     return NotFound(new { message = $"Combo with ID {id} not found" });
 
-                existingCombo.Name = comboDto.Name;
-                existingCombo.Description = comboDto.Description;
-                existingCombo.Size = comboDto.Size;
-                existingCombo.BasePrice = comboDto.BasePrice;
-                existingCombo.HotpotBrothID = comboDto.HotpotBrothID;
-                existingCombo.ImageURLs = comboDto.ImageURLs; // Add this line to handle images
+                existingCombo.Name = request.Name;
+                existingCombo.Description = request.Description;
+                existingCombo.Size = request.Size;
+                existingCombo.HotpotBrothID = request.HotpotBrothID;
+                existingCombo.ImageURLs = request.ImageURLs;
+
+                // Update tutorial video ID if provided
+                if (request.TurtorialVideoID.HasValue)
+                {
+                    existingCombo.TurtorialVideoID = request.TurtorialVideoID.Value;
+                }
 
                 await _comboService.UpdateAsync(id, existingCombo);
 
@@ -224,338 +237,238 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("{comboId}/allowed-ingredient-types")]
-        public async Task<ActionResult<IEnumerable<ComboAllowedIngredientTypeDto>>> GetAllowedIngredientTypes(int comboId)
-        {
-            try
-            {
-                var allowedTypes = await _comboService.GetAllowedIngredientTypesAsync(comboId);
-                var allowedTypeDtos = allowedTypes.Select(t => new ComboAllowedIngredientTypeDto
-                {
-                    Id = t.Id,
-                    IngredientTypeId = t.IngredientTypeId,
-                    IngredientTypeName = t.IngredientType?.Name ?? "Unknown",
-                    MaxQuantity = t.MaxQuantity
-                }).ToList();
 
-                return Ok(allowedTypeDtos);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
 
-        [HttpGet("{comboId}/ingredients/{ingredientTypeId}")]
-        public async Task<ActionResult<IEnumerable<IngredientDto>>> GetAvailableIngredientsForType(int comboId, int ingredientTypeId)
-        {
-            try
-            {
-                var ingredients = await _comboService.GetAvailableIngredientsForTypeAsync(comboId, ingredientTypeId);
+        //[HttpGet("{comboId}/allowed-ingredient-types")]
+        //public async Task<ActionResult<IEnumerable<ComboAllowedIngredientTypeDto>>> GetAllowedIngredientTypes(int comboId)
+        //{
+        //    try
+        //    {
+        //        var allowedTypes = await _comboService.GetAllowedIngredientTypesAsync(comboId);
+        //        var allowedTypeDtos = allowedTypes.Select(t => new ComboAllowedIngredientTypeDto
+        //        {
+        //            Id = t.ComboAllowedIngredientTypeId,
+        //            IngredientTypeId = t.IngredientTypeId,
+        //            IngredientTypeName = t.IngredientType?.Name ?? "Unknown",
+        //            MaxQuantity = t.MaxQuantity
+        //        }).ToList();
 
-                // Get all ingredient IDs
-                var ingredientIds = ingredients.Select(i => i.IngredientId).ToList();
+        //        return Ok(allowedTypeDtos);
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-                // Get current prices for all ingredients in a single query
-                var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
+        //[HttpPost("{id}/images")]
+        //public async Task<ActionResult> UploadComboImages(int id, [FromForm] List<IFormFile> images)
+        //{
+        //    try
+        //    {
+        //        var combo = await _comboService.GetByIdAsync(id);
+        //        if (combo == null)
+        //            return NotFound(new { message = $"Combo with ID {id} not found" });
 
-                var ingredientDtos = ingredients.Select(i => new IngredientDto
-                {
-                    IngredientId = i.IngredientId,
-                    Name = i.Name,
-                    Description = i.Description,
-                    Price = currentPrices.TryGetValue(i.IngredientId, out var price) ? price : 0,
-                    Quantity = i.Quantity,
-                    IngredientTypeID = i.IngredientTypeID,
-                    IngredientTypeName = i.IngredientType?.Name ?? "Unknown"
-                }).ToList();
+        //        // List to store uploaded image URLs
+        //        var imageUrls = new List<string>();
 
-                return Ok(ingredientDtos);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        // Add existing images if any
+        //        if (combo.ImageURLs != null)
+        //        {
+        //            imageUrls.AddRange(combo.ImageURLs);
+        //        }
 
-        [HttpGet("{comboId}/price/{size}")]
-        public async Task<ActionResult<decimal>> CalculatePrice(int comboId, int size)
-        {
-            try
-            {
-                var price = await _comboService.CalculateTotalPriceAsync(comboId, size);
-                return Ok(new { price });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        // Process each uploaded file
+        //        foreach (var image in images)
+        //        {
+        //            if (image.Length > 0)
+        //            {
+        //                // Generate a unique filename
+        //                var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(image.FileName)}";
 
-        [HttpGet("active")]
-        public async Task<ActionResult<IEnumerable<ComboDto>>> GetActive()
-        {
-            try
-            {
-                var combos = await _comboService.GetActiveAsync();
-                var comboDtos = combos.Select(MapToComboDto).ToList();
+        //                // Define the path where to save the file
+        //                var filePath = Path.Combine("wwwroot", "images", "combos", fileName);
 
-                return Ok(comboDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //                // Ensure directory exists
+        //                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
-        [HttpGet("{comboId}/ingredients")]
-        public async Task<ActionResult<IEnumerable<ComboIngredientDto>>> GetComboIngredients(int comboId)
-        {
-            try
-            {
-                var ingredients = await _comboService.GetComboIngredientsAsync(comboId);
-                var ingredientDtos = ingredients.Select(ci => new ComboIngredientDto
-                {
-                    ComboIngredientId = ci.ComboIngredientId,
-                    IngredientID = ci.IngredientID,
-                    IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                    Quantity = ci.Quantity
-                }).ToList();
+        //                // Save the file
+        //                using (var stream = new FileStream(filePath, FileMode.Create))
+        //                {
+        //                    await image.CopyToAsync(stream);
+        //                }
 
-                return Ok(ingredientDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //                // Add the URL to the list
+        //                var url = $"/images/combos/{fileName}";
+        //                imageUrls.Add(url);
+        //            }
+        //        }
 
-        [HttpPost("{comboId}/ingredients")]
-        public async Task<ActionResult> AddIngredientToCombo(int comboId, CreateComboIngredientRequest ingredientDto)
-        {
-            try
-            {
-                await _comboService.AddIngredientToComboAsync(comboId, ingredientDto.IngredientID, ingredientDto.Quantity);
-                return NoContent();
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        // Update the combo with the new image URLs
+        //        combo.ImageURLs = imageUrls.ToArray();
+        //        await _comboService.UpdateAsync(id, combo);
 
-        [HttpDelete("{comboId}/ingredients/{ingredientId}")]
-        public async Task<ActionResult> RemoveIngredientFromCombo(int comboId, int ingredientId)
-        {
-            try
-            {
-                await _comboService.RemoveIngredientFromComboAsync(comboId, ingredientId);
-                return NoContent();
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        return Ok(new { message = "Images uploaded successfully", imageUrls = combo.ImageURLs });
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-        [HttpPut("{comboId}/ingredients/{ingredientId}")]
-        public async Task<ActionResult> UpdateIngredientQuantity(int comboId, int ingredientId, [FromBody] UpdateQuantityRequest quantityDto)
-        {
-            try
-            {
-                await _comboService.UpdateIngredientQuantityAsync(comboId, ingredientId, quantityDto.Quantity);
-                return NoContent();
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //[HttpGet("{comboId}/ingredients/{ingredientTypeId}")]
+        //public async Task<ActionResult<IEnumerable<IngredientDto>>> GetAvailableIngredientsForType(int comboId, int ingredientTypeId)
+        //{
+        //    try
+        //    {
+        //        var ingredients = await _comboService.GetAvailableIngredientsForTypeAsync(comboId, ingredientTypeId);
 
-        [HttpGet("search")]
-        public async Task<ActionResult<PagedResult<ComboDto>>> Search([FromQuery] string searchTerm = "", [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var result = await _comboService.SearchAsync(searchTerm, pageNumber, pageSize);
+        //        // Get all ingredient IDs
+        //        var ingredientIds = ingredients.Select(i => i.IngredientId).ToList();
 
-                var pagedResult = new PagedResult<ComboDto>
-                {
-                    Items = result.Items.Select(MapToComboDto).ToList(),
-                    TotalCount = result.TotalCount,
-                    PageNumber = result.PageNumber,
-                    PageSize = result.PageSize
-                };
+        //        // Get current prices for all ingredients in a single query
+        //        var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
 
-                return Ok(pagedResult);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        var ingredientDtos = ingredients.Select(i => new IngredientDto
+        //        {
+        //            IngredientId = i.IngredientId,
+        //            Name = i.Name,
+        //            Description = i.Description,
+        //            Price = currentPrices.TryGetValue(i.IngredientId, out var price) ? price : 0,
+        //            Quantity = i.Quantity,
+        //            IngredientTypeID = i.IngredientTypeID,
+        //            IngredientTypeName = i.IngredientType?.Name ?? "Unknown"
+        //        }).ToList();
 
-        [HttpPost("{id}/images")]
-        public async Task<ActionResult> UploadComboImages(int id, [FromForm] List<IFormFile> images)
-        {
-            try
-            {
-                var combo = await _comboService.GetByIdAsync(id);
-                if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+        //        return Ok(ingredientDtos);
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-                // List to store uploaded image URLs
-                var imageUrls = new List<string>();
+        //[HttpGet("{comboId}/price/{size}")]
+        //public async Task<ActionResult<decimal>> CalculatePrice(int comboId, int size)
+        //{
+        //    try
+        //    {
+        //        var price = await _comboService.CalculateTotalPriceAsync(comboId, size);
+        //        return Ok(new { price });
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-                // Add existing images if any
-                if (combo.ImageURLs != null)
-                {
-                    imageUrls.AddRange(combo.ImageURLs);
-                }
+        //[HttpGet("{comboId}/ingredients")]
+        //public async Task<ActionResult<IEnumerable<ComboIngredientDto>>> GetComboIngredients(int comboId)
+        //{
+        //    try
+        //    {
+        //        var ingredients = await _comboService.GetComboIngredientsAsync(comboId);
+        //        var ingredientDtos = ingredients.Select(ci => new ComboIngredientDto
+        //        {
+        //            ComboIngredientId = ci.ComboIngredientId,
+        //            IngredientID = ci.IngredientID,
+        //            IngredientName = ci.Ingredient?.Name ?? "Unknown",
+        //            Quantity = ci.Quantity
+        //        }).ToList();
 
-                // Process each uploaded file
-                foreach (var image in images)
-                {
-                    if (image.Length > 0)
-                    {
-                        // Generate a unique filename
-                        var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(image.FileName)}";
+        //        return Ok(ingredientDtos);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-                        // Define the path where to save the file
-                        var filePath = Path.Combine("wwwroot", "images", "combos", fileName);
 
-                        // Ensure directory exists
-                        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+       
 
-                        // Save the file
-                        using (var stream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await image.CopyToAsync(stream);
-                        }
+        //[HttpDelete("{id}/images")]
+        //public async Task<ActionResult> DeleteComboImages(int id, [FromBody] DeleteImagesRequest request)
+        //{
+        //    try
+        //    {
+        //        var combo = await _comboService.GetByIdAsync(id);
+        //        if (combo == null)
+        //            return NotFound(new { message = $"Combo with ID {id} not found" });
 
-                        // Add the URL to the list
-                        var url = $"/images/combos/{fileName}";
-                        imageUrls.Add(url);
-                    }
-                }
+        //        if (combo.ImageURLs == null || combo.ImageURLs.Length == 0)
+        //            return BadRequest(new { message = "Combo has no images to delete" });
 
-                // Update the combo with the new image URLs
-                combo.ImageURLs = imageUrls.ToArray();
-                await _comboService.UpdateAsync(id, combo);
+        //        // Filter out the URLs to delete
+        //        var remainingUrls = combo.ImageURLs
+        //            .Where(url => !request.ImageURLs.Contains(url))
+        //            .ToArray();
 
-                return Ok(new { message = "Images uploaded successfully", imageUrls = combo.ImageURLs });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        // Update the combo with the remaining URLs
+        //        combo.ImageURLs = remainingUrls;
+        //        await _comboService.UpdateAsync(id, combo);
 
-        [HttpDelete("{id}/images")]
-        public async Task<ActionResult> DeleteComboImages(int id, [FromBody] DeleteImagesRequest request)
-        {
-            try
-            {
-                var combo = await _comboService.GetByIdAsync(id);
-                if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+        //        // Optionally, delete the physical files
+        //        foreach (var url in request.ImageURLs)
+        //        {
+        //            if (url.StartsWith("/images/"))
+        //            {
+        //                var filePath = Path.Combine("wwwroot", url.TrimStart('/'));
+        //                if (System.IO.File.Exists(filePath))
+        //                {
+        //                    System.IO.File.Delete(filePath);
+        //                }
+        //            }
+        //        }
 
-                if (combo.ImageURLs == null || combo.ImageURLs.Length == 0)
-                    return BadRequest(new { message = "Combo has no images to delete" });
-
-                // Filter out the URLs to delete
-                var remainingUrls = combo.ImageURLs
-                    .Where(url => !request.ImageURLs.Contains(url))
-                    .ToArray();
-
-                // Update the combo with the remaining URLs
-                combo.ImageURLs = remainingUrls;
-                await _comboService.UpdateAsync(id, combo);
-
-                // Optionally, delete the physical files
-                foreach (var url in request.ImageURLs)
-                {
-                    if (url.StartsWith("/images/"))
-                    {
-                        var filePath = Path.Combine("wwwroot", url.TrimStart('/'));
-                        if (System.IO.File.Exists(filePath))
-                        {
-                            System.IO.File.Delete(filePath);
-                        }
-                    }
-                }
-
-                return Ok(new { message = "Images deleted successfully", imageUrls = combo.ImageURLs });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //        return Ok(new { message = "Images deleted successfully", imageUrls = combo.ImageURLs });
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
         private ComboDto MapToComboDto(Combo combo)
         {
@@ -568,12 +481,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Description = combo.Description ?? string.Empty,
                 Size = combo.Size,
                 BasePrice = combo.BasePrice,
+                TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
                 HotpotBrothID = combo.HotpotBrothID,
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                 AppliedDiscountID = combo.AppliedDiscountID,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
-                ImageURLs = combo.ImageURLs ?? new string[0], // Add this line to include images
+                ImageURLs = combo.ImageURLs ?? new string[0],
+                TurtorialVideoID = combo.TurtorialVideoID,
+                TutorialVideoName = combo.TurtorialVideo?.Name,
+                TutorialVideoUrl = combo.TurtorialVideo?.VideoURL,
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,
@@ -597,12 +514,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Description = combo.Description ?? string.Empty,
                 Size = combo.Size,
                 BasePrice = combo.BasePrice,
+                TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
                 HotpotBrothID = combo.HotpotBrothID,
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                 AppliedDiscountID = combo.AppliedDiscountID,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
-                ImageURLs = combo.ImageURLs ?? new string[0], // Add this line to include images
+                ImageURLs = combo.ImageURLs ?? new string[0],
+                TurtorialVideoID = combo.TurtorialVideoID,
+                TutorialVideo = combo.TurtorialVideo != null ? new TutorialVideoDto
+                {
+                    TurtorialVideoId = combo.TurtorialVideo.TurtorialVideoId,
+                    Name = combo.TurtorialVideo.Name,
+                    Description = combo.TurtorialVideo.Description,
+                    VideoURL = combo.TurtorialVideo.VideoURL
+                } : null,
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,
@@ -612,7 +538,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }).ToList() ?? new List<ComboIngredientDto>(),
                 AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Select(ait => new ComboAllowedIngredientTypeDto
                 {
-                    Id = ait.Id,
+                    Id = ait.ComboAllowedIngredientTypeId,
                     IngredientTypeId = ait.IngredientTypeId,
                     IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
                     MaxQuantity = ait.MaxQuantity

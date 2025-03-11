@@ -1,13 +1,12 @@
-﻿using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Video
+namespace Capstone.HPTY.ServiceLayer.DTOs.Combo.Customer
 {
-    public class TutorialVideoDto
+    public class CustomerTutorialVideoDto
     {
         public int TurtorialVideoId { get; set; }
         public string Name { get; set; }

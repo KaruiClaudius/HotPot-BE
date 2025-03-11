@@ -95,7 +95,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (string.IsNullOrWhiteSpace(entity.Material))
                     throw new ValidationException("Hotpot material cannot be empty");
 
-                if (entity.Size <= 0)
+                if (string.IsNullOrWhiteSpace(entity.Size))
                     throw new ValidationException("Size must be greater than 0");
 
                 if (entity.Price <= 0)
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (string.IsNullOrWhiteSpace(entity.Material))
                     throw new ValidationException("Hotpot material cannot be empty");
 
-                if (entity.Size <= 0)
+                if (string.IsNullOrWhiteSpace(entity.Size))
                     throw new ValidationException("Size must be greater than 0");
 
                 if (entity.Price <= 0)

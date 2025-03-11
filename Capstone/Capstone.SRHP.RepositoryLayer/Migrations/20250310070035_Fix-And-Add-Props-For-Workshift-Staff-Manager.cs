@@ -86,7 +86,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         name: "FK_ManagerWorkShift_WorkShifts_WorkShiftsId",
                         column: x => x.WorkShiftsId,
                         principalTable: "WorkShifts",
-                        principalColumn: "Id",
+                        principalColumn: "ComboAllowedIngredientTypeId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -110,7 +110,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         name: "FK_StaffWorkShift_WorkShifts_WorkShiftsId",
                         column: x => x.WorkShiftsId,
                         principalTable: "WorkShifts",
-                        principalColumn: "Id",
+                        principalColumn: "ComboAllowedIngredientTypeId",
                         onDelete: ReferentialAction.Cascade);
                 });
 

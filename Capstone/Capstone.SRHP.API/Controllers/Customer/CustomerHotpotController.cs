@@ -147,7 +147,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
     [FromQuery] decimal? minPrice,
     [FromQuery] decimal? maxPrice,
     [FromQuery] int? typeId,
-    [FromQuery] int? size,
+    [FromQuery] string? size,
     [FromQuery] int pageNumber = 1,
     [FromQuery] int pageSize = 10)
         {
@@ -169,8 +169,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (maxPrice.HasValue)
                     filteredHotpots = filteredHotpots.Where(h => h.Price <= maxPrice.Value);
 
-                if (size.HasValue)
-                    filteredHotpots = filteredHotpots.Where(h => h.Size == size.Value);
+                //if (size.HasValue)
+                //    filteredHotpots = filteredHotpots.Where(h => h.Size  size.Value);
 
                 // Calculate total count
                 var totalCount = filteredHotpots.Count();

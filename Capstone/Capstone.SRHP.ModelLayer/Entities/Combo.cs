@@ -85,8 +85,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual Customization? Customization { get; set; }
         public virtual OrderDetail? OrderDetail { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; } = new List<ComboIngredient>();
-        public virtual ICollection<ComboAllowedIngredientType> AllowedIngredientTypes { get; set; } = new List<ComboAllowedIngredientType>();
-        public virtual SizeDiscount AppliedDiscount { get; set; }
+        public virtual ICollection<ComboAllowedIngredientType>? AllowedIngredientTypes { get; set; } = new List<ComboAllowedIngredientType>();
+        public virtual SizeDiscount? AppliedDiscount { get; set; }
 
     }
 }

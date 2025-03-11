@@ -168,20 +168,20 @@ namespace Capstone.HPTY.RepositoryLayer
                 .Property(o => o.TotalPrice)
                 .HasColumnType("decimal(18,2)");
 
-            //modelBuilder.Entity<OrderDetail>(entity =>
-            //{
-            //    entity.HasKey(e => e.OrderDetailId);
+            modelBuilder.Entity<ComboAllowedIngredientType>()
+                .HasKey(c => c.ComboAllowedIngredientTypeId);
 
-            //    // Order relationship
-            //    entity.HasOne(od => od.Order)
-            //        .WithMany(o => o.OrderDetails)
-            //        .HasForeignKey(od => od.OrderID)
-            //        .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ComboAllowedIngredientType>()
+                .HasOne(c => c.Combo)
+                .WithMany(c => c.AllowedIngredientTypes)
+                .HasForeignKey(c => c.ComboId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            //    // Create indexes
-            //    entity.HasIndex(e => e.OrderID);
-            //    entity.HasIndex(e => new { e.ItemType, e.ItemID });
-            //});
+            modelBuilder.Entity<ComboAllowedIngredientType>()
+                .HasOne(c => c.IngredientType)
+                .WithMany()  
+                .HasForeignKey(c => c.IngredientTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
 
 
             modelBuilder.Entity<Feedback>()
@@ -498,7 +498,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotpotId = 1,
                     Name = "Classic Copper Hotpot",
                     Material = "Copper",
-                    Size = 4,
+                    Size = "m",
                     Description = "Traditional copper hotpot with charcoal heating.",
                     ImageURL = "https://example.com/images/classic-copper-hotpot.jpg",
                     Price = 29.99m,
@@ -513,7 +513,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotpotId = 2,
                     Name = "Modern Electric Hotpot",
                     Material = "Stainless Steel",
-                    Size = 6,
+                    Size = "L",
                     Description = "Electric hotpot with temperature control and non-stick coating.",
                     ImageURL = "https://example.com/images/modern-electric-hotpot.jpg",
                     Price = 59.99m,
@@ -528,7 +528,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotpotId = 3,
                     Name = "Mini Portable Hotpot",
                     Material = "Aluminum",
-                    Size = 2,
+                    Size = "S",
                     Description = "Compact portable hotpot perfect for travel or small gatherings.",
                     ImageURL = "https://example.com/images/mini-portable-hotpot.jpg",
                     Price = 19.99m,
@@ -543,7 +543,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotpotId = 4,
                     Name = "Dual Section Hotpot",
                     Material = "Stainless Steel",
-                    Size = 6,
+                    Size = "L",
                     Description = "Multi-compartment hotpot for different broths in one pot.",
                     ImageURL = "https://example.com/images/dual-section-hotpot.jpg",
                     Price = 69.99m,
@@ -558,7 +558,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotpotId = 5,
                     Name = "Traditional Ceramic Hotpot",
                     Material = "Ceramic",
-                    Size = 4,
+                    Size = "M",
                     Description = "Authentic ceramic hotpot that retains heat exceptionally well.",
                     ImageURL = "https://example.com/images/traditional-ceramic-hotpot.jpg",
                     Price = 39.99m,

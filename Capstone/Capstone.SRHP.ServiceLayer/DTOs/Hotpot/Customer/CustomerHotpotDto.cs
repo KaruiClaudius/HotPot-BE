@@ -11,7 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot.Customer
         public int HotpotId { get; set; }
         public string Name { get; set; }
         public string Material { get; set; }
-        public int Size { get; set; }
+        public string Size { get; set; }
         public string Description { get; set; }
         public string[] ImageURLs { get; set; }
         public decimal Price { get; set; }

@@ -174,11 +174,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ComboAllowedIngredientType", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ComboAllowedIngredientTypeId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboAllowedIngredientTypeId"));
 
                     b.Property<int>("ComboId")
                         .HasColumnType("int");
@@ -198,7 +198,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("Id");
+                    b.HasKey("ComboAllowedIngredientTypeId");
 
                     b.HasIndex("ComboId");
 
@@ -2535,11 +2535,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.WorkShift", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ComboAllowedIngredientTypeId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboAllowedIngredientTypeId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -2562,7 +2562,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("Id");
+                    b.HasKey("ComboAllowedIngredientTypeId");
 
                     b.HasIndex("ManagerID");
 

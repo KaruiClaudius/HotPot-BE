@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo.customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Combo.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
@@ -27,29 +28,26 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
 
             [HttpGet]
-            public async Task<ActionResult<IEnumerable<CustomerComboDto>>> GetAllCombos()
+            public async Task<ActionResult<PagedResult<CustomerComboDto>>> GetCombos(
+        [FromQuery] string searchTerm = null,
+        [FromQuery] bool? isCustomizable = null,
+        [FromQuery] int? minSize = null,
+        [FromQuery] int? maxSize = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string sortBy = "Name",
+        [FromQuery] bool ascending = true)
             {
                 try
                 {
-                    var combos = await _comboService.GetActiveAsync();
-                    var comboDtos = combos.Select(MapToCustomerComboDto).ToList();
+                    // Always get active combos only for customers
+                    bool activeOnly = true;
 
-                    return Ok(comboDtos);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { message = ex.Message });
-                }
-            }
-
-            [HttpGet("paged")]
-            public async Task<ActionResult<PagedResult<CustomerComboDto>>> GetPagedCombos(
-                [FromQuery] int pageNumber = 1,
-                [FromQuery] int pageSize = 10)
-            {
-                try
-                {
-                    var result = await _comboService.GetPagedAsync(pageNumber, pageSize);
+                    var result = await _comboService.GetCombosAsync(
+                        searchTerm, isCustomizable, activeOnly, minSize, maxSize,
+                        minPrice, maxPrice, pageNumber, pageSize, sortBy, ascending);
 
                     var pagedResult = new PagedResult<CustomerComboDto>
                     {
@@ -66,6 +64,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     return StatusCode(500, new { message = ex.Message });
                 }
             }
+
 
             [HttpGet("{id}")]
             public async Task<ActionResult<CustomerComboDetailDto>> GetComboById(int id)
@@ -86,31 +85,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
             }
 
-            [HttpGet("search")]
-            public async Task<ActionResult<PagedResult<CustomerComboDto>>> SearchCombos(
-                [FromQuery] string searchTerm = "",
-                [FromQuery] int pageNumber = 1,
-                [FromQuery] int pageSize = 10)
-            {
-                try
-                {
-                    var result = await _comboService.SearchAsync(searchTerm, pageNumber, pageSize);
-
-                    var pagedResult = new PagedResult<CustomerComboDto>
-                    {
-                        Items = result.Items.Select(MapToCustomerComboDto).ToList(),
-                        TotalCount = result.TotalCount,
-                        PageNumber = result.PageNumber,
-                        PageSize = result.PageSize
-                    };
-
-                    return Ok(pagedResult);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { message = ex.Message });
-                }
-            }
 
             [HttpGet("price/{comboId}/{size}")]
             public async Task<ActionResult<ComboSizePriceDto>> GetComboPrice(int comboId, int size)
@@ -155,7 +129,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
             }
 
-            // Helper methods for mapping entities to DTOs
             private CustomerComboDto MapToCustomerComboDto(Combo combo)
             {
                 if (combo == null) return null;
@@ -167,9 +140,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Description = combo.Description ?? string.Empty,
                     Size = combo.Size,
                     BasePrice = combo.BasePrice,
+                    TotalPrice = combo.TotalPrice,
                     IsCustomizable = combo.IsCustomizable,
                     HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
-                    ImageURLs = combo.ImageURLs ?? new string[0] // Return the array of image URLs
+                    ImageURLs = combo.ImageURLs ?? new string[0],
+                    TurtorialVideoID = combo.TurtorialVideoID,
+                    TutorialVideoName = combo.TurtorialVideo?.Name,
+                    TutorialVideoUrl = combo.TurtorialVideo?.VideoURL
                 };
             }
 
@@ -186,16 +163,27 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Description = baseDto.Description,
                     Size = baseDto.Size,
                     BasePrice = baseDto.BasePrice,
+                    TotalPrice = baseDto.TotalPrice,
                     IsCustomizable = baseDto.IsCustomizable,
                     HotpotBrothName = baseDto.HotpotBrothName,
-                    ImageURLs = baseDto.ImageURLs, // Return the array of image URLs
-                    Ingredients = combo.ComboIngredients?.Select(ci => new CustomerComboIngredientDto
+                    ImageURLs = baseDto.ImageURLs,
+                    TurtorialVideoID = baseDto.TurtorialVideoID,
+                    TutorialVideoName = baseDto.TutorialVideoName,
+                    TutorialVideoUrl = baseDto.TutorialVideoUrl,
+                    TutorialVideo = combo.TurtorialVideo != null ? new CustomerTutorialVideoDto
+                    {
+                        TurtorialVideoId = combo.TurtorialVideo.TurtorialVideoId,
+                        Name = combo.TurtorialVideo.Name,
+                        Description = combo.TurtorialVideo.Description,
+                        VideoURL = combo.TurtorialVideo.VideoURL
+                    } : null,
+                    Ingredients = combo.ComboIngredients?.Where(ci => !ci.IsDelete).Select(ci => new CustomerComboIngredientDto
                     {
                         IngredientID = ci.IngredientID,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
                         Quantity = ci.Quantity
                     }).ToList() ?? new List<CustomerComboIngredientDto>(),
-                    AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Select(ait => new CustomerAllowedIngredientTypeDto
+                    AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Where(ait => !ait.IsDelete).Select(ait => new CustomerAllowedIngredientTypeDto
                     {
                         IngredientTypeId = ait.IngredientTypeId,
                         IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
