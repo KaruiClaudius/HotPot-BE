@@ -19,9 +19,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<IEnumerable<Order>> GetOrdersByStatus(OrderStatus status);
         Task<ShippingOrder> UpdateDeliveryStatus(int shippingOrderId, bool isDelivered, string notes = null);
         Task<ShippingOrder> UpdateDeliveryTime(int shippingOrderId, DateTime deliveryTime);
-        Task<IEnumerable<ShippingOrder>> GetPendingDeliveries();
-        Task<IEnumerable<StaffWorkloadDto>> GetStaffWorkloads();
-        Task<StaffAllocationStatsDto> GetStaffAllocationStats(int staffId);
-        Task<IEnumerable<StaffAllocationStatsDto>> GetAllStaffAllocationStats();
+        Task<IEnumerable<ShippingOrder>> GetPendingDeliveries();     
     }
 }
