@@ -41,6 +41,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             if (staff == null)
                 throw new KeyNotFoundException($"Staff with ID {staffId} not found");
 
+            // Get current day of week and convert to WorkDays enum value
+            var today = DateTime.Now.DayOfWeek;
+            var currentDay = today switch
+            {
+                DayOfWeek.Sunday => WorkDays.Sunday,
+                DayOfWeek.Monday => WorkDays.Monday,
+                DayOfWeek.Tuesday => WorkDays.Tuesday,
+                DayOfWeek.Wednesday => WorkDays.Wednesday,
+                DayOfWeek.Thursday => WorkDays.Thursday,
+                DayOfWeek.Friday => WorkDays.Friday,
+                DayOfWeek.Saturday => WorkDays.Saturday,
+                _ => WorkDays.None
+            };
+
+            // Check if staff is available on the current day
+            if ((staff.WorkDays & currentDay) == 0)
+            {
+                throw new InvalidOperationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+            }
+
             // Get staff workload
             var workload = await GetStaffWorkloadById(staffId);
 
