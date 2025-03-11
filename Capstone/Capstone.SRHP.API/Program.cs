@@ -43,7 +43,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowCredentials()
             .WithOrigins(
-                "https://localhost:7293",  // Your local frontend
+                "https://localhost:5000",  // Your local frontend
                 "http://localhost:3000",   // React default port
                 "https://yourdomain.com"   // Your production domain
             )
