@@ -1,30 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ModelLayer.Entities
+namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
-    public class TurtorialVideo : BaseEntity
+    public class CreateTutorialVideoDto
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int TurtorialVideoId { get; set; }
-
         [Required]
         [StringLength(100)]
         public string Name { get; set; }
 
         [StringLength(1000)]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         [Required]
         [StringLength(2000)]
         public string VideoURL { get; set; }
-
-        public virtual ICollection<Combo>? Combo { get; set; }
     }
 }

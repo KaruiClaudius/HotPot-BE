@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Video
 {
-    public class TurtorialVideoRequest
+    public class CreateTutorialVideoDto
     {
         [Required]
         [StringLength(100)]
         public string Name { get; set; }
 
+        [StringLength(1000)]
+        public string Description { get; set; }
+
         [Required]
         [StringLength(2000)]
         public string VideoURL { get; set; }
-
-        [StringLength(1000)]
-        public string? Description { get; set; }
     }
 }

@@ -18,8 +18,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         public string Material { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue)]
-        public int Size { get; set; }
+        [StringLength(10)]
+        public string Size { get; set; }
 
         [StringLength(1000)]
         public string? Description { get; set; }

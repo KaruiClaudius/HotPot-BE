@@ -4,6 +4,10 @@ using Capstone.HPTY.API.Hubs;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
 
+var root = Directory.GetCurrentDirectory();
+var dotenvPath = Path.Combine(root, ".env");
+DotEnv.Load(dotenvPath);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

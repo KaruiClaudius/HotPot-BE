@@ -45,6 +45,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             try
             {
+                string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
+
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
                     .FindAsync(u => u.PhoneNumber == request.PhoneNumber);
@@ -119,7 +121,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
         }
 
+        private string NormalizePhoneNumber(string phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+                return phoneNumber;
 
+            // Trim any whitespace
+            phoneNumber = phoneNumber.Trim();
+
+            // Remove the "+84" prefix (with or without space)
+            if (phoneNumber.StartsWith("+84"))
+            {
+                // Check if there's a space after +84
+                if (phoneNumber.Length > 3 && phoneNumber[3] == ' ')
+                    phoneNumber = phoneNumber.Substring(4);
+                else
+                    phoneNumber = phoneNumber.Substring(3);
+            }
+            // Remove the "0" prefix
+            else if (phoneNumber.StartsWith("0"))
+            {
+                phoneNumber = phoneNumber.Substring(1);
+            }
+
+            // Remove any remaining spaces or non-digit characters
+            phoneNumber = new string(phoneNumber.Where(char.IsDigit).ToArray());
+
+            return phoneNumber;
+        }
 
 
 

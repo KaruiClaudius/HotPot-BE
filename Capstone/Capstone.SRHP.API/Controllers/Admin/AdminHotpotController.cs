@@ -105,21 +105,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("type/{typeId}")]
-        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetByType(int typeId)
-        {
-            try
-            {
-                var hotpots = await _hotpotService.GetByTypeAsync(typeId);
-                var response = hotpots.Select(MapToResponse).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving hotpots by type ID {TypeId}", typeId);
-                return StatusCode(500, new { message = "An error occurred while retrieving hotpots by type" });
-            }
-        }
+
 
         [HttpGet("search")]
         public async Task<ActionResult<PagedResult<HotpotDto>>> Search(
@@ -199,8 +185,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Status = request.Status,
                     Quantity = request.Quantity,
                     LastMaintainDate = DateTime.UtcNow,
-                    HotpotTypeID = request.HotpotTypeID,
-                    TurtorialVideoID = request.TurtorialVideoID,
                     InventoryID = request.InventoryID
                 };
 
@@ -239,8 +223,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingHotpot.BasePrice = request.BasePrice;
                 existingHotpot.Status = request.Status;
                 existingHotpot.Quantity = request.Quantity;
-                existingHotpot.HotpotTypeID = request.HotpotTypeID;
-                existingHotpot.TurtorialVideoID = request.TurtorialVideoID;
                 existingHotpot.InventoryID = request.InventoryID;
 
                 await _hotpotService.UpdateAsync(id, existingHotpot);
@@ -345,18 +327,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Status = hotpot.Status,
                 Quantity = hotpot.Quantity,
                 LastMaintainDate = hotpot.LastMaintainDate,
-                HotpotType = hotpot.HotpotType != null ? new HotpotTypeDto
-                {
-                    HotpotTypeId = hotpot.HotpotType.HotpotTypeId,
-                    Name = hotpot.HotpotType.Name
-                } : null,
-                TurtorialVideo = hotpot.TurtorialVideo != null ? new TurtorialVideoResponse
-                {
-                    TurtorialVideoId = hotpot.TurtorialVideo.TurtorialVideoId,
-                    Title = hotpot.TurtorialVideo.Name,
-                    Description = hotpot.TurtorialVideo.Description,
-                    VideoUrl = hotpot.TurtorialVideo.VideoURL
-                } : null,
                 CreatedAt = hotpot.CreatedAt,
                 UpdatedAt = hotpot.UpdatedAt
             };
