@@ -6,22 +6,25 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 {
-    public class CustomerCustomizationDto
+    public class CustomizationDto
     {
         public int CustomizationId { get; set; }
         public string Name { get; set; }
         public string Note { get; set; }
-        public int Size { get; set; }
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
-        public string HotpotBrothName { get; set; }
-        public string ComboName { get; set; }
+        public int Size { get; set; }
+        public string[] ImageURLs { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string[] ImageURLs { get; set; } // Array of image URLs
+        public string ComboName { get; set; }
+        public string BrothName { get; set; }
     }
 
-    public class CustomerCustomizationDetailDto : CustomerCustomizationDto
+    public class CustomizationDetailDto : CustomizationDto
     {
+        public int ComboId { get; set; }
+        public int BrothId { get; set; }
+        public decimal DiscountPercentage { get; set; }
         public List<CustomizationIngredientDto> Ingredients { get; set; }
     }
 }

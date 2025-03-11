@@ -8,9 +8,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 {
     public class CustomizationIngredientDto
     {
-        public int CustomizationIngredientId { get; set; }
         public int IngredientID { get; set; }
-        public string IngredientName { get; set; }
+        public string Name { get; set; }
         public int Quantity { get; set; }
+        public decimal Price { get; set; }
     }
 }

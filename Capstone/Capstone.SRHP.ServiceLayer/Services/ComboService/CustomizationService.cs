@@ -7,6 +7,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,129 +22,200 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         private readonly IIngredientService _ingredientService;
         private readonly IComboService _comboService;
         private readonly ISizeDiscountService _sizeDiscountService;
+        private readonly ILogger<CustomizationService> _logger;
         private const int BROTH_TYPE_ID = 1;
 
         public CustomizationService(
             IUnitOfWork unitOfWork,
             IIngredientService ingredientService,
             IComboService comboService,
-            ISizeDiscountService sizeDiscountService)
+            ISizeDiscountService sizeDiscountService,
+            ILogger<CustomizationService> logger)
         {
             _unitOfWork = unitOfWork;
             _ingredientService = ingredientService;
             _comboService = comboService;
             _sizeDiscountService = sizeDiscountService;
+            _logger = logger;
         }
 
-        public async Task<IEnumerable<Customization>> GetAllAsync()
+        public async Task<PagedResult<Customization>> GetCustomizationsAsync(
+                string searchTerm = null,
+                int? userId = null,
+                int? comboId = null,
+                int? minSize = null,
+                int? maxSize = null,
+                decimal? minPrice = null,
+                decimal? maxPrice = null,
+                int pageNumber = 1,
+                int pageSize = 10,
+                string sortBy = "CreatedAt",
+                bool ascending = false)
         {
-            return await _unitOfWork.Repository<Customization>()
-                .IncludeNested(query =>
-                    query.Include(c => c.CustomizationIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.User)
-                         .Include(c => c.Combo)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => !c.IsDelete)
-                .ToListAsync();
-        }
-
-
-        public async Task<PagedResult<Customization>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            var query = _unitOfWork.Repository<Customization>()
-                .IncludeNested(query =>
-                    query.Include(c => c.CustomizationIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.User)
-                         .Include(c => c.Combo))
-                .Where(c => !c.IsDelete);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(c => c.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Customization>
+            try
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                // Start with base query
+                var query = _unitOfWork.Repository<Customization>()
+                    .IncludeNested(q => q
+                        .Include(c => c.HotpotBroth)
+                        .Include(c => c.User)
+                        .Include(c => c.Combo)
+                        .Include(c => c.AppliedDiscount))
+                    .Where(c => !c.IsDelete);
+
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    searchTerm = searchTerm.ToLower();
+                    query = query.Where(c =>
+                        c.Name.ToLower().Contains(searchTerm) ||
+                        (c.Note != null && c.Note.ToLower().Contains(searchTerm)) ||
+                        c.HotpotBroth.Name.ToLower().Contains(searchTerm) ||
+                        c.Combo.Name.ToLower().Contains(searchTerm));
+                }
+
+                if (userId.HasValue)
+                {
+                    query = query.Where(c => c.UserID == userId.Value);
+                }
+
+                if (comboId.HasValue)
+                {
+                    query = query.Where(c => c.ComboID == comboId.Value);
+                }
+
+                if (minSize.HasValue)
+                {
+                    query = query.Where(c => c.Size >= minSize.Value);
+                }
+
+                if (maxSize.HasValue)
+                {
+                    query = query.Where(c => c.Size <= maxSize.Value);
+                }
+
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(c => c.TotalPrice >= minPrice.Value);
+                }
+
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(c => c.TotalPrice <= maxPrice.Value);
+                }
+
+                // Get total count before applying pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply sorting
+                IOrderedQueryable<Customization> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "name":
+                        orderedQuery = ascending ? query.OrderBy(c => c.Name) : query.OrderByDescending(c => c.Name);
+                        break;
+                    case "price":
+                        orderedQuery = ascending ? query.OrderBy(c => c.TotalPrice) : query.OrderByDescending(c => c.TotalPrice);
+                        break;
+                    case "size":
+                        orderedQuery = ascending ? query.OrderBy(c => c.Size) : query.OrderByDescending(c => c.Size);
+                        break;
+                    case "combo":
+                        orderedQuery = ascending ? query.OrderBy(c => c.Combo.Name) : query.OrderByDescending(c => c.Combo.Name);
+                        break;
+                    case "updatedat":
+                        orderedQuery = ascending ? query.OrderBy(c => c.UpdatedAt) : query.OrderByDescending(c => c.UpdatedAt);
+                        break;
+                    default: // Default to CreatedAt
+                        orderedQuery = ascending ? query.OrderBy(c => c.CreatedAt) : query.OrderByDescending(c => c.CreatedAt);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                // Load ingredients for each customization
+                foreach (var customization in items)
+                {
+                    customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                        .Include(ci => ci.Ingredient)
+                        .Where(ci => ci.CustomizationID == customization.CustomizationId && !ci.IsDelete)
+                        .ToListAsync();
+                }
+
+                return new PagedResult<Customization>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving customizations with filters");
+                throw;
+            }
         }
 
         public async Task<Customization?> GetByIdAsync(int id)
         {
-            return await _unitOfWork.Repository<Customization>()
-                .IncludeNested(query =>
-                    query.Include(c => c.CustomizationIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.User)
-                         .Include(c => c.Combo)
-                         .Include(c => c.AppliedDiscount))
-                .FirstOrDefaultAsync(c => c.CustomizationId == id && !c.IsDelete);
-        }
+            try
+            {
+                var customization = await _unitOfWork.Repository<Customization>()
+                    .IncludeNested(q => q
+                        .Include(c => c.HotpotBroth)
+                        .Include(c => c.User)
+                        .Include(c => c.Combo)
+                        .Include(c => c.AppliedDiscount))
+                    .FirstOrDefaultAsync(c => c.CustomizationId == id && !c.IsDelete);
 
-        public async Task<IEnumerable<Customization>> GetUserCustomizationsAsync(int userId)
-        {
-            return await _unitOfWork.Repository<Customization>()
-                .IncludeNested(query =>
-                    query.Include(c => c.CustomizationIngredients)
-                         .ThenInclude(ci => ci.Ingredient)
-                         .Include(c => c.HotpotBroth)
-                         .Include(c => c.Combo)
-                         .Include(c => c.AppliedDiscount))
-                .Where(c => c.UserID == userId && !c.IsDelete)
-                .OrderByDescending(c => c.CreatedAt)
-                .ToListAsync();
-        }
+                if (customization != null)
+                {
+                    // Load ingredients
+                    customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                        .Include(ci => ci.Ingredient)
+                        .Where(ci => ci.CustomizationID == id && !ci.IsDelete)
+                        .ToListAsync();
+                }
 
-        public async Task<Customization> CreateAsync(Customization entity)
-        {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Customization name cannot be empty");
-
-            // Validate user exists
-            var user = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == entity.UserID && !u.IsDelete);
-
-            if (user == null)
-                throw new ValidationException("Invalid user");
-
-            // Validate HotpotBroth
-            await ValidateHotpotBroth(entity.HotpotBrothID);
-
-            // Calculate initial total price
-            entity.BasePrice = await CalculateTotalPriceAsync(entity);
-
-            _unitOfWork.Repository<Customization>().Insert(entity);
-            await _unitOfWork.CommitAsync();
-
-            return entity;
+                return customization;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving customization with ID {CustomizationId}", id);
+                throw;
+            }
         }
 
         public async Task<Customization> CreateCustomizationAsync(
-    int comboId,
-    int userId,
-    string name,
-    string? note,
-    int size,
-    int brothId,
-    List<CustomizationIngredientDto> ingredients,
-    string[]? imageURLs = null) 
+        int comboId,
+        int userId,
+        string name,
+        string? note,
+        int size,
+        int brothId,
+        List<CustomizationIngredientDto> ingredients,
+        string[]? imageURLs = null)
         {
+            // Validate inputs
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ValidationException("Customization name cannot be empty");
+
+            if (size <= 0)
+                throw new ValidationException("Size must be greater than 0");
+
             // Get the combo
             var combo = await _comboService.GetByIdAsync(comboId);
             if (combo == null)
                 throw new NotFoundException($"Combo with ID {comboId} not found");
+
+            if (!combo.IsCustomizable)
+                throw new ValidationException("This combo is not customizable");
 
             // Validate user
             var user = await _unitOfWork.Repository<User>()
@@ -154,10 +226,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Validate broth
             await ValidateHotpotBroth(brothId);
-
-            // Validate size
-            if (size <= 0)
-                throw new ValidationException("Size must be greater than 0");
 
             // Validate image URLs if provided
             if (imageURLs != null && imageURLs.Length > 0)
@@ -195,7 +263,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     AppliedDiscountID = applicableDiscount?.SizeDiscountId,
                     BasePrice = 0,
                     TotalPrice = 0,
-                    ImageURLs = imageURLs // Set image URLs
+                    ImageURLs = imageURLs
                 };
 
                 _unitOfWork.Repository<Customization>().Insert(customization);
@@ -274,121 +342,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-        private async Task<decimal> CalculateBasePriceAsync(Customization customization)
-        {
-            decimal basePrice = 0;
+       
 
-            // Add hotpot broth price
-            if (customization.HotpotBrothID > 0)
-            {
-                try
-                {
-                    var brothPrice = await _ingredientService.GetCurrentPriceAsync(customization.HotpotBrothID);
-                    basePrice += brothPrice;
-                }
-                catch (NotFoundException)
-                {
-                    // Handle case where broth price is not found
-                    throw new ValidationException($"Price not found for broth with ID {customization.HotpotBrothID}");
-                }
-            }
-
-            // Add ingredients prices
-            var customizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                .IncludeNested(query => query.Include(ci => ci.Ingredient))
-                .Where(ci => ci.CustomizationID == customization.CustomizationId && !ci.IsDelete)
-                .ToListAsync();
-
-            // Get all ingredient IDs
-            var ingredientIds = customizationIngredients.Select(ci => ci.IngredientID).ToList();
-
-            // Get all current prices in a single query
-            var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-            foreach (var customizationIngredient in customizationIngredients)
-            {
-                if (currentPrices.TryGetValue(customizationIngredient.IngredientID, out decimal price))
-                {
-                    basePrice += price * customizationIngredient.Quantity;
-                }
-                else
-                {
-                    throw new ValidationException($"Price not found for ingredient with ID {customizationIngredient.IngredientID}");
-                }
-            }
-
-            return basePrice;
-        }
-
-        public async Task UpdateAsync(int id, Customization customization)
-        {
-            var existingCustomization = await GetByIdAsync(id);
-            if (existingCustomization == null)
-                throw new NotFoundException($"Customization with ID {id} not found");
-
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(customization.Name))
-                throw new ValidationException("Customization name cannot be empty");
-
-            if (customization.Size <= 0)
-                throw new ValidationException("Size must be greater than 0");
-
-            // Validate image URLs if provided
-            if (customization.ImageURLs != null && customization.ImageURLs.Length > 0)
-            {
-                foreach (var url in customization.ImageURLs)
-                {
-                    if (string.IsNullOrWhiteSpace(url))
-                    {
-                        throw new ValidationException("Image URLs cannot be empty");
-                    }
-
-                    // Optional: Add URL format validation if needed
-                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                    {
-                        throw new ValidationException($"Invalid image URL format: {url}");
-                    }
-                }
-            }
-
-            // Validate HotpotBroth if it's being changed
-            if (existingCustomization.HotpotBrothID != customization.HotpotBrothID)
-            {
-                await ValidateHotpotBroth(customization.HotpotBrothID);
-            }
-
-            // Get applicable discount for this size if size changed
-            if (existingCustomization.Size != customization.Size || !customization.AppliedDiscountID.HasValue)
-            {
-                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(customization.Size);
-                customization.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
-            }
-
-            // Calculate base price (if needed)
-            if (customization.BasePrice <= 0)
-            {
-                customization.BasePrice = await CalculateBasePriceAsync(customization);
-            }
-
-            // Calculate total price with discount
-            decimal totalPrice = customization.BasePrice;
-            if (customization.AppliedDiscountID.HasValue)
-            {
-                var discount = await _sizeDiscountService.GetByIdAsync(customization.AppliedDiscountID.Value);
-                if (discount != null)
-                {
-                    totalPrice = customization.BasePrice * (1 - (discount.DiscountPercentage / 100m));
-                }
-            }
-            customization.TotalPrice = totalPrice;
-
-            // Update customization
-            customization.SetUpdateDate();
-            await _unitOfWork.Repository<Customization>().Update(customization, id);
-            await _unitOfWork.CommitAsync();
-        }
-
-        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredient> ingredients)
+        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
         {
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
@@ -400,6 +356,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Validate basic properties
                 if (string.IsNullOrWhiteSpace(entity.Name))
                     throw new ValidationException("Customization name cannot be empty");
+
+                if (entity.Size <= 0)
+                    throw new ValidationException("Size must be greater than 0");
 
                 // Validate image URLs if provided
                 if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
@@ -425,17 +384,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     await ValidateHotpotBroth(entity.HotpotBrothID);
                 }
 
-                // Validate all ingredients
-                foreach (var ingredient in ingredients)
+                // Get applicable discount for this size if size changed
+                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountID.HasValue)
                 {
-                    var ingredientExists = await _unitOfWork.Repository<Ingredient>()
-                        .AnyAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
-
-                    if (!ingredientExists)
-                        throw new ValidationException($"Ingredient with ID {ingredient.IngredientID} not found");
-
-                    if (ingredient.Quantity <= 0)
-                        throw new ValidationException("Ingredient quantity must be greater than 0");
+                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
+                    entity.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
                 }
 
                 // Update customization basic info
@@ -456,28 +409,69 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await _unitOfWork.CommitAsync();
 
                 // Add new ingredients
-                foreach (var ingredient in ingredients)
-                {
-                    ingredient.CustomizationID = id;
-                    _unitOfWork.Repository<CustomizationIngredient>().Insert(ingredient);
-                }
-                await _unitOfWork.CommitAsync();
+                decimal basePrice = 0;
 
-                // Calculate base price
-                entity.BasePrice = await CalculateBasePriceAsync(entity);
+                // Add broth price
+                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothID);
+                basePrice += brothPrice;
+
+                // Add ingredients
+                foreach (var ingredientDto in ingredients)
+                {
+                    // Validate ingredient exists
+                    var ingredient = await _unitOfWork.Repository<Ingredient>()
+                        .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+
+                    if (ingredient == null)
+                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+
+                    // Validate quantity
+                    if (ingredientDto.Quantity <= 0)
+                        throw new ValidationException("Ingredient quantity must be greater than 0");
+
+                    // If this is a customizable combo, validate that the ingredient is allowed
+                    var combo = await _comboService.GetByIdAsync(entity.ComboID);
+                    if (combo != null && combo.IsCustomizable)
+                    {
+                        // Check if ingredient type is allowed
+                        var isTypeAllowed = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                            .AnyAsync(ait => ait.ComboId == entity.ComboID && ait.IngredientTypeId == ingredient.IngredientTypeID && !ait.IsDelete);
+
+                        if (!isTypeAllowed)
+                            throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+                    }
+
+                    // Add ingredient to customization
+                    var customizationIngredient = new CustomizationIngredient
+                    {
+                        CustomizationID = id,
+                        IngredientID = ingredientDto.IngredientID,
+                        Quantity = ingredientDto.Quantity
+                    };
+
+                    _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
+
+                    // Add to base price
+                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
+                    basePrice += ingredientPrice * ingredientDto.Quantity;
+                }
+
+                // Update base price
+                entity.BasePrice = basePrice;
 
                 // Calculate total price with discount
-                decimal totalPrice = entity.BasePrice;
+                decimal totalPrice = basePrice;
                 if (entity.AppliedDiscountID.HasValue)
                 {
                     var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountID.Value);
                     if (discount != null)
                     {
-                        totalPrice = entity.BasePrice * (1 - (discount.DiscountPercentage / 100m));
+                        totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
                     }
                 }
-                entity.TotalPrice = totalPrice;
 
+                // Update total price
+                entity.TotalPrice = totalPrice;
                 await _unitOfWork.Repository<Customization>().Update(entity, id);
                 await _unitOfWork.CommitAsync();
 
@@ -492,32 +486,42 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         public async Task DeleteAsync(int id)
         {
-            var customization = await GetByIdAsync(id);
-            if (customization == null)
-                throw new NotFoundException($"Customization with ID {id} not found");
-
-            // Check if this customization is used by any orders
-            var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
-                .AnyAsync(od => od.CustomizationID == id && !od.IsDelete);
-
-            if (isUsedByOrder)
-                throw new ValidationException("Cannot delete this customization as it is used by existing orders");
-
-            // Soft delete customization and related entities
-            customization.SoftDelete();
-
-            // Soft delete customization ingredients
-            var customizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                .FindAll(ci => ci.CustomizationID == id && !ci.IsDelete)
-                .ToListAsync();
-
-            foreach (var ingredient in customizationIngredients)
+            try
             {
-                ingredient.SoftDelete();
-            }
+                var customization = await GetByIdAsync(id);
+                if (customization == null)
+                    throw new NotFoundException($"Customization with ID {id} not found");
 
-            await _unitOfWork.CommitAsync();
+                // Check if this customization is used by any orders
+                var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
+                    .AnyAsync(od => od.CustomizationID == id && !od.IsDelete);
+
+                if (isUsedByOrder)
+                    throw new ValidationException("Cannot delete this customization as it is used by existing orders");
+
+                // Soft delete customization
+                customization.SoftDelete();
+                await _unitOfWork.CommitAsync();
+
+                // Soft delete customization ingredients
+                var customizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                    .FindAll(ci => ci.CustomizationID == id && !ci.IsDelete)
+                    .ToListAsync();
+
+                foreach (var ingredient in customizationIngredients)
+                {
+                    ingredient.SoftDelete();
+                }
+
+                await _unitOfWork.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting customization with ID {CustomizationId}", id);
+                throw;
+            }
         }
+
 
         public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
     int comboId,
@@ -525,184 +529,84 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
     int brothId,
     List<CustomizationIngredientDto> ingredients)
         {
-            // Validation logic...
-
-            // Calculate base price
-            decimal basePrice = 0;
-
-            // Add broth price
-            var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
-            basePrice += brothPrice;
-
-            // Add ingredients prices
-            var ingredientIds = ingredients.Select(i => i.IngredientID).ToList();
-            var prices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-            foreach (var ingredient in ingredients)
+            try
             {
-                if (prices.TryGetValue(ingredient.IngredientID, out decimal price))
+                // Validate combo
+                var combo = await _comboService.GetByIdAsync(comboId);
+                if (combo == null)
+                    throw new NotFoundException($"Combo with ID {comboId} not found");
+
+                if (!combo.IsCustomizable)
+                    throw new ValidationException("This combo is not customizable");
+
+                // Validate broth
+                await ValidateHotpotBroth(brothId);
+
+                // Validate size
+                if (size <= 0)
+                    throw new ValidationException("Size must be greater than 0");
+
+                // Calculate base price
+                decimal basePrice = 0;
+
+                // Add broth price
+                var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
+                basePrice += brothPrice;
+
+                // Validate ingredients and add to price
+                foreach (var ingredientDto in ingredients)
                 {
-                    basePrice += price * ingredient.Quantity;
-                }
-                else
-                {
-                    throw new ValidationException($"Price not found for ingredient with ID {ingredient.IngredientID}");
-                }
-            }
+                    // Validate ingredient exists
+                    var ingredient = await _unitOfWork.Repository<Ingredient>()
+                        .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
 
-            // Get applicable discount
-            var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
-            decimal discountPercentage = applicableDiscount?.DiscountPercentage ?? 0;
-            decimal discountAmount = basePrice * (discountPercentage / 100m);
-            decimal totalPrice = basePrice - discountAmount;
+                    if (ingredient == null)
+                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
 
-            return new CustomizationPriceEstimate
-            {
-                BasePrice = basePrice,
-                DiscountPercentage = discountPercentage,
-                DiscountAmount = discountAmount,
-                Total = totalPrice,
-                Size = size
-            };
-        }
+                    // Validate quantity
+                    if (ingredientDto.Quantity <= 0)
+                        throw new ValidationException("Ingredient quantity must be greater than 0");
 
-
-        public async Task<IEnumerable<CustomizationIngredient>> GetCustomizationIngredientsAsync(int customizationId)
-        {
-            return await _unitOfWork.Repository<CustomizationIngredient>()
-                .Include(ci => ci.Ingredient)
-                .Where(ci => ci.CustomizationID == customizationId && !ci.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task AddIngredientToCustomizationAsync(int customizationId, int ingredientId, int quantity)
-        {
-            var customization = await GetByIdAsync(customizationId);
-            if (customization == null)
-                throw new NotFoundException($"Customization with ID {customizationId} not found");
-
-            var ingredient = await _unitOfWork.Repository<Ingredient>()
-                .IncludeNested(query => query.Include(i => i.IngredientType))
-                .FirstOrDefaultAsync(i => i.IngredientId == ingredientId && !i.IsDelete);
-
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {ingredientId} not found");
-
-            // Don't allow adding broth as a regular ingredient
-            if (ingredient.IngredientTypeID == BROTH_TYPE_ID)
-                throw new ValidationException("Cannot add broth as a regular ingredient. Use HotpotBroth property instead.");
-
-            // Check if ingredient already exists
-            var existingIngredient = await _unitOfWork.Repository<CustomizationIngredient>()
-                .FindAsync(ci => ci.CustomizationID == customizationId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (existingIngredient != null)
-                throw new ValidationException("Ingredient already exists in customization");
-
-            var customizationIngredient = new CustomizationIngredient
-            {
-                CustomizationID = customizationId,
-                IngredientID = ingredientId,
-                Quantity = quantity
-            };
-
-            _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
-
-            // Update base price
-            customization.BasePrice = await CalculateBasePriceAsync(customization);
-
-            // Calculate total price with discount
-            decimal totalPrice = customization.BasePrice;
-            if (customization.AppliedDiscountID.HasValue)
-            {
-                var discount = await _sizeDiscountService.GetByIdAsync(customization.AppliedDiscountID.Value);
-                if (discount != null)
-                {
-                    totalPrice = customization.BasePrice * (1 - (discount.DiscountPercentage / 100m));
-                }
-            }
-            customization.TotalPrice = totalPrice;
-
-            customization.SetUpdateDate();
-
-            await _unitOfWork.CommitAsync();
-        }
-
-        public async Task RemoveIngredientFromCustomizationAsync(int customizationId, int ingredientId)
-        {
-            var customizationIngredient = await _unitOfWork.Repository<CustomizationIngredient>()
-                .FindAsync(ci => ci.CustomizationID == customizationId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (customizationIngredient == null)
-                throw new NotFoundException("Ingredient not found in customization");
-
-            customizationIngredient.SoftDelete();
-
-            // Update prices
-            var customization = await GetByIdAsync(customizationId);
-            if (customization != null)
-            {
-                // Update base price
-                customization.BasePrice = await CalculateBasePriceAsync(customization);
-
-                // Calculate total price with discount
-                decimal totalPrice = customization.BasePrice;
-                if (customization.AppliedDiscountID.HasValue)
-                {
-                    var discount = await _sizeDiscountService.GetByIdAsync(customization.AppliedDiscountID.Value);
-                    if (discount != null)
+                    // If this is a customizable combo, validate that the ingredient is allowed
+                    if (combo.IsCustomizable)
                     {
-                        totalPrice = customization.BasePrice * (1 - (discount.DiscountPercentage / 100m));
+                        // Check if ingredient type is allowed
+                        var isTypeAllowed = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                            .AnyAsync(ait => ait.ComboId == comboId && ait.IngredientTypeId == ingredient.IngredientTypeID && !ait.IsDelete);
+
+                        if (!isTypeAllowed)
+                            throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
                     }
+
+                    // Add to base price
+                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
+                    basePrice += ingredientPrice * ingredientDto.Quantity;
                 }
-                customization.TotalPrice = totalPrice;
 
-                customization.SetUpdateDate();
-            }
+                // Get applicable discount
+                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
+                decimal discountPercentage = applicableDiscount?.DiscountPercentage ?? 0;
+                decimal discountAmount = basePrice * (discountPercentage / 100m);
+                decimal totalPrice = basePrice - discountAmount;
 
-            await _unitOfWork.CommitAsync();
-        }
-
-        public async Task UpdateIngredientQuantityAsync(int customizationId, int ingredientId, int newQuantity)
-        {
-            if (newQuantity <= 0)
-                throw new ValidationException("Quantity must be greater than 0");
-
-            var customizationIngredient = await _unitOfWork.Repository<CustomizationIngredient>()
-                .FindAsync(ci => ci.CustomizationID == customizationId && ci.IngredientID == ingredientId && !ci.IsDelete);
-
-            if (customizationIngredient == null)
-                throw new NotFoundException("Ingredient not found in customization");
-
-            customizationIngredient.Quantity = newQuantity;
-            customizationIngredient.SetUpdateDate();
-
-            // Update prices
-            var customization = await GetByIdAsync(customizationId);
-            if (customization != null)
-            {
-                // Update base price
-                customization.BasePrice = await CalculateBasePriceAsync(customization);
-
-                // Calculate total price with discount
-                decimal totalPrice = customization.BasePrice;
-                if (customization.AppliedDiscountID.HasValue)
+                return new CustomizationPriceEstimate
                 {
-                    var discount = await _sizeDiscountService.GetByIdAsync(customization.AppliedDiscountID.Value);
-                    if (discount != null)
-                    {
-                        totalPrice = customization.BasePrice * (1 - (discount.DiscountPercentage / 100m));
-                    }
-                }
-                customization.TotalPrice = totalPrice;
-
-                customization.SetUpdateDate();
+                    BasePrice = basePrice,
+                    DiscountPercentage = discountPercentage,
+                    DiscountAmount = discountAmount,
+                    Total = totalPrice,
+                    Size = size
+                };
             }
-
-            await _unitOfWork.CommitAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating price estimate");
+                throw;
+            }
         }
 
 
+      
         private async Task ValidateHotpotBroth(int brothId)
         {
             var broth = await _unitOfWork.Repository<Ingredient>()
@@ -719,114 +623,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 throw new ValidationException("Selected broth is out of stock");
         }
 
-        public async Task<decimal> CalculateTotalPriceAsync(int customizationId)
+        public Task<IEnumerable<Customization>> GetAllAsync()
         {
-            var customization = await GetByIdAsync(customizationId);
-            if (customization == null)
-                throw new NotFoundException($"Customization with ID {customizationId} not found");
-
-            // Calculate base price
-            decimal basePrice = await CalculateBasePriceAsync(customization);
-
-            // Calculate total price with discount
-            decimal totalPrice = basePrice;
-            if (customization.AppliedDiscountID.HasValue)
-            {
-                var discount = await _sizeDiscountService.GetByIdAsync(customization.AppliedDiscountID.Value);
-                if (discount != null)
-                {
-                    totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
-                }
-            }
-
-            return totalPrice;
+            throw new NotImplementedException();
         }
 
-        private async Task<decimal> CalculateTotalPriceAsync(Customization customization)
+        public Task<Customization> CreateAsync(Customization entity)
         {
-            decimal totalPrice = 0;
-
-            // Add hotpot broth price
-            if (customization.HotpotBrothID > 0)
-            {
-                try
-                {
-                    var brothPrice = await _ingredientService.GetCurrentPriceAsync(customization.HotpotBrothID);
-                    totalPrice += brothPrice;
-                }
-                catch (NotFoundException)
-                {
-                    // Handle case where broth price is not found
-                    throw new ValidationException($"Price not found for broth with ID {customization.HotpotBrothID}");
-                }
-            }
-
-            // Add ingredients prices
-            var customizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                .IncludeNested(query => query.Include(ci => ci.Ingredient))
-                .Where(ci => ci.CustomizationID == customization.CustomizationId && !ci.IsDelete)
-                .ToListAsync();
-
-            // Get all ingredient IDs
-            var ingredientIds = customizationIngredients.Select(ci => ci.IngredientID).ToList();
-
-            // Get all current prices in a single query
-            var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-            foreach (var customizationIngredient in customizationIngredients)
-            {
-                if (currentPrices.TryGetValue(customizationIngredient.IngredientID, out decimal price))
-                {
-                    totalPrice += price * customizationIngredient.Quantity;
-                }
-                else
-                {
-                    throw new ValidationException($"Price not found for ingredient with ID {customizationIngredient.IngredientID}");
-                }
-            }
-
-            return totalPrice;
+            throw new NotImplementedException();
         }
 
-        public async Task<PagedResult<Customization>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
+        public Task UpdateAsync(int id, Customization entity)
         {
-            searchTerm = searchTerm?.ToLower() ?? "";
-
-            var query = _unitOfWork.Repository<Customization>()
-                .IncludeNested(q =>
-                    q.Include(c => c.CustomizationIngredients)
-                     .ThenInclude(ci => ci.Ingredient)
-                     .Include(c => c.HotpotBroth)
-                     .Include(c => c.User)
-                     .Include(c => c.Combo))
-                .Where(c => !c.IsDelete &&
-                           (c.Name.ToLower().Contains(searchTerm) ||
-                            c.HotpotBroth.Name.ToLower().Contains(searchTerm) ||
-                            c.User.Name.ToLower().Contains(searchTerm)));
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(c => c.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Customization>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
-        }
-
-        public decimal GetTotalPrice(Customization customization)
-        {
-            if (customization.AppliedDiscount == null)
-                return customization.BasePrice;
-
-            return customization.BasePrice * (1 - (customization.AppliedDiscount.DiscountPercentage / 100m));
+            throw new NotImplementedException();
         }
     }
 }
