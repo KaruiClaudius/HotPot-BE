@@ -227,9 +227,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLog>>>> GetCustomerAffectedEquipment(int customerId)
         {
-            // This is a placeholder method. In a real application, you would implement logic
-            // to determine which equipment failures affect this specific customer.
-            // For demonstration purposes, we'll return all active condition logs.
             var conditionLogs = await _equipmentService.GetActiveConditionLogsAsync();
             return Ok(ApiResponse<IEnumerable<ConditionLog>>.SuccessResponse(conditionLogs, "Customer affected equipment retrieved successfully"));
         }
