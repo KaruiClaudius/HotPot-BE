@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount
 {
-    public class CustomizationPriceEstimate
+    public class SizeDiscountPriceEstimate
     {
         public decimal BasePrice { get; set; }
         public decimal DiscountPercentage { get; set; }

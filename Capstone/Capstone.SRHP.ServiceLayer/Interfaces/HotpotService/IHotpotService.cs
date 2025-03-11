@@ -12,12 +12,22 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
 {
     public interface IHotpotService : IBaseService<Hotpot>
     {
-        Task<PagedResult<Hotpot>> GetPagedAsync(int pageNumber, int pageSize);
-        Task<IEnumerable<Hotpot>> GetAvailableHotpotsAsync();
-        Task UpdateStatusAsync(int id, bool status);
+        Task<PagedResult<Hotpot>> GetHotpotsAsync(
+                string searchTerm = null,
+                bool? isAvailable = null,
+                string material = null,
+                string size = null,
+                decimal? minPrice = null,
+                decimal? maxPrice = null,
+                int? minQuantity = null,
+                int pageNumber = 1,
+                int pageSize = 10,
+                string sortBy = "Name",
+                bool ascending = true);
+        Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null);
+        Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null);
+        Task<decimal> CalculateDepositAsync(int id, int quantity);
         Task UpdateQuantityAsync(int id, int quantity);
         Task<bool> IsAvailableAsync(int id);
-        Task<PagedResult<Hotpot>> SearchAsync(string searchTerm, int pageNumber, int pageSize);
-        Task<decimal> CalculateDepositAsync(int id, int quantity);
     }
 }

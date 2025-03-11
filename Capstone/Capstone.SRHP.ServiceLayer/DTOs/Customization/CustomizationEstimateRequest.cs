@@ -7,14 +7,20 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 {
-    public class CreateCustomizationIngredientRequest
+    public class CustomizationEstimateRequest
     {
         [Required]
-        public int IngredientID { get; set; }
+        public int ComboId { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]
-        public int Quantity { get; set; }
+        public int Size { get; set; }
+
+        [Required]
+        public int BrothId { get; set; }
+
+        [Required]
+        public List<CustomizationIngredientDto> Ingredients { get; set; }
     }
 
 }
