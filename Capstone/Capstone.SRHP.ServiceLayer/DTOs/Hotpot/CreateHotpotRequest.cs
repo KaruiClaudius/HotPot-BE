@@ -22,32 +22,29 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         public string Size { get; set; }
 
         [StringLength(1000)]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
-        public string[]? ImageURLs { get; set; }
+        public string[] ImageURLs { get; set; }
 
         [Required]
-        [Range(0.01, double.MaxValue)]
+        [Range(0, double.MaxValue)]
         public decimal Price { get; set; }
 
         [Required]
-        [Range(0.01, double.MaxValue)]
+        [Range(0, double.MaxValue)]
         public decimal BasePrice { get; set; }
 
         [Required]
         public bool Status { get; set; }
 
-        [Required]
         [Range(0, int.MaxValue)]
         public int Quantity { get; set; }
 
         [Required]
-        public int HotpotTypeID { get; set; }
-
-        [Required]
         public int InventoryID { get; set; }
 
-        [Required]
-        public int TurtorialVideoID { get; set; }
+        // Optional array of series numbers for inventory items
+        public string[] SeriesNumbers { get; set; }
     }
+
 }

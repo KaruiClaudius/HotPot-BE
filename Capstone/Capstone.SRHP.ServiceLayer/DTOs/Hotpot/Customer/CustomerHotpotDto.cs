@@ -21,8 +21,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot.Customer
 
     public class CustomerHotpotDetailDto : CustomerHotpotDto
     {
-        public int TurtorialVideoID { get; set; }
-        public string TurtorialVideoUrl { get; set; }
-        public string TurtorialVideoTitle { get; set; }
+        public string[] SeriesNumbers { get; set; }
     }
 }

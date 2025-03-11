@@ -3,6 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
+using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,54 +25,50 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
+        // GET: api/Hotpot
+        // Handles: Getting all hotpots with filtering, searching, and pagination
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetAll()
-        {
-            try
-            {
-                var hotpots = await _hotpotService.GetAllAsync();
-                var response = hotpots.Select(MapToResponse).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving all hotpots");
-                return StatusCode(500, new { message = "An error occurred while retrieving hotpots" });
-            }
-        }
-
-        [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<HotpotDto>>> GetPaged(
+        public async Task<ActionResult<PagedResult<HotpotDto>>> GetHotpots(
+            [FromQuery] string searchTerm = null,
+            [FromQuery] bool? isAvailable = null,
+            [FromQuery] string material = null,
+            [FromQuery] string size = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int? minQuantity = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "Name",
+            [FromQuery] bool ascending = true)
         {
             try
             {
-                if (pageNumber < 1) pageNumber = 1;
-                if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
+                var result = await _hotpotService.GetHotpotsAsync(
+                    searchTerm, isAvailable, material, size,
+                    minPrice, maxPrice, minQuantity,
+                    pageNumber, pageSize, sortBy, ascending);
 
-                var pagedResult = await _hotpotService.GetPagedAsync(pageNumber, pageSize);
-
-                var items = pagedResult.Items.Select(MapToResponse).ToList();
-
-                return Ok(new PagedResult<HotpotDto>
+                var pagedResult = new PagedResult<HotpotDto>
                 {
-                    Items = items,
-                    TotalCount = pagedResult.TotalCount,
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize
-                });
+                    Items = result.Items.Select(MapToHotpotDto).ToList(),
+                    TotalCount = result.TotalCount,
+                    PageNumber = result.PageNumber,
+                    PageSize = result.PageSize
+                };
+
+                return Ok(pagedResult);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving paged hotpots");
-                return StatusCode(500, new { message = "An error occurred while retrieving hotpots" });
+                _logger.LogError(ex, "Error retrieving hotpots");
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
+        // GET: api/Hotpot/{id}
+        // Handles: Getting a specific hotpot by ID with its inventory items and condition logs
         [HttpGet("{id}")]
-        public async Task<ActionResult<HotpotDto>> GetById(int id)
+        public async Task<ActionResult<HotpotDetailDto>> GetById(int id)
         {
             try
             {
@@ -79,97 +76,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (hotpot == null)
                     return NotFound(new { message = $"Hotpot with ID {id} not found" });
 
-                var response = MapToResponse(hotpot);
-                return Ok(response);
+                var hotpotDto = MapToHotpotDetailDto(hotpot);
+
+                return Ok(hotpotDto);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the hotpot" });
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
-        [HttpGet("available")]
-        public async Task<ActionResult<IEnumerable<HotpotDto>>> GetAvailable()
-        {
-            try
-            {
-                var hotpots = await _hotpotService.GetAvailableHotpotsAsync();
-                var response = hotpots.Select(MapToResponse).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving available hotpots");
-                return StatusCode(500, new { message = "An error occurred while retrieving available hotpots" });
-            }
-        }
-
-
-
-        [HttpGet("search")]
-        public async Task<ActionResult<PagedResult<HotpotDto>>> Search(
-            [FromQuery] string searchTerm,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (pageNumber < 1) pageNumber = 1;
-                if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
-
-                var pagedResult = await _hotpotService.SearchAsync(searchTerm, pageNumber, pageSize);
-
-                var items = pagedResult.Items.Select(MapToResponse).ToList();
-
-                return Ok(new PagedResult<HotpotDto>
-                {
-                    Items = items,
-                    TotalCount = pagedResult.TotalCount,
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching hotpots with term {SearchTerm}", searchTerm);
-                return StatusCode(500, new { message = "An error occurred while searching hotpots" });
-            }
-        }
-
-        [HttpGet("{id}/deposit")]
-        public async Task<ActionResult<DepositResponse>> CalculateDeposit(int id, [FromQuery] int quantity = 1)
-        {
-            try
-            {
-                if (quantity < 1)
-                    return BadRequest(new { message = "Quantity must be at least 1" });
-
-                var deposit = await _hotpotService.CalculateDepositAsync(id, quantity);
-
-                return Ok(new DepositResponse
-                {
-                    HotpotId = id,
-                    Quantity = quantity,
-                    DepositAmount = deposit,
-                    DepositPercentage = 70 // 70% of base price
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calculating deposit for hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while calculating the deposit" });
-            }
-        }
-
+        // POST: api/Hotpot
+        // Handles: Creating a new hotpot with optional inventory items
         [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<HotpotDto>> Create([FromBody] CreateHotpotRequest request)
+        public async Task<ActionResult<HotpotDto>> Create(CreateHotpotRequest request)
         {
             try
             {
@@ -179,19 +100,18 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Material = request.Material,
                     Size = request.Size,
                     Description = request.Description,
-                    ImageURL = request.ImageURLs != null ? JsonSerializer.Serialize(request.ImageURLs) : null,
+                    ImageURLs = request.ImageURLs,
                     Price = request.Price,
                     BasePrice = request.BasePrice,
                     Status = request.Status,
-                    Quantity = request.Quantity,
+                    Quantity = request.SeriesNumbers?.Length ?? request.Quantity,
                     LastMaintainDate = DateTime.UtcNow,
                     InventoryID = request.InventoryID
                 };
 
-                var createdHotpot = await _hotpotService.CreateAsync(hotpot);
-                var response = MapToResponse(createdHotpot);
+                var createdHotpot = await _hotpotService.CreateAsync(hotpot, request.SeriesNumbers);
 
-                return CreatedAtAction(nameof(GetById), new { id = createdHotpot.HotpotId }, response);
+                return CreatedAtAction(nameof(GetById), new { id = createdHotpot.HotpotId }, MapToHotpotDto(createdHotpot));
             }
             catch (ValidationException ex)
             {
@@ -200,13 +120,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating hotpot");
-                return StatusCode(500, new { message = "An error occurred while creating the hotpot" });
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
+        // PUT: api/Hotpot/{id}
+        // Handles: Updating a hotpot with optional inventory items
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> Update(int id, [FromBody] UpdateHotpotRequest request)
+        public async Task<ActionResult> Update(int id, UpdateHotpotRequest request)
         {
             try
             {
@@ -218,34 +139,44 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingHotpot.Material = request.Material;
                 existingHotpot.Size = request.Size;
                 existingHotpot.Description = request.Description;
-                existingHotpot.ImageURL = request.ImageURLs != null ? JsonSerializer.Serialize(request.ImageURLs) : null;
+                existingHotpot.ImageURLs = request.ImageURLs;
                 existingHotpot.Price = request.Price;
                 existingHotpot.BasePrice = request.BasePrice;
                 existingHotpot.Status = request.Status;
-                existingHotpot.Quantity = request.Quantity;
                 existingHotpot.InventoryID = request.InventoryID;
 
-                await _hotpotService.UpdateAsync(id, existingHotpot);
+                // If series numbers are provided, they will update the quantity
+                if (request.SeriesNumbers != null && request.SeriesNumbers.Length > 0)
+                {
+                    existingHotpot.Quantity = request.SeriesNumbers.Length;
+                }
+                else
+                {
+                    existingHotpot.Quantity = request.Quantity;
+                }
+
+                await _hotpotService.UpdateAsync(id, existingHotpot, request.SeriesNumbers);
 
                 return NoContent();
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
             }
             catch (ValidationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the hotpot" });
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
+        // DELETE: api/Hotpot/{id}
+        // Handles: Deleting a hotpot
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             try
@@ -260,18 +191,28 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the hotpot" });
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
-        [HttpPut("{id}/status/{status}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> UpdateStatus(int id, bool status)
+        // GET: api/Hotpot/{id}/deposit/{quantity}
+        // Handles: Calculating the deposit for a hotpot
+        [HttpGet("{id}/deposit/{quantity}")]
+        public async Task<ActionResult<DepositDto>> CalculateDeposit(int id, int quantity)
         {
             try
             {
-                await _hotpotService.UpdateStatusAsync(id, status);
-                return NoContent();
+                if (quantity <= 0)
+                    return BadRequest(new { message = "Quantity must be greater than 0" });
+
+                var deposit = await _hotpotService.CalculateDepositAsync(id, quantity);
+
+                return Ok(new DepositDto
+                {
+                    HotpotId = id,
+                    Quantity = quantity,
+                    DepositAmount = deposit
+                });
             }
             catch (NotFoundException ex)
             {
@@ -279,37 +220,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating status for hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the hotpot status" });
+                _logger.LogError(ex, "Error calculating deposit for hotpot with ID {HotpotId}", id);
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
-        [HttpPut("{id}/quantity/{quantityChange}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> UpdateQuantity(int id, int quantityChange)
-        {
-            try
-            {
-                await _hotpotService.UpdateQuantityAsync(id, quantityChange);
-                return NoContent();
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating quantity for hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the hotpot quantity" });
-            }
-        }
-
-        // Helper methods
-        private HotpotDto MapToResponse(Hotpot hotpot)
+        // Helper methods for mapping entities to DTOs
+        private HotpotDto MapToHotpotDto(Hotpot hotpot)
         {
             if (hotpot == null) return null;
 
@@ -323,12 +240,50 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURLs = hotpot.ImageURLs,
                 Price = hotpot.Price,
                 BasePrice = hotpot.BasePrice,
-                DepositAmount = Math.Round(hotpot.BasePrice * 0.7m, 2), // Calculate deposit amount (70% of base price)
                 Status = hotpot.Status,
                 Quantity = hotpot.Quantity,
                 LastMaintainDate = hotpot.LastMaintainDate,
+                InventoryID = hotpot.InventoryID,
                 CreatedAt = hotpot.CreatedAt,
                 UpdatedAt = hotpot.UpdatedAt
+            };
+        }
+
+        private HotpotDetailDto MapToHotpotDetailDto(Hotpot hotpot)
+        {
+            if (hotpot == null) return null;
+
+            var baseDto = MapToHotpotDto(hotpot);
+
+            return new HotpotDetailDto
+            {
+                HotpotId = baseDto.HotpotId,
+                Name = baseDto.Name,
+                Material = baseDto.Material,
+                Size = baseDto.Size,
+                Description = baseDto.Description,
+                ImageURLs = baseDto.ImageURLs,
+                Price = baseDto.Price,
+                BasePrice = baseDto.BasePrice,
+                Status = baseDto.Status,
+                Quantity = baseDto.Quantity,
+                LastMaintainDate = baseDto.LastMaintainDate,
+                InventoryID = baseDto.InventoryID,
+                CreatedAt = baseDto.CreatedAt,
+                UpdatedAt = baseDto.UpdatedAt,
+                InventoryItems = hotpot.InventoryUnits?.Where(i => !i.IsDelete).Select(i => new InventoryItemDto
+                {
+                    HotPotInventoryId = i.HotPotInventoryId,
+                    SeriesNumber = i.SeriesNumber,
+                    Status = i.Status,
+                    ConditionLogs = i.ConditionLogs?.Where(cl => !cl.IsDelete).Select(cl => new ConditionLogDto
+                    {
+                        ConditionLogId = cl.ConditionLogId,
+                        Name = cl.Name,
+                        Description = cl.Description,
+                        CreatedAt = cl.CreatedAt
+                    }).ToList() ?? new List<ConditionLogDto>()
+                }).ToList() ?? new List<InventoryItemDto>()
             };
         }
     }

@@ -25,32 +25,105 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             _logger = logger;
         }
 
-        public async Task<IEnumerable<Hotpot>> GetAllAsync()
+        public async Task<PagedResult<Hotpot>> GetHotpotsAsync(
+                string searchTerm = null,
+                bool? isAvailable = null,
+                string material = null,
+                string size = null,
+                decimal? minPrice = null,
+                decimal? maxPrice = null,
+                int? minQuantity = null,
+                int pageNumber = 1,
+                int pageSize = 10,
+                string sortBy = "Name",
+                bool ascending = true)
         {
             try
             {
-                return await _unitOfWork.Repository<Hotpot>()
-                    .FindAll(h => !h.IsDelete)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving all hotpots");
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<Hotpot>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            try
-            {
+                // Start with base query
                 var query = _unitOfWork.Repository<Hotpot>()
                     .FindAll(h => !h.IsDelete);
 
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    searchTerm = searchTerm.ToLower();
+                    query = query.Where(h =>
+                        h.Name.ToLower().Contains(searchTerm) ||
+                        (h.Description != null && h.Description.ToLower().Contains(searchTerm)) ||
+                        h.Material.ToLower().Contains(searchTerm));
+                }
+
+                if (isAvailable.HasValue)
+                {
+                    if (isAvailable.Value)
+                    {
+                        query = query.Where(h => h.Status && h.Quantity > 0);
+                    }
+                    else
+                    {
+                        query = query.Where(h => !h.Status || h.Quantity <= 0);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(material))
+                {
+                    query = query.Where(h => h.Material.ToLower() == material.ToLower());
+                }
+
+                if (!string.IsNullOrWhiteSpace(size))
+                {
+                    query = query.Where(h => h.Size.ToLower() == size.ToLower());
+                }
+
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(h => h.Price >= minPrice.Value);
+                }
+
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(h => h.Price <= maxPrice.Value);
+                }
+
+                if (minQuantity.HasValue)
+                {
+                    query = query.Where(h => h.Quantity >= minQuantity.Value);
+                }
+
+                // Get total count before applying pagination
                 var totalCount = await query.CountAsync();
 
-                var items = await query
-                    .OrderBy(h => h.HotpotId) // Ensure consistent ordering
+                // Apply sorting
+                IOrderedQueryable<Hotpot> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "price":
+                        orderedQuery = ascending ? query.OrderBy(h => h.Price) : query.OrderByDescending(h => h.Price);
+                        break;
+                    case "quantity":
+                        orderedQuery = ascending ? query.OrderBy(h => h.Quantity) : query.OrderByDescending(h => h.Quantity);
+                        break;
+                    case "material":
+                        orderedQuery = ascending ? query.OrderBy(h => h.Material) : query.OrderByDescending(h => h.Material);
+                        break;
+                    case "size":
+                        orderedQuery = ascending ? query.OrderBy(h => h.Size) : query.OrderByDescending(h => h.Size);
+                        break;
+                    case "lastmaintaindate":
+                        orderedQuery = ascending ? query.OrderBy(h => h.LastMaintainDate) : query.OrderByDescending(h => h.LastMaintainDate);
+                        break;
+                    case "createdat":
+                        orderedQuery = ascending ? query.OrderBy(h => h.CreatedAt) : query.OrderByDescending(h => h.CreatedAt);
+                        break;
+                    default: // Default to Name
+                        orderedQuery = ascending ? query.OrderBy(h => h.Name) : query.OrderByDescending(h => h.Name);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
@@ -65,17 +138,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving paged hotpots");
+                _logger.LogError(ex, "Error retrieving hotpots with filters");
                 throw;
             }
         }
+
 
         public async Task<Hotpot?> GetByIdAsync(int id)
         {
             try
             {
                 return await _unitOfWork.Repository<Hotpot>()
-                    .FindAsync(h => h.HotpotId == id && !h.IsDelete);
+                    .IncludeNested(q => q.Include(h => h.InventoryUnits)
+                    .ThenInclude(hi => hi.ConditionLogs))
+                    .FirstOrDefaultAsync(h => h.HotpotId == id && !h.IsDelete);
             }
             catch (Exception ex)
             {
@@ -84,8 +160,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
-        public async Task<Hotpot> CreateAsync(Hotpot entity)
+        public async Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null)
         {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 // Validate basic properties
@@ -96,7 +173,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     throw new ValidationException("Hotpot material cannot be empty");
 
                 if (string.IsNullOrWhiteSpace(entity.Size))
-                    throw new ValidationException("Size must be greater than 0");
+                    throw new ValidationException("Size must be specified");
 
                 if (entity.Price <= 0)
                     throw new ValidationException("Price must be greater than 0");
@@ -104,29 +181,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (entity.BasePrice <= 0)
                     throw new ValidationException("Base price must be greater than 0");
 
-                if (entity.Quantity < 0)
+                // If series numbers are provided, set the quantity to match
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
+                {
+                    entity.Quantity = seriesNumbers.Length;
+                }
+                else if (entity.Quantity < 0)
+                {
                     throw new ValidationException("Quantity cannot be negative");
-
+                }
 
                 entity.LastMaintainDate = DateTime.UtcNow;
                 _unitOfWork.Repository<Hotpot>().Insert(entity);
                 await _unitOfWork.CommitAsync();
 
+                // Add inventory items if series numbers are provided
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
+                {
+                    await AddInventoryItemsInternalAsync(entity.HotpotId, seriesNumbers);
+                }
+
+                await transaction.CommitAsync();
                 return entity;
             }
             catch (ValidationException)
             {
+                await transaction.RollbackAsync();
                 throw;
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error creating hotpot");
                 throw;
             }
         }
 
-        public async Task UpdateAsync(int id, Hotpot entity)
+        public async Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null)
         {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var existingHotpot = await GetByIdAsync(id);
@@ -141,7 +234,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     throw new ValidationException("Hotpot material cannot be empty");
 
                 if (string.IsNullOrWhiteSpace(entity.Size))
-                    throw new ValidationException("Size must be greater than 0");
+                    throw new ValidationException("Size must be specified");
 
                 if (entity.Price <= 0)
                     throw new ValidationException("Price must be greater than 0");
@@ -152,21 +245,50 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (entity.Quantity < 0)
                     throw new ValidationException("Quantity cannot be negative");
 
-
+                // Update the hotpot
                 entity.SetUpdateDate();
                 await _unitOfWork.Repository<Hotpot>().Update(entity, id);
                 await _unitOfWork.CommitAsync();
+
+                // If series numbers are provided, update inventory items
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
+                {
+                    // Get existing inventory items
+                    var existingItems = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAll(i => i.HotpotId == id && !i.IsDelete)
+                        .ToListAsync();
+
+                    // Soft delete all existing items
+                    foreach (var item in existingItems)
+                    {
+                        item.SoftDelete();
+                    }
+                    await _unitOfWork.CommitAsync();
+
+                    // Add new inventory items
+                    await AddInventoryItemsInternalAsync(id, seriesNumbers);
+
+                    // Update the hotpot quantity to match the number of series numbers
+                    entity.Quantity = seriesNumbers.Length;
+                    await _unitOfWork.Repository<Hotpot>().Update(entity, id);
+                    await _unitOfWork.CommitAsync();
+                }
+
+                await transaction.CommitAsync();
             }
             catch (NotFoundException)
             {
+                await transaction.RollbackAsync();
                 throw;
             }
             catch (ValidationException)
             {
+                await transaction.RollbackAsync();
                 throw;
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
                 throw;
             }
@@ -194,24 +316,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
-        public async Task<IEnumerable<Hotpot>> GetAvailableHotpotsAsync()
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Hotpot>()
-                    .FindAll(h => !h.IsDelete && h.Status && h.Quantity > 0)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving available hotpots");
-                throw;
-            }
-        }
-
-
-
-        public async Task UpdateStatusAsync(int id, bool status)
+        public async Task<decimal> CalculateDepositAsync(int id, int quantity)
         {
             try
             {
@@ -219,9 +324,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (hotpot == null)
                     throw new NotFoundException($"Hotpot with ID {id} not found");
 
-                hotpot.Status = status;
-                hotpot.SetUpdateDate();
-                await _unitOfWork.CommitAsync();
+                // Deposit is 70% of the hotpot base price
+                return Math.Round((hotpot.BasePrice * quantity) * 0.7m, 2);
             }
             catch (NotFoundException)
             {
@@ -229,7 +333,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating status for hotpot with ID {HotpotId}", id);
+                _logger.LogError(ex, "Error calculating deposit for hotpot with ID {HotpotId}", id);
+                throw;
+            }
+        }
+
+        public async Task<bool> IsAvailableAsync(int id)
+        {
+            try
+            {
+                var hotpot = await GetByIdAsync(id);
+                return hotpot != null && hotpot.Status && hotpot.Quantity > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking availability for hotpot with ID {HotpotId}", id);
                 throw;
             }
         }
@@ -264,78 +382,66 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
-        public async Task<bool> IsAvailableAsync(int id)
+        private async Task AddInventoryItemsInternalAsync(int hotpotId, string[] seriesNumbers)
         {
-            try
+            if (seriesNumbers == null || seriesNumbers.Length == 0)
+                return;
+
+            // Validate series numbers
+            foreach (var seriesNumber in seriesNumbers)
             {
-                var hotpot = await GetByIdAsync(id);
-                return hotpot != null && hotpot.Status && hotpot.Quantity > 0;
+                if (string.IsNullOrWhiteSpace(seriesNumber))
+                    throw new ValidationException("Series number cannot be empty");
             }
-            catch (Exception ex)
+
+            // Check for duplicates in the provided array
+            var duplicates = seriesNumbers.GroupBy(x => x)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicates.Any())
+                throw new ValidationException($"Duplicate series numbers found: {string.Join(", ", duplicates)}");
+
+            // Check if any series numbers already exist in the database
+            var existingSeriesNumbers = await _unitOfWork.Repository<HotPotInventory>()
+                .FindAll(i => seriesNumbers.Contains(i.SeriesNumber) && !i.IsDelete)
+                .Select(i => i.SeriesNumber)
+                .ToListAsync();
+
+            if (existingSeriesNumbers.Any())
+                throw new ValidationException($"Series numbers already exist: {string.Join(", ", existingSeriesNumbers)}");
+
+            // Add new inventory items
+            foreach (var seriesNumber in seriesNumbers)
             {
-                _logger.LogError(ex, "Error checking availability for hotpot with ID {HotpotId}", id);
-                throw;
-            }
-        }
-
-
-
-
-        public async Task<PagedResult<Hotpot>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
-        {
-            try
-            {
-                searchTerm = searchTerm?.ToLower() ?? "";
-
-                var query = _unitOfWork.Repository<Hotpot>()
-                    .FindAll(h => !h.IsDelete && h.Status && h.Quantity > 0 &&
-                               (h.Name.ToLower().Contains(searchTerm) ||
-                                (h.Description != null && h.Description.ToLower().Contains(searchTerm)) ||
-                                h.Material.ToLower().Contains(searchTerm)));
-
-                var totalCount = await query.CountAsync();
-
-                var items = await query
-                    .OrderBy(h => h.HotpotId)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                return new PagedResult<Hotpot>
+                var inventoryItem = new HotPotInventory
                 {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
+                    SeriesNumber = seriesNumber,
+                    HotpotId = hotpotId,
+                    Status = true // Default to active
                 };
+
+                _unitOfWork.Repository<HotPotInventory>().Insert(inventoryItem);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching hotpots with term {SearchTerm}", searchTerm);
-                throw;
-            }
+
+            await _unitOfWork.CommitAsync();
         }
 
-        public async Task<decimal> CalculateDepositAsync(int id, int quantity)
+        public Task<IEnumerable<Hotpot>> GetAllAsync()
         {
-            try
-            {
-                var hotpot = await GetByIdAsync(id);
-                if (hotpot == null)
-                    throw new NotFoundException($"Hotpot with ID {id} not found");
+            throw new NotImplementedException();
+        }
 
-                // Deposit is 70% of the hotpot base price
-                return Math.Round((hotpot.BasePrice * quantity) * 0.7m, 2);
-            }
-            catch (NotFoundException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calculating deposit for hotpot with ID {HotpotId}", id);
-                throw;
-            }
+        public Task<Hotpot> CreateAsync(Hotpot entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task UpdateAsync(int id, Hotpot entity)
+        {
+            throw new NotImplementedException();
         }
     }
 }
+
