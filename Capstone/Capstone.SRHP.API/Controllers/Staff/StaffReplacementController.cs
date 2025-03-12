@@ -10,13 +10,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.RepositoryLayer.Utils;
+using Mapster;
 
 namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Staff")]
-
     public class StaffReplacementController : ControllerBase
     {
         private readonly IReplacementRequestService _replacementService;
@@ -34,37 +34,39 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>>> GetAssignedReplacements()
         {
-            // Get the current staff ID from the authenticated user
-            var claimsIdentity = User.Identity as ClaimsIdentity;
-            if (claimsIdentity == null)
+            try
             {
-                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "User is not authenticated"));
-            }
+                // Get the current user's ID from the claims using the "uid" claim type
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
+                {
+                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "User ID not found in claims"));
+                }
 
-            var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
-            if (string.IsNullOrEmpty(userIdString))
+                if (!int.TryParse(userIdClaim.Value, out var userId))
+                {
+                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                        "Invalid user identity format"));
+                }
+
+                var staff = await _userService.GetByIdAsync(userId);
+
+                if (staff == null || staff.Staff == null)
+                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse("User is not a staff member"));
+
+                var requests = await _replacementService.GetAssignedReplacementRequestsAsync(staff.Staff.StaffId);
+                var dtos = requests.Select(MapToSummaryDto).ToList();
+
+
+                return Ok(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.SuccessResponse(
+                    dtos, "Assigned replacement requests retrieved successfully"));
+            }
+            catch (Exception ex)
             {
-                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "User identity not found. Please login again."));
+                return StatusCode(500, ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    $"An error occurred: {ex.Message}"));
             }
-
-
-            if (!int.TryParse(userIdString, out var userId))
-            {
-                return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "Invalid user identity format"));
-            }
-            var staff = await _userService.GetByIdAsync(userId);
-
-            if (staff == null)
-                return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse("User is not a staff member"));
-
-            var requests = await _replacementService.GetAssignedReplacementRequestsAsync(staff.Staff.StaffId);
-            var dtos = requests.Select(MapToSummaryDto).ToList();
-
-            return Ok(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.SuccessResponse(
-                dtos, "Assigned replacement requests retrieved successfully"));
         }
 
         [HttpGet("{id}")]
@@ -73,45 +75,46 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> GetReplacementRequestById(int id)
         {
-            // Get the current staff ID from the authenticated user
-            var claimsIdentity = User.Identity as ClaimsIdentity;
-            if (claimsIdentity == null)
+            try
             {
-                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "User is not authenticated"));
-            }
+                // Get the current user's ID from the claims using the "uid" claim type
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
+                {
+                    return Unauthorized(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
+                        "User ID not found in claims"));
+                }
 
-            var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
-            if (string.IsNullOrEmpty(userIdString))
+                if (!int.TryParse(userIdClaim.Value, out var userId))
+                {
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
+                        "Invalid user identity format"));
+                }
+
+                var staff = await _userService.GetByIdAsync(userId);
+
+                if (staff == null || staff.Staff == null)
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
+
+                var request = await _replacementService.GetReplacementRequestByIdAsync(id);
+
+                if (request == null)
+                    return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
+
+                // Ensure the staff is assigned to this request
+                if (request.AssignedStaffId != staff.Staff.StaffId)
+                    return Forbid();
+
+                var dto = MapToDetailDto(request);
+
+                return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
+                    dto, "Replacement request retrieved successfully"));
+            }
+            catch (Exception ex)
             {
-                return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "User identity not found. Please login again."));
+                return StatusCode(500, ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
+                    $"An error occurred: {ex.Message}"));
             }
-
-
-            if (!int.TryParse(userIdString, out var userId))
-            {
-                return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                    "Invalid user identity format"));
-            }
-            var staff = await _userService.GetByIdAsync(userId);
-
-            if (staff == null)
-                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
-
-            var request = await _replacementService.GetReplacementRequestByIdAsync(id);
-
-            if (request == null)
-                return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
-
-            // Ensure the staff is assigned to this request
-            if (request.AssignedStaffId != staff.Staff.StaffId)
-                return Forbid();
-
-            var dto = MapToDetailDto(request);
-
-            return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
-                dto, "Replacement request retrieved successfully"));
         }
 
         [HttpPut("{id}/status")]
@@ -124,30 +127,23 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                // Get the current staff ID from the authenticated user
-                var claimsIdentity = User.Identity as ClaimsIdentity;
-                if (claimsIdentity == null)
+                // Get the current user's ID from the claims using the "uid" claim type
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
                 {
-                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                        "User is not authenticated"));
+                    return Unauthorized(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
+                        "User ID not found in claims"));
                 }
 
-                var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
-                if (string.IsNullOrEmpty(userIdString))
+                if (!int.TryParse(userIdClaim.Value, out var userId))
                 {
-                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                        "User identity not found. Please login again."));
-                }
-
-
-                if (!int.TryParse(userIdString, out var userId))
-                {
-                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
                         "Invalid user identity format"));
                 }
+
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null)
+                if (staff == null || staff.Staff == null)
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
 
                 var request = await _replacementService.GetReplacementRequestByIdAsync(id);
@@ -191,30 +187,23 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                // Get the current staff ID from the authenticated user
-                var claimsIdentity = User.Identity as ClaimsIdentity;
-                if (claimsIdentity == null)
+                // Get the current user's ID from the claims using the "uid" claim type
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
                 {
-                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                        "User is not authenticated"));
+                    return Unauthorized(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
+                        "User ID not found in claims"));
                 }
 
-                var userIdString = AuthenTools.GetCurrentUserId(claimsIdentity);
-                if (string.IsNullOrEmpty(userIdString))
+                if (!int.TryParse(userIdClaim.Value, out var userId))
                 {
-                    return Unauthorized(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
-                        "User identity not found. Please login again."));
-                }
-
-
-                if (!int.TryParse(userIdString, out var userId))
-                {
-                    return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse(
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
                         "Invalid user identity format"));
                 }
+
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null)
+                if (staff == null || staff.Staff == null)
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
 
                 var request = await _replacementService.GetReplacementRequestByIdAsync(id);
@@ -311,6 +300,5 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
         #endregion
-
     }
 }
