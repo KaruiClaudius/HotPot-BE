@@ -18,13 +18,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
         public string Material { get; set; }
 
         [StringLength(1000)]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         [StringLength(2000)]
-        public string? ImageURL { get; set; }
+        public string ImageURL { get; set; }
 
         [Required]
-        [Range(0, double.MaxValue)]
+        [Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }
 
         [Required]
@@ -34,7 +34,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
         [Range(0, int.MaxValue)]
         public int Quantity { get; set; }
 
-        [Required]
         public int UtensilTypeID { get; set; }
+
+        [StringLength(100)]
+        public string? UtensilTypeName { get; set; }
     }
 }

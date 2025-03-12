@@ -140,7 +140,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Validate that the referenced item exists
                 if (request.UtensilID.HasValue)
                 {
-                    var utensil = await _utensilService.GetByIdAsync(request.UtensilID.Value);
+                    var utensil = await _utensilService.GetUtensilByIdAsync(request.UtensilID.Value);
                     if (utensil == null)
                     {
                         return BadRequest(new ApiErrorResponse
@@ -407,7 +407,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogInformation("Admin retrieving maintenance logs for utensil with ID: {UtensilId}", utensilId);
 
                 // First check if the utensil exists
-                var utensil = await _utensilService.GetByIdAsync(utensilId);
+                var utensil = await _utensilService.GetUtensilByIdAsync(utensilId);
                 if (utensil == null)
                 {
                     return NotFound(new ApiErrorResponse

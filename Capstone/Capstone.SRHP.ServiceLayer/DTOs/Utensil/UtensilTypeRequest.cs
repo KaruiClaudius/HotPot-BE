@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
 {
-    public class UtensilTypeRequest
+    public class CreateUtensilTypeRequest
     {
         [Required]
         [StringLength(100)]

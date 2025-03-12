@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
@@ -95,47 +96,32 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
 
-        [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<CustomerIngredientDto>>> GetPagedIngredients(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var result = await _ingredientService.GetPagedAsync(pageNumber, pageSize);
-
-                var pagedResult = new PagedResult<CustomerIngredientDto>
-                {
-                    Items = result.Items.Select(MapToCustomerIngredientDto).ToList(),
-                    TotalCount = result.TotalCount,
-                    PageNumber = result.PageNumber,
-                    PageSize = result.PageSize
-                };
-
-                return Ok(pagedResult);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
         [HttpGet("{id}")]
         public async Task<ActionResult<CustomerIngredientDto>> GetIngredientById(int id)
         {
             try
             {
-                var ingredient = await _ingredientService.GetByIdAsync(id);
+                _logger.LogInformation("Customer retrieving ingredient with ID: {IngredientId}", id);
+
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
                 if (ingredient == null)
                     return NotFound(new { message = $"Ingredient with ID {id} not found" });
 
+                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
                 var ingredientDto = MapToCustomerIngredientDto(ingredient);
+                ingredientDto.Price = currentPrice;
 
                 return Ok(ingredientDto);
             }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
+                return NotFound(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                _logger.LogError(ex, "Error retrieving ingredient with ID: {IngredientId} for customer", id);
+                return StatusCode(500, new { message = "An error occurred while retrieving the ingredient" });
             }
         }
 
@@ -144,7 +130,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var types = await _ingredientTypeService.GetAllAsync();
+                _logger.LogInformation("Customer retrieving all ingredient types");
+
+                var types = await _ingredientService.GetAllIngredientTypesAsync();
                 var typeDtos = types.Select(t => new CustomerIngredientTypeDto
                 {
                     IngredientTypeId = t.IngredientTypeId,
@@ -155,49 +143,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("by-type/{typeId}")]
-        public async Task<ActionResult<IEnumerable<CustomerIngredientDto>>> GetIngredientsByType(int typeId)
-        {
-            try
-            {
-                var ingredients = await _ingredientService.GetByTypeAsync(typeId);
-                var ingredientDtos = ingredients.Select(MapToCustomerIngredientDto).ToList();
-
-                return Ok(ingredientDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("search")]
-        public async Task<ActionResult<PagedResult<CustomerIngredientDto>>> SearchIngredients(
-            [FromQuery] string searchTerm = "",
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var result = await _ingredientService.SearchAsync(searchTerm, pageNumber, pageSize);
-
-                var pagedResult = new PagedResult<CustomerIngredientDto>
-                {
-                    Items = result.Items.Select(MapToCustomerIngredientDto).ToList(),
-                    TotalCount = result.TotalCount,
-                    PageNumber = result.PageNumber,
-                    PageSize = result.PageSize
-                };
-
-                return Ok(pagedResult);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
+                _logger.LogError(ex, "Error retrieving ingredient types for customer");
+                return StatusCode(500, new { message = "An error occurred while retrieving ingredient types" });
             }
         }
 
@@ -206,57 +153,58 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
+                _logger.LogInformation("Customer retrieving all broths");
+
                 // Assuming broth type ID is 1
                 const int BROTH_TYPE_ID = 1;
 
-                var broths = await _ingredientService.GetByTypeAsync(BROTH_TYPE_ID);
-                var brothDtos = broths.Select(MapToCustomerIngredientDto).ToList();
+                // Use the combined endpoint logic with typeId filter
+                var result = await _ingredientService.GetIngredientsAsync(
+                    typeId: BROTH_TYPE_ID,
+                    pageSize: int.MaxValue);
+
+                var broths = result.Items;
+
+                // Get all broth IDs
+                var brothIds = broths.Select(i => i.IngredientId).ToList();
+
+                // Get all current prices in a single query
+                var currentPrices = await _ingredientService.GetCurrentPricesAsync(brothIds);
+
+                var brothDtos = broths.Select(broth =>
+                {
+                    var dto = MapToCustomerIngredientDto(broth);
+
+                    // Set price from our bulk query
+                    if (currentPrices.ContainsKey(broth.IngredientId))
+                    {
+                        dto.Price = currentPrices[broth.IngredientId];
+                    }
+
+                    return dto;
+                }).ToList();
 
                 return Ok(brothDtos);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                _logger.LogError(ex, "Error retrieving broths for customer");
+                return StatusCode(500, new { message = "An error occurred while retrieving broths" });
             }
         }
 
-        [HttpGet("available")]
-        public async Task<ActionResult<IEnumerable<CustomerIngredientDto>>> GetAvailableIngredients()
-        {
-            try
-            {
-                var allIngredients = await _ingredientService.GetAllAsync();
-                var availableIngredients = allIngredients.Where(i => i.Quantity > 0).ToList();
-                var ingredientDtos = availableIngredients.Select(MapToCustomerIngredientDto).ToList();
-
-                return Ok(ingredientDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
 
         // Helper method for mapping entities to DTOs
         private CustomerIngredientDto MapToCustomerIngredientDto(Ingredient ingredient)
         {
             if (ingredient == null) return null;
 
-            // Get current price
-            decimal price = 0;
-            if (ingredient.IngredientPrices != null && ingredient.IngredientPrices.Any())
-            {
-                price = ingredient.IngredientPrices
-                    .OrderByDescending(p => p.EffectiveDate)
-                    .FirstOrDefault()?.Price ?? 0;
-            }
-
             return new CustomerIngredientDto
             {
                 IngredientId = ingredient.IngredientId,
                 Name = ingredient.Name,
                 Description = ingredient.Description ?? string.Empty,
-                Price = price,
+                Price = 0, // This will be set by the caller
                 IngredientTypeID = ingredient.IngredientTypeID,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 ImageURL = ingredient.ImageURL ?? string.Empty,

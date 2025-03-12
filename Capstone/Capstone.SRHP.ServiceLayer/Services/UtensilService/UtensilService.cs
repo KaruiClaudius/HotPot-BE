@@ -22,24 +22,56 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<Utensil>> GetAllAsync()
-        {
-            return await _unitOfWork.Repository<Utensil>()
-                .Include(u => u.UtensilType)
-                .Where(u => !u.IsDelete)
-                .ToListAsync();
-        }
+        #region Utensil Methods
 
-        public async Task<PagedResult<Utensil>> GetPagedAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<Utensil>> GetUtensilsAsync(
+            string searchTerm = null,
+            int? typeId = null,
+            bool? isAvailable = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "Name",
+            bool ascending = true)
         {
             var query = _unitOfWork.Repository<Utensil>()
                 .Include(u => u.UtensilType)
                 .Where(u => !u.IsDelete);
 
+            // Apply filters
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(u =>
+                    u.Name.ToLower().Contains(searchTerm) ||
+                    u.Description.ToLower().Contains(searchTerm) ||
+                    u.Material.ToLower().Contains(searchTerm));
+            }
+
+            if (typeId.HasValue)
+            {
+                query = query.Where(u => u.UtensilTypeID == typeId.Value);
+            }
+
+            if (isAvailable.HasValue)
+            {
+                if (isAvailable.Value)
+                {
+                    query = query.Where(u => u.Status && u.Quantity > 0);
+                }
+                else
+                {
+                    query = query.Where(u => !u.Status || u.Quantity <= 0);
+                }
+            }
+
+            // Apply sorting
+            query = ApplySorting(query, sortBy, ascending);
+
+            // Get total count before pagination
             var totalCount = await query.CountAsync();
 
+            // Apply pagination
             var items = await query
-                .OrderBy(u => u.UtensilId) // Ensure consistent ordering
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -53,14 +85,48 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             };
         }
 
-        public async Task<Utensil?> GetByIdAsync(int id)
+        private IQueryable<Utensil> ApplySorting(IQueryable<Utensil> query, string sortBy, bool ascending)
         {
-            return await _unitOfWork.Repository<Utensil>()
-                .Include(u => u.UtensilType)
-                .FirstOrDefaultAsync(u => u.UtensilId == id && !u.IsDelete);
+            switch (sortBy?.ToLower())
+            {
+                case "utensilid":
+                    return ascending ? query.OrderBy(u => u.UtensilId) : query.OrderByDescending(u => u.UtensilId);
+                case "price":
+                    return ascending ? query.OrderBy(u => u.Price) : query.OrderByDescending(u => u.Price);
+                case "quantity":
+                    return ascending ? query.OrderBy(u => u.Quantity) : query.OrderByDescending(u => u.Quantity);
+                case "material":
+                    return ascending ? query.OrderBy(u => u.Material) : query.OrderByDescending(u => u.Material);
+                case "lastmaintaindate":
+                    return ascending ? query.OrderBy(u => u.LastMaintainDate) : query.OrderByDescending(u => u.LastMaintainDate);
+                case "type":
+                case "typename":
+                    return ascending
+                        ? query.OrderBy(u => u.UtensilType.Name)
+                        : query.OrderByDescending(u => u.UtensilType.Name);
+                case "createdat":
+                    return ascending ? query.OrderBy(u => u.CreatedAt) : query.OrderByDescending(u => u.CreatedAt);
+                case "updatedat":
+                    return ascending ? query.OrderBy(u => u.UpdatedAt) : query.OrderByDescending(u => u.UpdatedAt);
+                case "name":
+                default:
+                    return ascending ? query.OrderBy(u => u.Name) : query.OrderByDescending(u => u.Name);
+            }
         }
 
-        public async Task<Utensil> CreateAsync(Utensil entity)
+        public async Task<Utensil> GetUtensilByIdAsync(int id)
+        {
+            var utensil = await _unitOfWork.Repository<Utensil>()
+                .Include(u => u.UtensilType)
+                .FirstOrDefaultAsync(u => u.UtensilId == id && !u.IsDelete);
+
+            if (utensil == null)
+                throw new NotFoundException($"Utensil with ID {id} not found");
+
+            return utensil;
+        }
+
+        public async Task<Utensil> CreateUtensilAsync(Utensil entity)
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
@@ -74,6 +140,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
 
             if (entity.Quantity < 0)
                 throw new ValidationException("Quantity cannot be negative");
+
+            // Validate UtensilType exists
+            var utensilType = await _unitOfWork.Repository<UtensilType>()
+                .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeID && !ut.IsDelete);
+
+            if (utensilType == null)
+                throw new ValidationException("Invalid utensil type");
 
             // Check if utensil exists (including soft-deleted)
             var existingUtensil = await _unitOfWork.Repository<Utensil>()
@@ -90,7 +163,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
                     // Reactivate and update the soft-deleted utensil
                     existingUtensil.IsDelete = false;
                     existingUtensil.Material = entity.Material;
+                    existingUtensil.Description = entity.Description;
+                    existingUtensil.ImageURL = entity.ImageURL;
                     existingUtensil.Price = entity.Price;
+                    existingUtensil.Status = entity.Status;
                     existingUtensil.Quantity = entity.Quantity;
                     existingUtensil.UtensilTypeID = entity.UtensilTypeID;
                     existingUtensil.LastMaintainDate = DateTime.UtcNow;
@@ -106,11 +182,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             return entity;
         }
 
-        public async Task UpdateAsync(int id, Utensil entity)
+        public async Task UpdateUtensilAsync(int id, Utensil entity)
         {
-            var existingUtensil = await GetByIdAsync(id);
-            if (existingUtensil == null)
-                throw new NotFoundException($"Utensil with ID {id} not found");
+            var existingUtensil = await GetUtensilByIdAsync(id);
 
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
@@ -132,53 +206,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             if (utensilType == null)
                 throw new ValidationException("Invalid utensil type");
 
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<Utensil>().Update(entity, id);
+            // Check if name is unique (excluding current entity)
+            var nameExists = await _unitOfWork.Repository<Utensil>()
+                .AnyAsync(u => u.Name == entity.Name && u.UtensilId != id && !u.IsDelete);
+
+            if (nameExists)
+                throw new ValidationException($"Another utensil with name '{entity.Name}' already exists");
+
+            // Update properties
+            existingUtensil.Name = entity.Name;
+            existingUtensil.Material = entity.Material;
+            existingUtensil.Description = entity.Description;
+            existingUtensil.ImageURL = entity.ImageURL;
+            existingUtensil.Price = entity.Price;
+            existingUtensil.Status = entity.Status;
+            existingUtensil.Quantity = entity.Quantity;
+            existingUtensil.UtensilTypeID = entity.UtensilTypeID;
+            existingUtensil.SetUpdateDate();
+
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task DeleteAsync(int id)
+        public async Task DeleteUtensilAsync(int id)
         {
-            var utensil = await GetByIdAsync(id);
-            if (utensil == null)
-                throw new NotFoundException($"Utensil with ID {id} not found");
-
+            var utensil = await GetUtensilByIdAsync(id);
             utensil.SoftDelete();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<IEnumerable<Utensil>> GetAvailableUtensilsAsync()
+        public async Task UpdateUtensilStatusAsync(int id, bool status)
         {
-            return await _unitOfWork.Repository<Utensil>()
-                .Include(u => u.UtensilType)
-                .Where(u => !u.IsDelete && u.Status && u.Quantity > 0)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Utensil>> GetByTypeAsync(int typeId)
-        {
-            return await _unitOfWork.Repository<Utensil>()
-                .Include(u => u.UtensilType)
-                .Where(u => u.UtensilTypeID == typeId && !u.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task UpdateStatusAsync(int id, bool status)
-        {
-            var utensil = await GetByIdAsync(id);
-            if (utensil == null)
-                throw new NotFoundException($"Utensil with ID {id} not found");
-
+            var utensil = await GetUtensilByIdAsync(id);
             utensil.Status = status;
             utensil.SetUpdateDate();
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task UpdateQuantityAsync(int id, int quantity)
+        public async Task UpdateUtensilQuantityAsync(int id, int quantity)
         {
-            var utensil = await GetByIdAsync(id);
-            if (utensil == null)
-                throw new NotFoundException($"Utensil with ID {id} not found");
+            var utensil = await GetUtensilByIdAsync(id);
 
             if (utensil.Quantity + quantity < 0)
                 throw new ValidationException("Cannot reduce quantity below 0");
@@ -188,11 +254,89 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<bool> IsAvailableAsync(int id)
+        public async Task<bool> IsUtensilAvailableAsync(int id)
         {
-            var utensil = await GetByIdAsync(id);
+            var utensil = await _unitOfWork.Repository<Utensil>()
+                .FindAsync(u => u.UtensilId == id && !u.IsDelete);
+
             return utensil != null && utensil.Status && utensil.Quantity > 0;
         }
 
+        #endregion
+
+        #region Utensil Type Methods
+
+        public async Task<IEnumerable<UtensilType>> GetAllUtensilTypesAsync()
+        {
+            return await _unitOfWork.Repository<UtensilType>()
+                .FindAll(ut => !ut.IsDelete)
+                .ToListAsync();
+        }
+
+        public async Task<UtensilType> GetUtensilTypeByIdAsync(int id)
+        {
+            var utensilType = await _unitOfWork.Repository<UtensilType>()
+                .FindAsync(ut => ut.UtensilTypeId == id && !ut.IsDelete);
+
+            if (utensilType == null)
+                throw new NotFoundException($"Utensil type with ID {id} not found");
+
+            return utensilType;
+        }
+
+        public async Task<UtensilType> CreateUtensilTypeAsync(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ValidationException("Utensil type name cannot be empty");
+
+            // Check if name is unique
+            var nameExists = await _unitOfWork.Repository<UtensilType>()
+                .AnyAsync(ut => ut.Name == name && !ut.IsDelete);
+
+            if (nameExists)
+                throw new ValidationException($"Utensil type with name '{name}' already exists");
+
+            var utensilType = new UtensilType { Name = name };
+            _unitOfWork.Repository<UtensilType>().Insert(utensilType);
+            await _unitOfWork.CommitAsync();
+            return utensilType;
+        }
+
+        public async Task DeleteUtensilTypeAsync(int id)
+        {
+            var type = await GetUtensilTypeByIdAsync(id);
+
+            // Check if type is in use
+            var isInUse = await _unitOfWork.Repository<Utensil>()
+                .AnyAsync(u => u.UtensilTypeID == id && !u.IsDelete);
+
+            if (isInUse)
+                throw new ValidationException("Cannot delete utensil type that is in use by utensils");
+
+            type.SoftDelete();
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task<Dictionary<int, int>> GetUtensilCountsByTypesAsync(IEnumerable<int> typeIds)
+        {
+            var counts = await _unitOfWork.Repository<Utensil>()
+                .FindAll(u => !u.IsDelete && typeIds.Contains(u.UtensilTypeID))
+                .GroupBy(u => u.UtensilTypeID)
+                .Select(g => new { TypeId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.TypeId, x => x.Count);
+
+            // Ensure all requested type IDs are in the dictionary, even if they have no utensils
+            foreach (var typeId in typeIds)
+            {
+                if (!counts.ContainsKey(typeId))
+                {
+                    counts[typeId] = 0;
+                }
+            }
+
+            return counts;
+        }
+
+        #endregion
     }
 }

@@ -33,20 +33,68 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .ToListAsync();
         }
 
-        public async Task<PagedResult<User>> GetPagedAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<User>> GetUsersAsync(
+     string searchTerm = null,
+     int? roleId = null,
+     bool? isActive = null,
+     DateTime? createdAfter = null,
+     DateTime? createdBefore = null,
+     int pageNumber = 1,
+     int pageSize = 10,
+     string sortBy = "Name",
+     bool ascending = true)
         {
+            // Start with a base query that includes all related entities
             var query = _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
-                .Where(u => !u.IsDelete);
+                .Include(u => u.Customer)
+                .Include(u => u.Staff)
+                .Include(u => u.Manager)
+                .AsQueryable();
 
+            // Apply filters
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(u =>
+                    u.Name.ToLower().Contains(searchTerm) ||
+                    u.Email.ToLower().Contains(searchTerm) ||
+                    (u.PhoneNumber != null && u.PhoneNumber.Contains(searchTerm)));
+            }
+
+            if (roleId.HasValue)
+            {
+                query = query.Where(u => u.RoleID == roleId.Value);
+            }
+
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsDelete != isActive.Value);
+            }
+
+            if (createdAfter.HasValue)
+            {
+                query = query.Where(u => u.CreatedAt >= createdAfter.Value);
+            }
+
+            if (createdBefore.HasValue)
+            {
+                query = query.Where(u => u.CreatedAt <= createdBefore.Value);
+            }
+
+            // Apply sorting
+            query = ApplySorting(query, sortBy, ascending);
+
+            // Get total count before pagination
             var totalCount = await query.CountAsync();
 
+            // Apply pagination
             var items = await query
-                .OrderBy(u => u.UserId) // Ensure consistent ordering
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
+            // Return paged result
             return new PagedResult<User>
             {
                 Items = items,
@@ -54,6 +102,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        private IQueryable<User> ApplySorting(IQueryable<User> query, string sortBy, bool ascending)
+        {
+            // Default to sorting by Name if sortBy is invalid
+            switch (sortBy?.ToLower())
+            {
+                case "userid":
+                    return ascending ? query.OrderBy(u => u.UserId) : query.OrderByDescending(u => u.UserId);
+                case "email":
+                    return ascending ? query.OrderBy(u => u.Email) : query.OrderByDescending(u => u.Email);
+                case "roleid":
+                case "role":
+                    return ascending ? query.OrderBy(u => u.RoleID) : query.OrderByDescending(u => u.RoleID);
+                case "createdat":
+                case "created":
+                    return ascending ? query.OrderBy(u => u.CreatedAt) : query.OrderByDescending(u => u.CreatedAt);
+                case "updatedat":
+                case "updated":
+                    return ascending ? query.OrderBy(u => u.UpdatedAt) : query.OrderByDescending(u => u.UpdatedAt);
+                case "name":
+                default:
+                    return ascending ? query.OrderBy(u => u.Name) : query.OrderByDescending(u => u.Name);
+            }
         }
 
         public async Task<User> GetByIdAsync(int id)

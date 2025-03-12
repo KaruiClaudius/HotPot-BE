@@ -193,7 +193,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     if (item.UtensilID.HasValue)
                     {
-                        var utensil = await _utensilService.GetByIdAsync(item.UtensilID.Value);
+                        var utensil = await _utensilService.GetUtensilByIdAsync(item.UtensilID.Value);
                         if (utensil == null || !utensil.Status || utensil.Quantity < item.Quantity)
                             throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
 
@@ -323,7 +323,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (item.UtensilID.HasValue)
                     {
-                        await _utensilService.UpdateQuantityAsync(item.UtensilID.Value, -item.Quantity);
+                        await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, -item.Quantity);
                     }
                     else if (item.IngredientID.HasValue)
                     {
@@ -458,7 +458,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         if (detail.UtensilID.HasValue)
                         {
-                            await _utensilService.UpdateQuantityAsync(detail.UtensilID.Value, detail.Quantity);
+                            await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
                         }
                         else if (detail.IngredientID.HasValue)
                         {
@@ -514,7 +514,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (detail.UtensilID.HasValue)
                     {
-                        await _utensilService.UpdateQuantityAsync(detail.UtensilID.Value, detail.Quantity);
+                        await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
                     }
                     else if (detail.IngredientID.HasValue)
                     {

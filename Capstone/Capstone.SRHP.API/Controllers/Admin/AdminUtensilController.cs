@@ -22,11 +22,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _utensilService = utensilService;
             _logger = logger;
         }
+
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<UtensilDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<UtensilDto>>>> GetAllUtensils(
+        public async Task<ActionResult<ApiResponse<PagedResult<UtensilDto>>>> GetUtensils(
+            [FromQuery] string searchTerm = null,
+            [FromQuery] int? typeId = null,
+            [FromQuery] bool? isAvailable = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "Name",
+            [FromQuery] bool ascending = true)
         {
             try
             {
@@ -39,8 +45,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                _logger.LogInformation($"Admin retrieving utensils - Page {pageNumber}, Size {pageSize}");
-                var pagedUtensils = await _utensilService.GetPagedAsync(pageNumber, pageSize);
+                _logger.LogInformation("Admin retrieving utensils with filters");
+
+                var pagedUtensils = await _utensilService.GetUtensilsAsync(
+                    searchTerm: searchTerm,
+                    typeId: typeId,
+                    isAvailable: isAvailable,
+                    pageNumber: pageNumber,
+                    pageSize: pageSize,
+                    sortBy: sortBy,
+                    ascending: ascending);
+
                 var utensilDtos = pagedUtensils.Items.Select(MapToUtensilDto).ToList();
 
                 var result = new PagedResult<UtensilDto>
@@ -77,23 +92,23 @@ namespace Capstone.HPTY.API.Controllers.Admin
             try
             {
                 _logger.LogInformation("Admin retrieving utensil with ID: {UtensilId}", id);
-                var utensil = await _utensilService.GetByIdAsync(id);
-
-                if (utensil == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Utensil with ID {id} not found"
-                    });
-                }
-
+                var utensil = await _utensilService.GetUtensilByIdAsync(id);
                 var utensilDto = MapToUtensilDto(utensil);
+
                 return Ok(new ApiResponse<UtensilDto>
                 {
                     Success = true,
                     Message = "Utensil retrieved successfully",
                     Data = utensilDto
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Utensil not found with ID: {UtensilId}", id);
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
                 });
             }
             catch (Exception ex)
@@ -116,6 +131,42 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin creating new utensil: {UtensilName}", request.Name);
 
+                // Check if we need to create a new type
+                if (request.UtensilTypeID <= 0 && !string.IsNullOrWhiteSpace(request.UtensilTypeName))
+                {
+                    _logger.LogInformation("Creating new utensil type: {TypeName}", request.UtensilTypeName);
+
+                    try
+                    {
+                        // Create the new type
+                        var newType = await _utensilService.CreateUtensilTypeAsync(request.UtensilTypeName);
+                        request.UtensilTypeID = newType.UtensilTypeId;
+
+                        _logger.LogInformation("Created new utensil type with ID: {TypeId}", newType.UtensilTypeId);
+                    }
+                    catch (ValidationException ex)
+                    {
+                        // If type creation fails due to validation (e.g., duplicate name),
+                        // try to find the existing type with that name
+                        _logger.LogWarning(ex, "Validation error creating type, checking if it exists: {TypeName}", request.UtensilTypeName);
+
+                        var existingTypes = await _utensilService.GetAllUtensilTypesAsync();
+                        var matchingType = existingTypes.FirstOrDefault(t =>
+                            t.Name.Equals(request.UtensilTypeName, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingType != null)
+                        {
+                            request.UtensilTypeID = matchingType.UtensilTypeId;
+                            _logger.LogInformation("Found existing type with ID: {TypeId}", matchingType.UtensilTypeId);
+                        }
+                        else
+                        {
+                            // If we can't find a matching type, rethrow the exception
+                            throw;
+                        }
+                    }
+                }
+
                 var utensil = new Utensil
                 {
                     Name = request.Name,
@@ -128,7 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     UtensilTypeID = request.UtensilTypeID
                 };
 
-                var createdUtensil = await _utensilService.CreateAsync(utensil);
+                var createdUtensil = await _utensilService.CreateUtensilAsync(utensil);
                 var utensilDto = MapToUtensilDto(createdUtensil);
 
                 return CreatedAtAction(
@@ -170,14 +221,43 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin updating utensil with ID: {UtensilId}", id);
 
-                var existingUtensil = await _utensilService.GetByIdAsync(id);
-                if (existingUtensil == null)
+                var existingUtensil = await _utensilService.GetUtensilByIdAsync(id);
+
+                // Check if we need to create a new type
+                if (request.UtensilTypeID.HasValue && request.UtensilTypeID.Value <= 0 &&
+                    !string.IsNullOrWhiteSpace(request.UtensilTypeName))
                 {
-                    return NotFound(new ApiErrorResponse
+                    _logger.LogInformation("Creating new utensil type: {TypeName}", request.UtensilTypeName);
+
+                    try
                     {
-                        Status = "Error",
-                        Message = $"Utensil with ID {id} not found"
-                    });
+                        // Create the new type
+                        var newType = await _utensilService.CreateUtensilTypeAsync(request.UtensilTypeName);
+                        request.UtensilTypeID = newType.UtensilTypeId;
+
+                        _logger.LogInformation("Created new utensil type with ID: {TypeId}", newType.UtensilTypeId);
+                    }
+                    catch (ValidationException ex)
+                    {
+                        // If type creation fails due to validation (e.g., duplicate name),
+                        // try to find the existing type with that name
+                        _logger.LogWarning(ex, "Validation error creating type, checking if it exists: {TypeName}", request.UtensilTypeName);
+
+                        var existingTypes = await _utensilService.GetAllUtensilTypesAsync();
+                        var matchingType = existingTypes.FirstOrDefault(t =>
+                            t.Name.Equals(request.UtensilTypeName, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingType != null)
+                        {
+                            request.UtensilTypeID = matchingType.UtensilTypeId;
+                            _logger.LogInformation("Found existing type with ID: {TypeId}", matchingType.UtensilTypeId);
+                        }
+                        else
+                        {
+                            // If we can't find a matching type, rethrow the exception
+                            throw;
+                        }
+                    }
                 }
 
                 // Update only the properties that are provided
@@ -190,8 +270,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.Quantity.HasValue) existingUtensil.Quantity = request.Quantity.Value;
                 if (request.UtensilTypeID.HasValue) existingUtensil.UtensilTypeID = request.UtensilTypeID.Value;
 
-                await _utensilService.UpdateAsync(id, existingUtensil);
-                var updatedUtensil = await _utensilService.GetByIdAsync(id);
+                await _utensilService.UpdateUtensilAsync(id, existingUtensil);
+                var updatedUtensil = await _utensilService.GetUtensilByIdAsync(id);
                 var utensilDto = MapToUtensilDto(updatedUtensil);
 
                 return Ok(new ApiResponse<UtensilDto>
@@ -238,7 +318,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             try
             {
                 _logger.LogInformation("Admin deleting utensil with ID: {UtensilId}", id);
-                await _utensilService.DeleteAsync(id);
+                await _utensilService.DeleteUtensilAsync(id);
 
                 return Ok(new ApiResponse<string>
                 {
@@ -267,63 +347,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("available")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<UtensilDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetAvailableUtensils()
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving available utensils");
-                var utensils = await _utensilService.GetAvailableUtensilsAsync();
-                var utensilDtos = utensils.Select(MapToUtensilDto);
-
-                return Ok(new ApiResponse<IEnumerable<UtensilDto>>
-                {
-                    Success = true,
-                    Message = "Available utensils retrieved successfully",
-                    Data = utensilDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving available utensils");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve available utensils"
-                });
-            }
-        }
-
-        [HttpGet("type/{typeId}")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<UtensilDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetUtensilsByType(int typeId)
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving utensils by type ID: {TypeId}", typeId);
-                var utensils = await _utensilService.GetByTypeAsync(typeId);
-                var utensilDtos = utensils.Select(MapToUtensilDto);
-
-                return Ok(new ApiResponse<IEnumerable<UtensilDto>>
-                {
-                    Success = true,
-                    Message = "Utensils retrieved successfully",
-                    Data = utensilDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving utensils by type ID: {TypeId}", typeId);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve utensils by type"
-                });
-            }
-        }
-
         [HttpPatch("{id}/status")]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -332,7 +355,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             try
             {
                 _logger.LogInformation("Admin updating status for utensil with ID: {UtensilId} to {Status}", id, status);
-                await _utensilService.UpdateStatusAsync(id, status);
+                await _utensilService.UpdateUtensilStatusAsync(id, status);
 
                 return Ok(new ApiResponse<string>
                 {
@@ -369,7 +392,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             try
             {
                 _logger.LogInformation("Admin updating quantity for utensil with ID: {UtensilId} by {QuantityChange}", id, quantityChange);
-                await _utensilService.UpdateQuantityAsync(id, quantityChange);
+                await _utensilService.UpdateUtensilQuantityAsync(id, quantityChange);
 
                 return Ok(new ApiResponse<string>
                 {
@@ -421,8 +444,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = utensil.Price,
                 Status = utensil.Status,
                 Quantity = utensil.Quantity,
-                ItemType = utensil.UtensilType.Name,
+                UtensilTypeId = utensil.UtensilTypeID,
+                UtensilTypeName = utensil.UtensilType?.Name ?? "Unknown",
                 LastMaintainDate = utensil.LastMaintainDate,
+                IsAvailable = utensil.Status && utensil.Quantity > 0,
+                CreatedAt = utensil.CreatedAt,
+                UpdatedAt = utensil.UpdatedAt
             };
         }
     }

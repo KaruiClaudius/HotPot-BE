@@ -10,8 +10,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
     {
         public int UtensilTypeId { get; set; }
         public string Name { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
-        public int UtensilCount { get; set; } 
+        public int UtensilCount { get; set; }
     }
 }

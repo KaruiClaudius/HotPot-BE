@@ -9,13 +9,30 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.UtensilService
 {
-    public interface IUtensilService : IBaseService<Utensil>
+    public interface IUtensilService
     {
-        Task<PagedResult<Utensil>> GetPagedAsync(int pageNumber, int pageSize);
-        Task<IEnumerable<Utensil>> GetAvailableUtensilsAsync();
-        Task<IEnumerable<Utensil>> GetByTypeAsync(int typeId);
-        Task UpdateStatusAsync(int id, bool status);
-        Task UpdateQuantityAsync(int id, int quantity);
-        Task<bool> IsAvailableAsync(int id);
+        // Utensil methods
+        Task<PagedResult<Utensil>> GetUtensilsAsync(
+            string searchTerm = null,
+            int? typeId = null,
+            bool? isAvailable = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "Name",
+            bool ascending = true);
+        Task<Utensil> GetUtensilByIdAsync(int id);
+        Task<Utensil> CreateUtensilAsync(Utensil entity);
+        Task UpdateUtensilAsync(int id, Utensil entity);
+        Task DeleteUtensilAsync(int id);
+        Task UpdateUtensilStatusAsync(int id, bool status);
+        Task UpdateUtensilQuantityAsync(int id, int quantity);
+        Task<bool> IsUtensilAvailableAsync(int id);
+
+        // Utensil Type methods
+        Task<IEnumerable<UtensilType>> GetAllUtensilTypesAsync();
+        Task<UtensilType> GetUtensilTypeByIdAsync(int id);
+        Task<UtensilType> CreateUtensilTypeAsync(string name);
+        Task DeleteUtensilTypeAsync(int id);
+        Task<Dictionary<int, int>> GetUtensilCountsByTypesAsync(IEnumerable<int> typeIds);
     }
 }

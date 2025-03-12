@@ -10,7 +10,16 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.UserService
 {
     public interface IUserService : IBaseService<User>
     {
-        Task<PagedResult<User>> GetPagedAsync(int pageNumber, int pageSize);
+        Task<PagedResult<User>> GetUsersAsync(
+     string searchTerm = null,
+     int? roleId = null,
+     bool? isActive = null,
+     DateTime? createdAfter = null,
+     DateTime? createdBefore = null,
+     int pageNumber = 1,
+     int pageSize = 10,
+     string sortBy = "Name",
+     bool ascending = true);
         Task<User?> GetByEmailAsync(string email);
         Task<IEnumerable<User>> GetByRoleAsync(int roleId);
         Task<bool> IsEmailUniqueAsync(string email);

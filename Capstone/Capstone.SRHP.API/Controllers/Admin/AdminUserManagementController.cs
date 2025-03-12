@@ -32,9 +32,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
         [HttpGet("users")]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<UserDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetAllUsers(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetUsers(
+         [FromQuery] string searchTerm = null,
+         [FromQuery] int? roleId = null,
+         [FromQuery] bool? isActive = null,
+         [FromQuery] DateTime? createdAfter = null,
+         [FromQuery] DateTime? createdBefore = null,
+         [FromQuery] int pageNumber = 1,
+         [FromQuery] int pageSize = 10,
+         [FromQuery] string sortBy = "Name",
+         [FromQuery] bool ascending = true)
         {
             try
             {
@@ -47,8 +54,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                _logger.LogInformation($"Admin retrieving users - Page {pageNumber}, Size {pageSize}");
-                var pagedUsers = await _userService.GetPagedAsync(pageNumber, pageSize);
+                _logger.LogInformation("Admin retrieving users with filters");
+
+                var pagedUsers = await _userService.GetUsersAsync(
+                    searchTerm: searchTerm,
+                    roleId: roleId,
+                    isActive: isActive,
+                    createdAfter: createdAfter,
+                    createdBefore: createdBefore,
+                    pageNumber: pageNumber,
+                    pageSize: pageSize,
+                    sortBy: sortBy,
+                    ascending: ascending);
+
                 var userDtos = pagedUsers.Items.Select(MapToUserDto).ToList();
 
                 var result = new PagedResult<UserDto>
@@ -98,7 +116,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser([FromBody] CreateUserRequest request)
         {
-
             try
             {
                 var role = await _roleService.GetByNameAsync(request.RoleName);
@@ -121,9 +138,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var createdUser = await _userService.CreateAsync(userToCreate);
                 var userDto = MapToUserDto(createdUser);
-
-                // Get role-specific data
-                //var roleData = await _userService.GetRoleSpecificDataAsync(createdUser.Id);
 
                 return CreatedAtAction(
                     nameof(GetUser),
@@ -205,24 +219,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
 
-        [HttpGet("users/by-role/{roleId}")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<UserDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<UserDto>>>> GetUsersByRole(int roleId)
-        {
-            var users = await _userService.GetByRoleAsync(roleId);
-            var userDtos = users.Select(MapToUserDto);
-            return Ok(new ApiResponse<IEnumerable<UserDto>>
-            {
-                Success = true,
-                Message = "Users retrieved successfully",
-                Data = userDtos
-            });
-        }
-
-
-
-
-
         private static UserDto MapToUserDto(User user)
         {
             if (user == null) return null;
@@ -239,29 +235,5 @@ namespace Capstone.HPTY.API.Controllers.Admin
             };
         }
 
-        //private StaffDto MapToStaffDto(Staff staff)
-        //{
-        //    if (staff == null) return null;
-
-        //    return new StaffDto
-        //    {
-        //        Id = staff.StaffId,
-        //        User = MapToUserDto(staff.User),
-        //        WorkShifts = staff.WorkShifts,
-        //        ShippingOrders = staff.ShippingOrders
-        //    };
-        //}
-
-        //private ManagerDto MapToManagerDto(Manager manager)
-        //{
-        //    if (manager == null) return null;
-
-        //    return new ManagerDto
-        //    {
-        //        Id = manager.ManagerId,
-        //        User = MapToUserDto(manager.User),
-        //        WorkShifts = manager.WorkShifts
-        //    };
-        //}
     }
 }
