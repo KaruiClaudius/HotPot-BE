@@ -4,6 +4,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,67 +16,177 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
     public class DiscountService : IDiscountService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<DiscountService> _logger;
 
-        public DiscountService(IUnitOfWork unitOfWork)
+        public DiscountService(
+            IUnitOfWork unitOfWork,
+            ILogger<DiscountService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
-        public async Task<IEnumerable<Discount>> GetAllAsync()
+        public async Task<PagedResult<Discount>> GetDiscountsAsync(
+            string searchTerm = null,
+            decimal? minDiscountPercentage = null,
+            decimal? maxDiscountPercentage = null,
+            double? minPointCost = null,
+            double? maxPointCost = null,
+            DateTime? startDateFrom = null,
+            DateTime? startDateTo = null,
+            DateTime? endDateFrom = null,
+            DateTime? endDateTo = null,
+            bool? isActive = null,
+            bool? isUpcoming = null,
+            bool? isExpired = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "CreatedAt",
+            bool ascending = false)
         {
-            return await _unitOfWork.Repository<Discount>()
-                .Include(d => d.Order)
-                .Where(d => !d.IsDelete)
-                .ToListAsync();
-        }
-        public async Task<PagedResult<Discount>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            var query = _unitOfWork.Repository<Discount>()
-                .Include(d => d.Order)
-                .Where(d => !d.IsDelete);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(d => d.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Discount>
+            try
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
-        }
+                // Start with base query
+                var query = _unitOfWork.Repository<Discount>()
+                    .Include(d => d.Order)
+                    .Where(d => !d.IsDelete);
 
-        public async Task<PagedResult<Discount>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
-        {
-            searchTerm = searchTerm?.ToLower() ?? "";
+                // Apply search filter
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    searchTerm = searchTerm.ToLower();
+                    query = query.Where(d =>
+                        d.Title.ToLower().Contains(searchTerm) ||
+                        (d.Description != null && d.Description.ToLower().Contains(searchTerm)));
+                }
 
-            var query = _unitOfWork.Repository<Discount>()
-                .Include(d => d.Order)
-                .Where(d => !d.IsDelete &&
-                           (d.Title.ToLower().Contains(searchTerm) ||
-                            d.Description.ToLower().Contains(searchTerm)));
+                // Apply discount percentage filters
+                if (minDiscountPercentage.HasValue)
+                {
+                    query = query.Where(d => d.DiscountPercentage >= minDiscountPercentage.Value);
+                }
 
-            var totalCount = await query.CountAsync();
+                if (maxDiscountPercentage.HasValue)
+                {
+                    query = query.Where(d => d.DiscountPercentage <= maxDiscountPercentage.Value);
+                }
 
-            var items = await query
-                .OrderByDescending(d => d.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+                // Apply point cost filters
+                if (minPointCost.HasValue)
+                {
+                    query = query.Where(d => d.PointCost >= minPointCost.Value);
+                }
 
-            return new PagedResult<Discount>
+                if (maxPointCost.HasValue)
+                {
+                    query = query.Where(d => d.PointCost <= maxPointCost.Value);
+                }
+
+                // Apply date filters
+                if (startDateFrom.HasValue)
+                {
+                    query = query.Where(d => d.Date >= startDateFrom.Value);
+                }
+
+                if (startDateTo.HasValue)
+                {
+                    query = query.Where(d => d.Date <= startDateTo.Value);
+                }
+
+                if (endDateFrom.HasValue)
+                {
+                    query = query.Where(d => d.Duration >= endDateFrom.Value);
+                }
+
+                if (endDateTo.HasValue)
+                {
+                    query = query.Where(d => d.Duration <= endDateTo.Value);
+                }
+
+                // Apply status filters
+                var now = DateTime.UtcNow;
+
+                if (isActive.HasValue && isActive.Value)
+                {
+                    query = query.Where(d => d.Date <= now && d.Duration >= now);
+                }
+
+                if (isUpcoming.HasValue && isUpcoming.Value)
+                {
+                    query = query.Where(d => d.Date > now);
+                }
+
+                if (isExpired.HasValue && isExpired.Value)
+                {
+                    query = query.Where(d => d.Duration < now);
+                }
+
+                // Get total count before applying pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply sorting
+                IOrderedQueryable<Discount> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "title":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.Title)
+                            : query.OrderByDescending(d => d.Title);
+                        break;
+                    case "discountpercentage":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.DiscountPercentage)
+                            : query.OrderByDescending(d => d.DiscountPercentage);
+                        break;
+                    case "pointcost":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.PointCost)
+                            : query.OrderByDescending(d => d.PointCost);
+                        break;
+                    case "startdate":
+                    case "date":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.Date)
+                            : query.OrderByDescending(d => d.Date);
+                        break;
+                    case "enddate":
+                    case "duration":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.Duration)
+                            : query.OrderByDescending(d => d.Duration);
+                        break;
+                    case "updatedat":
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.UpdatedAt)
+                            : query.OrderByDescending(d => d.UpdatedAt);
+                        break;
+                    default: // Default to CreatedAt
+                        orderedQuery = ascending
+                            ? query.OrderBy(d => d.CreatedAt)
+                            : query.OrderByDescending(d => d.CreatedAt);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Discount>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                _logger.LogError(ex, "Error retrieving discounts with filters");
+                throw;
+            }
         }
 
         public async Task<Discount?> GetByIdAsync(int id)
@@ -205,7 +316,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                    discount.Order == null;
         }
 
-
         public async Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice)
         {
             var discount = await GetByIdAsync(discountId);
@@ -272,6 +382,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             if (discount.Duration == default)
                 throw new ValidationException("End date must be set");
+        }
+
+        public Task<IEnumerable<Discount>> GetAllAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }

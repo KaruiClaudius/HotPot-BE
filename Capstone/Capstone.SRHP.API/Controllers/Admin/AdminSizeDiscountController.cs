@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Mvc;
@@ -11,24 +12,53 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminSizeDiscountController : ControllerBase
     {
         private readonly ISizeDiscountService _sizeDiscountService;
+        private readonly ILogger<AdminSizeDiscountController> _logger;
 
-        public AdminSizeDiscountController(ISizeDiscountService sizeDiscountService)
+        public AdminSizeDiscountController(
+            ISizeDiscountService sizeDiscountService,
+            ILogger<AdminSizeDiscountController> logger)
         {
             _sizeDiscountService = sizeDiscountService;
+            _logger = logger;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SizeDiscountDto>>> GetAll()
+        public async Task<ActionResult<PagedResult<SizeDiscountDto>>> GetAll(
+         [FromQuery] int? minSize = null,
+         [FromQuery] int? maxSize = null,
+         [FromQuery] decimal? minDiscount = null,
+         [FromQuery] decimal? maxDiscount = null,
+         [FromQuery] DateTime? activeDate = null,
+         [FromQuery] bool? isActive = null,
+         [FromQuery] int pageNumber = 1,
+         [FromQuery] int pageSize = 10,
+         [FromQuery] string sortBy = "MinSize",
+         [FromQuery] bool ascending = true)
         {
             try
             {
-                var discounts = await _sizeDiscountService.GetAllAsync();
-                var discountDtos = discounts.Select(MapToSizeDiscountDto).ToList();
+                // Validate pagination parameters
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 50) pageSize = 50;
 
-                return Ok(discountDtos);
+                var result = await _sizeDiscountService.GetSizeDiscountsAsync(
+                    minSize, maxSize, minDiscount, maxDiscount, activeDate, isActive,
+                    pageNumber, pageSize, sortBy, ascending);
+
+                var pagedResult = new PagedResult<SizeDiscountDto>
+                {
+                    Items = result.Items.Select(MapToSizeDiscountDto).ToList(),
+                    TotalCount = result.TotalCount,
+                    PageNumber = result.PageNumber,
+                    PageSize = result.PageSize
+                };
+
+                return Ok(pagedResult);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving size discounts");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -48,6 +78,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving size discount with ID {SizeDiscountId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -62,7 +93,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     MinSize = discountDto.MinSize,
                     DiscountPercentage = discountDto.DiscountPercentage,
                     StartDate = discountDto.StartDate,
-                    EndDate = discountDto.EndDate
+                    EndDate = discountDto.EndDate,
                 };
 
                 var createdDiscount = await _sizeDiscountService.CreateAsync(discount);
@@ -75,6 +106,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating size discount");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -107,6 +139,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating size discount with ID {SizeDiscountId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -129,6 +162,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting size discount with ID {SizeDiscountId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -152,6 +186,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving applicable discount for size {Size}", size);
                 return StatusCode(500, new { message = ex.Message });
             }
         }

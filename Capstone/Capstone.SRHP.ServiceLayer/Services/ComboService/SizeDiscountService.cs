@@ -1,8 +1,10 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,12 +16,145 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
     public class SizeDiscountService : ISizeDiscountService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<SizeDiscountService> _logger;
 
-        public SizeDiscountService(IUnitOfWork unitOfWork)
+        public SizeDiscountService(
+            IUnitOfWork unitOfWork,
+            ILogger<SizeDiscountService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
+        public async Task<PagedResult<SizeDiscount>> GetSizeDiscountsAsync(
+            int? minSize = null,
+            int? maxSize = null,
+            decimal? minDiscount = null,
+            decimal? maxDiscount = null,
+            DateTime? activeDate = null,
+            bool? isActive = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "MinSize",
+            bool ascending = true)
+        {
+            try
+            {
+                // Start with base query
+                var query = _unitOfWork.Repository<SizeDiscount>()
+                    .FindAll(sd => !sd.IsDelete);
+
+                // Apply filters
+                if (minSize.HasValue)
+                {
+                    query = query.Where(sd => sd.MinSize >= minSize.Value);
+                }
+
+                if (maxSize.HasValue)
+                {
+                    query = query.Where(sd => sd.MinSize <= maxSize.Value);
+                }
+
+                if (minDiscount.HasValue)
+                {
+                    query = query.Where(sd => sd.DiscountPercentage >= minDiscount.Value);
+                }
+
+                if (maxDiscount.HasValue)
+                {
+                    query = query.Where(sd => sd.DiscountPercentage <= maxDiscount.Value);
+                }
+
+                if (activeDate.HasValue)
+                {
+                    var date = activeDate.Value;
+                    query = query.Where(sd =>
+                        (sd.StartDate == null || sd.StartDate <= date) &&
+                        (sd.EndDate == null || sd.EndDate >= date));
+                }
+
+                if (isActive.HasValue)
+                {
+                    var now = DateTime.UtcNow;
+                    if (isActive.Value)
+                    {
+                        // Active discounts: either no dates specified or current date is within range
+                        query = query.Where(sd =>
+                            (sd.StartDate == null || sd.StartDate <= now) &&
+                            (sd.EndDate == null || sd.EndDate >= now));
+                    }
+                    else
+                    {
+                        // Inactive discounts: current date is outside the range
+                        query = query.Where(sd =>
+                            (sd.StartDate != null && sd.StartDate > now) ||
+                            (sd.EndDate != null && sd.EndDate < now));
+                    }
+                }
+
+                // Get total count before applying pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply sorting
+                IOrderedQueryable<SizeDiscount> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "discount":
+                    case "discountpercentage":
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.DiscountPercentage)
+                            : query.OrderByDescending(sd => sd.DiscountPercentage);
+                        break;
+                    case "startdate":
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.StartDate)
+                            : query.OrderByDescending(sd => sd.StartDate);
+                        break;
+                    case "enddate":
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.EndDate)
+                            : query.OrderByDescending(sd => sd.EndDate);
+                        break;
+                    case "updatedat":
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.UpdatedAt)
+                            : query.OrderByDescending(sd => sd.UpdatedAt);
+                        break;
+                    case "createdat":
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.CreatedAt)
+                            : query.OrderByDescending(sd => sd.CreatedAt);
+                        break;
+                    default: // Default to MinSize
+                        orderedQuery = ascending
+                            ? query.OrderBy(sd => sd.MinSize)
+                            : query.OrderByDescending(sd => sd.MinSize);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<SizeDiscount>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving size discounts with filters");
+                throw;
+            }
+        }
+
+        // Keep for backward compatibility
         public async Task<IEnumerable<SizeDiscount>> GetAllAsync()
         {
             return await _unitOfWork.Repository<SizeDiscount>()
@@ -133,3 +268,4 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
     }
 }
+

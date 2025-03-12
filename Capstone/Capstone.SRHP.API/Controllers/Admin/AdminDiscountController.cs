@@ -16,16 +16,33 @@ namespace Capstone.HPTY.API.Controllers.Admin
         private readonly IDiscountService _discountService;
         private readonly ILogger<AdminDiscountController> _logger;
 
-        public AdminDiscountController(IDiscountService discountService, ILogger<AdminDiscountController> logger)
+        public AdminDiscountController(
+            IDiscountService discountService,
+            ILogger<AdminDiscountController> logger)
         {
             _discountService = discountService;
             _logger = logger;
         }
+
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<DiscountDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<DiscountDto>>>> GetAllDiscounts(
+        public async Task<ActionResult<ApiResponse<PagedResult<DiscountDto>>>> GetDiscounts(
+            [FromQuery] string searchTerm = null,
+            [FromQuery] decimal? minDiscountPercentage = null,
+            [FromQuery] decimal? maxDiscountPercentage = null,
+            [FromQuery] double? minPointCost = null,
+            [FromQuery] double? maxPointCost = null,
+            [FromQuery] DateTime? startDateFrom = null,
+            [FromQuery] DateTime? startDateTo = null,
+            [FromQuery] DateTime? endDateFrom = null,
+            [FromQuery] DateTime? endDateTo = null,
+            [FromQuery] bool? isActive = null,
+            [FromQuery] bool? isUpcoming = null,
+            [FromQuery] bool? isExpired = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "CreatedAt",
+            [FromQuery] bool ascending = false)
         {
             try
             {
@@ -38,9 +55,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                _logger.LogInformation($"Admin retrieving discounts - Page {pageNumber}, Size {pageSize}");
+                _logger.LogInformation("Admin retrieving discounts with filters");
 
-                var pagedDiscounts = await _discountService.GetPagedAsync(pageNumber, pageSize);
+                var pagedDiscounts = await _discountService.GetDiscountsAsync(
+                    searchTerm, minDiscountPercentage, maxDiscountPercentage,
+                    minPointCost, maxPointCost, startDateFrom, startDateTo,
+                    endDateFrom, endDateTo, isActive, isUpcoming, isExpired,
+                    pageNumber, pageSize, sortBy, ascending);
 
                 // Get all discount IDs from the current page
                 var discountIds = pagedDiscounts.Items.Select(d => d.DiscountId).ToList();
@@ -246,6 +267,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+
         [HttpDelete("{id}")]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -293,225 +315,114 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("active")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<DiscountDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DiscountDto>>>> GetActiveDiscounts()
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving active discounts");
 
-                var activeDiscounts = await _discountService.GetActiveDiscountsAsync();
-                var discountIds = activeDiscounts.Select(d => d.DiscountId).ToList();
-                var orderCounts = await _discountService.GetOrderCountsByDiscountsAsync(discountIds);
 
-                var discountDtos = activeDiscounts.Select(discount =>
-                {
-                    var dto = MapToDiscountDto(discount);
-                    dto.OrderCount = orderCounts.ContainsKey(discount.DiscountId) ?
-                        orderCounts[discount.DiscountId] : 0;
-                    return dto;
-                }).ToList();
+        //[HttpGet("validate/{id}")]
+        //[ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        //public async Task<ActionResult<ApiResponse<bool>>> ValidateDiscount(int id)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Admin validating discount with ID: {DiscountId}", id);
 
-                return Ok(new ApiResponse<IEnumerable<DiscountDto>>
-                {
-                    Success = true,
-                    Message = "Active discounts retrieved successfully",
-                    Data = discountDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving active discounts");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve active discounts"
-                });
-            }
-        }
-        [HttpGet("upcoming")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<DiscountDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DiscountDto>>>> GetUpcomingDiscounts()
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving upcoming discounts");
+        //        var discount = await _discountService.GetByIdAsync(id);
+        //        if (discount == null)
+        //        {
+        //            return NotFound(new ApiErrorResponse
+        //            {
+        //                Status = "Error",
+        //                Message = $"Discount with ID {id} not found"
+        //            });
+        //        }
 
-                var upcomingDiscounts = await _discountService.GetUpcomingDiscountsAsync();
-                var discountIds = upcomingDiscounts.Select(d => d.DiscountId).ToList();
-                var orderCounts = await _discountService.GetOrderCountsByDiscountsAsync(discountIds);
+        //        var isValid = await _discountService.IsDiscountValidAsync(id);
 
-                var discountDtos = upcomingDiscounts.Select(discount =>
-                {
-                    var dto = MapToDiscountDto(discount);
-                    dto.OrderCount = orderCounts.ContainsKey(discount.DiscountId) ?
-                        orderCounts[discount.DiscountId] : 0;
-                    return dto;
-                }).ToList();
+        //        return Ok(new ApiResponse<bool>
+        //        {
+        //            Success = true,
+        //            Message = isValid ?
+        //                "Discount is valid and can be used" :
+        //                "Discount is not valid (expired, not started yet, or already in use)",
+        //            Data = isValid
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error validating discount with ID: {DiscountId}", id);
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = "Failed to validate discount"
+        //        });
+        //    }
+        //}
 
-                return Ok(new ApiResponse<IEnumerable<DiscountDto>>
-                {
-                    Success = true,
-                    Message = "Upcoming discounts retrieved successfully",
-                    Data = discountDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving upcoming discounts");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve upcoming discounts"
-                });
-            }
-        }
+        //[HttpGet("calculate")]
+        //[ProducesResponseType(typeof(ApiResponse<decimal>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        //public async Task<ActionResult<ApiResponse<decimal>>> CalculateDiscountAmount(
+        // [FromQuery] int discountId,
+        // [FromQuery] decimal originalPrice)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Admin calculating discount amount for discount ID: {DiscountId} and price: {Price}",
+        //            discountId, originalPrice);
 
-        [HttpGet("expired")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<DiscountDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DiscountDto>>>> GetExpiredDiscounts()
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving expired discounts");
+        //        if (originalPrice < 0)
+        //        {
+        //            return BadRequest(new ApiErrorResponse
+        //            {
+        //                Status = "Error",
+        //                Message = "Original price cannot be negative"
+        //            });
+        //        }
 
-                var expiredDiscounts = await _discountService.GetExpiredDiscountsAsync();
-                var discountIds = expiredDiscounts.Select(d => d.DiscountId).ToList();
-                var orderCounts = await _discountService.GetOrderCountsByDiscountsAsync(discountIds);
+        //        var discountAmount = await _discountService.CalculateDiscountAmountAsync(discountId, originalPrice);
 
-                var discountDtos = expiredDiscounts.Select(discount =>
-                {
-                    var dto = MapToDiscountDto(discount);
-                    dto.OrderCount = orderCounts.ContainsKey(discount.DiscountId) ?
-                        orderCounts[discount.DiscountId] : 0;
-                    return dto;
-                }).ToList();
-
-                return Ok(new ApiResponse<IEnumerable<DiscountDto>>
-                {
-                    Success = true,
-                    Message = "Expired discounts retrieved successfully",
-                    Data = discountDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving expired discounts");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve expired discounts"
-                });
-            }
-        }
-
-        [HttpGet("validate/{id}")]
-        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<bool>>> ValidateDiscount(int id)
-        {
-            try
-            {
-                _logger.LogInformation("Admin validating discount with ID: {DiscountId}", id);
-
-                var discount = await _discountService.GetByIdAsync(id);
-                if (discount == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Discount with ID {id} not found"
-                    });
-                }
-
-                var isValid = await _discountService.IsDiscountValidAsync(id);
-
-                return Ok(new ApiResponse<bool>
-                {
-                    Success = true,
-                    Message = isValid ?
-                        "Discount is valid and can be used" :
-                        "Discount is not valid (expired, not started yet, or already in use)",
-                    Data = isValid
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating discount with ID: {DiscountId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to validate discount"
-                });
-            }
-        }
-
-        [HttpGet("calculate")]
-        [ProducesResponseType(typeof(ApiResponse<decimal>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<decimal>>> CalculateDiscountAmount(
-            [FromQuery] int discountId,
-            [FromQuery] decimal originalPrice)
-        {
-            try
-            {
-                _logger.LogInformation("Admin calculating discount amount for discount ID: {DiscountId} and price: {Price}",
-                    discountId, originalPrice);
-
-                if (originalPrice < 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Original price cannot be negative"
-                    });
-                }
-
-                var discountAmount = await _discountService.CalculateDiscountAmountAsync(discountId, originalPrice);
-
-                return Ok(new ApiResponse<decimal>
-                {
-                    Success = true,
-                    Message = "Discount amount calculated successfully",
-                    Data = discountAmount
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", discountId);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error calculating discount amount for discount ID: {DiscountId}", discountId);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calculating discount amount for discount ID: {DiscountId}", discountId);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to calculate discount amount"
-                });
-            }
-        }
+        //        return Ok(new ApiResponse<decimal>
+        //        {
+        //            Success = true,
+        //            Message = "Discount amount calculated successfully",
+        //            Data = discountAmount
+        //        });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", discountId);
+        //        return NotFound(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = ex.Message
+        //        });
+        //    }
+        //    catch (ValidationException ex)
+        //    {
+        //        _logger.LogWarning(ex, "Validation error calculating discount amount for discount ID: {DiscountId}", discountId);
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Validation Error",
+        //            Message = ex.Message
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error calculating discount amount for discount ID: {DiscountId}", discountId);
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = "Failed to calculate discount amount"
+        //        });
+        //    }
+        //}
 
         [HttpGet("check-points")]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<bool>>> CheckSufficientPoints(
-            [FromQuery] int discountId,
-            [FromQuery] double userPoints)
+        [FromQuery] int discountId,
+        [FromQuery] double userPoints)
         {
             try
             {
@@ -558,65 +469,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("search")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<DiscountDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<DiscountDto>>>> SearchDiscounts(
-            [FromQuery] string searchTerm,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (pageNumber < 1 || pageSize < 1)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
-                    });
-                }
 
-                _logger.LogInformation($"Admin searching discounts with term: {searchTerm} - Page {pageNumber}, Size {pageSize}");
-
-                // Implement search functionality in your service
-                var pagedDiscounts = await _discountService.SearchAsync(searchTerm, pageNumber, pageSize);
-
-                var discountIds = pagedDiscounts.Items.Select(d => d.DiscountId).ToList();
-                var orderCounts = await _discountService.GetOrderCountsByDiscountsAsync(discountIds);
-
-                var discountDtos = pagedDiscounts.Items.Select(discount =>
-                {
-                    var dto = MapToDiscountDto(discount);
-                    dto.OrderCount = orderCounts.ContainsKey(discount.DiscountId) ?
-                        orderCounts[discount.DiscountId] : 0;
-                    return dto;
-                }).ToList();
-
-                var result = new PagedResult<DiscountDto>
-                {
-                    Items = discountDtos,
-                    PageNumber = pagedDiscounts.PageNumber,
-                    PageSize = pagedDiscounts.PageSize,
-                    TotalCount = pagedDiscounts.TotalCount
-                };
-
-                return Ok(new ApiResponse<PagedResult<DiscountDto>>
-                {
-                    Success = true,
-                    Message = "Discounts search completed successfully",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching discounts with term: {SearchTerm}", searchTerm);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to search discounts"
-                });
-            }
-        }
 
         private static DiscountDto MapToDiscountDto(Discount discount)
         {

@@ -10,8 +10,23 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IDiscountService : IBaseService<Discount>
     {
-        Task<PagedResult<Discount>> GetPagedAsync(int pageNumber, int pageSize);
-        Task<PagedResult<Discount>> SearchAsync(string searchTerm, int pageNumber, int pageSize);
+        Task<PagedResult<Discount>> GetDiscountsAsync(
+            string searchTerm = null,
+            decimal? minDiscountPercentage = null,
+            decimal? maxDiscountPercentage = null,
+            double? minPointCost = null,
+            double? maxPointCost = null,
+            DateTime? startDateFrom = null,
+            DateTime? startDateTo = null,
+            DateTime? endDateFrom = null,
+            DateTime? endDateTo = null,
+            bool? isActive = null,
+            bool? isUpcoming = null,
+            bool? isExpired = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "CreatedAt",
+            bool ascending = false);
         Task<IEnumerable<Discount>> GetActiveDiscountsAsync();
         Task<IEnumerable<Discount>> GetUpcomingDiscountsAsync();
         Task<IEnumerable<Discount>> GetExpiredDiscountsAsync();

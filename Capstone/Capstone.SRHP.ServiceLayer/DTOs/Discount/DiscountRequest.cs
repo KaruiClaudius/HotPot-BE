@@ -10,9 +10,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Discount
     public class DiscountRequest
     {
         [Required]
-        [StringLength(100)]
+        [StringLength(100, MinimumLength = 3)]
         public string Title { get; set; }
 
+        [Required]
         [StringLength(500)]
         public string Description { get; set; }
 
