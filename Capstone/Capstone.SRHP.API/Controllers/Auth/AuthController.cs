@@ -39,13 +39,13 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<AuthResponse>
                 {
                     Success = true,
-                    Message = "Login successful",
+                    Message = "Đăng nhập thành công",
                     Data = response
                 });
             }
             catch (UnauthorizedException ex)
             {
-                _logger.LogWarning(ex, "Login failed for email: {PhoneNumber}", request.PhoneNumber);
+                _logger.LogWarning(ex, "Đăng nhập không thành công: SĐT {PhoneNumber}", request.PhoneNumber);
                 return Unauthorized(new ApiErrorResponse
                 {
                     Status = "Error",
@@ -66,13 +66,13 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<AuthResponse>
                 {
                     Success = true,
-                    Message = "Registration successful",
+                    Message = "Đăng ký thành công",
                     Data = response
                 });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Registration failed for email: {PhoneNumber}", request.PhoneNumber);
+                _logger.LogWarning(ex, "Đăng ký thất bại: SĐT {PhoneNumber}", request.PhoneNumber);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
@@ -92,7 +92,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<AuthResponse>
                 {
                     Success = true,
-                    Message = "Token refreshed successfully",
+                    Message = "Token Làm mới thành công",
                     Data = response
                 });
             }
@@ -120,7 +120,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
             return Ok(new ApiResponse<object>
             {
                 Success = true,
-                Message = "Logged out successfully"
+                Message = "Đăng xuất thành công"
             });
         }
 
@@ -141,7 +141,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     return Unauthorized(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = "User not authenticated"
+                        Message = "Chưa xác thực, vui lòng đăng nhập"
                     });
                 }
 
@@ -152,7 +152,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     return NotFound(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = "User not found"
+                        Message = "không tìm thấy User"
                     });
                 }
 
@@ -162,7 +162,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = "Current password is incorrect"
+                        Message = "Mật khẩu hiện tại không trùng khớp"
                     });
                 }
 
@@ -172,8 +172,8 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Password updated successfully",
-                    Data = "Password has been changed"
+                    Message = "Mật khẩu cập nhật thành công",
+                    Data = "Mật khẩu đã đổi"
                 });
             }
             catch (NotFoundException ex)
@@ -189,7 +189,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "An error occurred while changing the password"
+                    Message = "Gặp trục trặc khi đổi mật khẩu"
                 });
             }
         }
@@ -205,13 +205,13 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<AuthResponse>
                 {
                     Success = true,
-                    Message = "Google login successful",
+                    Message = "Đăng nhập Google thành công",
                     Data = response
                 });
             }
             catch (UnauthorizedException ex)
             {
-                _logger.LogWarning(ex, "Google login failed");
+                _logger.LogWarning(ex, "Đăng nhập Google thất bại");
                 return Unauthorized(new ApiErrorResponse
                 {
                     Status = "Error",

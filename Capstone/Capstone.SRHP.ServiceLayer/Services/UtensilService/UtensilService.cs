@@ -121,7 +121,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
                 .FirstOrDefaultAsync(u => u.UtensilId == id && !u.IsDelete);
 
             if (utensil == null)
-                throw new NotFoundException($"Utensil with ID {id} not found");
+                throw new NotFoundException($"Không tìm thấy công cụ");
 
             return utensil;
         }
@@ -130,23 +130,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Utensil name cannot be empty");
+                throw new ValidationException("Tên không được trống");
 
             if (string.IsNullOrWhiteSpace(entity.Material))
-                throw new ValidationException("Utensil material cannot be empty");
+                throw new ValidationException("Chất liệu không được trống");
 
             if (entity.Price <= 0)
-                throw new ValidationException("Price must be greater than 0");
+                throw new ValidationException("Giá phải lớn hơn 0");
 
             if (entity.Quantity < 0)
-                throw new ValidationException("Quantity cannot be negative");
+                throw new ValidationException("số lượng không được âm");
 
             // Validate UtensilType exists
             var utensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeID && !ut.IsDelete);
 
             if (utensilType == null)
-                throw new ValidationException("Invalid utensil type");
+                throw new ValidationException("loại dụng cụ không hợp lệ");
 
             // Check if utensil exists (including soft-deleted)
             var existingUtensil = await _unitOfWork.Repository<Utensil>()
@@ -156,7 +156,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             {
                 if (!existingUtensil.IsDelete)
                 {
-                    throw new ValidationException($"Utensil with name {entity.Name} already exists");
+                    throw new ValidationException($"Dụng cụ này đã tồn tại");
                 }
                 else
                 {
@@ -188,30 +188,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
 
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Utensil name cannot be empty");
+                throw new ValidationException("Tên không được trống");
 
             if (string.IsNullOrWhiteSpace(entity.Material))
-                throw new ValidationException("Utensil material cannot be empty");
+                throw new ValidationException("Chất liệu không được trống");
 
             if (entity.Price <= 0)
-                throw new ValidationException("Price must be greater than 0");
+                throw new ValidationException("Giá phải lớn hơn 0");
 
             if (entity.Quantity < 0)
-                throw new ValidationException("Quantity cannot be negative");
+                throw new ValidationException("số lượng không được âm");
 
             // Validate UtensilType exists
             var utensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeID && !ut.IsDelete);
 
             if (utensilType == null)
-                throw new ValidationException("Invalid utensil type");
+                throw new ValidationException("loại dụng cụ không hợp lệ");
 
             // Check if name is unique (excluding current entity)
             var nameExists = await _unitOfWork.Repository<Utensil>()
                 .AnyAsync(u => u.Name == entity.Name && u.UtensilId != id && !u.IsDelete);
 
             if (nameExists)
-                throw new ValidationException($"Another utensil with name '{entity.Name}' already exists");
+                throw new ValidationException($"Dụng cụ này đã tồn tại");
 
             // Update properties
             existingUtensil.Name = entity.Name;
@@ -247,7 +247,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
             var utensil = await GetUtensilByIdAsync(id);
 
             if (utensil.Quantity + quantity < 0)
-                throw new ValidationException("Cannot reduce quantity below 0");
+                throw new ValidationException("không được giảm xuống quá 0");
 
             utensil.Quantity += quantity;
             utensil.SetUpdateDate();
@@ -279,7 +279,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
                 .FindAsync(ut => ut.UtensilTypeId == id && !ut.IsDelete);
 
             if (utensilType == null)
-                throw new NotFoundException($"Utensil type with ID {id} not found");
+                throw new NotFoundException($"không tìm thấy dụng cụ");
 
             return utensilType;
         }
@@ -287,14 +287,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
         public async Task<UtensilType> CreateUtensilTypeAsync(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
-                throw new ValidationException("Utensil type name cannot be empty");
+                throw new ValidationException("Tên không được trống");
 
             // Check if name is unique
             var nameExists = await _unitOfWork.Repository<UtensilType>()
                 .AnyAsync(ut => ut.Name == name && !ut.IsDelete);
 
             if (nameExists)
-                throw new ValidationException($"Utensil type with name '{name}' already exists");
+                throw new ValidationException($"Dụng cụ này đã tồn tại");
 
             var utensilType = new UtensilType { Name = name };
             _unitOfWork.Repository<UtensilType>().Insert(utensilType);
@@ -311,7 +311,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
                 .AnyAsync(u => u.UtensilTypeID == id && !u.IsDelete);
 
             if (isInUse)
-                throw new ValidationException("Cannot delete utensil type that is in use by utensils");
+                throw new ValidationException("loại này đang được sử dụng, không thể xoá");
 
             type.SoftDelete();
             await _unitOfWork.CommitAsync();

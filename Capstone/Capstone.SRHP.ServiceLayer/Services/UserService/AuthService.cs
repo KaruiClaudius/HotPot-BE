@@ -28,14 +28,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-
+            string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
 
             var user = await _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber && !u.IsDelete);
+                .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhoneNumber && !u.IsDelete);
 
             if (user == null || !PasswordTools.VerifyPassword(request.Password, user.Password))
-                throw new UnauthorizedException("Invalid email or password");
+                throw new UnauthorizedException("Sai SĐT hoặc Mật khẩu");
 
             return await GenerateAuthResponseAsync(user);
         }
@@ -47,13 +47,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             {
                 string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
 
+
+
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
                     .FindAsync(u => u.PhoneNumber == request.PhoneNumber);
 
                 if (existingUser != null && !existingUser.IsDelete)
                 {
-                    throw new ValidationException("Email already in use");
+                    throw new ValidationException("SĐT đã được sử dụng");
                 }
 
                 // Hash password
@@ -63,7 +65,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 var customerRole = await _unitOfWork.Repository<Role>()
                     .FindAsync(r => r.Name == "Customer");
                 if (customerRole == null)
-                    throw new ValidationException("Customer role not found");
+                    throw new ValidationException("Role Khách hàng không tìm thấy");
 
                 User resultUser;
 
@@ -72,13 +74,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     // Only reactivate if the existing user was a Customer
                     if (existingUser.RoleID != customerRole.RoleId)
                     {
-                        throw new ValidationException("Email already registered with a different role");
+                        throw new ValidationException("SĐT đã được sử dụng cho 1 vai trò khác");
                     }
 
                     // Reactivate soft-deleted user
                     existingUser.IsDelete = false;
                     existingUser.Name = request.Name;
-                    existingUser.PhoneNumber = request.PhoneNumber;
+                    existingUser.PhoneNumber = normalizedPhoneNumber;
                     existingUser.Password = hashedPassword; // Update password
                     existingUser.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
@@ -94,7 +96,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     {
                         Password = hashedPassword,
                         Name = request.Name,
-                        PhoneNumber = request.PhoneNumber,
+                        PhoneNumber = normalizedPhoneNumber,
                         RoleID = customerRole.RoleId, // Always set to Customer role
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
@@ -117,7 +119,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
             catch (Exception ex)
             {
-                throw new Exception("Error registering customer", ex);
+                throw new Exception("Đăng ký gặp trục trặc", ex);
             }
         }
 
@@ -159,7 +161,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken && !u.IsDelete);
 
             if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
-                throw new UnauthorizedException("Invalid refresh token");
+                throw new UnauthorizedException("Token bị lỗi");
 
             return await GenerateAuthResponseAsync(user);
         }
@@ -234,7 +236,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error creating customer entry", ex);
+                throw new Exception($"lỗi tạo entry", ex);
             }
         }
 
@@ -275,7 +277,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         .FindAsync(r => r.Name == "Customer");
 
                     if (customerRole == null)
-                        throw new ValidationException("Customer role not found");
+                        throw new ValidationException("Role Khách hàng không tìm thấy");
 
                     // Create new user
                     user = new User
@@ -301,7 +303,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
             catch (Exception ex)
             {
-                throw new UnauthorizedException("Google authentication failed: " + ex.Message);
+                throw new UnauthorizedException("Đăng nhập Google gặp trục trặc: " + ex.Message);
             }
         }
     }

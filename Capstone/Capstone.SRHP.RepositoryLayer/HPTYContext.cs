@@ -403,34 +403,34 @@ namespace Capstone.HPTY.RepositoryLayer
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = -1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
-                new User { UserId = -2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = -3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = -4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = -8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = -9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = -10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 }
+                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
+                new User { UserId = 2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = 3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
+                new User { UserId = 4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
+                new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
+                new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
+                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 }
             );
 
             modelBuilder.Entity<Staff>().HasData(
-                new Staff { StaffId = 1, UserID = -4 },
-                new Staff { StaffId = 2, UserID = -5 },
-                new Staff { StaffId = 3, UserID = -6 },
-                new Staff { StaffId = 4, UserID = -7 }
+                new Staff { StaffId = 1, UserID = 4 },
+                new Staff { StaffId = 2, UserID = 5 },
+                new Staff { StaffId = 3, UserID = 6 },
+                new Staff { StaffId = 4, UserID = 7 }
             );
 
             modelBuilder.Entity<Manager>().HasData(
-                new Manager { ManagerId = 1, UserID = -2 },
-                new Manager { ManagerId = 2, UserID = -3 }
+                new Manager { ManagerId = 1, UserID = 2 },
+                new Manager { ManagerId = 2, UserID = 3 }
             );
 
             modelBuilder.Entity<Customer>().HasData(
-                new Customer { CustomerId = 1, UserID = -8 },
-                new Customer { CustomerId = 2, UserID = -9 },
-                new Customer { CustomerId = 3, UserID = -10, LoyatyPoint = 200 }
+                new Customer { CustomerId = 1, UserID = 8 },
+                new Customer { CustomerId = 2, UserID = 9 },
+                new Customer { CustomerId = 3, UserID = 10, LoyatyPoint = 200 }
             );
 
 

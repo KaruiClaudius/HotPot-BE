@@ -41,7 +41,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
+                        Message = "Số trang và size trang phải lớn hơn 0"
                     });
                 }
 
@@ -69,7 +69,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<PagedResult<UtensilDto>>
                 {
                     Success = true,
-                    Message = "Utensils retrieved successfully",
+                    Message = "Lấy danh sách dụng cụ thành công",
                     Data = result
                 });
             }
@@ -79,7 +79,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve utensils"
+                    Message = "Danh sách gặp trục trặc"
                 });
             }
         }
@@ -98,13 +98,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<UtensilDto>
                 {
                     Success = true,
-                    Message = "Utensil retrieved successfully",
+                    Message = "Lấy được dụng cụ thành công",
                     Data = utensilDto
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Utensil not found with ID: {UtensilId}", id);
+                _logger.LogWarning(ex, "không tìm thấy dụng cụ có ID: {UtensilId}", id);
                 return NotFound(new ApiErrorResponse
                 {
                     Status = "Error",
@@ -113,7 +113,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving utensil with ID: {UtensilId}", id);
+                _logger.LogError(ex, "Lỗi tìm dụng cụ có ID: {UtensilId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
@@ -188,7 +188,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<UtensilDto>
                     {
                         Success = true,
-                        Message = "Utensil created successfully",
+                        Message = "Tạo dụng cụ thành công",
                         Data = utensilDto
                     });
             }
@@ -197,7 +197,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error creating utensil: {UtensilName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực thông tin",
                     Message = ex.Message
                 });
             }
@@ -207,7 +207,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to create utensil"
+                    Message = "Tạo dụng cụ gặp trục trặc"
                 });
             }
         }
@@ -223,7 +223,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var existingUtensil = await _utensilService.GetUtensilByIdAsync(id);
 
-                // Check if we need to create a new type
+                
                 if (request.UtensilTypeID.HasValue && request.UtensilTypeID.Value <= 0 &&
                     !string.IsNullOrWhiteSpace(request.UtensilTypeName))
                 {
@@ -231,7 +231,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                     try
                     {
-                        // Create the new type
                         var newType = await _utensilService.CreateUtensilTypeAsync(request.UtensilTypeName);
                         request.UtensilTypeID = newType.UtensilTypeId;
 
@@ -239,8 +238,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     }
                     catch (ValidationException ex)
                     {
-                        // If type creation fails due to validation (e.g., duplicate name),
-                        // try to find the existing type with that name
                         _logger.LogWarning(ex, "Validation error creating type, checking if it exists: {TypeName}", request.UtensilTypeName);
 
                         var existingTypes = await _utensilService.GetAllUtensilTypesAsync();
@@ -254,7 +251,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         }
                         else
                         {
-                            // If we can't find a matching type, rethrow the exception
                             throw;
                         }
                     }
@@ -277,7 +273,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<UtensilDto>
                 {
                     Success = true,
-                    Message = "Utensil updated successfully",
+                    Message = "Cập nhật dụng cụ thành công",
                     Data = utensilDto
                 });
             }
@@ -286,7 +282,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error updating utensil with ID: {UtensilId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực thông tin",
                     Message = ex.Message
                 });
             }
@@ -305,7 +301,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to update utensil"
+                    Message = "Cập nhật dụng cụ gặp trục trặc"
                 });
             }
         }
@@ -323,8 +319,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Utensil deleted successfully",
-                    Data = $"Utensil with ID {id} has been deleted"
+                    Message = "Xoá dụng cụ thành công",
+                    Data = $"Dụng cụ có ID {id} đã bị xoá"
                 });
             }
             catch (NotFoundException ex)
@@ -332,7 +328,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Utensil not found with ID: {UtensilId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "không tìm thấy dụng cụ",
                     Message = ex.Message
                 });
             }
@@ -342,7 +338,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to delete utensil"
+                    Message = "Xoá dụng cụ gặp sự cố"
                 });
             }
         }
@@ -360,7 +356,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Utensil status updated successfully",
+                    Message = "Cập nhật trạng thái thành công",
                     Data = $"Utensil with ID {id} status set to {status}"
                 });
             }

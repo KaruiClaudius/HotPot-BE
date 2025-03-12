@@ -16,16 +16,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminUserManagementController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly IRoleService _roleService;
         private readonly ILogger<AdminUserManagementController> _logger;
 
         public AdminUserManagementController(
             IUserService userService,
-            IRoleService roleService,
             ILogger<AdminUserManagementController> logger)
         {
             _userService = userService;
-            _roleService = roleService;
             _logger = logger;
         }
 
@@ -50,7 +47,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
+                        Message = "Số trang và size trang phải lớn hơn 0"
                     });
                 }
 
@@ -80,7 +77,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<PagedResult<UserDto>>
                 {
                     Success = true,
-                    Message = "Users retrieved successfully",
+                    Message = "Lấy danh sách người dùng thành công",
                     Data = result
                 });
             }
@@ -90,7 +87,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve users"
+                    Message = "Danh sách gặp trục trặc"
                 });
             }
         }
@@ -106,7 +103,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             return Ok(new ApiResponse<UserDto>
             {
                 Success = true,
-                Message = "User retrieved successfully",
+                Message = "Lấy người dùng thành công",
                 Data = userDto
             });
         }
@@ -118,12 +115,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                var role = await _roleService.GetByNameAsync(request.RoleName);
+                var role = await _userService.GetByRoleNameAsync(request.RoleName);
                 if (role == null)
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = $"Role '{request.RoleName}' not found"
+                        Message = $"Không thấy vai trò '{request.RoleName}'"
                     });
 
                 var userToCreate = new User
@@ -145,13 +142,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<UserDto>
                     {
                         Success = true,
-                        Message = "User created successfully",
+                        Message = "tạo người dùng thành công",
                         Data = userDto
                     });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating user");
+                _logger.LogError(ex, "tạo người dùng gặp trục trặc");
                 throw;
             }
         }
@@ -168,15 +165,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     return NotFound(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = $"User with ID {id} not found"
+                        Message = $"không thấy người dùng"
                     });
 
-                var role = await _roleService.GetByNameAsync(request.RoleName);
+                var role = await _userService.GetByRoleNameAsync(request.RoleName);
                 if (role == null)
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Error",
-                        Message = $"Role '{request.RoleName}' not found"
+                        Message = $"Không thấy vai trò '{request.RoleName}'"
                     });
 
                 existingUser.Email = request.Email;
@@ -193,13 +190,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<UserDto>
                 {
                     Success = true,
-                    Message = "User updated successfully",
+                    Message = "cập nhật người dùng thành công",
                     Data = userDto
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user");
+                _logger.LogError(ex, "cập nhật người dùng gặp sự cố");
                 throw;
             }
         }
@@ -213,7 +210,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             return Ok(new ApiResponse<bool>
             {
                 Success = true,
-                Message = "User deleted successfully",
+                Message = "xoá thành công",
                 Data = true
             });
         }

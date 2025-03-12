@@ -82,12 +82,11 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<ISizeDiscountService, SizeDiscountService>();
 
             services.AddScoped<IOrderService, OrderService>();
-            services.AddScoped<IRoleService, RoleService>();
+
 
 
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUtensilService, UtensilService>();
-            services.AddScoped<IUtensilTypeService, UtensilTypeService>();
             services.AddScoped<IPaymentService, PaymentService>();
 
             // Manager Services

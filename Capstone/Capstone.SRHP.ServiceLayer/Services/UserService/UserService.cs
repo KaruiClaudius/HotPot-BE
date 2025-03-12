@@ -138,7 +138,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .FirstOrDefaultAsync(u => u.UserId == id && !u.IsDelete);
 
             if (user == null)
-                throw new NotFoundException($"User with ID {id} not found");
+                throw new NotFoundException($"Không tìm thấy tài khoản");
 
             return user;
         }
@@ -146,9 +146,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             try
             {
+
+                if (!string.IsNullOrWhiteSpace(entity.PhoneNumber))
+                {
+                    entity.PhoneNumber = NormalizePhoneNumber(entity.PhoneNumber);
+                }
+
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.Email == entity.Email);
+                    .FindAsync(u => u.PhoneNumber == entity.PhoneNumber);
 
                 User resultUser;
 
@@ -156,7 +162,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 {
                     if (!existingUser.IsDelete)
                     {
-                        throw new ValidationException("Email already in use");
+                        throw new ValidationException("SĐT đã tồn tại");
                     }
 
                     string hashedPassword = BCrypt.Net.BCrypt.HashPassword(entity.Password);
@@ -200,11 +206,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(entity.PhoneNumber))
+                {
+                    entity.PhoneNumber = NormalizePhoneNumber(entity.PhoneNumber);
+                }
+
                 var existingUser = await _unitOfWork.Repository<User>()
                     .FindAsync(u => u.UserId == id);
 
                 if (existingUser == null)
-                    throw new NotFoundException($"User with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy tài khoản");
 
                 // If role is changing, handle role-specific tables
                 if (existingUser.RoleID != entity.RoleID)
@@ -235,7 +246,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     .FindAsync(u => u.UserId == id);
 
                 if (user == null)
-                    throw new NotFoundException($"User with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy tài khoản");
 
                 // Soft delete role-specific entry
                 var role = await _unitOfWork.Repository<Role>()
@@ -310,6 +321,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
         }
 
+        public async Task<Role> GetByRoleNameAsync(string roleNAme)
+        {
+            try
+            {
+                var query = await _unitOfWork.Repository<Role>()
+                    .FindAsync(u => u.Name == roleNAme && !u.IsDelete);
+
+                return query;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
         public async Task<bool> IsEmailUniqueAsync(string email)
         {
             return !await _unitOfWork.Repository<User>()
@@ -321,12 +347,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             var user = await GetByIdAsync(id);
 
             if (user == null)
-                throw new NotFoundException($"User with ID {id} not found");
+                throw new NotFoundException($"Không tìm thấy tài khoản");
 
             user.Password = PasswordTools.HashPassword(newPassword);
             user.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
+        }
+
+        private string NormalizePhoneNumber(string phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+                return phoneNumber;
+
+            // Trim any whitespace
+            phoneNumber = phoneNumber.Trim();
+
+            // Remove the "+84" prefix (with or without space)
+            if (phoneNumber.StartsWith("+84"))
+            {
+                // Check if there's a space after +84
+                if (phoneNumber.Length > 3 && phoneNumber[3] == ' ')
+                    phoneNumber = phoneNumber.Substring(4);
+                else
+                    phoneNumber = phoneNumber.Substring(3);
+            }
+            // Remove the "0" prefix
+            else if (phoneNumber.StartsWith("0"))
+            {
+                phoneNumber = phoneNumber.Substring(1);
+            }
+
+            // Remove any remaining spaces or non-digit characters
+            phoneNumber = new string(phoneNumber.Where(char.IsDigit).ToArray());
+
+            return phoneNumber;
         }
 
         private async Task HandleRoleChangeAsync(User user, int newRoleId)
@@ -338,7 +393,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .FindAsync(r => r.RoleId == newRoleId);
 
             if (oldRole == null || newRole == null)
-                throw new ValidationException("Role not found");
+                throw new ValidationException("Không tìm thấy Role");
 
             // Soft delete old role-specific entry
             await SoftDeleteRoleSpecificEntryAsync(user.UserId, oldRole.Name);
@@ -392,7 +447,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     .FindAsync(r => r.RoleId == user.RoleID);
 
                 if (role == null)
-                    throw new ValidationException($"Role with ID {user.RoleID} not found");
+                    throw new ValidationException($"Không tìm thấy Role của user {user.Name}");
 
                 // Create or reactivate role-specific record based on role
                 switch (role.Name.ToLower())
@@ -465,7 +520,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error creating role-specific entry for user", ex);
+                throw new Exception($"Lỗi khi tạo mục nhập dành riêng cho role cho người dùng", ex);
             }
         }
     }
