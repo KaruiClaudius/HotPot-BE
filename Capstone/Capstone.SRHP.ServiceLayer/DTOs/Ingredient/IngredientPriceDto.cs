@@ -13,7 +13,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public DateTime EffectiveDate { get; set; }
         public int IngredientID { get; set; }
         public string IngredientName { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
     }
 }

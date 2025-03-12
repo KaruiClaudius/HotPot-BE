@@ -14,24 +14,26 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminIngredientController : ControllerBase
     {
         private readonly IIngredientService _ingredientService;
-        private readonly IIngredientTypeService _ingredientTypeService;
         private readonly ILogger<AdminIngredientController> _logger;
 
         public AdminIngredientController(
             IIngredientService ingredientService,
-            IIngredientTypeService ingredientTypeService,
             ILogger<AdminIngredientController> logger)
         {
             _ingredientService = ingredientService;
-            _ingredientTypeService = ingredientTypeService;
             _logger = logger;
         }
 
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<IngredientDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<IngredientDto>>>> GetAllIngredients(
+            [FromQuery] string searchTerm = null,
+            [FromQuery] int? typeId = null,
+            [FromQuery] bool? isLowStock = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "Name",
+            [FromQuery] bool ascending = true)
         {
             try
             {
@@ -44,9 +46,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                _logger.LogInformation($"Admin retrieving ingredients - Page {pageNumber}, Size {pageSize}");
+                _logger.LogInformation("Admin retrieving ingredients with filters");
 
-                var pagedIngredients = await _ingredientService.GetPagedAsync(pageNumber, pageSize);
+                var pagedIngredients = await _ingredientService.GetIngredientsAsync(
+                    searchTerm, typeId, isLowStock, pageNumber, pageSize, sortBy, ascending);
 
                 // Get all ingredient IDs from the current page
                 var ingredientIds = pagedIngredients.Items.Select(i => i.IngredientId).ToList();
@@ -57,7 +60,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var ingredientDtos = pagedIngredients.Items.Select(ingredient =>
                 {
                     var dto = MapToIngredientDto(ingredient);
-                    // Override the CurrentPrice with the actual price from our bulk query
+                    // Override the Price with the actual price from our bulk query
                     if (currentPrices.ContainsKey(ingredient.IngredientId))
                     {
                         dto.Price = currentPrices[ingredient.IngredientId];
@@ -100,7 +103,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin retrieving ingredient with ID: {IngredientId}", id);
 
-                var ingredient = await _ingredientService.GetByIdAsync(id);
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
 
                 if (ingredient == null)
                 {
@@ -161,7 +164,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     IngredientTypeID = request.IngredientTypeID
                 };
 
-                var createdIngredient = await _ingredientService.CreateAsync(ingredient, request.Price);
+                // Check if we need to create a new type
+                string newTypeName = null;
+                if (request.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(request.NewTypeName))
+                {
+                    newTypeName = request.NewTypeName;
+                }
+
+                var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price, newTypeName);
                 var ingredientDto = MapToIngredientDto(createdIngredient);
                 ingredientDto.Price = request.Price;
 
@@ -195,6 +205,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -204,7 +215,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin updating ingredient with ID: {IngredientId}", id);
 
-                var existingIngredient = await _ingredientService.GetByIdAsync(id);
+                var existingIngredient = await _ingredientService.GetIngredientByIdAsync(id);
                 if (existingIngredient == null)
                 {
                     return NotFound(new ApiErrorResponse
@@ -221,23 +232,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingIngredient.Quantity = request.Quantity;
                 existingIngredient.IngredientTypeID = request.IngredientTypeID;
 
-                await _ingredientService.UpdateAsync(id, existingIngredient);
+                await _ingredientService.UpdateIngredientAsync(id, existingIngredient);
 
                 // Add new price if it's different from current price
                 var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
                 if (currentPrice != request.Price)
                 {
-                    var newPrice = new IngredientPrice
-                    {
-                        IngredientID = id,
-                        Price = request.Price,
-                        EffectiveDate = DateTime.UtcNow
-                    };
-
-                    await _ingredientService.AddPriceAsync(newPrice);
+                    await _ingredientService.AddPriceAsync(id, request.Price, DateTime.UtcNow);
                 }
 
-                var updatedIngredient = await _ingredientService.GetByIdAsync(id);
+                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
                 var ingredientDto = MapToIngredientDto(updatedIngredient);
                 ingredientDto.Price = request.Price;
 
@@ -286,7 +290,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin deleting ingredient with ID: {IngredientId}", id);
 
-                await _ingredientService.DeleteAsync(id);
+                await _ingredientService.DeleteIngredientAsync(id);
 
                 return Ok(new ApiResponse<string>
                 {
@@ -364,309 +368,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("by-type/{typeId}")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<IngredientDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<IngredientDto>>>> GetIngredientsByType(int typeId)
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving ingredients by type ID: {TypeId}", typeId);
-
-                var ingredients = await _ingredientService.GetByTypeAsync(typeId);
-                var ingredientIds = ingredients.Select(i => i.IngredientId).ToList();
-                var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-                var ingredientDtos = ingredients.Select(ingredient =>
-                {
-                    var dto = MapToIngredientDto(ingredient);
-                    if (currentPrices.ContainsKey(ingredient.IngredientId))
-                    {
-                        dto.Price = currentPrices[ingredient.IngredientId];
-                    }
-                    return dto;
-                }).ToList();
-
-                return Ok(new ApiResponse<IEnumerable<IngredientDto>>
-                {
-                    Success = true,
-                    Message = "Ingredients by type retrieved successfully",
-                    Data = ingredientDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving ingredients by type ID: {TypeId}", typeId);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredients by type"
-                });
-            }
-        }
-
-        [HttpGet("search")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<IngredientDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<IngredientDto>>>> SearchIngredients(
-            [FromQuery] string searchTerm,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (pageNumber < 1 || pageSize < 1)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
-                    });
-                }
-
-                _logger.LogInformation($"Admin searching ingredients with term: {searchTerm} - Page {pageNumber}, Size {pageSize}");
-
-                var pagedIngredients = await _ingredientService.SearchAsync(searchTerm, pageNumber, pageSize);
-
-                var ingredientIds = pagedIngredients.Items.Select(i => i.IngredientId).ToList();
-                var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-                var ingredientDtos = pagedIngredients.Items.Select(ingredient =>
-                {
-                    var dto = MapToIngredientDto(ingredient);
-                    if (currentPrices.ContainsKey(ingredient.IngredientId))
-                    {
-                        dto.Price = currentPrices[ingredient.IngredientId];
-                    }
-                    return dto;
-                }).ToList();
-
-                var result = new PagedResult<IngredientDto>
-                {
-                    Items = ingredientDtos,
-                    PageNumber = pagedIngredients.PageNumber,
-                    PageSize = pagedIngredients.PageSize,
-                    TotalCount = pagedIngredients.TotalCount
-                };
-
-                return Ok(new ApiResponse<PagedResult<IngredientDto>>
-                {
-                    Success = true,
-                    Message = "Ingredients search completed successfully",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching ingredients with term: {SearchTerm}", searchTerm);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to search ingredients"
-                });
-            }
-        }
-
-        [HttpGet("{id}/price-history")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<IngredientPriceDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<IngredientPriceDto>>>> GetIngredientPriceHistory(int id)
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving price history for ingredient with ID: {IngredientId}", id);
-
-                var ingredient = await _ingredientService.GetByIdAsync(id);
-                if (ingredient == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {id} not found"
-                    });
-                }
-
-                var priceHistory = await _ingredientService.GetPriceHistoryAsync(id);
-                var priceDtos = priceHistory.Select(price => new IngredientPriceDto
-                {
-                    IngredientPriceId = price.IngredientPriceId,
-                    Price = price.Price,
-                    EffectiveDate = price.EffectiveDate,
-                    IngredientID = price.IngredientID,
-                    IngredientName = price.Ingredient?.Name ?? "Unknown",
-                    CreatedAt = price.CreatedAt,
-                    UpdatedAt = price.UpdatedAt
-                }).ToList();
-
-                return Ok(new ApiResponse<IEnumerable<IngredientPriceDto>>
-                {
-                    Success = true,
-                    Message = "Ingredient price history retrieved successfully",
-                    Data = priceDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving price history for ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient price history"
-                });
-            }
-        }
-
-        [HttpPost("{id}/prices")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientPriceDto>), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<IngredientPriceDto>>> AddIngredientPrice(int id, [FromBody] IngredientPriceRequest request)
-        {
-            try
-            {
-                _logger.LogInformation("Admin adding new price for ingredient with ID: {IngredientId}", id);
-
-                // Override the ingredient ID from the route
-                request.IngredientID = id;
-
-                var ingredient = await _ingredientService.GetByIdAsync(id);
-                if (ingredient == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {id} not found"
-                    });
-                }
-
-                var price = new IngredientPrice
-                {
-                    IngredientID = id,
-                    Price = request.Price,
-                    EffectiveDate = request.EffectiveDate
-                };
-
-                var createdPrice = await _ingredientService.AddPriceAsync(price);
-
-                var priceDto = new IngredientPriceDto
-                {
-                    IngredientPriceId = createdPrice.IngredientPriceId,
-                    Price = createdPrice.Price,
-                    EffectiveDate = createdPrice.EffectiveDate,
-                    IngredientID = createdPrice.IngredientID,
-                    IngredientName = ingredient.Name,
-                    CreatedAt = createdPrice.CreatedAt,
-                    UpdatedAt = createdPrice.UpdatedAt
-                };
-
-                return CreatedAtAction(
-                    nameof(GetIngredientPriceHistory),
-                    new { id = id },
-                    new ApiResponse<IngredientPriceDto>
-                    {
-                        Success = true,
-                        Message = "Ingredient price added successfully",
-                        Data = priceDto
-                    });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error adding price for ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding price for ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to add ingredient price"
-                });
-            }
-        }
-
-        [HttpPut("update-stock/{id}")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredientStock(
-            int id,
-            [FromBody] int quantity)
-        {
-            try
-            {
-                _logger.LogInformation("Admin updating stock for ingredient with ID: {IngredientId} to {Quantity}", id, quantity);
-
-                if (quantity < 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Quantity cannot be negative"
-                    });
-                }
-
-                var existingIngredient = await _ingredientService.GetByIdAsync(id);
-                if (existingIngredient == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {id} not found"
-                    });
-                }
-
-                existingIngredient.Quantity = quantity;
-                await _ingredientService.UpdateAsync(id, existingIngredient);
-
-                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-                var ingredientDto = MapToIngredientDto(existingIngredient);
-                ingredientDto.Price = currentPrice;
-
-                return Ok(new ApiResponse<IngredientDto>
-                {
-                    Success = true,
-                    Message = "Ingredient stock updated successfully",
-                    Data = ingredientDto
-                });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error updating stock for ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating stock for ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to update ingredient stock"
-                });
-            }
-        }
 
         // Helper method to map Ingredient to IngredientDto
         private static IngredientDto MapToIngredientDto(Ingredient ingredient)

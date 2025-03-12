@@ -13,33 +13,87 @@ namespace Capstone.HPTY.API.Controllers.Customer
     public class CustomerIngredientController : ControllerBase
     {
         private readonly IIngredientService _ingredientService;
-        private readonly IIngredientTypeService _ingredientTypeService;
+        private readonly ILogger<CustomerIngredientController> _logger;
 
         public CustomerIngredientController(
             IIngredientService ingredientService,
-            IIngredientTypeService ingredientTypeService)
+            ILogger<CustomerIngredientController> logger)
         {
             _ingredientService = ingredientService;
-            _ingredientTypeService = ingredientTypeService;
+            _logger = logger;
         }
-
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CustomerIngredientDto>>> GetAllIngredients()
+        public async Task<ActionResult<PagedResult<CustomerIngredientDto>>> GetIngredients(
+             [FromQuery] string searchTerm = null,
+             [FromQuery] int? typeId = null,
+             [FromQuery] bool? onlyAvailable = false,
+             [FromQuery] int pageNumber = 1,
+             [FromQuery] int pageSize = 10,
+             [FromQuery] string sortBy = "Name",
+             [FromQuery] bool ascending = true)
         {
             try
             {
-                // Using GetAllAsync instead of GetAllActiveAsync since your service doesn't have GetAllActiveAsync
-                // The service already filters out deleted items
-                var ingredients = await _ingredientService.GetAllAsync();
-                var ingredientDtos = ingredients.Select(MapToCustomerIngredientDto).ToList();
+                _logger.LogInformation("Customer retrieving ingredients with filters");
 
-                return Ok(ingredientDtos);
+                // If pageSize is -1, return all results
+                if (pageSize == -1)
+                {
+                    pageSize = int.MaxValue;
+                }
+
+                var result = await _ingredientService.GetIngredientsAsync(
+                    searchTerm: searchTerm,
+                    typeId: typeId,
+                    pageNumber: pageNumber,
+                    pageSize: pageSize,
+                    sortBy: sortBy,
+                    ascending: ascending);
+
+                var ingredients = result.Items;
+
+                // Apply availability filter if requested
+                if (onlyAvailable == true)
+                {
+                    ingredients = ingredients.Where(i => i.Quantity > 0).ToList();
+                }
+
+                // Get all ingredient IDs
+                var ingredientIds = ingredients.Select(i => i.IngredientId).ToList();
+
+                // Get all current prices in a single query
+                var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
+
+                var ingredientDtos = ingredients.Select(ingredient =>
+                {
+                    var dto = MapToCustomerIngredientDto(ingredient);
+
+                    // Set price from our bulk query
+                    if (currentPrices.ContainsKey(ingredient.IngredientId))
+                    {
+                        dto.Price = currentPrices[ingredient.IngredientId];
+                    }
+
+                    return dto;
+                }).ToList();
+
+                var pagedResult = new PagedResult<CustomerIngredientDto>
+                {
+                    Items = ingredientDtos,
+                    TotalCount = result.TotalCount,
+                    PageNumber = result.PageNumber,
+                    PageSize = result.PageSize
+                };
+
+                return Ok(pagedResult);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                _logger.LogError(ex, "Error retrieving ingredients for customer");
+                return StatusCode(500, new { message = "An error occurred while retrieving ingredients" });
             }
         }
+
 
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<CustomerIngredientDto>>> GetPagedIngredients(

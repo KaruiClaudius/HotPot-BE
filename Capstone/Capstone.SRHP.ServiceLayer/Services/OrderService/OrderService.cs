@@ -203,7 +203,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     else if (item.IngredientID.HasValue)
                     {
-                        var ingredient = await _ingredientService.GetByIdAsync(item.IngredientID.Value);
+                        var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
                         if (ingredient == null || ingredient.Quantity < item.Quantity)
                             throw new ValidationException($"Ingredient with ID {item.IngredientID} is not available in the requested quantity");
 
@@ -327,7 +327,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                     else if (item.IngredientID.HasValue)
                     {
-                        await _ingredientService.UpdateQuantityAsync(item.IngredientID.Value, -item.Quantity);
+                        await _ingredientService.UpdateIngredientQuantityAsync(item.IngredientID.Value, -item.Quantity);
                     }
                     else if (item.HotpotID.HasValue)
                     {
@@ -462,7 +462,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         }
                         else if (detail.IngredientID.HasValue)
                         {
-                            await _ingredientService.UpdateQuantityAsync(detail.IngredientID.Value, detail.Quantity);
+                            await _ingredientService.UpdateIngredientQuantityAsync(detail.IngredientID.Value, detail.Quantity);
                         }
                         else if (detail.HotpotID.HasValue)
                         {
@@ -518,7 +518,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                     else if (detail.IngredientID.HasValue)
                     {
-                        await _ingredientService.UpdateQuantityAsync(detail.IngredientID.Value, detail.Quantity);
+                        await _ingredientService.UpdateIngredientQuantityAsync(detail.IngredientID.Value, detail.Quantity);
                     }
                     else if (detail.HotpotID.HasValue)
                     {
@@ -703,7 +703,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 if (item.IngredientID.HasValue)
                 {
-                    var ingredient = await _ingredientService.GetByIdAsync(item.IngredientID.Value);
+                    var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
                     if (ingredient != null)
                     {
                         // Get the latest price of the ingredient

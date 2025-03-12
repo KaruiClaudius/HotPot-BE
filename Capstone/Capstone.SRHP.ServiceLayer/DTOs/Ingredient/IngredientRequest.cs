@@ -10,7 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
     public class IngredientRequest
     {
         [Required]
-        [StringLength(100)]
+        [StringLength(100, MinimumLength = 2)]
         public string Name { get; set; }
 
         [StringLength(1000)]
@@ -29,6 +29,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 
         [Required]
         public int IngredientTypeID { get; set; }
+
+        // Optional: If creating a new type on-the-fly
+        public string NewTypeName { get; set; }
 
         [Required]
         [Range(0, double.MaxValue)]

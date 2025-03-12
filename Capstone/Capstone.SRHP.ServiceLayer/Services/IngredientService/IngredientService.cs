@@ -4,6 +4,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,47 +17,115 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
     public class IngredientService : IIngredientService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<IngredientService> _logger;
 
-        public IngredientService(IUnitOfWork unitOfWork)
+        public IngredientService(
+            IUnitOfWork unitOfWork,
+            ILogger<IngredientService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
-        public async Task<IEnumerable<Ingredient>> GetAllAsync()
+        #region Ingredient Methods
+
+        public async Task<PagedResult<Ingredient>> GetIngredientsAsync(
+            string searchTerm = null,
+            int? typeId = null,
+            bool? isLowStock = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "Name",
+            bool ascending = true)
         {
-
-            return await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .Where(i => !i.IsDelete)
-                .ToListAsync();
-        }
-
-        public async Task<PagedResult<Ingredient>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            var query = _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .Where(i => !i.IsDelete);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderBy(i => i.Name)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Ingredient>
+            try
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                // Start with base query
+                var query = _unitOfWork.Repository<Ingredient>()
+                    .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientPrices)
+                    .Where(i => !i.IsDelete);
+
+                // Apply search filter
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    searchTerm = searchTerm.ToLower();
+                    query = query.Where(i =>
+                        i.Name.ToLower().Contains(searchTerm) ||
+                        (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
+                        i.IngredientType.Name.ToLower().Contains(searchTerm));
+                }
+
+                // Apply type filter
+                if (typeId.HasValue)
+                {
+                    query = query.Where(i => i.IngredientTypeID == typeId.Value);
+                }
+
+                // Apply low stock filter
+                if (isLowStock.HasValue && isLowStock.Value)
+                {
+                    query = query.Where(i => i.Quantity <= i.MinStockLevel);
+                }
+
+                // Get total count before applying pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply sorting
+                IOrderedQueryable<Ingredient> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "type":
+                    case "typename":
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.IngredientType.Name).ThenBy(i => i.Name)
+                            : query.OrderByDescending(i => i.IngredientType.Name).ThenBy(i => i.Name);
+                        break;
+                    case "quantity":
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.Quantity)
+                            : query.OrderByDescending(i => i.Quantity);
+                        break;
+                    case "minstocklevel":
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.MinStockLevel)
+                            : query.OrderByDescending(i => i.MinStockLevel);
+                        break;
+                    case "createdat":
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.CreatedAt)
+                            : query.OrderByDescending(i => i.CreatedAt);
+                        break;
+                    default: // Default to Name
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.Name)
+                            : query.OrderByDescending(i => i.Name);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Ingredient>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ingredients with filters");
+                throw;
+            }
         }
 
-        public async Task<Ingredient> GetByIdAsync(int id)
+        public async Task<Ingredient> GetIngredientByIdAsync(int id)
         {
             return await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
@@ -64,12 +133,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
         }
 
-        public Task<Ingredient> CreateAsync(Ingredient entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<Ingredient> CreateAsync(Ingredient entity, decimal initialPrice)
+        public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice, string newTypeName = null)
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
@@ -84,12 +148,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             if (initialPrice < 0)
                 throw new ValidationException("Price cannot be negative");
 
-            // Check if ingredient type exists
-            var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+            // Handle ingredient type
+            if (entity.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(newTypeName))
+            {
+                // Create a new ingredient type
+                var createdType = await CreateIngredientTypeAsync(newTypeName);
+                entity.IngredientTypeID = createdType.IngredientTypeId;
+            }
+            else
+            {
+                // Check if ingredient type exists
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
 
-            if (ingredientType == null)
-                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+                if (ingredientType == null)
+                    throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+            }
 
             // Check if ingredient exists (including soft-deleted)
             var existingIngredient = await _unitOfWork.Repository<Ingredient>()
@@ -145,9 +219,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             return entity;
         }
 
-        public async Task UpdateAsync(int id, Ingredient entity)
+        public async Task UpdateIngredientAsync(int id, Ingredient entity)
         {
-            var existingIngredient = await GetByIdAsync(id);
+            var existingIngredient = await GetIngredientByIdAsync(id);
             if (existingIngredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
 
@@ -183,9 +257,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task DeleteAsync(int id)
+        public async Task DeleteIngredientAsync(int id)
         {
-            var ingredient = await GetByIdAsync(id);
+            var ingredient = await GetIngredientByIdAsync(id);
             if (ingredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
 
@@ -209,6 +283,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.CommitAsync();
         }
 
+        public async Task UpdateIngredientQuantityAsync(int id, int quantity)
+        {
+            var ingredient = await GetIngredientByIdAsync(id);
+            if (ingredient == null)
+                throw new NotFoundException($"Ingredient with ID {id} not found");
+
+            if (ingredient.Quantity + quantity < 0)
+                throw new ValidationException("Cannot reduce quantity below 0");
+
+            ingredient.Quantity += quantity;
+            ingredient.SetUpdateDate();
+            await _unitOfWork.CommitAsync();
+        }
+
         public async Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync()
         {
             return await _unitOfWork.Repository<Ingredient>()
@@ -218,14 +306,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Ingredient>> GetByTypeAsync(int typeId)
+        #endregion
+
+        #region Ingredient Type Methods
+
+        public async Task<IEnumerable<IngredientType>> GetAllIngredientTypesAsync()
         {
-            return await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .Where(i => !i.IsDelete && i.IngredientTypeID == typeId)
+            return await _unitOfWork.Repository<IngredientType>()
+                .FindAll(t => !t.IsDelete)
+                .OrderBy(t => t.Name)
                 .ToListAsync();
         }
+
+        public async Task<IngredientType> CreateIngredientTypeAsync(string name)
+        {
+            // Validate basic properties
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ValidationException("Ingredient type name cannot be empty");
+
+            // Check if ingredient type exists (including soft-deleted)
+            var existingType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.Name == name);
+
+            if (existingType != null)
+            {
+                if (!existingType.IsDelete)
+                {
+                    throw new ValidationException($"Ingredient type with name {name} already exists");
+                }
+                else
+                {
+                    // Reactivate the soft-deleted ingredient type
+                    existingType.IsDelete = false;
+                    existingType.SetUpdateDate();
+                    await _unitOfWork.CommitAsync();
+                    return existingType;
+                }
+            }
+
+            var entity = new IngredientType { Name = name };
+            _unitOfWork.Repository<IngredientType>().Insert(entity);
+            await _unitOfWork.CommitAsync();
+            return entity;
+        }
+
+        public async Task DeleteIngredientTypeAsync(int id)
+        {
+            var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.IngredientTypeId == id && !t.IsDelete);
+
+            if (ingredientType == null)
+                throw new NotFoundException($"Ingredient type with ID {id} not found");
+
+            // Check if ingredient type is in use
+            var isInUse = await _unitOfWork.Repository<Ingredient>()
+                .AnyAsync(i => i.IngredientTypeID == id && !i.IsDelete);
+
+            if (isInUse)
+                throw new ValidationException("Cannot delete ingredient type that is in use by ingredients");
+
+            ingredientType.SoftDelete();
+            await _unitOfWork.CommitAsync();
+        }
+
+        #endregion
+
+        #region Price Methods
 
         public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
@@ -278,70 +424,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .ToListAsync();
         }
 
-        public async Task<IngredientPrice> AddPriceAsync(IngredientPrice price)
+        public async Task<IngredientPrice> AddPriceAsync(int ingredientId, decimal price, DateTime effectiveDate)
         {
             // Validate
-            if (price.Price < 0)
+            if (price < 0)
                 throw new ValidationException("Price cannot be negative");
 
-            var ingredient = await GetByIdAsync(price.IngredientID);
+            var ingredient = await GetIngredientByIdAsync(ingredientId);
             if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {price.IngredientID} not found");
+                throw new NotFoundException($"Ingredient with ID {ingredientId} not found");
 
             // Check if there's already a price with the same effective date
             var existingPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAsync(p => p.IngredientID == price.IngredientID &&
-                               p.EffectiveDate == price.EffectiveDate &&
+                .FindAsync(p => p.IngredientID == ingredientId &&
+                               p.EffectiveDate == effectiveDate &&
                                !p.IsDelete);
 
             if (existingPrice != null)
-                throw new ValidationException($"A price for this ingredient with effective date {price.EffectiveDate} already exists");
+                throw new ValidationException($"A price for this ingredient with effective date {effectiveDate} already exists");
 
-            _unitOfWork.Repository<IngredientPrice>().Insert(price);
-            await _unitOfWork.CommitAsync();
-            return price;
-        }
-        public async Task<PagedResult<Ingredient>> SearchAsync(string searchTerm, int pageNumber, int pageSize)
-        {
-            searchTerm = searchTerm?.ToLower() ?? "";
-
-            var query = _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .Where(i => !i.IsDelete &&
-                           (i.Name.ToLower().Contains(searchTerm) ||
-                            (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
-                            i.IngredientType.Name.ToLower().Contains(searchTerm)));
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderBy(i => i.Name)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Ingredient>
+            var priceEntity = new IngredientPrice
             {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
+                IngredientID = ingredientId,
+                Price = price,
+                EffectiveDate = effectiveDate
             };
+
+            _unitOfWork.Repository<IngredientPrice>().Insert(priceEntity);
+            await _unitOfWork.CommitAsync();
+            return priceEntity;
         }
 
-        public async Task UpdateQuantityAsync(int id, int quantity)
-        {
-            var ingredient = await GetByIdAsync(id);
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
+        #endregion
 
-            if (ingredient.Quantity + quantity < 0)
-                throw new ValidationException("Cannot reduce quantity below 0");
 
-            ingredient.Quantity += quantity;
-            ingredient.SetUpdateDate();
-
-        }
     }
 }

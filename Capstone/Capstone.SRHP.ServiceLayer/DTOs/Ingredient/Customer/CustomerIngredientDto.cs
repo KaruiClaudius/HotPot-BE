@@ -11,10 +11,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient.Customer
         public int IngredientId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public decimal Price { get; set; } // This will come from IngredientPrices
+        public decimal Price { get; set; }
         public int IngredientTypeID { get; set; }
         public string IngredientTypeName { get; set; }
         public string ImageURL { get; set; }
-        public bool IsAvailable { get; set; } // Derived from Quantity > 0
+        public bool IsAvailable { get; set; }
     }
 }
