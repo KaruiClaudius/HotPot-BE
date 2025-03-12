@@ -46,6 +46,7 @@ namespace Capstone.HPTY.API.AppStarts
                                     identity.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
                                 }
                             }
+
                             return Task.CompletedTask;
                         }
                     };
