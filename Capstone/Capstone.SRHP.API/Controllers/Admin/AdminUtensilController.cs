@@ -357,7 +357,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Success = true,
                     Message = "Cập nhật trạng thái thành công",
-                    Data = $"Utensil with ID {id} status set to {status}"
+                    Data = $"Dụng cụ với ID: {id} được đổi trạng thái thành {status}"
                 });
             }
             catch (NotFoundException ex)
@@ -375,7 +375,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to update utensil status"
+                    Message = "Cập nhật trạng thái gặp trục trặc"
                 });
             }
         }
@@ -393,8 +393,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Utensil quantity updated successfully",
-                    Data = $"Utensil with ID {id} quantity changed by {quantityChange}"
+                    Message = "Cập nhật số lượng thành công",
+                    Data = $"Dụng cụ với ID: {id} được đổi số lượng thành  {quantityChange}"
                 });
             }
             catch (NotFoundException ex)
@@ -421,7 +421,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to update utensil quantity"
+                    Message = "Cập nhật số lượng gặp trục trặc"
                 });
             }
         }
