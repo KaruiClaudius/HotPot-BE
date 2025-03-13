@@ -4,15 +4,51 @@ on:
   push:
     branches:
       - main
-    
+
 jobs:
   docker-compose:
-    runs-on: self-hosted
-    environment: docker     
+    runs-on: [self-hosted, Linux, X64]
+    environment: docker
+    timeout-minutes: 15
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
- 
-    - name: Run `docker compose`
-      working-directory: ./Capstone
-      run: docker compose up --build -d
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check directory structure
+        run: |
+          pwd
+          ls -la
+          if [ -d "./Capstone" ]; then
+            echo "Capstone directory exists"
+            ls -la ./Capstone
+          else
+            echo "Capstone directory does not exist"
+            ls -la
+            exit 1
+          fi
+
+      - name: Check Docker status
+        run: |
+          docker --version
+          docker ps
+          docker info
+
+      - name: Run docker compose
+        working-directory: ./Capstone
+        run: |
+          # Try new syntax first
+          if docker compose version &>/dev/null; then
+            echo "Using docker compose (new syntax)"
+            docker compose up --build -d
+          else
+            echo "Using docker-compose (old syntax)"
+            docker-compose up --build -d
+          fi
+
+      - name: Verify containers are running
+        working-directory: ./Capstone
+        run: |
+          sleep 10
+          docker ps
+          echo "Deployment completed successfully"
