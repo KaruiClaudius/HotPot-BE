@@ -12,6 +12,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {
+
         Task InsertAsync(TEntity entity);
 
         Task InsertRangeAsync(IQueryable<TEntity> entities);
@@ -19,7 +20,6 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         Task AddRangeAsync(IEnumerable<TEntity> entities);
 
         //DbSet<TEntity> GetAll();
-        // Thêm mới
 
         IQueryable<TEntity> IncludeNested(Func<IQueryable<TEntity>, IQueryable<TEntity>> includeFunc);
 
@@ -27,7 +27,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
         IQueryable<TEntity> GetAllApart();
         Task<IEnumerable<TEntity>> GetWhere(Expression<Func<TEntity, bool>> predicate);
 
-        IQueryable<TEntity> FindAll(Func<TEntity, bool> predicate);
+        IQueryable<TEntity> FindAll(Expression<Func<TEntity, bool>> predicate = null);
 
         Task<IEnumerable<TEntity>> FindList(Expression<Func<TEntity, bool>> predicate);
 

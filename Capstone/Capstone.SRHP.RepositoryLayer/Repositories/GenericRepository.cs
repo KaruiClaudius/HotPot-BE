@@ -24,6 +24,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
             _dbSet = _context.Set<T>();
         }
 
+
         public IEnumerable<T> Find(Expression<Func<T, bool>> predicate)
         {
             return _context.Set<T>().AsQueryable().Where(predicate).ToList();
@@ -41,14 +42,18 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
             return await query.FirstOrDefaultAsync(predicate);
         }
 
+
         public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
         {
             return await _context.Set<T>().AnyAsync(predicate);
         }
 
-        public IQueryable<T> FindAll(Func<T, bool> predicate)
+        public IQueryable<T> FindAll(Expression<Func<T, bool>> predicate = null)
         {
-            return _dbSet.Where(predicate).AsQueryable();
+            if (predicate == null)
+                return _dbSet;
+
+            return _dbSet.Where(predicate);
         }
 
         public async Task<IEnumerable<T>> FindList(Expression<Func<T, bool>> predicate)

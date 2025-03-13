@@ -331,7 +331,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                     else if (item.HotpotID.HasValue)
                     {
-                        await _hotpotService.UpdateQuantityAsync(item.HotpotID.Value, -item.Quantity);
+                        await _hotpotService.UpdateQuantityAsync(item.HotpotID.Value);
                     }
                 }
 
@@ -466,7 +466,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         }
                         else if (detail.HotpotID.HasValue)
                         {
-                            await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value, detail.Quantity);
+                            await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value);
                         }
                     }
 
@@ -522,7 +522,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                     else if (detail.HotpotID.HasValue)
                     {
-                        await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value, detail.Quantity);
+                        await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value);
                     }
                 }
 
