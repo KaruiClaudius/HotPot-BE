@@ -165,14 +165,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     IngredientTypeID = request.IngredientTypeID
                 };
 
-                // Check if we need to create a new type
-                string newTypeName = null;
-                if (request.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(request.NewTypeName))
-                {
-                    newTypeName = request.NewTypeName;
-                }
-
-                var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price, newTypeName);
+                var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
                 var ingredientDto = MapToIngredientDto(createdIngredient);
                 ingredientDto.Price = request.Price;
 

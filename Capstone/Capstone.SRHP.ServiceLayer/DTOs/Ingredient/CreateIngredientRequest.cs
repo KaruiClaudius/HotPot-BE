@@ -34,8 +34,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         [Required]
         public int IngredientTypeID { get; set; }
 
-        public string? NewTypeName { get; set; }
-
         [Required]
         [Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }

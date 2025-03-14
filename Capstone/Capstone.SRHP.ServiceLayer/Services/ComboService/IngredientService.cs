@@ -140,7 +140,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
 
-        public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice, string newTypeName = null)
+        public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice)
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
@@ -162,22 +162,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             // Standardize the measurement unit
             entity.MeasurementUnit = StandardizeMeasurementUnit(entity.MeasurementUnit);
 
-            // Handle ingredient type
-            if (entity.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(newTypeName))
-            {
-                // Create a new ingredient type
-                var createdType = await CreateIngredientTypeAsync(newTypeName);
-                entity.IngredientTypeID = createdType.IngredientTypeId;
-            }
-            else
-            {
-                // Check if ingredient type exists
-                var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                    .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
 
-                if (ingredientType == null)
-                    throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
-            }
+            // Check if ingredient type exists
+            var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+
+            if (ingredientType == null)
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+
 
             // Check if ingredient exists (including soft-deleted)
             var existingIngredient = await _unitOfWork.Repository<Ingredient>()

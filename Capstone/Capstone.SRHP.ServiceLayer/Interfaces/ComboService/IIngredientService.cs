@@ -21,7 +21,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 
         // Basic CRUD for ingredients
         Task<Ingredient> GetIngredientByIdAsync(int id);
-        Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice, string newTypeName = null);
+        Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice);
         Task UpdateIngredientAsync(int id, Ingredient entity);
         Task DeleteIngredientAsync(int id);
         Task UpdateIngredientQuantityAsync(int id, decimal quantityChange, string unit = null);
