@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
-    [Route("api/[controller]")]
+    [Route("api/manager/order-management")]
     [ApiController]
     [Authorize(Roles = "Manager")]
     public class ManagerOrderManagementController : ControllerBase

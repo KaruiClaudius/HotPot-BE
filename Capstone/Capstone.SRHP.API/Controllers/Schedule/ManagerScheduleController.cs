@@ -17,7 +17,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 
 namespace Capstone.HPTY.API.Controllers.Schedule
 {
-    [Route("api/[controller]")]
+    [Route("api/manager/schedule")]
     [ApiController]
     [Authorize(Roles = "Manager")]
     public class ManagerScheduleController : ControllerBase

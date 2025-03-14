@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
-    [Route("api/[controller]")]
+    [Route("api/order-history")]
     [ApiController]
     [Authorize(Roles = "Staff,Admin")]
 

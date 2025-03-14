@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Schedule
 {
-    [Route("api/[controller]")]
+    [Route("api/admin/schedule")]
     [ApiController]
     [Authorize(Roles = "Admin")]
     public class AdminScheduleController : ControllerBase
@@ -31,7 +31,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Get all work shifts
         /// </summary>
-        [HttpGet("shifts")]
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetAllWorkShifts()
         {
             try
@@ -48,7 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Get work shift by ID
         /// </summary>
-        [HttpGet("shifts/{shiftId}")]
+        [HttpGet("{shiftId}")]
         public async Task<ActionResult<WorkShiftDto>> GetWorkShiftById(int shiftId)
         {
             try
@@ -68,7 +68,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Create a new work shift
         /// </summary>
-        [HttpPost("shifts")]
+        [HttpPost]
         public async Task<ActionResult<WorkShiftDto>> CreateWorkShift([FromBody] CreateWorkShiftDto createDto)
         {
             try
@@ -96,7 +96,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Update an existing work shift
         /// </summary>
-        [HttpPut("shifts/{shiftId}")]
+        [HttpPut("{shiftId}")]
         public async Task<ActionResult<WorkShiftDto>> UpdateWorkShift(int shiftId, [FromBody] UpdateWorkShiftDto updateDto)
         {
             try
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Delete a work shift
         /// </summary>
-        [HttpDelete("shifts/{shiftId}")]
+        [HttpDelete("{shiftId}")]
         public async Task<ActionResult> DeleteWorkShift(int shiftId)
         {
             try
@@ -185,7 +185,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Assign work days to a staff member
         /// </summary>
-        [HttpPost("staff/assign-workdays")]
+        [HttpPost("assign-staff")]
         public async Task<ActionResult<StaffDto>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
         {
             try
@@ -216,7 +216,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// <summary>
         /// Assign work days and shifts to a manager
         /// </summary>
-        [HttpPost("managers/assign-workdays-shifts")]
+        [HttpPost("assign-manager")]
         public async Task<ActionResult<ManagerDto>> AssignManagerWorkDaysAndShifts([FromBody] AssignManagerWorkDaysAndShiftsDto assignDto)
         {
             try

@@ -12,7 +12,7 @@ using SystemClaimTypes = System.Security.Claims.ClaimTypes;
 
 namespace Capstone.HPTY.API.Controllers.Schedule
 {
-    [Route("api/[controller]")]
+    [Route("api/staff/schedule")]
     [ApiController]
     [Authorize(Roles = "Staff")]
 
