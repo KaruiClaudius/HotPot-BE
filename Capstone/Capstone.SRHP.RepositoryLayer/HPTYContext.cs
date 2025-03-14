@@ -504,7 +504,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 29.99m,
                     BasePrice = 89.99m,
                     Status = true,
-                    Quantity = 25,
+                    Quantity = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -519,7 +519,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 59.99m,
                     BasePrice = 129.99m,
                     Status = true,
-                    Quantity = 30,
+                    Quantity = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -534,7 +534,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 19.99m,
                     BasePrice = 69.99m,
                     Status = true,
-                    Quantity = 40,
+                    Quantity = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -549,7 +549,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 69.99m,
                     BasePrice = 149.99m,
                     Status = true,
-                    Quantity = 20,
+                    Quantity = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -564,10 +564,153 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 39.99m,
                     BasePrice = 79.99m,
                     Status = true,
-                    Quantity = 15,
+                    Quantity = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }
+            );
+
+            // Seed HotPotInventory
+            modelBuilder.Entity<HotPotInventory>().HasData(
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 1,
+                    SeriesNumber = "CP-2023-0001",
+                    HotpotId = 1,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 2,
+                    SeriesNumber = "CP-2023-0002",
+                    Status = true,
+                    HotpotId = 1,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 3,
+                    SeriesNumber = "EL-2023-0001",
+                    HotpotId = 2,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 4,
+                    SeriesNumber = "EL-2023-0002",
+                    HotpotId = 2,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 5,
+                    SeriesNumber = "PT-2023-0001",
+                    HotpotId = 3,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 6,
+                    SeriesNumber = "MC-2023-0001",
+                    HotpotId = 4,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 7,
+                    SeriesNumber = "CR-2023-0001",
+                    HotpotId = 5,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 8,
+                    SeriesNumber = "CP-2023-0003",
+                    HotpotId = 1,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 9,
+                    SeriesNumber = "CP-2023-0004",
+                    HotpotId = 1,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 10,
+                    SeriesNumber = "CP-2023-0005",
+                    HotpotId = 1,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 11,
+                    SeriesNumber = "PT-2023-0002",
+                    HotpotId = 3,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 12,
+                    SeriesNumber = "MC-2023-0002",
+                    HotpotId = 4,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 13,
+                    SeriesNumber = "CR-2023-0002",
+                    HotpotId = 5,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 14,
+                    SeriesNumber = "CR-2023-0003",
+                    HotpotId = 5,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 15,
+                    SeriesNumber = "CR-2023-0004",
+                    HotpotId = 5,
+                    Status = true,
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                }
+
+
+
             );
 
             // Seed Utensils
@@ -644,67 +787,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 }
             );
 
-            // Seed HotPotInventory
-            modelBuilder.Entity<HotPotInventory>().HasData(
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 1,
-                    SeriesNumber = "CP-2023-0001",
-                    HotpotId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 2,
-                    SeriesNumber = "CP-2023-0002",
-                    HotpotId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 3,
-                    SeriesNumber = "EL-2023-0001",
-                    HotpotId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 4,
-                    SeriesNumber = "EL-2023-0002",
-                    HotpotId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 5,
-                    SeriesNumber = "PT-2023-0001",
-                    HotpotId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 6,
-                    SeriesNumber = "MC-2023-0001",
-                    HotpotId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 7,
-                    SeriesNumber = "CR-2023-0001",
-                    HotpotId = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
-                }
-            );
-
-            // Seed IngredientTypes
             modelBuilder.Entity<IngredientType>().HasData(
                 new IngredientType
                 {

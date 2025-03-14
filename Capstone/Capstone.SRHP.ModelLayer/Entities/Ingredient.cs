@@ -45,7 +45,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
 
         public virtual IngredientType? IngredientType { get; set; }
-        public virtual OrderDetail? OrderDetail { get; set; }
+        public virtual ICollection<OrderDetail> OrderDetails { get; set; }
         public virtual ICollection<CustomizationIngredient>? CustomizationIngredients { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; }
         public virtual ICollection<Combo>? CombosAsBroth { get; set; }

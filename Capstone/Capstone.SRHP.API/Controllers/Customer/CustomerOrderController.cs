@@ -17,73 +17,105 @@ using System.Security.Claims;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
-    [Route("api/orders")]
+    [Route("api/customer/orders")]
     [ApiController]
     [Authorize]
     public class CustomerOrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        private readonly IUserService _userService;
-        private readonly IPaymentService _paymentService;
+        private readonly IHotpotService _hotpotService;
         private readonly ILogger<CustomerOrderController> _logger;
 
         public CustomerOrderController(
             IOrderService orderService,
-            IPaymentService paymentService,
-            IUserService userService,
+            IHotpotService hotpotService,
             ILogger<CustomerOrderController> logger)
         {
             _orderService = orderService;
-            _paymentService = paymentService;
-            _userService = userService;
+            _hotpotService = hotpotService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Get user orders with optional pagination and filtering
+        /// </summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrderResponse>>> GetUserOrders()
+        public async Task<ActionResult<object>> GetUserOrders(
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string searchTerm = null,
+            [FromQuery] string status = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] bool? hasHotpot = null,
+            [FromQuery] string paymentStatus = null,
+            [FromQuery] string sortBy = "CreatedAt",
+            [FromQuery] bool ascending = false)
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                var orders = await _orderService.GetUserOrdersAsync(userId);
-                var orderResponses = orders.Select(MapOrderToResponse).ToList();
-                return Ok(orderResponses);
+                // Get current user ID
+                var userIdClaim = User.FindFirstValue("uid");
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new { message = "Invalid user identification" });
+                }
+
+                // Determine if pagination is requested
+                bool isPaginated = pageNumber.HasValue || pageSize.HasValue;
+
+                // Set default pagination values if needed
+                int effectivePageNumber = pageNumber ?? 1;
+                int effectivePageSize = pageSize ?? int.MaxValue;
+
+                // Validate pagination parameters if pagination is requested
+                if (isPaginated)
+                {
+                    if (effectivePageNumber < 1) effectivePageNumber = 1;
+                    if (effectivePageSize < 1) effectivePageSize = 10;
+                    if (effectivePageSize > 50) effectivePageSize = 50;
+                }
+
+                // Use the GetOrdersAsync method with all parameters
+                var pagedResult = await _orderService.GetOrdersAsync(
+                    userId: userId,
+                    searchTerm: searchTerm,
+                    status: status,
+                    fromDate: fromDate,
+                    toDate: toDate,
+                    minPrice: minPrice,
+                    maxPrice: maxPrice,
+                    hasHotpot: hasHotpot,
+                    paymentStatus: paymentStatus,
+                    pageNumber: effectivePageNumber,
+                    pageSize: effectivePageSize,
+                    sortBy: sortBy,
+                    ascending: ascending);
+
+                // Map to response objects
+                var orderResponses = pagedResult.Items.Select(MapOrderToResponse).ToList();
+
+                // Return appropriate response based on whether pagination was requested
+                if (isPaginated)
+                {
+                    return Ok(new PagedResult<OrderResponse>
+                    {
+                        Items = orderResponses,
+                        TotalCount = pagedResult.TotalCount,
+                        PageNumber = effectivePageNumber,
+                        PageSize = effectivePageSize
+                    });
+                }
+                else
+                {
+                    return Ok(orderResponses);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving user orders");
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
-            }
-        }
-
-        [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<OrderResponse>>> GetUserOrdersPaged(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-                if (pageNumber < 1) pageNumber = 1;
-                if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
-
-                var pagedResult = await _orderService.GetUserOrdersPagedAsync(userId, pageNumber, pageSize);
-
-                var orderResponses = pagedResult.Items.Select(MapOrderToResponse).ToList();
-
-                return Ok(new PagedResult<OrderResponse>
-                {
-                    Items = orderResponses,
-                    TotalCount = pagedResult.TotalCount,
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving paged user orders");
                 return StatusCode(500, new { message = "An error occurred while retrieving orders" });
             }
         }
@@ -93,7 +125,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var userIdClaim = User.FindFirstValue("uid");
+                var userId = int.Parse(userIdClaim);
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
@@ -155,13 +188,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (order.UserID != userId && !User.IsInRole("Admin"))
                     return Forbid();
 
-                // Map UpdateOrderRequest to Order entity
-                order.Address = request.Address ?? order.Address;
-                order.Notes = request.Notes ?? order.Notes;
-                order.DiscountID = request.DiscountId ?? order.DiscountID;
-
-                await _orderService.UpdateAsync(id, order);
-                var updatedOrder = await _orderService.GetByIdAsync(id);
+                // Use the new UpdateAsync method that takes UpdateOrderRequest directly
+                var updatedOrder = await _orderService.UpdateAsync(id, request);
                 var orderResponse = MapOrderToResponse(updatedOrder);
                 return Ok(orderResponse);
             }
@@ -235,20 +263,31 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-       
-
-        [HttpGet("{id}/calculate-deposit")]
+        [HttpPost("calculate-deposit")]
         public async Task<ActionResult> CalculateDeposit([FromBody] List<OrderItemRequest> items)
         {
             try
             {
-                var (ingredientsDeposit, hotpotDeposit) = await _orderService.CalculateDepositsAsync(items);
+                // Calculate hotpot deposit manually
+                decimal hotpotDeposit = 0;
+
+                foreach (var item in items)
+                {
+                    if (item.HotpotID.HasValue)
+                    {
+                        var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
+                        if (hotpot != null && hotpot.Status)
+                        {
+                            // Calculate hotpot deposit (70% of hotpot price)
+                            hotpotDeposit += (decimal)(hotpot.Price * 0.7m * item.Quantity);
+                        }
+                    }
+                }
 
                 return Ok(new
                 {
-                    ingredientsDeposit,
                     hotpotDeposit,
-                    totalDeposit = ingredientsDeposit + hotpotDeposit
+                    totalDeposit = hotpotDeposit
                 });
             }
             catch (Exception ex)
@@ -269,7 +308,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Address = order.Address,
                 Notes = order.Notes,
                 TotalPrice = order.TotalPrice,
-                IngredientsDeposit = order.IngredientsDeposit ?? 0,
                 HotpotDeposit = order.HotpotDeposit ?? 0,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
@@ -309,13 +347,31 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientID;
+
+                        // Add volume/weight and unit information to the response
+                        response.Items.Add(new OrderItemResponse
+                        {
+                            OrderDetailId = detail.OrderDetailId,
+                            Quantity = detail.Quantity,
+                            VolumeWeight = detail.VolumeWeight,
+                            Unit = detail.Ingredient.MeasurementUnit, // Add the unit (kg, g, l, ml, etc.)
+                            UnitPrice = detail.UnitPrice,
+                            TotalPrice = detail.UnitPrice * (detail.VolumeWeight ?? 1),
+                            ItemType = itemType,
+                            ItemName = itemName,
+                            ImageUrl = imageUrl,
+                            ItemId = itemId
+                        });
+
+                        // Skip the default add below for ingredients
+                        continue;
                     }
-                    else if (detail.Hotpot != null)
+                    else if (detail.HotpotInventory?.Hotpot != null)
                     {
                         itemType = "Hotpot";
-                        itemName = detail.Hotpot.Name;
-                        imageUrl = detail.Hotpot.ImageURLs?.FirstOrDefault();
-                        itemId = detail.HotpotID;
+                        itemName = detail.HotpotInventory.Hotpot.Name;
+                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
+                        itemId = detail.HotpotInventory.HotpotId;
                     }
                     else if (detail.Customization != null)
                     {
@@ -378,6 +434,5 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             return totalPrice * (decimal)(discountPercent / 100);
         }
-
     }
 }

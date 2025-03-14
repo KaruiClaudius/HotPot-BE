@@ -83,8 +83,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
             }
 
-            [HttpGet("price/{comboId}/{size}")]
-            public async Task<ActionResult<ComboSizePriceDto>> GetComboPrice(int comboId, int size)
+            [HttpGet("price/{comboId}")]
+            public async Task<ActionResult<ComboSizePriceDto>> GetComboPrice(int comboId, [FromQuery]int size)
             {
                 try
                 {

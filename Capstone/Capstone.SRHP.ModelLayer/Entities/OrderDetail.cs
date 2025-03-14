@@ -18,6 +18,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [Range(1, int.MaxValue)]
         public int Quantity { get; set; }
+        // New field for volume/weight
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? VolumeWeight { get; set; }
+
+        [StringLength(10)]
+        public string? Unit { get; set; }
+
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -27,7 +34,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public int? UtensilID { get; set; }
         public int? IngredientID { get; set; }
-        public int? HotpotID { get; set; }
+        public int? HotpotInventoryID { get; set; }
         public int? CustomizationID { get; set; }
         public int? ComboID { get; set; }
 
@@ -40,8 +47,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey(nameof(IngredientID))]
         public virtual Ingredient? Ingredient { get; set; }
 
-        [ForeignKey(nameof(HotpotID))]
-        public virtual Hotpot? Hotpot { get; set; }
+        [ForeignKey(nameof(HotpotInventoryID))]
+        public virtual HotPotInventory? HotpotInventory { get; set; }
 
         [ForeignKey(nameof(CustomizationID))]
         public virtual Customization? Customization { get; set; }

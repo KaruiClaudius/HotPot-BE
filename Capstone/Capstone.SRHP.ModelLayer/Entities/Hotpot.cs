@@ -81,7 +81,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public DateTime LastMaintainDate { get; set; }
 
-        public virtual OrderDetail? OrderDetail { get; set; }
         public virtual ICollection<HotPotInventory>? InventoryUnits { get; set; }
     }
 }

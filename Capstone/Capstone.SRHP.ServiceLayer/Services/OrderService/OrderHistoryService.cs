@@ -72,7 +72,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
+                        .ThenInclude(od => od.HotpotInventory)
+                        .ThenInclude(hi => hi.Hotpot)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
@@ -126,7 +127,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
+                        .ThenInclude(od => od.HotpotInventory)
+                        .ThenInclude(hi => hi.Hotpot)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
@@ -234,11 +236,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         itemType = "Ingredient";
                         price = detail.Ingredient.IngredientPrices.FirstOrDefault()?.Price ?? 0;
                     }
-                    else if (detail.Hotpot != null)
+                    else if (detail.HotpotInventory != null)
                     {
-                        itemName = detail.Hotpot.Name;
+                        itemName = detail.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot";
-                        price = detail.Hotpot.Price;
+                        price = detail.HotpotInventory.Hotpot.Price;
                     }
                     else if (detail.Customization != null)
                     {

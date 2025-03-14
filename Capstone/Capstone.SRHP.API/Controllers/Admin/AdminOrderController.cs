@@ -41,6 +41,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
             [FromQuery] DateTime? toDate = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
+            [FromQuery] bool? hasHotpot = null,
+            [FromQuery] string paymentStatus = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string sortBy = "CreatedAt",
@@ -53,62 +55,29 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (pageSize < 1) pageSize = 10;
                 if (pageSize > 50) pageSize = 50;
 
-                // Get paged orders
-                var pagedResult = await _orderService.GetPagedAsync(pageNumber, pageSize);
+                // Use the existing GetOrdersAsync method with all filters
+                var pagedResult = await _orderService.GetOrdersAsync(
+                    searchTerm: searchTerm,
+                    userId: userId,
+                    status: status,
+                    fromDate: fromDate,
+                    toDate: toDate,
+                    minPrice: minPrice,
+                    maxPrice: maxPrice,
+                    hasHotpot: hasHotpot,
+                    paymentStatus: paymentStatus,
+                    pageNumber: pageNumber,
+                    pageSize: pageSize,
+                    sortBy: sortBy,
+                    ascending: ascending);
 
-                // Apply filters
-                var filteredItems = pagedResult.Items.AsQueryable();
-
-                if (!string.IsNullOrEmpty(searchTerm))
-                {
-                    filteredItems = filteredItems.Where(o =>
-                        (o.Address != null && o.Address.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                        (o.Notes != null && o.Notes.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                        (o.User != null && o.User.Name != null && o.User.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                        (o.User != null && o.User.Email != null && o.User.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
-                }
-
-                if (userId.HasValue)
-                {
-                    filteredItems = filteredItems.Where(o => o.UserID == userId.Value);
-                }
-
-                if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
-                {
-                    filteredItems = filteredItems.Where(o => o.Status == orderStatus);
-                }
-
-                if (fromDate.HasValue)
-                {
-                    filteredItems = filteredItems.Where(o => o.CreatedAt >= fromDate.Value);
-                }
-
-                if (toDate.HasValue)
-                {
-                    filteredItems = filteredItems.Where(o => o.CreatedAt <= toDate.Value);
-                }
-
-                if (minPrice.HasValue)
-                {
-                    filteredItems = filteredItems.Where(o => o.TotalPrice >= minPrice.Value);
-                }
-
-                if (maxPrice.HasValue)
-                {
-                    filteredItems = filteredItems.Where(o => o.TotalPrice <= maxPrice.Value);
-                }
-
-                // Apply sorting
-                filteredItems = ApplySorting(filteredItems, sortBy, ascending);
-
-                // Convert to list and map to response
-                var filteredList = filteredItems.ToList();
-                var orderResponses = filteredList.Select(MapOrderToResponse).ToList();
+                // Map to response
+                var orderResponses = pagedResult.Items.Select(MapOrderToResponse).ToList();
 
                 return Ok(new PagedResult<OrderResponse>
                 {
                     Items = orderResponses,
-                    TotalCount = pagedResult.TotalCount, // Keep original total count
+                    TotalCount = pagedResult.TotalCount,
                     PageNumber = pageNumber,
                     PageSize = pageSize
                 });
@@ -120,45 +89,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        /// <summary>
-        /// Get orders by status
-        /// </summary>
-        [HttpGet("by-status/{status}")]
-        public async Task<ActionResult<PagedResult<OrderResponse>>> GetOrdersByStatus(
-            string status,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                // Validate pagination parameters
-                if (pageNumber < 1) pageNumber = 1;
-                if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
-
-                // Parse status
-                if (!Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
-                {
-                    return BadRequest(new { message = $"Invalid order status: {status}" });
-                }
-
-                var pagedResult = await _orderService.GetOrdersByStatusPagedAsync(orderStatus, pageNumber, pageSize);
-                var orderResponses = pagedResult.Items.Select(MapOrderToResponse).ToList();
-
-                return Ok(new PagedResult<OrderResponse>
-                {
-                    Items = orderResponses,
-                    TotalCount = pagedResult.TotalCount,
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders by status {Status}", status);
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
-            }
-        }
+       
 
         /// <summary>
         /// Get order by ID
@@ -221,7 +152,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Address = order.Address,
                 Notes = order.Notes,
                 TotalPrice = order.TotalPrice,
-                IngredientsDeposit = order.IngredientsDeposit ?? 0,
                 HotpotDeposit = order.HotpotDeposit ?? 0,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
@@ -261,13 +191,33 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientID;
+
+                        // Add volume/weight information for ingredients
+                        response.Items.Add(new OrderItemResponse
+                        {
+                            OrderDetailId = detail.OrderDetailId,
+                            Quantity = detail.Quantity,
+                            VolumeWeight = detail.VolumeWeight,
+                            Unit = detail.Unit ?? detail.Ingredient.MeasurementUnit,
+                            UnitPrice = detail.UnitPrice,
+                            TotalPrice = detail.VolumeWeight.HasValue ?
+                                detail.UnitPrice * detail.VolumeWeight.Value :
+                                detail.UnitPrice * detail.Quantity,
+                            ItemType = itemType,
+                            ItemName = itemName,
+                            ImageUrl = imageUrl,
+                            ItemId = itemId
+                        });
+
+                        // Skip the default add below for ingredients
+                        continue;
                     }
-                    else if (detail.Hotpot != null)
+                    else if (detail.HotpotInventory?.Hotpot != null)
                     {
                         itemType = "Hotpot";
-                        itemName = detail.Hotpot.Name;
-                        imageUrl = detail.Hotpot.ImageURLs?.FirstOrDefault();
-                        itemId = detail.HotpotID;
+                        itemName = detail.HotpotInventory.Hotpot.Name;
+                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
+                        itemId = detail.HotpotInventory.HotpotId;
                     }
                     else if (detail.Customization != null)
                     {
@@ -329,19 +279,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         private decimal CalculateDiscountAmount(decimal totalPrice, decimal discountPercent)
         {
             return totalPrice * (discountPercent / 100);
-        }
-
-        private IQueryable<Order> ApplySorting(IQueryable<Order> query, string sortBy, bool ascending)
-        {
-            return sortBy.ToLower() switch
-            {
-                "createdat" => ascending ? query.OrderBy(o => o.CreatedAt) : query.OrderByDescending(o => o.CreatedAt),
-                "updatedat" => ascending ? query.OrderBy(o => o.UpdatedAt) : query.OrderByDescending(o => o.UpdatedAt),
-                "totalprice" => ascending ? query.OrderBy(o => o.TotalPrice) : query.OrderByDescending(o => o.TotalPrice),
-                "status" => ascending ? query.OrderBy(o => o.Status) : query.OrderByDescending(o => o.Status),
-                "username" => ascending ? query.OrderBy(o => o.User.Name) : query.OrderByDescending(o => o.User.Name),
-                _ => query.OrderByDescending(o => o.CreatedAt)
-            };
         }
     }
 }

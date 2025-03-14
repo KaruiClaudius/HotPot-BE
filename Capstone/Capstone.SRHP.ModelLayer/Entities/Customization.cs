@@ -86,7 +86,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual User User { get; set; } = null!;
         public virtual Ingredient HotpotBroth { get; set; } = null!;
         public virtual Combo Combo { get; set; } = null!;
-        public virtual OrderDetail OrderDetail { get; set; } = null!;
+        public virtual ICollection<OrderDetail> OrderDetails { get; set; }
         public virtual ICollection<CustomizationIngredient> CustomizationIngredients { get; set; } = new List<CustomizationIngredient>();
         public virtual SizeDiscount AppliedDiscount { get; set; }
 

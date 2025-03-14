@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/admin/size-discount")]
     public class AdminSizeDiscountController : ControllerBase
     {
         private readonly ISizeDiscountService _sizeDiscountService;

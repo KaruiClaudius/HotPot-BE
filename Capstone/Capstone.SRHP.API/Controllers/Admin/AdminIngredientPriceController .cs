@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
-    [Route("api/admin/ingredient-prices")]
+    [Route("api/admin/ingredient-price")]
     [Authorize(Roles = "Admin")]
     public class AdminIngredientPriceController : ControllerBase
     {

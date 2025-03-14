@@ -71,7 +71,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                             .ThenInclude(od => od.Ingredient)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.OrderDetails)
-                            .ThenInclude(od => od.Hotpot)
+                        .ThenInclude(od => od.HotpotInventory)
+                        .ThenInclude(hi => hi.Hotpot)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.OrderDetails)
                             .ThenInclude(od => od.Customization)
@@ -190,9 +191,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
                     }
-                    else if (detail.Hotpot != null)
+                    else if (detail.HotpotInventory != null)
                     {
-                        itemName = detail.Hotpot.Name;
+                        itemName = detail.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot";
                     }
                     else if (detail.Customization != null)

@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/admin/combo")]
     [Authorize(Roles = "Admin")]
     public class AdminComboController : ControllerBase
     {

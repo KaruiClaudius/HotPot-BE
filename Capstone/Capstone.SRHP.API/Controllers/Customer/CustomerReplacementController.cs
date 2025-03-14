@@ -12,7 +12,7 @@ using Capstone.HPTY.RepositoryLayer.Utils;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
-    [Route("api/[controller]")]
+    [Route("api/customer/replacement")]
     [ApiController]
     [Authorize(Roles = "Customer")]
 

@@ -335,11 +335,11 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 itemType = "Ingredient";
                 itemId = detail.IngredientID;
             }
-            else if (detail.Hotpot != null)
+            else if (detail.HotpotInventory != null)
             {
-                itemName = detail.Hotpot.Name;
+                itemName = detail.HotpotInventory.Hotpot.Name;
                 itemType = "Hotpot";
-                itemId = detail.HotpotID;
+                itemId = detail.HotpotInventory.Hotpot.HotpotId;
             }
             else if (detail.Customization != null)
             {

@@ -10,7 +10,7 @@ using System.Security.Claims;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
-    [Route("api/[controller]")]
+    [Route("api/customer/payment")]
     [ApiController]
     public class PaymentController : ControllerBase
     {
