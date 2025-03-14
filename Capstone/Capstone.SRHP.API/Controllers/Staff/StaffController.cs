@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Staff
 {
-    [Route("api/[controller]")]
+    [Route("api/staff")]
     [ApiController]
     public class StaffController : ControllerBase
     {

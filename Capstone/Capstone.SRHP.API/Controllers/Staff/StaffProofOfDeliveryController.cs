@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Staff
 {
-    [Route("api/[controller]")]
+    [Route("api/staff/proof-delivery")]
     [ApiController]
     [Authorize(Roles = "Staff")]
 
