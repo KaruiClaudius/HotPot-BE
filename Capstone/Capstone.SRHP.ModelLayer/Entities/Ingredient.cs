@@ -25,12 +25,19 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string? ImageURL { get; set; }
 
         [Required]
-        [Range(0, int.MaxValue)]
-        public int MinStockLevel { get; set; }
+        [Column(TypeName = "decimal(18,3)")]
+        [Range(0, double.MaxValue)]
+        public decimal MinStockLevel { get; set; }
 
         [Required]
-        [Range(0, int.MaxValue)]
-        public int Quantity { get; set; }
+        [Column(TypeName = "decimal(18,3)")]
+        [Range(0, double.MaxValue)]
+        public decimal Quantity { get; set; }
+
+        // Add a measurement unit
+        [Required]
+        [StringLength(20)]
+        public string MeasurementUnit { get; set; }
 
         [Required]
         [ForeignKey("IngredientType")]
@@ -38,7 +45,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
 
         public virtual IngredientType? IngredientType { get; set; }
-        public virtual OrderDetail? OrderDetail { get; set; }
+        public virtual ICollection<OrderDetail> OrderDetails { get; set; }
         public virtual ICollection<CustomizationIngredient>? CustomizationIngredients { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; }
         public virtual ICollection<Combo>? CombosAsBroth { get; set; }

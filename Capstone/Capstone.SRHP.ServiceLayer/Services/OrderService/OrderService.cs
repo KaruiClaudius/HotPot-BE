@@ -7,9 +7,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Order;
 using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -54,39 +52,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _logger = logger;
         }
 
-        public async Task<IEnumerable<Order>> GetAllAsync()
+        public async Task<PagedResult<Order>> GetOrdersAsync(
+             string searchTerm = null,
+             int? userId = null,
+             string status = null,
+             DateTime? fromDate = null,
+             DateTime? toDate = null,
+             decimal? minPrice = null,
+             decimal? maxPrice = null,
+             bool? hasHotpot = null,
+             string paymentStatus = null,
+             int pageNumber = 1,
+             int pageSize = 10,
+             string sortBy = "CreatedAt",
+             bool ascending = false)
         {
             try
             {
-                return await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Where(o => !o.IsDelete)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving all orders");
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<Order>> GetPagedAsync(int pageNumber, int pageSize)
-        {
-            try
-            {
+                // Start with base query
                 var query = _unitOfWork.Repository<Order>()
                     .AsQueryable()
                     .Include(o => o.User)
@@ -97,16 +80,103 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
+                        .ThenInclude(od => od.HotpotInventory)
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Where(o => !o.IsDelete)
-                    .OrderByDescending(o => o.CreatedAt);
+                    .Where(o => !o.IsDelete);
 
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    searchTerm = searchTerm.ToLower();
+                    query = query.Where(o =>
+                        (o.Address != null && o.Address.ToLower().Contains(searchTerm)) ||
+                        (o.Notes != null && o.Notes.ToLower().Contains(searchTerm)) ||
+                        (o.User != null && o.User.Name != null && o.User.Name.ToLower().Contains(searchTerm)) ||
+                        (o.User != null && o.User.Email != null && o.User.Email.ToLower().Contains(searchTerm)) ||
+                        (o.User != null && o.User.PhoneNumber != null && o.User.PhoneNumber.Contains(searchTerm)));
+                }
+
+                if (userId.HasValue)
+                {
+                    query = query.Where(o => o.UserID == userId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
+                {
+                    query = query.Where(o => o.Status == orderStatus);
+                }
+
+                if (fromDate.HasValue)
+                {
+                    query = query.Where(o => o.CreatedAt >= fromDate.Value);
+                }
+
+                if (toDate.HasValue)
+                {
+                    query = query.Where(o => o.CreatedAt <= toDate.Value);
+                }
+
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(o => o.TotalPrice >= minPrice.Value);
+                }
+
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(o => o.TotalPrice <= maxPrice.Value);
+                }
+
+                if (hasHotpot.HasValue)
+                {
+                    if (hasHotpot.Value)
+                    {
+                        query = query.Where(o => o.OrderDetails.Any(od => od.HotpotInventoryID.HasValue));
+                    }
+                    else
+                    {
+                        query = query.Where(o => !o.OrderDetails.Any(od => od.HotpotInventoryID.HasValue));
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(paymentStatus) && Enum.TryParse<PaymentStatus>(paymentStatus, true, out var pmtStatus))
+                {
+                    query = query.Where(o => o.Payment != null && o.Payment.Status == pmtStatus);
+                }
+
+                // Get total count before applying pagination
                 var totalCount = await query.CountAsync();
-                var items = await query
+
+                // Apply sorting
+                IOrderedQueryable<Order> orderedQuery;
+
+                switch (sortBy?.ToLower())
+                {
+                    case "totalprice":
+                        orderedQuery = ascending ? query.OrderBy(o => o.TotalPrice) : query.OrderByDescending(o => o.TotalPrice);
+                        break;
+                    case "status":
+                        orderedQuery = ascending ? query.OrderBy(o => o.Status) : query.OrderByDescending(o => o.Status);
+                        break;
+                    case "username":
+                        orderedQuery = ascending ? query.OrderBy(o => o.User.Name) : query.OrderByDescending(o => o.User.Name);
+                        break;
+                    case "updatedat":
+                        orderedQuery = ascending ? query.OrderBy(o => o.UpdatedAt) : query.OrderByDescending(o => o.UpdatedAt);
+                        break;
+                    case "address":
+                        orderedQuery = ascending ? query.OrderBy(o => o.Address) : query.OrderByDescending(o => o.Address);
+                        break;
+                    default: // Default to CreatedAt
+                        orderedQuery = ascending ? query.OrderBy(o => o.CreatedAt) : query.OrderByDescending(o => o.CreatedAt);
+                        break;
+                }
+
+                // Apply pagination
+                var items = await orderedQuery
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
@@ -121,10 +191,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving paged orders");
+                _logger.LogError(ex, "Error retrieving orders with filters");
                 throw;
             }
         }
+
 
         public async Task<Order> GetByIdAsync(int id)
         {
@@ -140,7 +211,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
+                        .ThenInclude(od => od.HotpotInventory)
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
@@ -174,6 +246,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Create order details
                 var orderDetails = new List<OrderDetail>();
                 decimal totalPrice = 0;
+                decimal hotpotDeposit = 0;
 
                 foreach (var item in request.Items)
                 {
@@ -198,28 +271,87 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
 
                         unitPrice = utensil.Price;
+
+                        // Create order detail for utensil
+                        var orderDetail = new OrderDetail
+                        {
+                            Quantity = (int)item.Quantity,
+                            UnitPrice = unitPrice,
+                            UtensilID = item.UtensilID
+                        };
+
+                        orderDetails.Add(orderDetail);
+                        totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
-
-
                     else if (item.IngredientID.HasValue)
                     {
                         var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
-                        if (ingredient == null || ingredient.Quantity < item.Quantity)
-                            throw new ValidationException($"Ingredient with ID {item.IngredientID} is not available in the requested quantity");
+                        if (ingredient == null)
+                            throw new ValidationException($"Ingredient with ID {item.IngredientID} not found");
 
-                        // Assuming you want the latest price
-                        var latestPrice = ingredient.IngredientPrices.OrderByDescending(p => p.EffectiveDate).FirstOrDefault()?.Price ?? 0;
+                        // Check if the requested volume/weight is available
+                        if (ingredient.Quantity < item.VolumeWeight)
+                            throw new ValidationException($"Only {ingredient.Quantity} {ingredient.MeasurementUnit} of {ingredient.Name} is available");
+
+                        // Get the latest price
+                        var latestPrice = ingredient.IngredientPrices
+                            .OrderByDescending(p => p.EffectiveDate)
+                            .FirstOrDefault()?.Price ?? 0;
+
+                        // Calculate total price based on volume/weight and price per unit
                         unitPrice = latestPrice;
+                        decimal totalIngredientPrice = unitPrice * item.VolumeWeight.Value;
+
+                        // Create order detail for ingredient
+                        var orderDetail = new OrderDetail
+                        {
+                            Quantity = 1,
+                            VolumeWeight = item.VolumeWeight,
+                            Unit = ingredient.MeasurementUnit, // Store the ingredient's unit
+                            UnitPrice = unitPrice,
+                            IngredientID = item.IngredientID
+                        };
+
+                        orderDetails.Add(orderDetail);
+                        totalPrice += totalIngredientPrice;
                     }
-
-
                     else if (item.HotpotID.HasValue)
                     {
                         var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                        if (hotpot == null || !hotpot.Status || hotpot.Quantity < item.Quantity)
-                            throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available in the requested quantity");
+                        if (hotpot == null || !hotpot.Status)
+                            throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
 
-                        unitPrice = hotpot.Price;
+                        // Get available hotpot inventory items
+                        var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
+                            .AsQueryable()
+                            .Where(h => h.HotpotId == item.HotpotID && h.Status && !h.IsDelete)
+                            .Take((int)item.Quantity)
+                            .ToListAsync();
+
+                        if (availableHotpots.Count < item.Quantity)
+                            throw new ValidationException($"Only {availableHotpots.Count} hotpots of type {hotpot.Name} are available");
+
+                        // Create a separate order detail for each hotpot inventory item
+                        foreach (var hotpotInventory in availableHotpots)
+                        {
+                            hotpotInventory.Hotpot.Quantity -= 1;
+                            hotpotInventory.Status = false;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+
+                            // Create order detail with reference to specific hotpot inventory
+                            var orderDetail = new OrderDetail
+                            {
+                                Quantity = 1, // Each hotpot inventory item is a single unit
+                                UnitPrice = hotpot.Price,
+                                HotpotInventoryID = hotpotInventory.HotPotInventoryId
+                            };
+
+                            orderDetails.Add(orderDetail);
+                            totalPrice += hotpot.Price;
+
+                            // Calculate hotpot deposit (70% of hotpot price)
+                            hotpotDeposit += hotpot.Price * 0.7m;
+                        }
                     }
                     else if (item.CustomizationID.HasValue)
                     {
@@ -232,6 +364,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
 
                         unitPrice = customization.TotalPrice;
+
+                        // Create order detail for customization
+                        var orderDetail = new OrderDetail
+                        {
+                            Quantity = (int)item.Quantity,
+                            UnitPrice = unitPrice,
+                            CustomizationID = item.CustomizationID
+                        };
+
+                        orderDetails.Add(orderDetail);
+                        totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
                     else if (item.ComboID.HasValue)
                     {
@@ -241,26 +384,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                         // Combo price already includes any combo-specific discounts
                         unitPrice = combo.BasePrice;
+
+                        // Create order detail for combo
+                        var orderDetail = new OrderDetail
+                        {
+                            Quantity = (int)item.Quantity,
+                            UnitPrice = unitPrice,
+                            ComboID = item.ComboID
+                        };
+
+                        orderDetails.Add(orderDetail);
+                        totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
-
-                    // Create order detail
-                    var orderDetail = new OrderDetail
-                    {
-                        Quantity = item.Quantity,
-                        UnitPrice = unitPrice,
-                        UtensilID = item.UtensilID,
-                        IngredientID = item.IngredientID,
-                        HotpotID = item.HotpotID,
-                        CustomizationID = item.CustomizationID,
-                        ComboID = item.ComboID
-                    };
-
-                    orderDetails.Add(orderDetail);
-                    totalPrice += unitPrice * item.Quantity;
                 }
-
-                // Calculate deposits
-                var (ingredientsDeposit, hotpotDeposit) = await CalculateDepositsAsync(request.Items);
 
                 // Apply discount if provided
                 if (request.DiscountId.HasValue)
@@ -286,7 +422,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     TotalPrice = totalPrice,
                     Status = OrderStatus.Pending,
                     DiscountID = request.DiscountId,
-                    IngredientsDeposit = ingredientsDeposit,
                     HotpotDeposit = hotpotDeposit,
                     OrderDetails = orderDetails
                 };
@@ -318,21 +453,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     await _unitOfWork.CommitAsync();
                 }
 
-                // Update inventory quantities
+                // Update inventory quantities for non-hotpot items (hotpots are already handled)
                 foreach (var item in request.Items)
                 {
                     if (item.UtensilID.HasValue)
                     {
-                        await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, -item.Quantity);
+                        await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, (int)-item.Quantity);
                     }
-                    else if (item.IngredientID.HasValue)
+                    else if (item.IngredientID.HasValue && item.VolumeWeight.HasValue)
                     {
-                        await _ingredientService.UpdateIngredientQuantityAsync(item.IngredientID.Value, -item.Quantity);
+                        // Use the existing method with the volume/weight value
+                        await _ingredientService.UpdateIngredientQuantityAsync(
+                            item.IngredientID.Value,
+                            -item.VolumeWeight.Value,
+                            item.Unit); // Pass the unit if provided in the request
                     }
-                    else if (item.HotpotID.HasValue)
-                    {
-                        await _hotpotService.UpdateQuantityAsync(item.HotpotID.Value, -item.Quantity);
-                    }
+                    // Note: HotPotInventory status is already updated above
                 }
 
                 // Reload order with all related entities
@@ -348,7 +484,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 throw;
             }
         }
-
         public async Task<Order> UpdateAsync(int id, UpdateOrderRequest request)
         {
             try
@@ -460,13 +595,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
                         }
-                        else if (detail.IngredientID.HasValue)
+                        else if (detail.IngredientID.HasValue && detail.VolumeWeight.HasValue)
                         {
-                            await _ingredientService.UpdateIngredientQuantityAsync(detail.IngredientID.Value, detail.Quantity);
+                            // Return ingredient volume/weight
+                            await _ingredientService.UpdateIngredientQuantityAsync(
+                                detail.IngredientID.Value,
+                                detail.VolumeWeight.Value);
                         }
-                        else if (detail.HotpotID.HasValue)
+                        else if (detail.HotpotInventoryID.HasValue)
                         {
-                            await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value, detail.Quantity);
+                            // Update hotpot inventory status back to Available
+                            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                .GetById(detail.HotpotInventoryID.Value);
+
+                            if (hotpotInventory != null)
+                            {
+                                hotpotInventory.Status = true; // Set to available
+                                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                                await _unitOfWork.CommitAsync();
+                            }
                         }
                     }
 
@@ -475,6 +622,61 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (payment != null && payment.Status == PaymentStatus.Pending)
                     {
                         await _paymentService.UpdatePaymentStatusAsync(payment.PaymentId, PaymentStatus.Cancelled);
+                    }
+                }
+                // If order is completed, update hotpot inventory status
+                else if (status == OrderStatus.Completed)
+                {
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryID.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            // Update hotpot status to Available after maintenance
+                            hotpotInventory.Status = true; // Set to available
+                                                           // Update last maintain date on the hotpot itself
+                            if (hotpotInventory.Hotpot != null)
+                            {
+                                hotpotInventory.Hotpot.LastMaintainDate = DateTime.Now;
+                                await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
+                            }
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                            await _unitOfWork.CommitAsync();
+                        }
+                    }
+                }
+                // If order is delivered, update hotpot inventory status to InUse
+                else if (status == OrderStatus.Delivered)
+                {
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryID.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = false; // Set to in use
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                            await _unitOfWork.CommitAsync();
+                        }
+                    }
+                }
+                // If order is returning, update hotpot inventory status to Maintenance
+                else if (status == OrderStatus.Returning)
+                {
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryID.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = false; // Set to maintenance
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                            await _unitOfWork.CommitAsync();
+                        }
                     }
                 }
 
@@ -516,13 +718,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
                     }
-                    else if (detail.IngredientID.HasValue)
+                    else if (detail.IngredientID.HasValue && detail.VolumeWeight.HasValue)
                     {
-                        await _ingredientService.UpdateIngredientQuantityAsync(detail.IngredientID.Value, detail.Quantity);
+                        // Return ingredient volume/weight
+                        await _ingredientService.UpdateIngredientQuantityAsync(
+                            detail.IngredientID.Value,
+                            detail.VolumeWeight.Value);
                     }
-                    else if (detail.HotpotID.HasValue)
+                    else if (detail.HotpotInventoryID.HasValue)
                     {
-                        await _hotpotService.UpdateQuantityAsync(detail.HotpotID.Value, detail.Quantity);
+                        // Update hotpot inventory status back to Available
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryID.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = true; // Set to available
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                            await _unitOfWork.CommitAsync();
+                        }
                     }
                 }
 
@@ -546,234 +760,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 _logger.LogError(ex, "Error deleting order {OrderId}", id);
                 throw;
             }
-        }
-
-        public async Task<IEnumerable<Order>> GetUserOrdersAsync(int userId)
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Where(o => o.UserID == userId && !o.IsDelete)
-                    .OrderByDescending(o => o.CreatedAt)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders for user {UserId}", userId);
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<Order>> GetUserOrdersPagedAsync(int userId, int pageNumber, int pageSize)
-        {
-            try
-            {
-                var query = _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Where(o => o.UserID == userId && !o.IsDelete)
-                    .OrderByDescending(o => o.CreatedAt);
-
-                var totalCount = await query.CountAsync();
-                var items = await query
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                return new PagedResult<Order>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving paged orders for user {UserId}", userId);
-                throw;
-            }
-        }
-
-        public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status)
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Where(o => o.Status == status && !o.IsDelete)
-                    .OrderByDescending(o => o.CreatedAt)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders with status {Status}", status);
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<Order>> GetOrdersByStatusPagedAsync(OrderStatus status, int pageNumber, int pageSize)
-        {
-            try
-            {
-                var query = _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Hotpot)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Where(o => o.Status == status && !o.IsDelete)
-                    .OrderByDescending(o => o.CreatedAt);
-
-                var totalCount = await query.CountAsync();
-                var items = await query
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                return new PagedResult<Order>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving paged orders with status {Status}", status);
-                throw;
-            }
-        }
-
-        public async Task<(decimal ingredientsDeposit, decimal hotpotDeposit)> CalculateDepositsAsync(List<OrderItemRequest> items)
-        {
-            decimal ingredientsDeposit = 0;
-            decimal hotpotDeposit = 0;
-
-            foreach (var item in items)
-            {
-                if (item.IngredientID.HasValue)
-                {
-                    var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
-                    if (ingredient != null)
-                    {
-                        // Get the latest price of the ingredient
-                        var latestPrice = ingredient.IngredientPrices.OrderByDescending(p => p.EffectiveDate).FirstOrDefault()?.Price ?? 0;
-                        // Deposit is 50% of total ingredient price
-                        ingredientsDeposit += (latestPrice * item.Quantity) * 0.5m;
-                    }
-                }
-                else if (item.HotpotID.HasValue)
-                {
-                    var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                    if (hotpot != null)
-                    {
-                        // Deposit is 70% of the hotpot base price
-                        hotpotDeposit += (hotpot.BasePrice * item.Quantity) * 0.7m;
-                    }
-                }
-                else if (item.ComboID.HasValue)
-                {
-                    // For combos, we need to check the ingredients
-                    var combo = await _unitOfWork.Repository<Combo>()
-                        .IncludeNested(q => q.Include(c => c.ComboIngredients)
-                                             .ThenInclude(ci => ci.Ingredient))
-                        .FirstOrDefaultAsync(c => c.ComboId == item.ComboID.Value && !c.IsDelete);
-
-                    if (combo != null)
-                    {
-                        // Process combo ingredients (excluding the hotpot broth which is handled separately)
-                        foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
-                        {
-                            if (comboIngredient.Ingredient != null && comboIngredient.Ingredient.IngredientTypeID != 1)
-                            {
-                                // Get the latest price of the ingredient
-                                var latestPrice = comboIngredient.Ingredient.IngredientPrices.OrderByDescending(p => p.EffectiveDate).FirstOrDefault()?.Price ?? 0;
-                                // Deposit is 50% of total ingredient price (for non-broth ingredients)
-                                ingredientsDeposit += (latestPrice * comboIngredient.Quantity * item.Quantity) * 0.5m;
-                            }
-                        }
-                    }
-                }
-                else if (item.CustomizationID.HasValue)
-                {
-                    // For customizations, we need to check the ingredients
-                    var customization = await _unitOfWork.Repository<Customization>()
-                        .IncludeNested(q => q.Include(c => c.CustomizationIngredients)
-                                             .ThenInclude(ci => ci.Ingredient))
-                        .FirstOrDefaultAsync(c => c.CustomizationId == item.CustomizationID.Value && !c.IsDelete);
-
-                    if (customization != null)
-                    {
-                        // Process customization ingredients (excluding the hotpot broth which is handled separately)
-                        foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
-                        {
-                            if (customizationIngredient.Ingredient != null && customizationIngredient.Ingredient.IngredientTypeID != 1)
-                            {
-                                // Get the latest price of the ingredient
-                                var latestPrice = customizationIngredient.Ingredient.IngredientPrices.OrderByDescending(p => p.EffectiveDate).FirstOrDefault()?.Price ?? 0;
-                                // Deposit is 50% of total ingredient price (for non-broth ingredients)
-                                ingredientsDeposit += (latestPrice * customizationIngredient.Quantity * item.Quantity) * 0.5m;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Round to 2 decimal places
-            ingredientsDeposit = Math.Round(ingredientsDeposit, 2);
-            hotpotDeposit = Math.Round(hotpotDeposit, 2);
-
-            return (ingredientsDeposit, hotpotDeposit);
         }
 
         // Helper methods
@@ -806,6 +792,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public Task UpdateAsync(int id, Order entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IEnumerable<Order>> GetAllAsync()
         {
             throw new NotImplementedException();
         }

@@ -3,7 +3,6 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -15,19 +14,16 @@ using System.Security.Claims;
 public class CustomerCustomizationController : ControllerBase
 {
     private readonly ICustomizationService _customizationService;
-    private readonly IComboService _comboService;
     private readonly IIngredientService _ingredientService;
     private readonly ILogger<CustomerCustomizationController> _logger;
 
     public CustomerCustomizationController(
         ICustomizationService customizationService,
-        IComboService comboService,
         IIngredientService ingredientService,
         ISizeDiscountService sizeDiscountService,
         ILogger<CustomerCustomizationController> logger)
     {
         _customizationService = customizationService;
-        _comboService = comboService;
         _ingredientService = ingredientService;
         _logger = logger;
     }
@@ -119,6 +115,15 @@ public class CustomerCustomizationController : ControllerBase
     {
         try
         {
+            // Validate measurement units
+            foreach (var ingredient in request.Ingredients)
+            {
+                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
+                {
+                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
+                }
+            }
+
             var priceEstimate = await _customizationService.CalculatePriceEstimateAsync(
                 request.ComboId,
                 request.Size,
@@ -156,6 +161,15 @@ public class CustomerCustomizationController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token" });
             }
 
+            // Validate measurement units
+            foreach (var ingredient in request.Ingredients)
+            {
+                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
+                {
+                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
+                }
+            }
+
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
                 userId,
@@ -184,8 +198,6 @@ public class CustomerCustomizationController : ControllerBase
         }
     }
 
-    // PUT: api/customer/customizations/{id}
-    // Updates an existing customization
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateCustomization(int id, UpdateCustomizationRequest request)
     {
@@ -205,6 +217,15 @@ public class CustomerCustomizationController : ControllerBase
 
             if (existingCustomization.UserID != userId)
                 return Forbid();
+
+            // Validate measurement units
+            foreach (var ingredient in request.Ingredients)
+            {
+                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
+                {
+                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
+                }
+            }
 
             // Update customization properties
             existingCustomization.Name = request.Name;
@@ -318,6 +339,7 @@ public class CustomerCustomizationController : ControllerBase
                     IngredientID = ci.IngredientID,
                     Name = ci.Ingredient?.Name ?? string.Empty,
                     Quantity = ci.Quantity,
+                    MeasurementUnit = ci.MeasurementUnit, // Added measurement unit
                     Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientID).Result
                 })
                 .ToList()

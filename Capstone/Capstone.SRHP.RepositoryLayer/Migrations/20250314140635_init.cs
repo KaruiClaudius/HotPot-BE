@@ -35,32 +35,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Hotpots",
-                columns: table => new
-                {
-                    HotpotId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Material = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Size = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    ImageURL = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
-                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    BasePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Status = table.Column<bool>(type: "bit", nullable: false),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
-                    LastMaintainDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    InventoryID = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Hotpots", x => x.HotpotId);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "IngredientTypes",
                 columns: table => new
                 {
@@ -164,30 +138,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "HotPotInventorys",
-                columns: table => new
-                {
-                    HotPotInventoryId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SeriesNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    HotpotId = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_HotPotInventorys", x => x.HotPotInventoryId);
-                    table.ForeignKey(
-                        name: "FK_HotPotInventorys_Hotpots_HotpotId",
-                        column: x => x.HotpotId,
-                        principalTable: "Hotpots",
-                        principalColumn: "HotpotId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Ingredients",
                 columns: table => new
                 {
@@ -196,8 +146,9 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     ImageURL = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
-                    MinStockLevel = table.Column<int>(type: "int", nullable: false),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    MinStockLevel = table.Column<decimal>(type: "decimal(18,3)", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,3)", nullable: false),
+                    MeasurementUnit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     IngredientTypeID = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -403,7 +354,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
-                    IngredientsDeposit = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     HotpotDeposit = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     UserID = table.Column<int>(type: "int", nullable: false),
                     DiscountID = table.Column<int>(type: "int", nullable: true),
@@ -452,38 +402,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConditionLogs",
-                columns: table => new
-                {
-                    ConditionLogId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    ScheduleType = table.Column<int>(type: "int", nullable: false),
-                    LoggedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UtensilID = table.Column<int>(type: "int", nullable: true),
-                    HotPotInventoryId = table.Column<int>(type: "int", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ConditionLogs", x => x.ConditionLogId);
-                    table.ForeignKey(
-                        name: "FK_ConditionLogs_HotPotInventorys_HotPotInventoryId",
-                        column: x => x.HotPotInventoryId,
-                        principalTable: "HotPotInventorys",
-                        principalColumn: "HotPotInventoryId");
-                    table.ForeignKey(
-                        name: "FK_ConditionLogs_Utensils_UtensilID",
-                        column: x => x.UtensilID,
-                        principalTable: "Utensils",
-                        principalColumn: "UtensilId");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ComboAllowedIngredientTypes",
                 columns: table => new
                 {
@@ -491,7 +409,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ComboId = table.Column<int>(type: "int", nullable: false),
                     IngredientTypeId = table.Column<int>(type: "int", nullable: false),
-                    MaxQuantity = table.Column<int>(type: "int", nullable: false),
+                    MinQuantity = table.Column<decimal>(type: "decimal(18,3)", nullable: false),
+                    MeasurementUnit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsDelete = table.Column<bool>(type: "bit", nullable: false)
@@ -519,7 +438,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     ComboIngredientId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,3)", nullable: false),
+                    MeasurementUnit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     ComboID = table.Column<int>(type: "int", nullable: false),
                     IngredientID = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -795,6 +715,176 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CustomizationIngredients",
+                columns: table => new
+                {
+                    CustomizationIngredientId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Quantity = table.Column<decimal>(type: "decimal(18,3)", nullable: false),
+                    MeasurementUnit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CustomizationID = table.Column<int>(type: "int", nullable: false),
+                    IngredientID = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CustomizationIngredients", x => x.CustomizationIngredientId);
+                    table.ForeignKey(
+                        name: "FK_CustomizationIngredients_Customizations_CustomizationID",
+                        column: x => x.CustomizationID,
+                        principalTable: "Customizations",
+                        principalColumn: "CustomizationId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CustomizationIngredients_Ingredients_IngredientID",
+                        column: x => x.IngredientID,
+                        principalTable: "Ingredients",
+                        principalColumn: "IngredientId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChatMessages",
+                columns: table => new
+                {
+                    ChatMessageId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SenderUserId = table.Column<int>(type: "int", nullable: false),
+                    ReceiverUserId = table.Column<int>(type: "int", nullable: false),
+                    SessionId = table.Column<int>(type: "int", nullable: true),
+                    Message = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatMessages", x => x.ChatMessageId);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_ChatSessions_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "ChatSessions",
+                        principalColumn: "ChatSessionId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Users_ReceiverUserId",
+                        column: x => x.ReceiverUserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Users_SenderUserId",
+                        column: x => x.SenderUserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ConditionLogs",
+                columns: table => new
+                {
+                    ConditionLogId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    ScheduleType = table.Column<int>(type: "int", nullable: false),
+                    LoggedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UtensilID = table.Column<int>(type: "int", nullable: true),
+                    HotPotInventoryId = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConditionLogs", x => x.ConditionLogId);
+                    table.ForeignKey(
+                        name: "FK_ConditionLogs_Utensils_UtensilID",
+                        column: x => x.UtensilID,
+                        principalTable: "Utensils",
+                        principalColumn: "UtensilId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "HotPotInventorys",
+                columns: table => new
+                {
+                    HotPotInventoryId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SeriesNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    HotpotId = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HotPotInventorys", x => x.HotPotInventoryId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OrderDetails",
+                columns: table => new
+                {
+                    OrderDetailId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    VolumeWeight = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    Unit = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    OrderID = table.Column<int>(type: "int", nullable: false),
+                    UtensilID = table.Column<int>(type: "int", nullable: true),
+                    IngredientID = table.Column<int>(type: "int", nullable: true),
+                    HotpotInventoryID = table.Column<int>(type: "int", nullable: true),
+                    CustomizationID = table.Column<int>(type: "int", nullable: true),
+                    ComboID = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderDetails", x => x.OrderDetailId);
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_Combos_ComboID",
+                        column: x => x.ComboID,
+                        principalTable: "Combos",
+                        principalColumn: "ComboId");
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_Customizations_CustomizationID",
+                        column: x => x.CustomizationID,
+                        principalTable: "Customizations",
+                        principalColumn: "CustomizationId");
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_HotPotInventorys_HotpotInventoryID",
+                        column: x => x.HotpotInventoryID,
+                        principalTable: "HotPotInventorys",
+                        principalColumn: "HotPotInventoryId");
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_Ingredients_IngredientID",
+                        column: x => x.IngredientID,
+                        principalTable: "Ingredients",
+                        principalColumn: "IngredientId");
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_Orders_OrderID",
+                        column: x => x.OrderID,
+                        principalTable: "Orders",
+                        principalColumn: "OrderId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_OrderDetails_Utensils_UtensilID",
+                        column: x => x.UtensilID,
+                        principalTable: "Utensils",
+                        principalColumn: "UtensilId");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ReplacementRequests",
                 columns: table => new
                 {
@@ -849,137 +939,46 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CustomizationIngredients",
+                name: "Hotpots",
                 columns: table => new
                 {
-                    CustomizationIngredientId = table.Column<int>(type: "int", nullable: false)
+                    HotpotId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Material = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Size = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ImageURL = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    BasePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Status = table.Column<bool>(type: "bit", nullable: false),
                     Quantity = table.Column<int>(type: "int", nullable: false),
-                    CustomizationID = table.Column<int>(type: "int", nullable: false),
-                    IngredientID = table.Column<int>(type: "int", nullable: false),
+                    LastMaintainDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OrderDetailId = table.Column<int>(type: "int", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsDelete = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CustomizationIngredients", x => x.CustomizationIngredientId);
+                    table.PrimaryKey("PK_Hotpots", x => x.HotpotId);
                     table.ForeignKey(
-                        name: "FK_CustomizationIngredients_Customizations_CustomizationID",
-                        column: x => x.CustomizationID,
-                        principalTable: "Customizations",
-                        principalColumn: "CustomizationId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_CustomizationIngredients_Ingredients_IngredientID",
-                        column: x => x.IngredientID,
-                        principalTable: "Ingredients",
-                        principalColumn: "IngredientId",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OrderDetails",
-                columns: table => new
-                {
-                    OrderDetailId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
-                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    OrderID = table.Column<int>(type: "int", nullable: false),
-                    UtensilID = table.Column<int>(type: "int", nullable: true),
-                    IngredientID = table.Column<int>(type: "int", nullable: true),
-                    HotpotID = table.Column<int>(type: "int", nullable: true),
-                    CustomizationID = table.Column<int>(type: "int", nullable: true),
-                    ComboID = table.Column<int>(type: "int", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OrderDetails", x => x.OrderDetailId);
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Combos_ComboID",
-                        column: x => x.ComboID,
-                        principalTable: "Combos",
-                        principalColumn: "ComboId");
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Customizations_CustomizationID",
-                        column: x => x.CustomizationID,
-                        principalTable: "Customizations",
-                        principalColumn: "CustomizationId");
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Hotpots_HotpotID",
-                        column: x => x.HotpotID,
-                        principalTable: "Hotpots",
-                        principalColumn: "HotpotId");
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Ingredients_IngredientID",
-                        column: x => x.IngredientID,
-                        principalTable: "Ingredients",
-                        principalColumn: "IngredientId");
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Orders_OrderID",
-                        column: x => x.OrderID,
-                        principalTable: "Orders",
-                        principalColumn: "OrderId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_OrderDetails_Utensils_UtensilID",
-                        column: x => x.UtensilID,
-                        principalTable: "Utensils",
-                        principalColumn: "UtensilId");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ChatMessages",
-                columns: table => new
-                {
-                    ChatMessageId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SenderUserId = table.Column<int>(type: "int", nullable: false),
-                    ReceiverUserId = table.Column<int>(type: "int", nullable: false),
-                    SessionId = table.Column<int>(type: "int", nullable: true),
-                    Message = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
-                    IsRead = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDelete = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ChatMessages", x => x.ChatMessageId);
-                    table.ForeignKey(
-                        name: "FK_ChatMessages_ChatSessions_SessionId",
-                        column: x => x.SessionId,
-                        principalTable: "ChatSessions",
-                        principalColumn: "ChatSessionId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ChatMessages_Users_ReceiverUserId",
-                        column: x => x.ReceiverUserId,
-                        principalTable: "Users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ChatMessages_Users_SenderUserId",
-                        column: x => x.SenderUserId,
-                        principalTable: "Users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Restrict);
+                        name: "FK_Hotpots_OrderDetails_OrderDetailId",
+                        column: x => x.OrderDetailId,
+                        principalTable: "OrderDetails",
+                        principalColumn: "OrderDetailId");
                 });
 
             migrationBuilder.InsertData(
                 table: "Hotpots",
-                columns: new[] { "HotpotId", "BasePrice", "CreatedAt", "Description", "ImageURL", "InventoryID", "IsDelete", "LastMaintainDate", "Material", "Name", "Price", "Quantity", "Size", "Status", "UpdatedAt" },
+                columns: new[] { "HotpotId", "BasePrice", "CreatedAt", "Description", "ImageURL", "IsDelete", "LastMaintainDate", "Material", "Name", "OrderDetailId", "Price", "Quantity", "Size", "Status", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, 89.99m, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5586), "Traditional copper hotpot with charcoal heating.", "https://example.com/images/classic-copper-hotpot.jpg", 0, false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Copper", "Classic Copper Hotpot", 29.99m, 25, "m", true, null },
-                    { 2, 129.99m, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5590), "Electric hotpot with temperature control and non-stick coating.", "https://example.com/images/modern-electric-hotpot.jpg", 0, false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Stainless Steel", "Modern Electric Hotpot", 59.99m, 30, "L", true, null },
-                    { 3, 69.99m, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5592), "Compact portable hotpot perfect for travel or small gatherings.", "https://example.com/images/mini-portable-hotpot.jpg", 0, false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Aluminum", "Mini Portable Hotpot", 19.99m, 40, "S", true, null },
-                    { 4, 149.99m, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5594), "Multi-compartment hotpot for different broths in one pot.", "https://example.com/images/dual-section-hotpot.jpg", 0, false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Stainless Steel", "Dual Section Hotpot", 69.99m, 20, "L", true, null },
-                    { 5, 79.99m, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5596), "Authentic ceramic hotpot that retains heat exceptionally well.", "https://example.com/images/traditional-ceramic-hotpot.jpg", 0, false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Ceramic", "Traditional Ceramic Hotpot", 39.99m, 15, "M", true, null }
+                    { 1, 89.99m, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2491), "Traditional copper hotpot with charcoal heating.", "https://example.com/images/classic-copper-hotpot.jpg", false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Copper", "Classic Copper Hotpot", null, 29.99m, 5, "m", true, null },
+                    { 2, 129.99m, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2499), "Electric hotpot with temperature control and non-stick coating.", "https://example.com/images/modern-electric-hotpot.jpg", false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Stainless Steel", "Modern Electric Hotpot", null, 59.99m, 2, "L", true, null },
+                    { 3, 69.99m, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2501), "Compact portable hotpot perfect for travel or small gatherings.", "https://example.com/images/mini-portable-hotpot.jpg", false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Aluminum", "Mini Portable Hotpot", null, 19.99m, 2, "S", true, null },
+                    { 4, 149.99m, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2504), "Multi-compartment hotpot for different broths in one pot.", "https://example.com/images/dual-section-hotpot.jpg", false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Stainless Steel", "Dual Section Hotpot", null, 69.99m, 2, "L", true, null },
+                    { 5, 79.99m, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2507), "Authentic ceramic hotpot that retains heat exceptionally well.", "https://example.com/images/traditional-ceramic-hotpot.jpg", false, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Ceramic", "Traditional Ceramic Hotpot", null, 39.99m, 4, "M", true, null }
                 });
 
             migrationBuilder.InsertData(
@@ -987,14 +986,14 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "IngredientTypeId", "CreatedAt", "IsDelete", "Name", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5753), false, "Broth", null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5754), false, "Seafood", null },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5760), false, "Vegetables", null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5772), false, "Noodles", null },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5774), false, "Tofu", null },
-                    { 6, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5775), false, "Mushrooms", null },
-                    { 7, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5776), false, "Meats", null },
-                    { 8, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5777), false, "Sauces", null }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2742), false, "Broth", null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2744), false, "Seafood", null },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2745), false, "Vegetables", null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2746), false, "Noodles", null },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2747), false, "Tofu", null },
+                    { 6, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2748), false, "Mushrooms", null },
+                    { 7, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2749), false, "Meats", null },
+                    { 8, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2750), false, "Sauces", null }
                 });
 
             migrationBuilder.InsertData(
@@ -1002,10 +1001,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "RoleId", "CreatedAt", "IsDelete", "Name", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 55, 890, DateTimeKind.Utc).AddTicks(8587), false, "Admin", null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 55, 890, DateTimeKind.Utc).AddTicks(8593), false, "Manager", null },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 55, 890, DateTimeKind.Utc).AddTicks(8594), false, "Staff", null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 55, 890, DateTimeKind.Utc).AddTicks(8595), false, "Customer", null }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(5831), false, "Admin", null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(5841), false, "Manager", null },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(5842), false, "Staff", null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(5843), false, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -1013,11 +1012,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "TurtorialVideoId", "CreatedAt", "Description", "IsDelete", "Name", "UpdatedAt", "VideoURL" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5505), "A comprehensive guide to setting up and using a traditional hotpot.", false, "How to Use Traditional Hotpot", null, "https://www.youtube.com/watch?v=traditional-hotpot-guide" },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5526), "Learn how to safely set up and use your electric hotpot.", false, "Electric Hotpot Setup Guide", null, "https://www.youtube.com/watch?v=electric-hotpot-setup" },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5528), "Tips and tricks for using your portable hotpot anywhere.", false, "Portable Hotpot on the Go", null, "https://www.youtube.com/watch?v=portable-hotpot-guide" },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5529), "How to effectively use all compartments in your multi-section hotpot.", false, "Multi-compartment Hotpot Mastery", null, "https://www.youtube.com/watch?v=multi-compartment-guide" },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5531), "Learn how to properly care for and maintain your ceramic hotpot.", false, "Ceramic Hotpot Care Guide", null, "https://www.youtube.com/watch?v=ceramic-hotpot-care" }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2271), "A comprehensive guide to setting up and using a traditional hotpot.", false, "How to Use Traditional Hotpot", null, "https://www.youtube.com/watch?v=traditional-hotpot-guide" },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2395), "Learn how to safely set up and use your electric hotpot.", false, "Electric Hotpot Setup Guide", null, "https://www.youtube.com/watch?v=electric-hotpot-setup" },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2396), "Tips and tricks for using your portable hotpot anywhere.", false, "Portable Hotpot on the Go", null, "https://www.youtube.com/watch?v=portable-hotpot-guide" },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2398), "How to effectively use all compartments in your multi-section hotpot.", false, "Multi-compartment Hotpot Mastery", null, "https://www.youtube.com/watch?v=multi-compartment-guide" },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2399), "Learn how to properly care for and maintain your ceramic hotpot.", false, "Ceramic Hotpot Care Guide", null, "https://www.youtube.com/watch?v=ceramic-hotpot-care" }
                 });
 
             migrationBuilder.InsertData(
@@ -1025,11 +1024,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "UtensilTypeId", "CreatedAt", "IsDelete", "Name", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5262), false, "Chopsticks", null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5286), false, "Ladles", null },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5287), false, "Strainers", null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5298), false, "Bowls", null },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5299), false, "Plates", null }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2174), false, "Chopsticks", null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2194), false, "Ladles", null },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2195), false, "Strainers", null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2196), false, "Bowls", null },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2198), false, "Plates", null }
                 });
 
             migrationBuilder.InsertData(
@@ -1037,44 +1036,52 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "HotPotInventoryId", "CreatedAt", "HotpotId", "IsDelete", "SeriesNumber", "Status", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5703), 1, false, "CP-2023-0001", false, null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5705), 1, false, "CP-2023-0002", false, null },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5706), 2, false, "EL-2023-0001", false, null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5707), 2, false, "EL-2023-0002", false, null },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5709), 3, false, "PT-2023-0001", false, null },
-                    { 6, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5710), 4, false, "MC-2023-0001", false, null },
-                    { 7, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5711), 5, false, "CR-2023-0001", false, null }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2565), 1, false, "CP-2023-0001", false, null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2566), 1, false, "CP-2023-0002", false, null },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2567), 2, false, "EL-2023-0001", false, null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2568), 2, false, "EL-2023-0002", false, null },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2570), 3, false, "PT-2023-0001", false, null },
+                    { 6, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2571), 4, false, "MC-2023-0001", false, null },
+                    { 7, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2572), 5, false, "CR-2023-0001", false, null },
+                    { 8, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2573), 1, false, "CP-2023-0003", false, null },
+                    { 9, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2574), 1, false, "CP-2023-0004", false, null },
+                    { 10, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2576), 1, false, "CP-2023-0005", false, null },
+                    { 11, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2577), 3, false, "PT-2023-0002", false, null },
+                    { 12, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2578), 4, false, "MC-2023-0002", false, null },
+                    { 13, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2579), 5, false, "CR-2023-0002", false, null },
+                    { 14, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2580), 5, false, "CR-2023-0003", false, null },
+                    { 15, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2585), 5, false, "CR-2023-0004", false, null }
                 });
 
             migrationBuilder.InsertData(
                 table: "Ingredients",
-                columns: new[] { "IngredientId", "CreatedAt", "Description", "ImageURL", "IngredientTypeID", "IsDelete", "MinStockLevel", "Name", "Quantity", "UpdatedAt" },
+                columns: new[] { "IngredientId", "CreatedAt", "Description", "ImageURL", "IngredientTypeID", "IsDelete", "MeasurementUnit", "MinStockLevel", "Name", "Quantity", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5822), "Thinly sliced premium beef perfect for hotpot.", "https://example.com/images/sliced-beef.jpg", 1, false, 20, "Sliced Beef", 100, null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5825), "Tender sliced lamb meat, perfect for quick cooking.", "https://example.com/images/lamb-slices.jpg", 1, false, 15, "Lamb Slices", 80, null },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5826), "Thinly sliced pork belly with perfect fat-to-meat ratio.", "https://example.com/images/pork-belly.jpg", 1, false, 15, "Pork Belly", 75, null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5829), "Fresh, peeled and deveined shrimp.", "https://example.com/images/shrimp.jpg", 2, false, 20, "Shrimp", 90, null },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5830), "Bouncy fish balls made from fresh fish paste.", "https://example.com/images/fish-balls.jpg", 2, false, 30, "Fish Balls", 120, null },
-                    { 6, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5832), "Fresh squid sliced into rings.", "https://example.com/images/squid.jpg", 2, false, 15, "Squid", 60, null },
-                    { 7, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5834), "Crisp, leafy vegetable perfect for hotpot.", "https://example.com/images/napa-cabbage.jpg", 3, false, 25, "Napa Cabbage", 100, null },
-                    { 8, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5836), "Fresh spinach leaves, washed and ready to cook.", "https://example.com/images/spinach.jpg", 3, false, 20, "Spinach", 80, null },
-                    { 9, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5837), "Sweet corn cut into bite-sized pieces.", "https://example.com/images/corn.jpg", 3, false, 15, "Corn", 70, null },
-                    { 10, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5839), "Thick, chewy Japanese wheat noodles.", "https://example.com/images/udon-noodles.jpg", 4, false, 20, "Udon Noodles", 80, null },
-                    { 11, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5841), "Transparent noodles made from mung bean starch.", "https://example.com/images/glass-noodles.jpg", 4, false, 20, "Glass Noodles", 85, null },
-                    { 12, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5842), "Curly wheat noodles perfect for hotpot.", "https://example.com/images/ramen-noodles.jpg", 4, false, 25, "Ramen Noodles", 90, null },
-                    { 13, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5844), "Firm tofu cubes that hold their shape in hotpot.", "https://example.com/images/firm-tofu.jpg", 5, false, 15, "Firm Tofu", 60, null },
-                    { 14, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5846), "Deep-fried tofu puffs that absorb broth flavors.", "https://example.com/images/tofu-puffs.jpg", 5, false, 15, "Tofu Puffs", 65, null },
-                    { 15, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5847), "Flavorful shiitake mushrooms, fresh or dried.", "https://example.com/images/shiitake.jpg", 6, false, 15, "Shiitake Mushrooms", 70, null },
-                    { 16, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5849), "Delicate, long-stemmed enoki mushrooms.", "https://example.com/images/enoki.jpg", 6, false, 15, "Enoki Mushrooms", 65, null },
-                    { 17, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5851), "Traditional spicy broth with Sichuan peppercorns and chili oil.", "https://example.com/images/sichuan-broth.jpg", 7, false, 10, "Spicy Sichuan Broth", 50, null },
-                    { 18, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5902), "Tangy tomato-based broth, slightly sweet and sour.", "https://example.com/images/tomato-broth.jpg", 7, false, 10, "Tomato Broth", 45, null },
-                    { 19, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5904), "Rich umami broth made from various mushrooms.", "https://example.com/images/mushroom-broth.jpg", 7, false, 10, "Mushroom Broth", 40, null },
-                    { 20, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5906), "Light, clear broth made from simmering bones for hours.", "https://example.com/images/bone-broth.jpg", 7, false, 10, "Clear Bone Broth", 55, null },
-                    { 21, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5908), "Creamy sauce made from ground sesame seeds.", "https://example.com/images/sesame-sauce.jpg", 8, false, 10, "Sesame Sauce", 40, null },
-                    { 22, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5909), "Soy sauce infused with fresh minced garlic.", "https://example.com/images/garlic-soy.jpg", 8, false, 10, "Garlic Soy Sauce", 45, null },
-                    { 23, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5911), "Spicy oil made from infusing oil with chili peppers.", "https://example.com/images/chili-oil.jpg", 8, false, 10, "Chili Oil", 50, null },
-                    { 24, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5913), "Umami-rich sauce made from soybean oil, garlic, shallots, and dried seafood.", "https://example.com/images/shacha-sauce.jpg", 8, false, 10, "Shacha Sauce", 35, null }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2848), "Thinly sliced premium beef perfect for hotpot.", "https://example.com/images/sliced-beef.jpg", 7, false, "g", 20m, "Sliced Beef", 100m, null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2850), "Tender sliced lamb meat, perfect for quick cooking.", "https://example.com/images/lamb-slices.jpg", 7, false, "g", 15m, "Lamb Slices", 80m, null },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2852), "Thinly sliced pork belly with perfect fat-to-meat ratio.", "https://example.com/images/pork-belly.jpg", 7, false, "g", 15m, "Pork Belly", 75m, null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2854), "Fresh, peeled and deveined shrimp.", "https://example.com/images/shrimp.jpg", 2, false, "g", 20m, "Shrimp", 90m, null },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2856), "Bouncy fish balls made from fresh fish paste.", "https://example.com/images/fish-balls.jpg", 2, false, "g", 30m, "Fish Balls", 120m, null },
+                    { 6, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2858), "Fresh squid sliced into rings.", "https://example.com/images/squid.jpg", 2, false, "g", 15m, "Squid", 60m, null },
+                    { 7, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2860), "Crisp, leafy vegetable perfect for hotpot.", "https://example.com/images/napa-cabbage.jpg", 3, false, "g", 25m, "Napa Cabbage", 100m, null },
+                    { 8, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2863), "Fresh spinach leaves, washed and ready to cook.", "https://example.com/images/spinach.jpg", 3, false, "g", 20m, "Spinach", 80m, null },
+                    { 9, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2865), "Sweet corn cut into bite-sized pieces.", "https://example.com/images/corn.jpg", 3, false, "g", 15m, "Corn", 70m, null },
+                    { 10, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2894), "Thick, chewy Japanese wheat noodles.", "https://example.com/images/udon-noodles.jpg", 4, false, "g", 20m, "Udon Noodles", 80m, null },
+                    { 11, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2897), "Transparent noodles made from mung bean starch.", "https://example.com/images/glass-noodles.jpg", 4, false, "g", 20m, "Glass Noodles", 85m, null },
+                    { 12, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2899), "Curly wheat noodles perfect for hotpot.", "https://example.com/images/ramen-noodles.jpg", 4, false, "g", 25m, "Ramen Noodles", 90m, null },
+                    { 13, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2901), "Firm tofu cubes that hold their shape in hotpot.", "https://example.com/images/firm-tofu.jpg", 5, false, "g", 15m, "Firm Tofu", 60m, null },
+                    { 14, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2903), "Deep-fried tofu puffs that absorb broth flavors.", "https://example.com/images/tofu-puffs.jpg", 5, false, "g", 15m, "Tofu Puffs", 65m, null },
+                    { 15, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7114), "Flavorful shiitake mushrooms, fresh or dried.", "https://example.com/images/shiitake.jpg", 6, false, "g", 15m, "Shiitake Mushrooms", 70m, null },
+                    { 16, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7166), "Delicate, long-stemmed enoki mushrooms.", "https://example.com/images/enoki.jpg", 6, false, "g", 15m, "Enoki Mushrooms", 65m, null },
+                    { 17, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7178), "Traditional spicy broth with Sichuan peppercorns and chili oil.", "https://example.com/images/sichuan-broth.jpg", 1, false, "ml", 10m, "Spicy Sichuan Broth", 50m, null },
+                    { 18, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7188), "Tangy tomato-based broth, slightly sweet and sour.", "https://example.com/images/tomato-broth.jpg", 1, false, "ml", 10m, "Tomato Broth", 45m, null },
+                    { 19, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7198), "Rich umami broth made from various mushrooms.", "https://example.com/images/mushroom-broth.jpg", 1, false, "ml", 10m, "Mushroom Broth", 40m, null },
+                    { 20, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7207), "Light, clear broth made from simmering bones for hours.", "https://example.com/images/bone-broth.jpg", 1, false, "ml", 10m, "Clear Bone Broth", 55m, null },
+                    { 21, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7217), "Creamy sauce made from ground sesame seeds.", "https://example.com/images/sesame-sauce.jpg", 8, false, "ml", 10m, "Sesame Sauce", 40m, null },
+                    { 22, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7227), "Soy sauce infused with fresh minced garlic.", "https://example.com/images/garlic-soy.jpg", 8, false, "ml", 10m, "Garlic Soy Sauce", 45m, null },
+                    { 23, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7239), "Spicy oil made from infusing oil with chili peppers.", "https://example.com/images/chili-oil.jpg", 8, false, "ml", 10m, "Chili Oil", 50m, null },
+                    { 24, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7248), "Umami-rich sauce made from soybean oil, garlic, shallots, and dried seafood.", "https://example.com/images/shacha-sauce.jpg", 8, false, "ml", 10m, "Shacha Sauce", 35m, null }
                 });
 
             migrationBuilder.InsertData(
@@ -1082,16 +1089,16 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "UserId", "Address", "CreatedAt", "Email", "ImageURL", "IsDelete", "Name", "Password", "PhoneNumber", "RefreshToken", "RefreshTokenExpiry", "RoleID", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, null, new DateTime(2025, 3, 13, 1, 5, 55, 890, DateTimeKind.Utc).AddTicks(8912), "Admin@gmail.com", null, false, "Admin", "$2a$12$TOQFfztyZEznHiHlWQOCuOkEeJBd2nTAziVP5SxOrspr1V/IJpPxK", "987654321", null, null, 1, null },
-                    { 2, null, new DateTime(2025, 3, 13, 1, 5, 56, 207, DateTimeKind.Utc).AddTicks(188), "Manager1@gmail.com", null, false, "Manager1", "$2a$12$cmMhm02EMMg/1kGPCLkwYuFhTBsPjEz6YiPrmNFH.SEjG0se2Lllm", "999999999", null, null, 2, null },
-                    { 3, null, new DateTime(2025, 3, 13, 1, 5, 56, 518, DateTimeKind.Utc).AddTicks(5492), "Manager2@gmail.com", null, false, "Manager2", "$2a$12$hfdF0.ET/w7nZsu/jKDP5eCX4YoYfVZ3pmJx.r5502/ZpK2Tco4iC", "888888888", null, null, 2, null },
-                    { 4, null, new DateTime(2025, 3, 13, 1, 5, 56, 821, DateTimeKind.Utc).AddTicks(2954), "Staff1@gmail.com", null, false, "Staff1", "$2a$12$v3fCX5oJP.ZQA4ZZRPYyOuQCIfVcgLxjfp5YHzTyLkqI1ie0ZN1jq", "777777777", null, null, 3, null },
-                    { 5, null, new DateTime(2025, 3, 13, 1, 5, 57, 88, DateTimeKind.Utc).AddTicks(9602), "Staff2@gmail.com", null, false, "Staff2", "$2a$12$R72VCO169K/eMSVptud42e5vJY7EWiC0ZX4DnGWu/gZEOpig28xIK", "666666666", null, null, 3, null },
-                    { 6, null, new DateTime(2025, 3, 13, 1, 5, 57, 351, DateTimeKind.Utc).AddTicks(6356), "Staff3@gmail.com", null, false, "Staff3", "$2a$12$fn2AH2kVaLLZGcNMrVjQ7O.mTmRPL.AEwBOFIHjZN3EBy//s46L9m", "555555555", null, null, 3, null },
-                    { 7, null, new DateTime(2025, 3, 13, 1, 5, 57, 617, DateTimeKind.Utc).AddTicks(6443), "Staff4@gmail.com", null, false, "Staff4", "$2a$12$UsAbxEVisk8UhHEHJdBp9ea3MDTwMe4ThZfckTpipm7cad6voiy1C", "444444444", null, null, 3, null },
-                    { 8, null, new DateTime(2025, 3, 13, 1, 5, 57, 869, DateTimeKind.Utc).AddTicks(8327), "Customer1@gmail.com", null, false, "Customer1", "$2a$12$ZrIJEE3.po0nk3lgUDkF0OT4yLpDM4sJo.UgqT6he22iANBOzKjtW", "333333333", null, null, 4, null },
-                    { 9, null, new DateTime(2025, 3, 13, 1, 5, 58, 120, DateTimeKind.Utc).AddTicks(4887), "Customer2@gmail.com", null, false, "Customer2", "$2a$12$vJPMfa8gA23zlv1m.jbhCu9Kd.INZXgVoIdCF07NwOpfJWKrUV2WW", "222222222", null, null, 4, null },
-                    { 10, null, new DateTime(2025, 3, 13, 1, 5, 58, 380, DateTimeKind.Utc).AddTicks(165), "Customer3@gmail.com", null, false, "Customer3", "$2a$12$KVAs3JHQ.ti/KPT4icsQse04qYtfAwNWABt4QQeMlUpCdAFXlexx6", "111111111", null, null, 4, null }
+                    { 1, null, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(6005), "Admin@gmail.com", null, false, "Admin", "$2a$12$5UBhC4v1TB1pbNY39K15e.endofTEZE35A9eR8rN8kO1nMVAhRZqu", "987654321", null, null, 1, null },
+                    { 2, null, new DateTime(2025, 3, 14, 21, 6, 32, 614, DateTimeKind.Utc).AddTicks(9112), "Manager1@gmail.com", null, false, "Manager1", "$2a$12$m2SKgzZcRs1/s2M265CB4OrPmhu5jc3JoYaCqQgWfhCeg4ypaRfeO", "999999999", null, null, 2, null },
+                    { 3, null, new DateTime(2025, 3, 14, 21, 6, 32, 858, DateTimeKind.Utc).AddTicks(399), "Manager2@gmail.com", null, false, "Manager2", "$2a$12$9njIrraUktRnBCCwqBlzg.ESPXkvVKEhFruxgGe8Dgzp1owCR4uf6", "888888888", null, null, 2, null },
+                    { 4, null, new DateTime(2025, 3, 14, 21, 6, 33, 90, DateTimeKind.Utc).AddTicks(3533), "Staff1@gmail.com", null, false, "Staff1", "$2a$12$EWsgSQMUwyxZ.uzYuiBBw.Bs508CNFvMAWvAU8LaSVncGZ7PXQPKi", "777777777", null, null, 3, null },
+                    { 5, null, new DateTime(2025, 3, 14, 21, 6, 33, 319, DateTimeKind.Utc).AddTicks(8727), "Staff2@gmail.com", null, false, "Staff2", "$2a$12$fLIUJKIHMJKhiZxtbIy8d.3dsO6XnB.W7Uhv.MPoHr2aYkeBqreRq", "666666666", null, null, 3, null },
+                    { 6, null, new DateTime(2025, 3, 14, 21, 6, 33, 548, DateTimeKind.Utc).AddTicks(9980), "Staff3@gmail.com", null, false, "Staff3", "$2a$12$SI6eBK4eoK31G8GWskn/bOfhZvEjTR0iXD1omQH6DWTc1P1s8EIy.", "555555555", null, null, 3, null },
+                    { 7, null, new DateTime(2025, 3, 14, 21, 6, 33, 778, DateTimeKind.Utc).AddTicks(8495), "Staff4@gmail.com", null, false, "Staff4", "$2a$12$CD81vuMBWQGYZaAGTkpXh.GOylAIsWJHCBlGSNch2cf7v3.WSFnCG", "444444444", null, null, 3, null },
+                    { 8, null, new DateTime(2025, 3, 14, 21, 6, 34, 11, DateTimeKind.Utc).AddTicks(8050), "Customer1@gmail.com", null, false, "Customer1", "$2a$12$l6V/4zT4mEFFG.7IAXV6LexE/1mExVfpIxkYFDIMIIGxS9F1EA/xC", "333333333", null, null, 4, null },
+                    { 9, null, new DateTime(2025, 3, 14, 21, 6, 34, 241, DateTimeKind.Utc).AddTicks(5730), "Customer2@gmail.com", null, false, "Customer2", "$2a$12$p5njz4kMez7BIXvo4ZGJqOF8A/RFB6eYr.rUSwwU8WYR/fwU1yvJ6", "222222222", null, null, 4, null },
+                    { 10, null, new DateTime(2025, 3, 14, 21, 6, 34, 470, DateTimeKind.Utc).AddTicks(5249), "Customer3@gmail.com", null, false, "Customer3", "$2a$12$b8hV5omzyhj1YIncRPpOv.WWhs4HrfFEAU0g4uIdYWFSwau.TA.mq", "111111111", null, null, 4, null }
                 });
 
             migrationBuilder.InsertData(
@@ -1099,11 +1106,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "UtensilId", "CreatedAt", "Description", "ImageURL", "IsDelete", "LastMaintainDate", "Material", "Name", "Price", "Quantity", "Status", "UpdatedAt", "UtensilTypeID" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5652), "Set of 5 pairs of traditional bamboo chopsticks.", "https://example.com/images/bamboo-chopsticks.jpg", false, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5643), "Bamboo", "Bamboo Chopsticks Set", 12.99m, 100, true, null, 1 },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5655), "Durable stainless steel ladle for serving hotpot broth.", "https://example.com/images/steel-ladle.jpg", false, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5653), "Stainless Steel", "Stainless Steel Hotpot Ladle", 9.99m, 75, true, null, 2 },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5657), "Fine mesh strainer for retrieving food from the hotpot.", "https://example.com/images/mesh-strainer.jpg", false, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5656), "Stainless Steel", "Wire Mesh Strainer", 7.99m, 80, true, null, 3 },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5660), "Set of 4 ceramic bowls for individual servings.", "https://example.com/images/ceramic-bowls.jpg", false, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5658), "Ceramic", "Ceramic Serving Bowl Set", 19.99m, 50, true, null, 4 },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5662), "Set of 6 durable melamine plates for hotpot dining.", "https://example.com/images/melamine-plates.jpg", false, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5661), "Melamine", "Melamine Plates", 24.99m, 60, true, null, 5 }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2685), "Set of 5 pairs of traditional bamboo chopsticks.", "https://example.com/images/bamboo-chopsticks.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2679), "Bamboo", "Bamboo Chopsticks Set", 12.99m, 100, true, null, 1 },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2687), "Durable stainless steel ladle for serving hotpot broth.", "https://example.com/images/steel-ladle.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2686), "Stainless Steel", "Stainless Steel Hotpot Ladle", 9.99m, 75, true, null, 2 },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2690), "Fine mesh strainer for retrieving food from the hotpot.", "https://example.com/images/mesh-strainer.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2688), "Stainless Steel", "Wire Mesh Strainer", 7.99m, 80, true, null, 3 },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2692), "Set of 4 ceramic bowls for individual servings.", "https://example.com/images/ceramic-bowls.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2691), "Ceramic", "Ceramic Serving Bowl Set", 19.99m, 50, true, null, 4 },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2695), "Set of 6 durable melamine plates for hotpot dining.", "https://example.com/images/melamine-plates.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2693), "Melamine", "Melamine Plates", 24.99m, 60, true, null, 5 }
                 });
 
             migrationBuilder.InsertData(
@@ -1111,46 +1118,46 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "Note", "UpdatedAt", "UserID" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5205), false, null, null, 8 },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5209), false, null, null, 9 }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2075), false, null, null, 8 },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2082), false, null, null, 9 }
                 });
 
             migrationBuilder.InsertData(
                 table: "Customers",
                 columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "LoyatyPoint", "Note", "UpdatedAt", "UserID" },
-                values: new object[] { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5209), false, 200.0, null, null, 10 });
+                values: new object[] { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2083), false, 200.0, null, null, 10 });
 
             migrationBuilder.InsertData(
                 table: "IngredientPrices",
                 columns: new[] { "IngredientPriceId", "CreatedAt", "EffectiveDate", "IngredientID", "IsDelete", "Price", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 2, 11, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5972), new DateTime(2025, 2, 11, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5962), 1, false, 12.99m, null },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5975), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5974), 1, false, 13.99m, null },
-                    { 3, new DateTime(2025, 2, 11, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5977), new DateTime(2025, 2, 11, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5976), 2, false, 14.99m, null },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5979), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5978), 2, false, 15.99m, null },
-                    { 5, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5981), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5980), 3, false, 11.99m, null },
-                    { 6, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5983), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5982), 4, false, 16.99m, null },
-                    { 7, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5986), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5986), 5, false, 9.99m, null },
-                    { 8, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5988), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5987), 6, false, 14.99m, null },
-                    { 9, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5990), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5989), 7, false, 5.99m, null },
-                    { 10, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5992), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5991), 8, false, 4.99m, null },
-                    { 11, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5994), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5993), 9, false, 3.99m, null },
-                    { 12, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5996), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5995), 10, false, 6.99m, null },
-                    { 13, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5997), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5997), 11, false, 5.99m, null },
-                    { 14, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5999), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(5999), 12, false, 6.49m, null },
-                    { 15, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6010), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6010), 13, false, 4.99m, null },
-                    { 16, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6012), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6012), 14, false, 5.49m, null },
-                    { 17, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6014), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6014), 15, false, 7.99m, null },
-                    { 18, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6016), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6016), 16, false, 6.99m, null },
-                    { 19, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6018), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6017), 17, false, 8.99m, null },
-                    { 20, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6021), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6020), 18, false, 7.99m, null },
-                    { 21, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6022), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6022), 19, false, 8.49m, null },
-                    { 22, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6024), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6024), 20, false, 7.49m, null },
-                    { 23, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6028), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6027), 21, false, 4.99m, null },
-                    { 24, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6030), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6029), 22, false, 3.99m, null },
-                    { 25, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6031), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6031), 23, false, 4.49m, null },
-                    { 26, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6033), new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Local).AddTicks(6033), 24, false, 5.99m, null }
+                    { 1, new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7438), new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7429), 1, false, 0.13m, null },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7441), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7440), 1, false, 0.14m, null },
+                    { 3, new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7444), new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7442), 2, false, 0.15m, null },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7446), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7446), 2, false, 0.16m, null },
+                    { 5, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7448), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7448), 3, false, 0.12m, null },
+                    { 6, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7450), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7450), 4, false, 0.17m, null },
+                    { 7, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7452), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7451), 5, false, 0.10m, null },
+                    { 8, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7454), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7453), 6, false, 0.15m, null },
+                    { 9, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7455), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7455), 7, false, 0.06m, null },
+                    { 10, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7458), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7457), 8, false, 0.05m, null },
+                    { 11, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7460), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7459), 9, false, 0.04m, null },
+                    { 12, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7461), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7461), 10, false, 0.07m, null },
+                    { 13, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7463), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7462), 11, false, 0.06m, null },
+                    { 14, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7464), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7464), 12, false, 0.065m, null },
+                    { 15, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7469), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7468), 13, false, 0.05m, null },
+                    { 16, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7470), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7470), 14, false, 0.055m, null },
+                    { 17, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7473), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7473), 15, false, 0.08m, null },
+                    { 18, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7475), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7474), 16, false, 0.07m, null },
+                    { 19, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7477), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7476), 17, false, 0.009m, null },
+                    { 20, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7478), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7478), 18, false, 0.008m, null },
+                    { 21, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7481), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7480), 19, false, 0.0085m, null },
+                    { 22, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7482), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7482), 20, false, 0.0075m, null },
+                    { 23, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7484), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7483), 21, false, 0.005m, null },
+                    { 24, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7485), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7485), 22, false, 0.004m, null },
+                    { 25, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7487), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7486), 23, false, 0.0045m, null },
+                    { 26, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7488), new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7488), 24, false, 0.006m, null }
                 });
 
             migrationBuilder.InsertData(
@@ -1158,8 +1165,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "ManagerId", "CreatedAt", "IsDelete", "UpdatedAt", "UserID", "WorkDays" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5159), false, null, 2, 0 },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5162), false, null, 3, 0 }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2028), false, null, 2, 0 },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2032), false, null, 3, 0 }
                 });
 
             migrationBuilder.InsertData(
@@ -1167,10 +1174,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 columns: new[] { "StaffId", "CreatedAt", "IsDelete", "UpdatedAt", "UserID", "WorkDays" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5037), false, null, 4, 0 },
-                    { 2, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5048), false, null, 5, 0 },
-                    { 3, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5049), false, null, 6, 0 },
-                    { 4, new DateTime(2025, 3, 13, 1, 5, 58, 628, DateTimeKind.Utc).AddTicks(5050), false, null, 7, 0 }
+                    { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(1903), false, null, 4, 0 },
+                    { 2, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(1911), false, null, 5, 0 },
+                    { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(1912), false, null, 6, 0 },
+                    { 4, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(1913), false, null, 7, 0 }
                 });
 
             migrationBuilder.CreateIndex(
@@ -1323,6 +1330,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Hotpots_OrderDetailId",
+                table: "Hotpots",
+                column: "OrderDetailId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_IngredientPrices_IngredientID",
                 table: "IngredientPrices",
                 column: "IngredientID");
@@ -1358,11 +1370,9 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 filter: "[CustomizationID] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OrderDetails_HotpotID",
+                name: "IX_OrderDetails_HotpotInventoryID",
                 table: "OrderDetails",
-                column: "HotpotID",
-                unique: true,
-                filter: "[HotpotID] IS NOT NULL");
+                column: "HotpotInventoryID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_IngredientID",
@@ -1470,11 +1480,66 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 name: "IX_Utensils_UtensilTypeID",
                 table: "Utensils",
                 column: "UtensilTypeID");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_ConditionLogs_HotPotInventorys_HotPotInventoryId",
+                table: "ConditionLogs",
+                column: "HotPotInventoryId",
+                principalTable: "HotPotInventorys",
+                principalColumn: "HotPotInventoryId");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_HotPotInventorys_Hotpots_HotpotId",
+                table: "HotPotInventorys",
+                column: "HotpotId",
+                principalTable: "Hotpots",
+                principalColumn: "HotpotId",
+                onDelete: ReferentialAction.Cascade);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Customizations_Users_UserID",
+                table: "Customizations");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Orders_Users_UserID",
+                table: "Orders");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Customizations_Combos_ComboID",
+                table: "Customizations");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_OrderDetails_Combos_ComboID",
+                table: "OrderDetails");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Ingredients_IngredientTypes_IngredientTypeID",
+                table: "Ingredients");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Customizations_Ingredients_HotpotBrothID",
+                table: "Customizations");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Customizations_Ingredients_IngredientId",
+                table: "Customizations");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_OrderDetails_Ingredients_IngredientID",
+                table: "OrderDetails");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Customizations_SizeDiscounts_AppliedDiscountID",
+                table: "Customizations");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_OrderDetails_HotPotInventorys_HotpotInventoryID",
+                table: "OrderDetails");
+
             migrationBuilder.DropTable(
                 name: "ChatMessages");
 
@@ -1497,9 +1562,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 name: "ManagerWorkShift");
 
             migrationBuilder.DropTable(
-                name: "OrderDetails");
-
-            migrationBuilder.DropTable(
                 name: "Payments");
 
             migrationBuilder.DropTable(
@@ -1515,13 +1577,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 name: "ChatSessions");
 
             migrationBuilder.DropTable(
-                name: "Customizations");
-
-            migrationBuilder.DropTable(
                 name: "ConditionLogs");
-
-            migrationBuilder.DropTable(
-                name: "Orders");
 
             migrationBuilder.DropTable(
                 name: "Staffs");
@@ -1536,19 +1592,19 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 name: "Managers");
 
             migrationBuilder.DropTable(
+                name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "Roles");
+
+            migrationBuilder.DropTable(
                 name: "Combos");
 
             migrationBuilder.DropTable(
-                name: "HotPotInventorys");
+                name: "TurtorialVideos");
 
             migrationBuilder.DropTable(
-                name: "Utensils");
-
-            migrationBuilder.DropTable(
-                name: "Discounts");
-
-            migrationBuilder.DropTable(
-                name: "Users");
+                name: "IngredientTypes");
 
             migrationBuilder.DropTable(
                 name: "Ingredients");
@@ -1557,19 +1613,28 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 name: "SizeDiscounts");
 
             migrationBuilder.DropTable(
-                name: "TurtorialVideos");
+                name: "HotPotInventorys");
 
             migrationBuilder.DropTable(
                 name: "Hotpots");
 
             migrationBuilder.DropTable(
+                name: "OrderDetails");
+
+            migrationBuilder.DropTable(
+                name: "Customizations");
+
+            migrationBuilder.DropTable(
+                name: "Orders");
+
+            migrationBuilder.DropTable(
+                name: "Utensils");
+
+            migrationBuilder.DropTable(
+                name: "Discounts");
+
+            migrationBuilder.DropTable(
                 name: "UtensilTypes");
-
-            migrationBuilder.DropTable(
-                name: "Roles");
-
-            migrationBuilder.DropTable(
-                name: "IngredientTypes");
         }
     }
 }

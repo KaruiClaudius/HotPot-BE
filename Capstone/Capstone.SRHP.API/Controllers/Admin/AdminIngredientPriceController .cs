@@ -1,14 +1,14 @@
 ﻿using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
-    [Route("api/admin/ingredient-prices")]
+    [Route("api/admin/ingredient-price")]
     [Authorize(Roles = "Admin")]
     public class AdminIngredientPriceController : ControllerBase
     {

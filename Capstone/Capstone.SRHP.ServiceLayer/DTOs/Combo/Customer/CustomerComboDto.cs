@@ -18,14 +18,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo.customer
         public bool IsCustomizable { get; set; }
         public string HotpotBrothName { get; set; }
         public string[] ImageURLs { get; set; }
-        public int? TurtorialVideoID { get; set; }
+        public int TurtorialVideoID { get; set; }
         public string TutorialVideoName { get; set; }
         public string TutorialVideoUrl { get; set; }
     }
+
     public class CustomerComboDetailDto : CustomerComboDto
     {
+        public CustomerTutorialVideoDto TutorialVideo { get; set; }
         public List<CustomerComboIngredientDto> Ingredients { get; set; }
         public List<CustomerAllowedIngredientTypeDto> AllowedIngredientTypes { get; set; }
-        public CustomerTutorialVideoDto TutorialVideo { get; set; }
     }
 }

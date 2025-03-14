@@ -12,8 +12,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public string Name { get; set; }
         public string Description { get; set; }
         public string ImageURL { get; set; }
-        public int MinStockLevel { get; set; }
-        public int Quantity { get; set; }
+        public decimal MinStockLevel { get; set; }
+        public decimal Quantity { get; set; }
+        public string MeasurementUnit { get; set; }
         public int IngredientTypeID { get; set; }
         public string IngredientTypeName { get; set; }
         public decimal Price { get; set; }

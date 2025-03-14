@@ -31,10 +31,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        public decimal? IngredientsDeposit { get; set; }
-
-        [Required]
-        [Column(TypeName = "decimal(18,2)")]
         public decimal? HotpotDeposit { get; set; }
 
         [Required]

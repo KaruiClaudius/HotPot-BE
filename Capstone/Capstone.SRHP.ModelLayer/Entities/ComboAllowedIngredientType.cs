@@ -23,7 +23,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int IngredientTypeId { get; set; }
 
         [Required]
-        public int MaxQuantity { get; set; } = 1; // Maximum quantity of this type allowed
+        [Column(TypeName = "decimal(18,3)")]
+        [Range(0.001, double.MaxValue)]
+        public decimal MinQuantity { get; set; } = 1;
+
+        [Required]
+        [StringLength(20)]
+        public string MeasurementUnit { get; set; } = "g";
 
         public virtual Combo Combo { get; set; } = null!;
         public virtual IngredientType IngredientType { get; set; } = null!;

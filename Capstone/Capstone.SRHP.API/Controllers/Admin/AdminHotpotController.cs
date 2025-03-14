@@ -3,7 +3,6 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
-using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/hotpots")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminHotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
@@ -87,8 +87,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        // POST: api/Hotpot
-        // Handles: Creating a new hotpot with optional inventory items
         [HttpPost]
         public async Task<ActionResult<HotpotDto>> Create(CreateHotpotRequest request)
         {
@@ -104,9 +102,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Price = request.Price,
                     BasePrice = request.BasePrice,
                     Status = request.Status,
-                    Quantity = request.SeriesNumbers?.Length ?? request.Quantity,
-                    LastMaintainDate = DateTime.UtcNow,
-                    InventoryID = request.InventoryID
+                    LastMaintainDate = DateTime.UtcNow
                 };
 
                 var createdHotpot = await _hotpotService.CreateAsync(hotpot, request.SeriesNumbers);
@@ -135,25 +131,32 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (existingHotpot == null)
                     return NotFound(new { message = $"Hotpot with ID {id} not found" });
 
-                existingHotpot.Name = request.Name;
-                existingHotpot.Material = request.Material;
-                existingHotpot.Size = request.Size;
-                existingHotpot.Description = request.Description;
-                existingHotpot.ImageURLs = request.ImageURLs;
-                existingHotpot.Price = request.Price;
-                existingHotpot.BasePrice = request.BasePrice;
-                existingHotpot.Status = request.Status;
-                existingHotpot.InventoryID = request.InventoryID;
+                // Only update properties that are provided in the request
+                if (!string.IsNullOrEmpty(request.Name))
+                    existingHotpot.Name = request.Name;
 
-                // If series numbers are provided, they will update the quantity
-                if (request.SeriesNumbers != null && request.SeriesNumbers.Length > 0)
-                {
-                    existingHotpot.Quantity = request.SeriesNumbers.Length;
-                }
-                else
-                {
-                    existingHotpot.Quantity = request.Quantity;
-                }
+                if (!string.IsNullOrEmpty(request.Material))
+                    existingHotpot.Material = request.Material;
+
+                if (!string.IsNullOrEmpty(request.Size))
+                    existingHotpot.Size = request.Size;
+
+                // Description can be null
+                existingHotpot.Description = request.Description;
+
+                // ImageURLs can be null
+                existingHotpot.ImageURLs = request.ImageURLs;
+
+                if (request.Price > 0)
+                    existingHotpot.Price = request.Price;
+
+                if (request.BasePrice > 0)
+                    existingHotpot.BasePrice = request.BasePrice;
+
+                if (request.Status.HasValue)
+                    existingHotpot.Status = request.Status.Value;
+
+                // Don't set Quantity or InventoryID - let the service handle it
 
                 await _hotpotService.UpdateAsync(id, existingHotpot, request.SeriesNumbers);
 
@@ -228,8 +231,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         // Helper methods for mapping entities to DTOs
         private HotpotDto MapToHotpotDto(Hotpot hotpot)
         {
-            if (hotpot == null) return null;
-
             return new HotpotDto
             {
                 HotpotId = hotpot.HotpotId,
@@ -241,9 +242,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = hotpot.Price,
                 BasePrice = hotpot.BasePrice,
                 Status = hotpot.Status,
-                Quantity = hotpot.Quantity,
+                Quantity = hotpot.Quantity, // This now uses the calculated property
                 LastMaintainDate = hotpot.LastMaintainDate,
-                InventoryID = hotpot.InventoryID,
+                SeriesNumbers = hotpot.InventoryUnits?.Select(i => i.SeriesNumber).ToArray(),
                 CreatedAt = hotpot.CreatedAt,
                 UpdatedAt = hotpot.UpdatedAt
             };
@@ -268,22 +269,30 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Status = baseDto.Status,
                 Quantity = baseDto.Quantity,
                 LastMaintainDate = baseDto.LastMaintainDate,
-                InventoryID = baseDto.InventoryID,
+                SeriesNumbers = baseDto.SeriesNumbers, // Add this to include series numbers in the detail DTO
                 CreatedAt = baseDto.CreatedAt,
                 UpdatedAt = baseDto.UpdatedAt,
-                InventoryItems = hotpot.InventoryUnits?.Where(i => !i.IsDelete).Select(i => new InventoryItemDto
-                {
-                    HotPotInventoryId = i.HotPotInventoryId,
-                    SeriesNumber = i.SeriesNumber,
-                    Status = i.Status,
-                    ConditionLogs = i.ConditionLogs?.Where(cl => !cl.IsDelete).Select(cl => new ConditionLogDto
+                InventoryItems = hotpot.InventoryUnits?
+                    .Where(i => !i.IsDelete)
+                    .Select(i => new InventoryItemDto
                     {
-                        ConditionLogId = cl.ConditionLogId,
-                        Name = cl.Name,
-                        Description = cl.Description,
-                        CreatedAt = cl.CreatedAt
-                    }).ToList() ?? new List<ConditionLogDto>()
-                }).ToList() ?? new List<InventoryItemDto>()
+                        HotPotInventoryId = i.HotPotInventoryId,
+                        SeriesNumber = i.SeriesNumber,
+                        Status = i.Status,
+                        CreatedAt = i.CreatedAt,
+                        UpdatedAt = i.UpdatedAt,
+                        ConditionLogs = i.ConditionLogs?
+                            .Where(cl => !cl.IsDelete)
+                            .OrderByDescending(cl => cl.CreatedAt) // Order by newest first
+                            .Select(cl => new ConditionLogDto
+                            {
+                                ConditionLogId = cl.ConditionLogId,
+                                Name = cl.Name,
+                                Description = cl.Description,
+                                CreatedAt = cl.CreatedAt,
+                                UpdatedAt = cl.UpdatedAt
+                            }).ToList() ?? new List<ConditionLogDto>()
+                    }).ToList() ?? new List<InventoryItemDto>()
             };
         }
     }

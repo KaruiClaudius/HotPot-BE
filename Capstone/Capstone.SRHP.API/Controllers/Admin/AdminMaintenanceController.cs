@@ -4,7 +4,6 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
-using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

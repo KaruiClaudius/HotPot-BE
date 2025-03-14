@@ -14,8 +14,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [StringLength(100)]
         public string Name { get; set; }
 
-        [StringLength(500)]
-        public string Description { get; set; }
+        [StringLength(1000)]
+        public string? Description { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]
@@ -24,11 +24,12 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [Required]
         public int HotpotBrothID { get; set; }
 
-        public string[] ImageURLs { get; set; }
+        public string[]? ImageURLs { get; set; }
 
         [Required]
-        public List<CreateComboAllowedIngredientTypeRequest> AllowedIngredientTypes { get; set; }
+        public TutorialVideoRequest TutorialVideo { get; set; }
 
-        public CreateTutorialVideoDto TutorialVideo { get; set; }
+        [Required]
+        public List<ComboAllowedIngredientTypeRequest> AllowedIngredientTypes { get; set; }
     }
 }

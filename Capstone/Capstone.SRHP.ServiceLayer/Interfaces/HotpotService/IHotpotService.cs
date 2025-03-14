@@ -27,7 +27,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
         Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null);
         Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null);
         Task<decimal> CalculateDepositAsync(int id, int quantity);
-        Task UpdateQuantityAsync(int id, int quantity);
+        Task UpdateQuantityAsync(int hotpotId);
         Task<bool> IsAvailableAsync(int id);
     }
 }

@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,7 +12,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 {
     public class IngredientService : IIngredientService
     {
@@ -30,13 +30,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         #region Ingredient Methods
 
         public async Task<PagedResult<Ingredient>> GetIngredientsAsync(
-            string searchTerm = null,
-            int? typeId = null,
-            bool? isLowStock = null,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "Name",
-            bool ascending = true)
+     string searchTerm = null,
+     int? typeId = null,
+     bool? isLowStock = null,
+     int pageNumber = 1,
+     int pageSize = 10,
+     string sortBy = "Name",
+     bool ascending = true)
         {
             try
             {
@@ -52,8 +52,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     searchTerm = searchTerm.ToLower();
                     query = query.Where(i =>
                         i.Name.ToLower().Contains(searchTerm) ||
-                        (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
-                        i.IngredientType.Name.ToLower().Contains(searchTerm));
+                        i.Description != null && i.Description.ToLower().Contains(searchTerm) ||
+                        i.IngredientType.Name.ToLower().Contains(searchTerm) ||
+                        i.MeasurementUnit.ToLower().Contains(searchTerm));
                 }
 
                 // Apply type filter
@@ -91,6 +92,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                         orderedQuery = ascending
                             ? query.OrderBy(i => i.MinStockLevel)
                             : query.OrderByDescending(i => i.MinStockLevel);
+                        break;
+                    case "measurementunit":
+                        orderedQuery = ascending
+                            ? query.OrderBy(i => i.MeasurementUnit)
+                            : query.OrderByDescending(i => i.MeasurementUnit);
                         break;
                     case "createdat":
                         orderedQuery = ascending
@@ -133,7 +139,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
         }
 
-        public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice, string newTypeName = null)
+
+        public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice)
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Name))
@@ -148,22 +155,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             if (initialPrice < 0)
                 throw new ValidationException("Price cannot be negative");
 
-            // Handle ingredient type
-            if (entity.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(newTypeName))
-            {
-                // Create a new ingredient type
-                var createdType = await CreateIngredientTypeAsync(newTypeName);
-                entity.IngredientTypeID = createdType.IngredientTypeId;
-            }
-            else
-            {
-                // Check if ingredient type exists
-                var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                    .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+            // Validate measurement unit
+            if (string.IsNullOrWhiteSpace(entity.MeasurementUnit))
+                throw new ValidationException("Measurement unit cannot be empty");
 
-                if (ingredientType == null)
-                    throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
-            }
+            // Standardize the measurement unit
+            entity.MeasurementUnit = StandardizeMeasurementUnit(entity.MeasurementUnit);
+
+
+            // Check if ingredient type exists
+            var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+
+            if (ingredientType == null)
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+
 
             // Check if ingredient exists (including soft-deleted)
             var existingIngredient = await _unitOfWork.Repository<Ingredient>()
@@ -183,6 +189,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     existingIngredient.ImageURL = entity.ImageURL;
                     existingIngredient.MinStockLevel = entity.MinStockLevel;
                     existingIngredient.Quantity = entity.Quantity;
+                    existingIngredient.MeasurementUnit = entity.MeasurementUnit;
                     existingIngredient.IngredientTypeID = entity.IngredientTypeID;
                     existingIngredient.SetUpdateDate();
 
@@ -235,6 +242,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             if (entity.Quantity < 0)
                 throw new ValidationException("Quantity cannot be negative");
 
+            // Validate measurement unit
+            if (string.IsNullOrWhiteSpace(entity.MeasurementUnit))
+                throw new ValidationException("Measurement unit cannot be empty");
+
+            // Standardize the measurement unit
+            entity.MeasurementUnit = StandardizeMeasurementUnit(entity.MeasurementUnit);
+
             // Check if ingredient type exists
             var ingredientType = await _unitOfWork.Repository<IngredientType>()
                 .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
@@ -256,6 +270,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.Repository<Ingredient>().Update(entity, id);
             await _unitOfWork.CommitAsync();
         }
+
 
         public async Task DeleteIngredientAsync(int id)
         {
@@ -283,16 +298,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task UpdateIngredientQuantityAsync(int id, int quantity)
+        public async Task UpdateIngredientQuantityAsync(int id, decimal quantityChange, string unit = null)
         {
             var ingredient = await GetIngredientByIdAsync(id);
             if (ingredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
 
-            if (ingredient.Quantity + quantity < 0)
+            // If unit is provided and different from the ingredient's unit, convert the quantity
+            if (!string.IsNullOrEmpty(unit) && unit != ingredient.MeasurementUnit)
+            {
+                try
+                {
+                    quantityChange = ConvertMeasurement(quantityChange, unit, ingredient.MeasurementUnit);
+                }
+                catch (Exception ex)
+                {
+                    throw new ValidationException($"Error converting units: {ex.Message}");
+                }
+            }
+
+            // Check if the resulting quantity would be negative
+            if (ingredient.Quantity + quantityChange < 0)
                 throw new ValidationException("Cannot reduce quantity below 0");
 
-            ingredient.Quantity += quantity;
+            ingredient.Quantity += quantityChange;
             ingredient.SetUpdateDate();
             await _unitOfWork.CommitAsync();
         }
@@ -305,6 +334,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 .Where(i => !i.IsDelete && i.Quantity <= i.MinStockLevel)
                 .ToListAsync();
         }
+
 
         #endregion
 
@@ -455,8 +485,148 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             return priceEntity;
         }
 
+
         #endregion
 
+        #region Measurement Unit Helpers
 
+        // Helper method to standardize measurement unit format
+        private string StandardizeMeasurementUnit(string unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit))
+                return "pcs"; // Default to pieces
+
+            unit = unit.Trim().ToLower();
+
+            // Map various forms to standard abbreviations
+            return unit switch
+            {
+                "gram" or "grams" => "g",
+                "kilogram" or "kilograms" => "kg",
+                "milliliter" or "milliliters" => "ml",
+                "liter" or "liters" => "l",
+                "piece" or "pieces" => "pcs",
+                "teaspoon" or "teaspoons" => "tsp",
+                "tablespoon" or "tablespoons" => "tbsp",
+                "cup" or "cups" => "cup",
+                "ounce" or "ounces" => "oz",
+                "pound" or "pounds" => "lb",
+                _ => unit // Keep as is if it's already standardized
+            };
+        }
+
+        // Helper method to check if a unit is valid
+        private bool IsValidMeasurementUnit(string unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit))
+                return false;
+
+            // Standardize the unit for comparison
+            unit = unit.Trim().ToLower();
+
+            // List of valid units
+            var validUnits = new[]
+            {
+            "g", "gram", "grams",
+            "kg", "kilogram", "kilograms",
+            "ml", "milliliter", "milliliters",
+            "l", "liter", "liters",
+            "pcs", "piece", "pieces",
+            "tsp", "teaspoon", "teaspoons",
+            "tbsp", "tablespoon", "tablespoons",
+            "cup", "cups",
+            "oz", "ounce", "ounces",
+            "lb", "pound", "pounds"
+        };
+
+            return validUnits.Contains(unit);
+        }
+
+        // Helper method to convert between measurement units
+        private decimal ConvertMeasurement(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Standardize units
+            fromUnit = StandardizeMeasurementUnit(fromUnit);
+            toUnit = StandardizeMeasurementUnit(toUnit);
+
+            // If units are the same, no conversion needed
+            if (fromUnit == toUnit)
+                return quantity;
+
+            // Weight conversions
+            if (IsWeightUnit(fromUnit) && IsWeightUnit(toUnit))
+            {
+                return ConvertWeight(quantity, fromUnit, toUnit);
+            }
+
+            // Volume conversions
+            if (IsVolumeUnit(fromUnit) && IsVolumeUnit(toUnit))
+            {
+                return ConvertVolume(quantity, fromUnit, toUnit);
+            }
+
+            // Cannot convert between different types (weight to volume, etc.)
+            throw new InvalidOperationException($"Cannot convert from {fromUnit} to {toUnit}");
+        }
+
+        private bool IsWeightUnit(string unit)
+        {
+            return unit is "g" or "kg" or "oz" or "lb";
+        }
+
+        private bool IsVolumeUnit(string unit)
+        {
+            return unit is "ml" or "l" or "tsp" or "tbsp" or "cup";
+        }
+
+        private decimal ConvertWeight(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to grams first
+            decimal grams = fromUnit switch
+            {
+                "g" => quantity,
+                "kg" => quantity * 1000,
+                "oz" => quantity * 28.35m,
+                "lb" => quantity * 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {fromUnit}")
+            };
+
+            // Convert from grams to target unit
+            return toUnit switch
+            {
+                "g" => grams,
+                "kg" => grams / 1000,
+                "oz" => grams / 28.35m,
+                "lb" => grams / 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {toUnit}")
+            };
+        }
+
+        private decimal ConvertVolume(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to milliliters first
+            decimal ml = fromUnit switch
+            {
+                "ml" => quantity,
+                "l" => quantity * 1000,
+                "tsp" => quantity * 4.929m,
+                "tbsp" => quantity * 14.787m,
+                "cup" => quantity * 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {fromUnit}")
+            };
+
+            // Convert from milliliters to target unit
+            return toUnit switch
+            {
+                "ml" => ml,
+                "l" => ml / 1000,
+                "tsp" => ml / 4.929m,
+                "tbsp" => ml / 14.787m,
+                "cup" => ml / 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {toUnit}")
+            };
+        }
+
+        #endregion
     }
 }

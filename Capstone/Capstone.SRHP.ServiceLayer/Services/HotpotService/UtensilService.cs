@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.UtensilService
+namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 {
     public class UtensilService : IUtensilService
     {

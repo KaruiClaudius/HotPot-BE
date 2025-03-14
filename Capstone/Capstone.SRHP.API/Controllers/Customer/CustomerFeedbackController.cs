@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
-    [Route("api/[controller]")]
+    [Route("api/customer/feedback")]
     [ApiController]
     [Authorize(Roles = "Customer")]
 

@@ -8,7 +8,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.SignalR;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
+namespace Capstone.HPTY.API.SideServices
 {
     public class SignalRNotificationService : INotificationService
     {

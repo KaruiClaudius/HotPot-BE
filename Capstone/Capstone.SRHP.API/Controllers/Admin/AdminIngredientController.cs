@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -148,7 +148,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> CreateIngredient([FromBody] IngredientRequest request)
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> CreateIngredient([FromBody] CreateIngredientRequest request)
         {
             try
             {
@@ -161,17 +161,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ImageURL = request.ImageURL,
                     MinStockLevel = request.MinStockLevel,
                     Quantity = request.Quantity,
+                    MeasurementUnit = request.MeasurementUnit, // New field
                     IngredientTypeID = request.IngredientTypeID
                 };
 
-                // Check if we need to create a new type
-                string newTypeName = null;
-                if (request.IngredientTypeID <= 0 && !string.IsNullOrWhiteSpace(request.NewTypeName))
-                {
-                    newTypeName = request.NewTypeName;
-                }
-
-                var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price, newTypeName);
+                var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
                 var ingredientDto = MapToIngredientDto(createdIngredient);
                 ingredientDto.Price = request.Price;
 
@@ -206,10 +200,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
 
+
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredient(int id, [FromBody] IngredientRequest request)
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredient(int id, [FromBody] UpdateIngredientRequest request)
         {
             try
             {
@@ -225,25 +220,59 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                existingIngredient.Name = request.Name;
+                // Only update properties that are provided in the request
+                if (!string.IsNullOrEmpty(request.Name))
+                    existingIngredient.Name = request.Name;
+
+                // Description can be null
                 existingIngredient.Description = request.Description;
+
+                // ImageURL can be null
                 existingIngredient.ImageURL = request.ImageURL;
-                existingIngredient.MinStockLevel = request.MinStockLevel;
-                existingIngredient.Quantity = request.Quantity;
-                existingIngredient.IngredientTypeID = request.IngredientTypeID;
+
+                if (request.MinStockLevel.HasValue)
+                    existingIngredient.MinStockLevel = request.MinStockLevel.Value;
+
+                if (request.Quantity.HasValue)
+                    existingIngredient.Quantity = request.Quantity.Value;
+
+                if (!string.IsNullOrEmpty(request.MeasurementUnit))
+                    existingIngredient.MeasurementUnit = request.MeasurementUnit;
+
+                if (request.IngredientTypeID.HasValue && request.IngredientTypeID > 0)
+                    existingIngredient.IngredientTypeID = request.IngredientTypeID.Value;
 
                 await _ingredientService.UpdateIngredientAsync(id, existingIngredient);
 
-                // Add new price if it's different from current price
-                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-                if (currentPrice != request.Price)
+                // Add new price if it's provided and different from current price
+                if (request.Price.HasValue)
                 {
-                    await _ingredientService.AddPriceAsync(id, request.Price, DateTime.UtcNow);
+                    var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
+                    if (currentPrice != request.Price.Value)
+                    {
+                        await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow);
+                    }
                 }
 
                 var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
                 var ingredientDto = MapToIngredientDto(updatedIngredient);
-                ingredientDto.Price = request.Price;
+
+                // Set price in DTO if provided in request, otherwise get current price
+                if (request.Price.HasValue)
+                {
+                    ingredientDto.Price = request.Price.Value;
+                }
+                else
+                {
+                    try
+                    {
+                        ingredientDto.Price = await _ingredientService.GetCurrentPriceAsync(id);
+                    }
+                    catch (NotFoundException)
+                    {
+                        // No price found, leave as 0
+                    }
+                }
 
                 return Ok(new ApiResponse<IngredientDto>
                 {
@@ -369,7 +398,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
 
-        // Helper method to map Ingredient to IngredientDto
         private static IngredientDto MapToIngredientDto(Ingredient ingredient)
         {
             if (ingredient == null) return null;
@@ -382,9 +410,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURL = ingredient.ImageURL ?? string.Empty,
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
+                MeasurementUnit = ingredient.MeasurementUnit, 
                 IngredientTypeID = ingredient.IngredientTypeID,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
-                Price = 0, // This will be set by the caller
+                Price = 0, 
                 CreatedAt = ingredient.CreatedAt,
                 UpdatedAt = ingredient.UpdatedAt,
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel

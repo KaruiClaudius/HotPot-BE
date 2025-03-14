@@ -37,13 +37,12 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         [Required]
         public bool Status { get; set; }
 
-        [Range(0, int.MaxValue)]
-        public int Quantity { get; set; }
+        //[Range(0, int.MaxValue)]
+        //public int Quantity { get; set; }
 
-        [Required]
-        public int InventoryID { get; set; }
+        //[Required]
+        //public int InventoryID { get; set; }
 
-        // Optional array of series numbers for inventory items
         public string[] SeriesNumbers { get; set; }
     }
 

@@ -23,6 +23,8 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
 
         private readonly Dictionary<Type, object> reposotories = new Dictionary<Type, object>();
 
+        public DbContext Context => _context;
+
         public IGenericRepository<T> Repository<T>()
             where T : class
         {

@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.DTOs.Utensil;
-using Capstone.HPTY.ServiceLayer.Interfaces.UtensilService;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,7 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IEnumerable<UtensilTypeDto>>
                 {
                     Success = true,
-                    Message = "Utensil types retrieved successfully",
+                    Message = "Lấy danh sách loại dụng cụ thành công",
                     Data = typeDtos
                 });
             }
@@ -58,7 +58,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve utensil types"
+                    Message = "Lấy danh sách loại dụng cụ gặp trục trặc"
                 });
             }
         }
@@ -86,7 +86,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<UtensilTypeDto>
                     {
                         Success = true,
-                        Message = "Utensil type created successfully",
+                        Message = "Tạo loại dụng cụ thành công",
                         Data = typeDto
                     });
             }
@@ -105,7 +105,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to create utensil type"
+                    Message = "Tạo loại dụng cụ gặp trục trặc"
                 });
             }
         }
@@ -123,8 +123,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Utensil type deleted successfully",
-                    Data = $"Utensil type with ID {id} has been deleted"
+                    Message = "Xoá thành công",
+                    Data = $"Loại dụng cụ với ID {id} đã bị xoá"
                 });
             }
             catch (NotFoundException ex)
@@ -151,7 +151,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to delete utensil type"
+                    Message = "Xoá gặp trục trặc"
                 });
             }
         }
@@ -179,7 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<UtensilTypeDto>
                 {
                     Success = true,
-                    Message = "Utensil type retrieved successfully",
+                    Message = "Lấy loại dụng cụ thành công",
                     Data = typeDto
                 });
             }
@@ -198,7 +198,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve utensil type"
+                    Message = "Lấy loại dụng cụ gặp trục trặc"
                 });
             }
         }

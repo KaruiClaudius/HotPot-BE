@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.RepositoryLayer.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
 {
     public interface IUnitOfWork : IDisposable
     {
+        DbContext Context { get; }
         public IGenericRepository<T> Repository<T>()
           where T : class;
 
