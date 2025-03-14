@@ -25,7 +25,6 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
             _orderHistoryService = orderHistoryService;
             _logger = logger;
         }
-
         /// <summary>
         /// Get order history with optional filtering
         /// </summary>
