@@ -53,29 +53,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (pageSize < 1) pageSize = 10;
                 if (pageSize > 50) pageSize = 50;
 
-                // Parse status if provided
-                OrderStatus? orderStatus = null;
-                if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var parsedStatus))
-                {
-                    orderStatus = parsedStatus;
-                }
-
                 // Get paged orders
-                var query = _orderService.GetPagedAsync(pageNumber, pageSize);
+                var pagedResult = await _orderService.GetPagedAsync(pageNumber, pageSize);
 
-                // Apply filters to the query
-                var pagedResult = await query;
-
-                // Filter results manually (ideally this would be done at the database level)
+                // Apply filters
                 var filteredItems = pagedResult.Items.AsQueryable();
 
                 if (!string.IsNullOrEmpty(searchTerm))
                 {
                     filteredItems = filteredItems.Where(o =>
-                        o.Address.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        o.Notes.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        o.User.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        o.User.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+                        (o.Address != null && o.Address.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                        (o.Notes != null && o.Notes.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                        (o.User != null && o.User.Name != null && o.User.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                        (o.User != null && o.User.Email != null && o.User.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
                 }
 
                 if (userId.HasValue)
@@ -83,9 +73,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     filteredItems = filteredItems.Where(o => o.UserID == userId.Value);
                 }
 
-                if (orderStatus.HasValue)
+                if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
                 {
-                    filteredItems = filteredItems.Where(o => o.Status == orderStatus.Value);
+                    filteredItems = filteredItems.Where(o => o.Status == orderStatus);
                 }
 
                 if (fromDate.HasValue)
@@ -118,7 +108,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new PagedResult<OrderResponse>
                 {
                     Items = orderResponses,
-                    TotalCount = filteredList.Count, // This is not accurate for total DB count
+                    TotalCount = pagedResult.TotalCount, // Keep original total count
                     PageNumber = pageNumber,
                     PageSize = pageSize
                 });
@@ -236,13 +226,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                User = new UserInfo
+                User = order.User != null ? new UserInfo
                 {
                     UserId = order.User.UserId,
                     Name = order.User.Name,
                     PhoneNumber = order.User.PhoneNumber,
                     Email = order.User.Email
-                },
+                } : null,
                 Items = new List<OrderItemResponse>(),
                 Discount = null,
                 Payment = null

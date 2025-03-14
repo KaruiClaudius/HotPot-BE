@@ -119,7 +119,15 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var userIdClaim = User.FindFirstValue("uid");
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    _logger.LogError("User ID claim not found in token");
+                    return Unauthorized(new { message = "User ID not found in token" });
+                }
+
+                var userId = int.Parse(userIdClaim);
                 var order = await _orderService.CreateAsync(request, userId);
                 var orderResponse = MapOrderToResponse(order);
                 return CreatedAtAction(nameof(GetOrderById), new { id = order.OrderId }, orderResponse);
