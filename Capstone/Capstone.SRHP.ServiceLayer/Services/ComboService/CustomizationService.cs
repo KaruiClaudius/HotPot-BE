@@ -5,7 +5,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Azure.Core.HttpHeader;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 {
@@ -193,14 +193,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<Customization> CreateCustomizationAsync(
-        int comboId,
-        int userId,
-        string name,
-        string? note,
-        int size,
-        int brothId,
-        List<CustomizationIngredientDto> ingredients,
-        string[]? imageURLs = null)
+    int comboId,
+    int userId,
+    string name,
+    string? note,
+    int size,
+    int brothId,
+    List<CustomizationIngredientDto> ingredients,
+    string[]? imageURLs = null)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(name))
@@ -290,15 +290,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     if (ingredientDto.Quantity <= 0)
                         throw new ValidationException("Ingredient quantity must be greater than 0");
 
+                    // Validate measurement unit
+                    if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
+                        throw new ValidationException("Measurement unit cannot be empty");
+
                     // If this is a customizable combo, validate that the ingredient is allowed
                     if (combo.IsCustomizable)
                     {
                         // Check if ingredient type is allowed
-                        var isTypeAllowed = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .AnyAsync(ait => ait.ComboId == comboId && ait.IngredientTypeId == ingredient.IngredientTypeID && !ait.IsDelete);
+                        var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                            .FindAsync(ait => ait.ComboId == comboId &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                                                 !ait.IsDelete);
 
-                        if (!isTypeAllowed)
+                        if (allowedType == null)
                             throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+
+                        // Validate minimum quantity requirement
+                        // Convert quantities to the same unit for comparison
+                        decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
+                            ? ingredientDto.Quantity
+                            : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
+
+                        if (convertedQuantity < allowedType.MinQuantity)
+                            throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
                     }
 
                     // Add ingredient to customization
@@ -306,14 +321,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     {
                         CustomizationID = customization.CustomizationId,
                         IngredientID = ingredientDto.IngredientID,
-                        Quantity = ingredientDto.Quantity
+                        Quantity = ingredientDto.Quantity,
+                        MeasurementUnit = ingredientDto.MeasurementUnit
                     };
 
                     _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
 
-                    // Add to base price
+                    // Add to base price - convert to ingredient's unit for pricing if needed
                     var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
+
+                    if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
+                    {
+                        basePrice += ingredientPrice * ingredientDto.Quantity;
+                    }
+                    else
+                    {
+                        // Convert the quantity to the ingredient's unit for pricing
+                        try
+                        {
+                            var convertedQuantity = ConvertMeasurement(
+                                ingredientDto.Quantity,
+                                ingredientDto.MeasurementUnit,
+                                ingredient.MeasurementUnit);
+
+                            basePrice += ingredientPrice * convertedQuantity;
+                        }
+                        catch
+                        {
+                            // If conversion fails, use the original quantity as a fallback
+                            basePrice += ingredientPrice * ingredientDto.Quantity;
+                        }
+                    }
                 }
 
                 // Update base price
@@ -342,7 +380,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-       
+
 
         public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
         {
@@ -415,6 +453,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothID);
                 basePrice += brothPrice;
 
+                // Get the combo for validation
+                var combo = await _comboService.GetByIdAsync(entity.ComboID);
+
                 // Add ingredients
                 foreach (var ingredientDto in ingredients)
                 {
@@ -429,16 +470,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     if (ingredientDto.Quantity <= 0)
                         throw new ValidationException("Ingredient quantity must be greater than 0");
 
+                    // Validate measurement unit
+                    if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
+                        throw new ValidationException("Measurement unit cannot be empty");
+
                     // If this is a customizable combo, validate that the ingredient is allowed
-                    var combo = await _comboService.GetByIdAsync(entity.ComboID);
                     if (combo != null && combo.IsCustomizable)
                     {
                         // Check if ingredient type is allowed
-                        var isTypeAllowed = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .AnyAsync(ait => ait.ComboId == entity.ComboID && ait.IngredientTypeId == ingredient.IngredientTypeID && !ait.IsDelete);
+                        var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                            .FindAsync(ait => ait.ComboId == entity.ComboID &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                                                 !ait.IsDelete);
 
-                        if (!isTypeAllowed)
+                        if (allowedType == null)
                             throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+
+                        // Validate minimum quantity requirement
+                        // Convert quantities to the same unit for comparison
+                        decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
+                            ? ingredientDto.Quantity
+                            : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
+
+                        if (convertedQuantity < allowedType.MinQuantity)
+                            throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
                     }
 
                     // Add ingredient to customization
@@ -446,14 +501,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     {
                         CustomizationID = id,
                         IngredientID = ingredientDto.IngredientID,
-                        Quantity = ingredientDto.Quantity
+                        Quantity = ingredientDto.Quantity,
+                        MeasurementUnit = ingredientDto.MeasurementUnit
                     };
 
                     _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
 
-                    // Add to base price
+                    // Add to base price - convert to ingredient's unit for pricing if needed
                     var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
+
+                    if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
+                    {
+                        basePrice += ingredientPrice * ingredientDto.Quantity;
+                    }
+                    else
+                    {
+                        // Convert the quantity to the ingredient's unit for pricing
+                        try
+                        {
+                            var convertedQuantity = ConvertMeasurement(
+                                ingredientDto.Quantity,
+                                ingredientDto.MeasurementUnit,
+                                ingredient.MeasurementUnit);
+
+                            basePrice += ingredientPrice * convertedQuantity;
+                        }
+                        catch
+                        {
+                            // If conversion fails, use the original quantity as a fallback
+                            basePrice += ingredientPrice * ingredientDto.Quantity;
+                        }
+                    }
                 }
 
                 // Update base price
@@ -524,10 +602,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
         public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
-    int comboId,
-    int size,
-    int brothId,
-    List<CustomizationIngredientDto> ingredients)
+     int comboId,
+     int size,
+     int brothId,
+     List<CustomizationIngredientDto> ingredients)
         {
             try
             {
@@ -567,20 +645,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     if (ingredientDto.Quantity <= 0)
                         throw new ValidationException("Ingredient quantity must be greater than 0");
 
+                    // Validate measurement unit
+                    if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
+                        throw new ValidationException("Measurement unit cannot be empty");
+
                     // If this is a customizable combo, validate that the ingredient is allowed
                     if (combo.IsCustomizable)
                     {
                         // Check if ingredient type is allowed
-                        var isTypeAllowed = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .AnyAsync(ait => ait.ComboId == comboId && ait.IngredientTypeId == ingredient.IngredientTypeID && !ait.IsDelete);
+                        var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                            .FindAsync(ait => ait.ComboId == comboId &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                                                 !ait.IsDelete);
 
-                        if (!isTypeAllowed)
+                        if (allowedType == null)
                             throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+
+                        // Validate minimum quantity requirement
+                        // Convert quantities to the same unit for comparison
+                        decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
+                            ? ingredientDto.Quantity
+                            : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
+
+                        if (convertedQuantity < allowedType.MinQuantity)
+                            throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
                     }
 
-                    // Add to base price
+                    // Add to base price - convert to ingredient's unit for pricing if needed
                     var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
+
+                    if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
+                    {
+                        basePrice += ingredientPrice * ingredientDto.Quantity;
+                    }
+                    else
+                    {
+                        // Convert the quantity to the ingredient's unit for pricing
+                        try
+                        {
+                            var convertedQuantity = ConvertMeasurement(
+                                ingredientDto.Quantity,
+                                ingredientDto.MeasurementUnit,
+                                ingredient.MeasurementUnit);
+
+                            basePrice += ingredientPrice * convertedQuantity;
+                        }
+                        catch
+                        {
+                            // If conversion fails, use the original quantity as a fallback
+                            basePrice += ingredientPrice * ingredientDto.Quantity;
+                        }
+                    }
                 }
 
                 // Get applicable discount
@@ -606,7 +721,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
 
-      
+
         private async Task ValidateHotpotBroth(int brothId)
         {
             var broth = await _unitOfWork.Repository<Ingredient>()
@@ -637,5 +752,119 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             throw new NotImplementedException();
         }
+
+        #region Measurement Unit Helpers
+
+        // Helper method to standardize measurement unit format
+        private string StandardizeMeasurementUnit(string unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit))
+                return "g"; // Default to grams for ingredients
+
+            unit = unit.Trim().ToLower();
+
+            // Map various forms to standard abbreviations
+            return unit switch
+            {
+                "gram" or "grams" => "g",
+                "kilogram" or "kilograms" => "kg",
+                "milliliter" or "milliliters" => "ml",
+                "liter" or "liters" => "l",
+                "piece" or "pieces" => "pcs",
+                "teaspoon" or "teaspoons" => "tsp",
+                "tablespoon" or "tablespoons" => "tbsp",
+                "cup" or "cups" => "cup",
+                "ounce" or "ounces" => "oz",
+                "pound" or "pounds" => "lb",
+                _ => unit // Keep as is if it's already standardized
+            };
+        }
+
+        // Helper method to convert between measurement units
+        private decimal ConvertMeasurement(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Standardize units
+            fromUnit = StandardizeMeasurementUnit(fromUnit);
+            toUnit = StandardizeMeasurementUnit(toUnit);
+
+            // If units are the same, no conversion needed
+            if (fromUnit == toUnit)
+                return quantity;
+
+            // Weight conversions
+            if (IsWeightUnit(fromUnit) && IsWeightUnit(toUnit))
+            {
+                return ConvertWeight(quantity, fromUnit, toUnit);
+            }
+
+            // Volume conversions
+            if (IsVolumeUnit(fromUnit) && IsVolumeUnit(toUnit))
+            {
+                return ConvertVolume(quantity, fromUnit, toUnit);
+            }
+
+            // Cannot convert between different types (weight to volume, etc.)
+            throw new InvalidOperationException($"Cannot convert from {fromUnit} to {toUnit}");
+        }
+
+        private bool IsWeightUnit(string unit)
+        {
+            return unit is "g" or "kg" or "oz" or "lb";
+        }
+
+        private bool IsVolumeUnit(string unit)
+        {
+            return unit is "ml" or "l" or "tsp" or "tbsp" or "cup";
+        }
+
+        private decimal ConvertWeight(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to grams first
+            decimal grams = fromUnit switch
+            {
+                "g" => quantity,
+                "kg" => quantity * 1000,
+                "oz" => quantity * 28.35m,
+                "lb" => quantity * 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {fromUnit}")
+            };
+
+            // Convert from grams to target unit
+            return toUnit switch
+            {
+                "g" => grams,
+                "kg" => grams / 1000,
+                "oz" => grams / 28.35m,
+                "lb" => grams / 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {toUnit}")
+            };
+        }
+
+        private decimal ConvertVolume(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to milliliters first
+            decimal ml = fromUnit switch
+            {
+                "ml" => quantity,
+                "l" => quantity * 1000,
+                "tsp" => quantity * 4.929m,
+                "tbsp" => quantity * 14.787m,
+                "cup" => quantity * 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {fromUnit}")
+            };
+
+            // Convert from milliliters to target unit
+            return toUnit switch
+            {
+                "ml" => ml,
+                "l" => ml / 1000,
+                "tsp" => ml / 4.929m,
+                "tbsp" => ml / 14.787m,
+                "cup" => ml / 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {toUnit}")
+            };
+        }
+
+        #endregion
     }
 }

@@ -7,13 +7,17 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
-    public class CreateComboIngredientRequest
+    public class TutorialVideoRequest
     {
         [Required]
-        public int IngredientID { get; set; }
+        [StringLength(100)]
+        public string Name { get; set; }
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue)]
-        public int Quantity { get; set; }
+        [StringLength(2000)]
+        public string VideoURL { get; set; }
     }
 }

@@ -3,7 +3,6 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -180,10 +179,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
         public async Task<Combo> CreateComboWithVideoAsync(
-            Combo combo,
-            TurtorialVideo video,
-            List<ComboIngredient> baseIngredients = null,
-            List<ComboAllowedIngredientType> allowedTypes = null)
+    Combo combo,
+    TurtorialVideo video,
+    List<ComboIngredient> baseIngredients = null,
+    List<ComboAllowedIngredientType> allowedTypes = null)
         {
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
@@ -264,6 +263,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         if (!ingredientExists)
                             throw new ValidationException($"Ingredient with ID {ingredient.IngredientID} not found");
 
+                        // Validate measurement unit
+                        if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
+                            throw new ValidationException("Measurement unit cannot be empty");
+
+                        // Get the ingredient to check its measurement unit
+                        var ingredientEntity = await _unitOfWork.Repository<Ingredient>()
+                            .FindAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
+
+                        // Standardize measurement unit
+                        ingredient.MeasurementUnit = StandardizeMeasurementUnit(ingredient.MeasurementUnit);
+
+                        // If units don't match, try to convert
+                        if (ingredientEntity != null && ingredient.MeasurementUnit != ingredientEntity.MeasurementUnit)
+                        {
+                            try
+                            {
+                                // Convert quantity to match the ingredient's unit
+                                ingredient.Quantity = ConvertMeasurement(
+                                    ingredient.Quantity,
+                                    ingredient.MeasurementUnit,
+                                    ingredientEntity.MeasurementUnit);
+
+                                // Update the unit to match
+                                ingredient.MeasurementUnit = ingredientEntity.MeasurementUnit;
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new ValidationException($"Error converting units: {ex.Message}");
+                            }
+                        }
+
                         ingredient.ComboID = combo.ComboId;
                         _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
                     }
@@ -282,8 +312,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         if (!typeExists)
                             throw new ValidationException($"Ingredient type with ID {allowedType.IngredientTypeId} not found");
 
-                        if (allowedType.MaxQuantity <= 0)
-                            throw new ValidationException($"Max quantity for ingredient type must be greater than 0");
+                        if (allowedType.MinQuantity <= 0)
+                            throw new ValidationException($"Min quantity for ingredient type must be greater than 0");
+
+                        // Validate measurement unit
+                        if (string.IsNullOrWhiteSpace(allowedType.MeasurementUnit))
+                            throw new ValidationException("Measurement unit cannot be empty");
+
+                        // Standardize measurement unit
+                        allowedType.MeasurementUnit = StandardizeMeasurementUnit(allowedType.MeasurementUnit);
 
                         allowedType.ComboId = combo.ComboId;
                         _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
@@ -581,21 +618,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 var broth = await _unitOfWork.Repository<Ingredient>()
                     .FindAsync(i => i.IngredientId == combo.HotpotBrothID && !i.IsDelete);
 
-                var IngredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothID);
+                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothID);
 
                 if (broth != null)
                 {
-                    basePrice += IngredientPrice;
+                    basePrice += ingredientPrice;
                 }
             }
 
             // Add prices of all ingredients
             foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
             {
-                var IngredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.ComboIngredientId);
+                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientID);
                 if (comboIngredient.Ingredient != null)
                 {
-                    basePrice += IngredientPrice * comboIngredient.Quantity;
+                    // Get the ingredient's standard unit price
+                    var ingredient = comboIngredient.Ingredient;
+
+                    // If the units match, use the quantity directly
+                    if (comboIngredient.MeasurementUnit == ingredient.MeasurementUnit)
+                    {
+                        basePrice += ingredientPrice * comboIngredient.Quantity;
+                    }
+                    else
+                    {
+                        // Convert the quantity to the ingredient's unit for pricing
+                        try
+                        {
+                            var convertedQuantity = ConvertMeasurement(
+                                comboIngredient.Quantity,
+                                comboIngredient.MeasurementUnit,
+                                ingredient.MeasurementUnit);
+
+                            basePrice += ingredientPrice * convertedQuantity;
+                        }
+                        catch
+                        {
+                            // If conversion fails, use the original quantity as a fallback
+                            basePrice += ingredientPrice * comboIngredient.Quantity;
+                        }
+                    }
                 }
             }
 
@@ -634,5 +696,119 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             throw new NotImplementedException();
         }
+
+        #region Measurement Unit Helpers
+
+        // Helper method to standardize measurement unit format
+        private string StandardizeMeasurementUnit(string unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit))
+                return "g"; // Default to grams for ingredients
+
+            unit = unit.Trim().ToLower();
+
+            // Map various forms to standard abbreviations
+            return unit switch
+            {
+                "gram" or "grams" => "g",
+                "kilogram" or "kilograms" => "kg",
+                "milliliter" or "milliliters" => "ml",
+                "liter" or "liters" => "l",
+                "piece" or "pieces" => "pcs",
+                "teaspoon" or "teaspoons" => "tsp",
+                "tablespoon" or "tablespoons" => "tbsp",
+                "cup" or "cups" => "cup",
+                "ounce" or "ounces" => "oz",
+                "pound" or "pounds" => "lb",
+                _ => unit // Keep as is if it's already standardized
+            };
+        }
+
+        // Helper method to convert between measurement units
+        private decimal ConvertMeasurement(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Standardize units
+            fromUnit = StandardizeMeasurementUnit(fromUnit);
+            toUnit = StandardizeMeasurementUnit(toUnit);
+
+            // If units are the same, no conversion needed
+            if (fromUnit == toUnit)
+                return quantity;
+
+            // Weight conversions
+            if (IsWeightUnit(fromUnit) && IsWeightUnit(toUnit))
+            {
+                return ConvertWeight(quantity, fromUnit, toUnit);
+            }
+
+            // Volume conversions
+            if (IsVolumeUnit(fromUnit) && IsVolumeUnit(toUnit))
+            {
+                return ConvertVolume(quantity, fromUnit, toUnit);
+            }
+
+            // Cannot convert between different types (weight to volume, etc.)
+            throw new InvalidOperationException($"Cannot convert from {fromUnit} to {toUnit}");
+        }
+
+        private bool IsWeightUnit(string unit)
+        {
+            return unit is "g" or "kg" or "oz" or "lb";
+        }
+
+        private bool IsVolumeUnit(string unit)
+        {
+            return unit is "ml" or "l" or "tsp" or "tbsp" or "cup";
+        }
+
+        private decimal ConvertWeight(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to grams first
+            decimal grams = fromUnit switch
+            {
+                "g" => quantity,
+                "kg" => quantity * 1000,
+                "oz" => quantity * 28.35m,
+                "lb" => quantity * 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {fromUnit}")
+            };
+
+            // Convert from grams to target unit
+            return toUnit switch
+            {
+                "g" => grams,
+                "kg" => grams / 1000,
+                "oz" => grams / 28.35m,
+                "lb" => grams / 453.592m,
+                _ => throw new ArgumentException($"Unsupported weight unit: {toUnit}")
+            };
+        }
+
+        private decimal ConvertVolume(decimal quantity, string fromUnit, string toUnit)
+        {
+            // Convert to milliliters first
+            decimal ml = fromUnit switch
+            {
+                "ml" => quantity,
+                "l" => quantity * 1000,
+                "tsp" => quantity * 4.929m,
+                "tbsp" => quantity * 14.787m,
+                "cup" => quantity * 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {fromUnit}")
+            };
+
+            // Convert from milliliters to target unit
+            return toUnit switch
+            {
+                "ml" => ml,
+                "l" => ml / 1000,
+                "tsp" => ml / 4.929m,
+                "tbsp" => ml / 14.787m,
+                "cup" => ml / 236.588m,
+                _ => throw new ArgumentException($"Unsupported volume unit: {toUnit}")
+            };
+        }
+
+        #endregion
     }
 }

@@ -7,13 +7,17 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
-    public class CreateComboAllowedIngredientTypeRequest
+    public class ComboAllowedIngredientTypeRequest
     {
         [Required]
         public int IngredientTypeId { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue)]
-        public int MaxQuantity { get; set; }
+        [Range(0.001, double.MaxValue)]
+        public decimal MinQuantity { get; set; } 
+
+        [Required]
+        [StringLength(20)]
+        public string MeasurementUnit { get; set; }
     }
 }

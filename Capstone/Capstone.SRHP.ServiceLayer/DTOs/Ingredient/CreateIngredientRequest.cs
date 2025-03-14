@@ -7,34 +7,38 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 {
-    public class IngredientRequest
+    public class CreateIngredientRequest
     {
         [Required]
-        [StringLength(100, MinimumLength = 2)]
+        [StringLength(100)]
         public string Name { get; set; }
 
         [StringLength(1000)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [StringLength(2000)]
-        public string ImageURL { get; set; }
+        public string? ImageURL { get; set; }
 
         [Required]
-        [Range(0, int.MaxValue)]
-        public int MinStockLevel { get; set; }
+        [Range(0, double.MaxValue)]
+        public decimal Quantity { get; set; }
 
         [Required]
-        [Range(0, int.MaxValue)]
-        public int Quantity { get; set; }
+        [StringLength(20)]
+        public string MeasurementUnit { get; set; }
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal MinStockLevel { get; set; }
 
         [Required]
         public int IngredientTypeID { get; set; }
 
-        // Optional: If creating a new type on-the-fly
-        public string NewTypeName { get; set; }
+        public string? NewTypeName { get; set; }
 
         [Required]
-        [Range(0, double.MaxValue)]
+        [Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }
     }
+
 }

@@ -13,8 +13,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [StringLength(100)]
         public string Name { get; set; }
 
-        [StringLength(500)]
-        public string Description { get; set; }
+        [StringLength(1000)]
+        public string? Description { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]
@@ -23,8 +23,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [Required]
         public int HotpotBrothID { get; set; }
 
-        public string[] ImageURLs { get; set; }
+        public string[]? ImageURLs { get; set; }
 
         public int? TurtorialVideoID { get; set; }
+
     }
 }

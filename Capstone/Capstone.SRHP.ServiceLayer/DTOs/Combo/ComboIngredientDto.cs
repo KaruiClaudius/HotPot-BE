@@ -11,6 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public int ComboIngredientId { get; set; }
         public int IngredientID { get; set; }
         public string IngredientName { get; set; }
-        public int Quantity { get; set; }
+        public decimal Quantity { get; set; }
+        public string MeasurementUnit { get; set; }
     }
 }

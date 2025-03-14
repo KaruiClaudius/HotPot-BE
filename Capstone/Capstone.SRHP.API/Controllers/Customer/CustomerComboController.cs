@@ -3,7 +3,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Combo.customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,16 +28,16 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
             [HttpGet]
             public async Task<ActionResult<PagedResult<CustomerComboDto>>> GetCombos(
-        [FromQuery] string searchTerm = null,
-        [FromQuery] bool? isCustomizable = null,
-        [FromQuery] int? minSize = null,
-        [FromQuery] int? maxSize = null,
-        [FromQuery] decimal? minPrice = null,
-        [FromQuery] decimal? maxPrice = null,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string sortBy = "Name",
-        [FromQuery] bool ascending = true)
+                [FromQuery] string searchTerm = null,
+                [FromQuery] bool? isCustomizable = null,
+                [FromQuery] int? minSize = null,
+                [FromQuery] int? maxSize = null,
+                [FromQuery] decimal? minPrice = null,
+                [FromQuery] decimal? maxPrice = null,
+                [FromQuery] int pageNumber = 1,
+                [FromQuery] int pageSize = 10,
+                [FromQuery] string sortBy = "Name",
+                [FromQuery] bool ascending = true)
             {
                 try
                 {
@@ -65,7 +64,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
             }
 
-
             [HttpGet("{id}")]
             public async Task<ActionResult<CustomerComboDetailDto>> GetComboById(int id)
             {
@@ -84,7 +82,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     return StatusCode(500, new { message = ex.Message });
                 }
             }
-
 
             [HttpGet("price/{comboId}/{size}")]
             public async Task<ActionResult<ComboSizePriceDto>> GetComboPrice(int comboId, int size)
@@ -181,13 +178,15 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     {
                         IngredientID = ci.IngredientID,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                        Quantity = ci.Quantity
+                        Quantity = ci.Quantity,
+                        MeasurementUnit = ci.MeasurementUnit // Added measurement unit
                     }).ToList() ?? new List<CustomerComboIngredientDto>(),
                     AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Where(ait => !ait.IsDelete).Select(ait => new CustomerAllowedIngredientTypeDto
                     {
                         IngredientTypeId = ait.IngredientTypeId,
                         IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                        MaxQuantity = ait.MaxQuantity
+                        MinQuantity = ait.MinQuantity, // Changed from MaxQuantity to MinQuantity
+                        MeasurementUnit = ait.MeasurementUnit // Added measurement unit
                     }).ToList() : null
                 };
             }

@@ -179,7 +179,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
             modelBuilder.Entity<ComboAllowedIngredientType>()
                 .HasOne(c => c.IngredientType)
-                .WithMany()  
+                .WithMany()
                 .HasForeignKey(c => c.IngredientTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -766,7 +766,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
             // Seed Ingredients
             modelBuilder.Entity<Ingredient>().HasData(
-                // Meats
+                // Meats - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 1,
@@ -775,7 +775,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sliced-beef.jpg",
                     MinStockLevel = 20,
                     Quantity = 100,
-                    IngredientTypeID = 1,
+                    MeasurementUnit = "g",
+                    IngredientTypeID = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -787,7 +788,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/lamb-slices.jpg",
                     MinStockLevel = 15,
                     Quantity = 80,
-                    IngredientTypeID = 1,
+                    MeasurementUnit = "g",
+                    IngredientTypeID = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -799,12 +801,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/pork-belly.jpg",
                     MinStockLevel = 15,
                     Quantity = 75,
-                    IngredientTypeID = 1,
+                    MeasurementUnit = "g",
+                    IngredientTypeID = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Seafood
+                // Seafood - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 4,
@@ -813,6 +816,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shrimp.jpg",
                     MinStockLevel = 20,
                     Quantity = 90,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -825,6 +829,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/fish-balls.jpg",
                     MinStockLevel = 30,
                     Quantity = 120,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -837,12 +842,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/squid.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Vegetables
+                // Vegetables - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 7,
@@ -851,6 +857,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/napa-cabbage.jpg",
                     MinStockLevel = 25,
                     Quantity = 100,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -863,6 +870,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/spinach.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -875,12 +883,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/corn.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Noodles
+                // Noodles - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 10,
@@ -889,6 +898,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/udon-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -901,6 +911,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/glass-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 85,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -913,12 +924,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/ramen-noodles.jpg",
                     MinStockLevel = 25,
                     Quantity = 90,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Tofu
+                // Tofu - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 13,
@@ -927,6 +939,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/firm-tofu.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -939,12 +952,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/tofu-puffs.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Mushrooms
+                // Mushrooms - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 15,
@@ -953,6 +967,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shiitake.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -965,12 +980,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/enoki.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
+                    MeasurementUnit = "g",
                     IngredientTypeID = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Broths
+                // Broths - using milliliters (ml)
                 new Ingredient
                 {
                     IngredientId = 17,
@@ -979,7 +995,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sichuan-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
-                    IngredientTypeID = 7,
+                    MeasurementUnit = "ml",
+                    IngredientTypeID = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -991,7 +1008,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/tomato-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
-                    IngredientTypeID = 7,
+                    MeasurementUnit = "ml",
+                    IngredientTypeID = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1003,7 +1021,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/mushroom-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
-                    IngredientTypeID = 7,
+                    MeasurementUnit = "ml",
+                    IngredientTypeID = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1015,12 +1034,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/bone-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 55,
-                    IngredientTypeID = 7,
+                    MeasurementUnit = "ml",
+                    IngredientTypeID = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Sauces
+                // Sauces - using milliliters (ml)
                 new Ingredient
                 {
                     IngredientId = 21,
@@ -1029,6 +1049,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sesame-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
+                    MeasurementUnit = "ml",
                     IngredientTypeID = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1041,6 +1062,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/garlic-soy.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
+                    MeasurementUnit = "ml",
                     IngredientTypeID = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1053,6 +1075,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/chili-oil.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
+                    MeasurementUnit = "ml",
                     IngredientTypeID = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1065,19 +1088,18 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shacha-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 35,
+                    MeasurementUnit = "ml",
                     IngredientTypeID = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }
             );
 
-            // Seed IngredientPrices
             modelBuilder.Entity<IngredientPrice>().HasData(
-                // Meat prices
                 new IngredientPrice
                 {
                     IngredientPriceId = 1,
-                    Price = 12.99m,
+                    Price = 0.13m, // $13 per kg = $0.13 per g
                     EffectiveDate = DateTime.Now.AddDays(-30),
                     IngredientID = 1,
                     CreatedAt = DateTime.Now.AddDays(-30),
@@ -1086,7 +1108,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 2,
-                    Price = 13.99m,
+                    Price = 0.14m, // $14 per kg = $0.14 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 1,
                     CreatedAt = DateTime.Now,
@@ -1095,7 +1117,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 3,
-                    Price = 14.99m,
+                    Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.Now.AddDays(-30),
                     IngredientID = 2,
                     CreatedAt = DateTime.Now.AddDays(-30),
@@ -1104,7 +1126,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 4,
-                    Price = 15.99m,
+                    Price = 0.16m, // $16 per kg = $0.16 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 2,
                     CreatedAt = DateTime.Now,
@@ -1113,18 +1135,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 5,
-                    Price = 11.99m,
+                    Price = 0.12m, // $12 per kg = $0.12 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Seafood prices
+                // Seafood prices (per gram)
                 new IngredientPrice
                 {
                     IngredientPriceId = 6,
-                    Price = 16.99m,
+                    Price = 0.17m, // $17 per kg = $0.17 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 4,
                     CreatedAt = DateTime.Now,
@@ -1133,7 +1155,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 7,
-                    Price = 9.99m,
+                    Price = 0.10m, // $10 per kg = $0.10 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 5,
                     CreatedAt = DateTime.Now,
@@ -1142,18 +1164,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 8,
-                    Price = 14.99m,
+                    Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Vegetable prices
+                // Vegetable prices (per gram)
                 new IngredientPrice
                 {
                     IngredientPriceId = 9,
-                    Price = 5.99m,
+                    Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 7,
                     CreatedAt = DateTime.Now,
@@ -1162,7 +1184,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 10,
-                    Price = 4.99m,
+                    Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 8,
                     CreatedAt = DateTime.Now,
@@ -1171,18 +1193,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 11,
-                    Price = 3.99m,
+                    Price = 0.04m, // $4 per kg = $0.04 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 9,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Noodle prices
+                // Noodle prices (per gram)
                 new IngredientPrice
                 {
                     IngredientPriceId = 12,
-                    Price = 6.99m,
+                    Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 10,
                     CreatedAt = DateTime.Now,
@@ -1191,7 +1213,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 13,
-                    Price = 5.99m,
+                    Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 11,
                     CreatedAt = DateTime.Now,
@@ -1200,18 +1222,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 14,
-                    Price = 6.49m,
+                    Price = 0.065m, // $6.50 per kg = $0.065 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 12,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Tofu prices
+                // Tofu prices (per gram)
                 new IngredientPrice
                 {
                     IngredientPriceId = 15,
-                    Price = 4.99m,
+                    Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 13,
                     CreatedAt = DateTime.Now,
@@ -1220,18 +1242,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 16,
-                    Price = 5.49m,
+                    Price = 0.055m, // $5.50 per kg = $0.055 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 14,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Mushroom prices
+                // Mushroom prices (per gram)
                 new IngredientPrice
                 {
                     IngredientPriceId = 17,
-                    Price = 7.99m,
+                    Price = 0.08m, // $8 per kg = $0.08 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 15,
                     CreatedAt = DateTime.Now,
@@ -1240,18 +1262,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 18,
-                    Price = 6.99m,
+                    Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.Now,
                     IngredientID = 16,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Broth prices
+                // Broth prices (per milliliter)
                 new IngredientPrice
                 {
                     IngredientPriceId = 19,
-                    Price = 8.99m,
+                    Price = 0.009m, // $9 per liter = $0.009 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 17,
                     CreatedAt = DateTime.Now,
@@ -1260,7 +1282,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 20,
-                    Price = 7.99m,
+                    Price = 0.008m, // $8 per liter = $0.008 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 18,
                     CreatedAt = DateTime.Now,
@@ -1269,7 +1291,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 21,
-                    Price = 8.49m,
+                    Price = 0.0085m, // $8.50 per liter = $0.0085 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 19,
                     CreatedAt = DateTime.Now,
@@ -1278,18 +1300,18 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 22,
-                    Price = 7.49m,
+                    Price = 0.0075m, // $7.50 per liter = $0.0075 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 20,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
 
-                // Sauce prices
+                // Sauce prices (per milliliter)
                 new IngredientPrice
                 {
                     IngredientPriceId = 23,
-                    Price = 4.99m,
+                    Price = 0.005m, // $5 per liter = $0.005 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 21,
                     CreatedAt = DateTime.Now,
@@ -1298,7 +1320,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 24,
-                    Price = 3.99m,
+                    Price = 0.004m, // $4 per liter = $0.004 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 22,
                     CreatedAt = DateTime.Now,
@@ -1307,7 +1329,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 25,
-                    Price = 4.49m,
+                    Price = 0.0045m, // $4.50 per liter = $0.0045 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 23,
                     CreatedAt = DateTime.Now,
@@ -1316,14 +1338,13 @@ namespace Capstone.HPTY.RepositoryLayer
                 new IngredientPrice
                 {
                     IngredientPriceId = 26,
-                    Price = 5.99m,
+                    Price = 0.006m, // $6 per liter = $0.006 per ml
                     EffectiveDate = DateTime.Now,
                     IngredientID = 24,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }
             );
-
         }
     }
 }

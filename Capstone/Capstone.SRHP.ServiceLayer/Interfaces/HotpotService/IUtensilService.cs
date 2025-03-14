@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.UtensilService
+namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
 {
     public interface IUtensilService
     {
