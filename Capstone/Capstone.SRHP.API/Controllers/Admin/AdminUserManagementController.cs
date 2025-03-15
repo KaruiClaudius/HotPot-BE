@@ -129,7 +129,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     Name = request.Name,
                     PhoneNumber = request.PhoneNumber,
-                    RoleID = role.RoleId,
+                    RoleId = role.RoleId,
                     Address = request.Address
                 };
 
@@ -180,7 +180,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingUser.Name = request.Name;
                 existingUser.PhoneNumber = request.PhoneNumber;
                 existingUser.Address = request.Address;
-                existingUser.RoleID = role.RoleId;
+                existingUser.RoleId = role.RoleId;
                 existingUser.ImageURL = request.ImageURL;
 
                 await _userService.UpdateAsync(id, existingUser);

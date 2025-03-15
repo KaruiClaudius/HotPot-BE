@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int CustomerId { get; set; }
         [Required]
         [ForeignKey("User")]
-        public int UserID { get; set; }
+        public int UserId { get; set; }
 
         [Required]
         [Range(0, double.MaxValue)]

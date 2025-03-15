@@ -176,7 +176,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Price = request.Price,
                     Status = request.Status,
                     Quantity = request.Quantity,
-                    UtensilTypeID = request.UtensilTypeID
+                    UtensilTypeId = request.UtensilTypeID
                 };
 
                 var createdUtensil = await _utensilService.CreateUtensilAsync(utensil);
@@ -264,7 +264,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.Price.HasValue) existingUtensil.Price = request.Price.Value;
                 if (request.Status.HasValue) existingUtensil.Status = request.Status.Value;
                 if (request.Quantity.HasValue) existingUtensil.Quantity = request.Quantity.Value;
-                if (request.UtensilTypeID.HasValue) existingUtensil.UtensilTypeID = request.UtensilTypeID.Value;
+                if (request.UtensilTypeID.HasValue) existingUtensil.UtensilTypeId = request.UtensilTypeID.Value;
 
                 await _utensilService.UpdateUtensilAsync(id, existingUtensil);
                 var updatedUtensil = await _utensilService.GetUtensilByIdAsync(id);
@@ -440,7 +440,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = utensil.Price,
                 Status = utensil.Status,
                 Quantity = utensil.Quantity,
-                UtensilTypeId = utensil.UtensilTypeID,
+                UtensilTypeId = utensil.UtensilTypeId,
                 UtensilTypeName = utensil.UtensilType?.Name ?? "Unknown",
                 LastMaintainDate = utensil.LastMaintainDate,
                 IsAvailable = utensil.Status && utensil.Quantity > 0,

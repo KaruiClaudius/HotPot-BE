@@ -26,7 +26,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("Ingredient")]
-        public int IngredientID { get; set; }
+        public int IngredientId { get; set; }
 
         public virtual Ingredient? Ingredient { get; set; }
     }

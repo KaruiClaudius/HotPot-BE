@@ -139,7 +139,7 @@ public class CustomerChatController : ControllerBase
             // Notify both parties that the chat has ended
             if (session.Customer != null)
             {
-                await _chatHubContext.Clients.User(session.Customer.UserID.ToString()).SendAsync("ChatEnded", sessionId);
+                await _chatHubContext.Clients.User(session.Customer.UserId.ToString()).SendAsync("ChatEnded", sessionId);
             }
 
             if (session.Manager != null && session.ManagerId.HasValue)

@@ -11,14 +11,14 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
     public interface IEquipmentConditionService
     {
-        Task<ConditionLog> LogEquipmentConditionAsync(ConditionLog conditionLog);
-        Task<ConditionLog> GetConditionLogByIdAsync(int conditionLogId);
-        Task<IEnumerable<ConditionLog>> GetConditionLogsByEquipmentAsync(string equipmentType, int equipmentId);
-        Task<IEnumerable<ConditionLog>> GetConditionLogsByStatusAsync(MaintenanceStatus status);
-        Task<IEnumerable<ConditionLog>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
-        Task<IEnumerable<ConditionLog>> GetConditionLogsByDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<DamageDevice> LogEquipmentConditionAsync(DamageDevice conditionLog);
+        Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId);
+        Task<IEnumerable<DamageDevice>> GetConditionLogsByEquipmentAsync(string equipmentType, int equipmentId);
+        Task<IEnumerable<DamageDevice>> GetConditionLogsByStatusAsync(MaintenanceStatus status);
+        Task<IEnumerable<DamageDevice>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
+        Task<IEnumerable<DamageDevice>> GetConditionLogsByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<bool> UpdateConditionStatusAsync(int conditionLogId, MaintenanceStatus status);
-        Task<IEnumerable<ConditionLog>> GetRecentConditionLogsAsync(int count = 10);
+        Task<IEnumerable<DamageDevice>> GetRecentConditionLogsAsync(int count = 10);
     }
     
 }

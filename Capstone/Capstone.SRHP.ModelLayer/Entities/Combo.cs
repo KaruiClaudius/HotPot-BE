@@ -71,14 +71,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public bool IsCustomizable { get; set; } = false;
 
         [ForeignKey("HotpotBroth")]
-        public int HotpotBrothID { get; set; }
+        public int HotpotBrothId { get; set; }
 
         [ForeignKey("AppliedDiscount")]
-        public int? AppliedDiscountID { get; set; }
+        public int? AppliedDiscountId { get; set; }
 
         [Required]
         [ForeignKey("TurtorialVideo")]
-        public int TurtorialVideoID { get; set; }
+        public int TurtorialVideoId { get; set; }
 
         public virtual TurtorialVideo? TurtorialVideo { get; set; }
         public virtual Ingredient? HotpotBroth { get; set; }

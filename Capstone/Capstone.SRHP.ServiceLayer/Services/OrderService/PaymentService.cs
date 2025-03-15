@@ -37,7 +37,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var orders = await _unitOfWork.Repository<Payment>()
                                               .AsQueryable()
                                               .AsNoTracking()
-                                              .Where(u => u.UserID == userId)
+                                              .Where(u => u.UserId == userId)
                                               .Include(u => u.User)
                                               .ToListAsync();
                 return new Response(0, "Ok", orders);
@@ -109,8 +109,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     PaymentId = transactionId,
                     TransactionCode = orderCode,
-                    UserID = user.UserId,
-                    OrderID = postId,
+                    UserId = user.UserId,
+                    OrderId = postId,
                     Price = body.price,
                     Type = PaymentType.Online,
                     Status = PaymentStatus.Pending
@@ -320,8 +320,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var payment = new Payment
                 {
                     TransactionCode = transactionCode,
-                    UserID = userId,
-                    OrderID = orderId,
+                    UserId = userId,
+                    OrderId = orderId,
                     Price = amount,
                     Type = PaymentType.Cash,
                     Status = PaymentStatus.Pending
@@ -369,7 +369,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             try
             {
                 return await _unitOfWork.Repository<Payment>()
-                    .FindAll(p => p.UserID == userId)
+                    .FindAll(p => p.UserId == userId)
                     .Include(p => p.Order)
                     .ToListAsync();
             }
@@ -399,7 +399,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             try
             {
                 return await _unitOfWork.Repository<Payment>()
-                    .FindAsync(p => p.OrderID == orderId);
+                    .FindAsync(p => p.OrderId == orderId);
             }
             catch (Exception ex)
             {

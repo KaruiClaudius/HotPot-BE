@@ -123,7 +123,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 }
 
                 // Notify the customer about the response via SignalR
-                await _feedbackHubContext.Clients.User(feedback.UserID.ToString()).SendAsync("ReceiveFeedbackResponse",
+                await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("ReceiveFeedbackResponse",
                     feedback.FeedbackId,
                     feedback.Response,
                     managerName,

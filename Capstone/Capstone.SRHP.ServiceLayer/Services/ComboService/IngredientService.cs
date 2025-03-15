@@ -60,7 +60,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Apply type filter
                 if (typeId.HasValue)
                 {
-                    query = query.Where(i => i.IngredientTypeID == typeId.Value);
+                    query = query.Where(i => i.IngredientTypeId == typeId.Value);
                 }
 
                 // Apply low stock filter
@@ -165,10 +165,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if ingredient type exists
             var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
 
             if (ingredientType == null)
-                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeId} not found");
 
 
             // Check if ingredient exists (including soft-deleted)
@@ -190,13 +190,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     existingIngredient.MinStockLevel = entity.MinStockLevel;
                     existingIngredient.Quantity = entity.Quantity;
                     existingIngredient.MeasurementUnit = entity.MeasurementUnit;
-                    existingIngredient.IngredientTypeID = entity.IngredientTypeID;
+                    existingIngredient.IngredientTypeId = entity.IngredientTypeId;
                     existingIngredient.SetUpdateDate();
 
                     // Add new price
                     var price = new IngredientPrice
                     {
-                        IngredientID = existingIngredient.IngredientId,
+                        IngredientId = existingIngredient.IngredientId,
                         Price = initialPrice,
                         EffectiveDate = DateTime.UtcNow
                     };
@@ -215,7 +215,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             // Add initial price
             var initialPriceEntity = new IngredientPrice
             {
-                IngredientID = entity.IngredientId,
+                IngredientId = entity.IngredientId,
                 Price = initialPrice,
                 EffectiveDate = DateTime.UtcNow
             };
@@ -251,10 +251,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if ingredient type exists
             var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeID && !t.IsDelete);
+                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
 
             if (ingredientType == null)
-                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeID} not found");
+                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeId} not found");
 
             // Check for name uniqueness if name is changed
             if (entity.Name != existingIngredient.Name)
@@ -280,16 +280,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if ingredient is in use
             var isUsedInCustomization = await _unitOfWork.Repository<CustomizationIngredient>()
-                .AnyAsync(ci => ci.IngredientID == id && !ci.IsDelete);
+                .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
 
             var isUsedInCombo = await _unitOfWork.Repository<ComboIngredient>()
-                .AnyAsync(ci => ci.IngredientID == id && !ci.IsDelete);
+                .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
 
             var isUsedAsBrothInCombo = await _unitOfWork.Repository<Combo>()
-                .AnyAsync(c => c.HotpotBrothID == id && !c.IsDelete);
+                .AnyAsync(c => c.HotpotBrothId == id && !c.IsDelete);
 
             var isUsedAsBrothInCustomization = await _unitOfWork.Repository<Customization>()
-                .AnyAsync(c => c.HotpotBrothID == id && !c.IsDelete);
+                .AnyAsync(c => c.HotpotBrothId == id && !c.IsDelete);
 
             if (isUsedInCustomization || isUsedInCombo || isUsedAsBrothInCombo || isUsedAsBrothInCustomization)
                 throw new ValidationException("Cannot delete ingredient that is in use");
@@ -390,7 +390,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if ingredient type is in use
             var isInUse = await _unitOfWork.Repository<Ingredient>()
-                .AnyAsync(i => i.IngredientTypeID == id && !i.IsDelete);
+                .AnyAsync(i => i.IngredientTypeId == id && !i.IsDelete);
 
             if (isInUse)
                 throw new ValidationException("Cannot delete ingredient type that is in use by ingredients");
@@ -406,7 +406,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
             var latestPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAll(p => p.IngredientID == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefaultAsync();
 
@@ -423,7 +423,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Get all prices for the specified ingredients
             var allPrices = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAll(p => idList.Contains(p.IngredientID) && !p.IsDelete && p.EffectiveDate <= now)
+                .FindAll(p => idList.Contains(p.IngredientId) && !p.IsDelete && p.EffectiveDate <= now)
                 .ToListAsync();
 
             // Group by ingredient ID and get the latest price for each
@@ -432,7 +432,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             foreach (var id in idList)
             {
                 var latestPrice = allPrices
-                    .Where(p => p.IngredientID == id)
+                    .Where(p => p.IngredientId == id)
                     .OrderByDescending(p => p.EffectiveDate)
                     .FirstOrDefault();
 
@@ -449,7 +449,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             return await _unitOfWork.Repository<IngredientPrice>()
                 .Include(p => p.Ingredient)
-                .Where(p => p.IngredientID == ingredientId && !p.IsDelete)
+                .Where(p => p.IngredientId == ingredientId && !p.IsDelete)
                 .OrderByDescending(p => p.EffectiveDate)
                 .ToListAsync();
         }
@@ -466,7 +466,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if there's already a price with the same effective date
             var existingPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAsync(p => p.IngredientID == ingredientId &&
+                .FindAsync(p => p.IngredientId == ingredientId &&
                                p.EffectiveDate == effectiveDate &&
                                !p.IsDelete);
 
@@ -475,7 +475,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             var priceEntity = new IngredientPrice
             {
-                IngredientID = ingredientId,
+                IngredientId = ingredientId,
                 Price = price,
                 EffectiveDate = effectiveDate
             };

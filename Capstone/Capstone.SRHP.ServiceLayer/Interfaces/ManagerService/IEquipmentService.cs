@@ -10,11 +10,11 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
     public interface IEquipmentService
     {
-        Task<ConditionLog> LogEquipmentFailureAsync(ConditionLog conditionLog);
-        Task<ConditionLog> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message);
-        Task<ConditionLog> GetConditionLogByIdAsync(int conditionLogId);
-        Task<IEnumerable<ConditionLog>> GetActiveConditionLogsAsync();
-        Task<IEnumerable<ConditionLog>> GetConditionLogsByStatusAsync(MaintenanceStatus status);
+        Task<DamageDevice> LogEquipmentFailureAsync(DamageDevice conditionLog);
+        Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message);
+        Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId);
+        Task<IEnumerable<DamageDevice>> GetActiveConditionLogsAsync();
+        Task<IEnumerable<DamageDevice>> GetConditionLogsByStatusAsync(MaintenanceStatus status);
         Task<IEnumerable<int>> GetAffectedCustomerIdsAsync(int conditionLogId);
         Task<bool> AssignStaffToResolutionAsync(int conditionLogId, int staffId);
         Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes);

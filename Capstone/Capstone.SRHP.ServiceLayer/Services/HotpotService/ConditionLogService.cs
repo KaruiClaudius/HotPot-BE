@@ -22,15 +22,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetAllAsync()
+        public async Task<IEnumerable<DamageDevice>> GetAllAsync()
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .FindAll(cl => !cl.IsDelete)
                 .ToListAsync();
         }
-        public async Task<PagedResult<ConditionLog>> GetPagedAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<DamageDevice>> GetPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _unitOfWork.Repository<ConditionLog>()
+            var query = _unitOfWork.Repository<DamageDevice>()
                 .FindAll(l => !l.IsDelete);
 
             // If you have any includes or other query modifications, add them here
@@ -45,7 +45,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 .Take(pageSize)
                 .ToListAsync();
 
-            return new PagedResult<ConditionLog>
+            return new PagedResult<DamageDevice>
             {
                 Items = items,
                 TotalCount = totalCount,
@@ -54,13 +54,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             };
         }
 
-        public async Task<ConditionLog?> GetByIdAsync(int id)
+        public async Task<DamageDevice?> GetByIdAsync(int id)
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .FindAsync(cl => cl.HotPotInventoryId == id && !cl.IsDelete);
         }
 
-        public async Task<ConditionLog> CreateAsync(ConditionLog entity)
+        public async Task<DamageDevice> CreateAsync(DamageDevice entity)
         {
             //// Validate basic properties
             //if (string.IsNullOrWhiteSpace(entity.Name))
@@ -82,7 +82,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return null;
         }
 
-        public async Task UpdateAsync(int id, ConditionLog entity)
+        public async Task UpdateAsync(int id, DamageDevice entity)
         {
             //var existingLog = await GetByIdAsync(id);
             //if (existingLog == null)
@@ -116,7 +116,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetByItemTypeAsync(MaintenanceItemType itemType)
+        public async Task<IEnumerable<DamageDevice>> GetByItemTypeAsync(MaintenanceItemType itemType)
         {
             //return await _unitOfWork.Repository<ConditionLog>()
             //    .FindAll(cl => cl.ItemType == itemType && !cl.IsDelete)
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return null;
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetByItemAsync(MaintenanceItemType itemType, int itemId)
+        public async Task<IEnumerable<DamageDevice>> GetByItemAsync(MaintenanceItemType itemType, int itemId)
         {
             //return await _unitOfWork.Repository<ConditionLog>()
             //    .FindAll(cl => cl.ItemType == itemType && cl.ItemID == itemId && !cl.IsDelete)
@@ -132,7 +132,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return null;
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetByStatusAsync(MaintenanceStatus status)
+        public async Task<IEnumerable<DamageDevice>> GetByStatusAsync(MaintenanceStatus status)
         {
             //return await _unitOfWork.Repository<ConditionLog>()
             //    .FindAll(cl => cl.Status == status && !cl.IsDelete)
@@ -141,16 +141,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             return null;
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
+        public async Task<IEnumerable<DamageDevice>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .FindAll(cl => cl.LoggedDate >= startDate && cl.LoggedDate <= endDate && !cl.IsDelete)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetByScheduleTypeAsync(MaintenanceScheduleType scheduleType)
+        public async Task<IEnumerable<DamageDevice>> GetByScheduleTypeAsync(MaintenanceScheduleType scheduleType)
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .FindAll(cl => cl.ScheduleType == scheduleType && !cl.IsDelete)
                 .ToListAsync();
         }

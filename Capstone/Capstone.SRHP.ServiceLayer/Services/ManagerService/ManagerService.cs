@@ -38,7 +38,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             var manager = await _unitOfWork.Repository<Manager>()
                 .Include(m => m.User)
                 .Include(m => m.WorkShifts)
-                .FirstOrDefaultAsync(m => m.UserID == userId && !m.IsDelete);
+                .FirstOrDefaultAsync(m => m.UserId == userId && !m.IsDelete);
 
             if (manager == null)
                 throw new NotFoundException($"Manager with User ID {userId} not found");

@@ -104,13 +104,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     Size = request.Size,
                     IsCustomizable = false,
-                    HotpotBrothID = request.HotpotBrothID,
+                    HotpotBrothId = request.HotpotBrothID,
                     ImageURLs = request.ImageURLs
                 };
 
                 var comboIngredients = request.Ingredients.Select(i => new ComboIngredient
                 {
-                    IngredientID = i.IngredientID,
+                    IngredientId = i.IngredientID,
                     Quantity = i.Quantity,
                     MeasurementUnit = i.MeasurementUnit // Include measurement unit
                 }).ToList();
@@ -152,7 +152,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     Size = request.Size,
                     IsCustomizable = true,
-                    HotpotBrothID = request.HotpotBrothID,
+                    HotpotBrothId = request.HotpotBrothID,
                     ImageURLs = request.ImageURLs
                 };
 
@@ -189,13 +189,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 existingCombo.Name = request.Name;
                 existingCombo.Description = request.Description;
                 existingCombo.Size = request.Size;
-                existingCombo.HotpotBrothID = request.HotpotBrothID;
+                existingCombo.HotpotBrothId = request.HotpotBrothID;
                 existingCombo.ImageURLs = request.ImageURLs;
 
                 // Update tutorial video ID if provided
                 if (request.TurtorialVideoID.HasValue)
                 {
-                    existingCombo.TurtorialVideoID = request.TurtorialVideoID.Value;
+                    existingCombo.TurtorialVideoId = request.TurtorialVideoID.Value;
                 }
 
                 await _comboService.UpdateAsync(id, existingCombo);
@@ -484,18 +484,18 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
-                HotpotBrothID = combo.HotpotBrothID,
+                HotpotBrothID = combo.HotpotBrothId,
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
-                AppliedDiscountID = combo.AppliedDiscountID,
+                AppliedDiscountID = combo.AppliedDiscountId,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
                 ImageURLs = combo.ImageURLs ?? new string[0],
-                TurtorialVideoID = combo.TurtorialVideoID,
+                TurtorialVideoID = combo.TurtorialVideoId,
                 TutorialVideoName = combo.TurtorialVideo?.Name,
                 TutorialVideoUrl = combo.TurtorialVideo?.VideoURL,
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,
-                    IngredientID = ci.IngredientID,
+                    IngredientID = ci.IngredientId,
                     IngredientName = ci.Ingredient?.Name ?? "Unknown",
                     Quantity = ci.Quantity,
                     MeasurementUnit = ci.MeasurementUnit // Include measurement unit
@@ -518,12 +518,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
-                HotpotBrothID = combo.HotpotBrothID,
+                HotpotBrothID = combo.HotpotBrothId,
                 HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
-                AppliedDiscountID = combo.AppliedDiscountID,
+                AppliedDiscountID = combo.AppliedDiscountId,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
                 ImageURLs = combo.ImageURLs ?? new string[0],
-                TurtorialVideoID = combo.TurtorialVideoID,
+                TurtorialVideoID = combo.TurtorialVideoId,
                 TutorialVideo = combo.TurtorialVideo != null ? new TutorialVideoDto
                 {
                     TurtorialVideoId = combo.TurtorialVideo.TurtorialVideoId,
@@ -534,7 +534,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Ingredients = combo.ComboIngredients?.Select(ci => new ComboIngredientDto
                 {
                     ComboIngredientId = ci.ComboIngredientId,
-                    IngredientID = ci.IngredientID,
+                    IngredientID = ci.IngredientId,
                     IngredientName = ci.Ingredient?.Name ?? "Unknown",
                     Quantity = ci.Quantity,
                     MeasurementUnit = ci.MeasurementUnit // Include measurement unit

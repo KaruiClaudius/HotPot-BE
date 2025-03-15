@@ -38,7 +38,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var staff = await _unitOfWork.Repository<Staff>()
                 .Include(s => s.User)
                 .Include(s => s.WorkShifts)
-                .FirstOrDefaultAsync(s => s.UserID == userId && !s.IsDelete);
+                .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDelete);
 
             if (staff == null)
                 throw new NotFoundException($"Staff with User ID {userId} not found");

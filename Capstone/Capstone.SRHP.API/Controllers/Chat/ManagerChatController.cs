@@ -70,7 +70,7 @@ public class ManagerChatController : ControllerBase
             // Notify the customer that a manager has accepted their chat
             if (session.Customer != null)
             {
-                await _chatHubContext.Clients.User(session.Customer.UserID.ToString()).SendAsync("ChatAccepted",
+                await _chatHubContext.Clients.User(session.Customer.UserId.ToString()).SendAsync("ChatAccepted",
                     session.ChatSessionId,
                     request.ManagerId,
                     managerName);
@@ -143,7 +143,7 @@ public class ManagerChatController : ControllerBase
             // Notify both parties that the chat has ended
             if (session.Customer != null)
             {
-                await _chatHubContext.Clients.User(session.Customer.UserID.ToString()).SendAsync("ChatEnded", sessionId);
+                await _chatHubContext.Clients.User(session.Customer.UserId.ToString()).SendAsync("ChatEnded", sessionId);
             }
 
             if (session.Manager != null && session.ManagerId.HasValue)

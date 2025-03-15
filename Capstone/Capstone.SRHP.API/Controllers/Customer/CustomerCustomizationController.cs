@@ -95,7 +95,7 @@ public class CustomerCustomizationController : ControllerBase
                 return NotFound(new { message = $"Customization with ID {id} not found" });
 
             // Ensure the customization belongs to the current user
-            if (customization.UserID != userId)
+            if (customization.UserId != userId)
                 return Forbid();
 
             var customizationDto = MapToCustomizationDetailDto(customization);
@@ -215,7 +215,7 @@ public class CustomerCustomizationController : ControllerBase
             if (existingCustomization == null)
                 return NotFound(new { message = $"Customization with ID {id} not found" });
 
-            if (existingCustomization.UserID != userId)
+            if (existingCustomization.UserId != userId)
                 return Forbid();
 
             // Validate measurement units
@@ -231,7 +231,7 @@ public class CustomerCustomizationController : ControllerBase
             existingCustomization.Name = request.Name;
             existingCustomization.Note = request.Note;
             existingCustomization.Size = request.Size;
-            existingCustomization.HotpotBrothID = request.BrothId;
+            existingCustomization.HotpotBrothId = request.BrothId;
             existingCustomization.ImageURLs = request.ImageURLs;
 
             // Update customization with new ingredients
@@ -273,7 +273,7 @@ public class CustomerCustomizationController : ControllerBase
             if (existingCustomization == null)
                 return NotFound(new { message = $"Customization with ID {id} not found" });
 
-            if (existingCustomization.UserID != userId)
+            if (existingCustomization.UserId != userId)
                 return Forbid();
 
             await _customizationService.DeleteAsync(id);
@@ -327,20 +327,20 @@ public class CustomerCustomizationController : ControllerBase
             Size = customization.Size,
             ImageURLs = customization.ImageURLs ?? new string[0],
             CreatedAt = customization.CreatedAt,
-            ComboId = customization.ComboID,
+            ComboId = customization.ComboId,
             ComboName = customization.Combo?.Name ?? string.Empty,
-            BrothId = customization.HotpotBrothID,
+            BrothId = customization.HotpotBrothId,
             BrothName = customization.HotpotBroth?.Name ?? string.Empty,
             DiscountPercentage = customization.AppliedDiscount?.DiscountPercentage ?? 0,
             Ingredients = customization.CustomizationIngredients
                 .Where(ci => !ci.IsDelete)
                 .Select(ci => new CustomizationIngredientDto
                 {
-                    IngredientID = ci.IngredientID,
+                    IngredientID = ci.IngredientId,
                     Name = ci.Ingredient?.Name ?? string.Empty,
                     Quantity = ci.Quantity,
                     MeasurementUnit = ci.MeasurementUnit, // Added measurement unit
-                    Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientID).Result
+                    Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result
                 })
                 .ToList()
         };

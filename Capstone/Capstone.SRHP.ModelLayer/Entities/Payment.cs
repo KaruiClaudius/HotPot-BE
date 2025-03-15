@@ -1,11 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Enum;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -20,15 +15,17 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public PaymentType Type { get; set; }
 
+        [Required]
+        public PaymentStatus Status { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
 
-        public int UserID { get; set; }
+        public int UserId { get; set; }
 
-        public int? OrderID { get; set; }
+        public int? OrderId { get; set; }
 
-        [Required]
-        public PaymentStatus Status { get; set; }
+
 
         public virtual User User { get; set; }
         public virtual Order? Order { get; set; }

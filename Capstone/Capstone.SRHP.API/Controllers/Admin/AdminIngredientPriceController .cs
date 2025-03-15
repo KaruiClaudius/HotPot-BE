@@ -48,7 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     IngredientPriceId = price.IngredientPriceId,
                     Price = price.Price,
                     EffectiveDate = price.EffectiveDate,
-                    IngredientID = price.IngredientID,
+                    IngredientID = price.IngredientId,
                     IngredientName = price.Ingredient?.Name ?? "Unknown"
                 }).ToList();
 
@@ -101,7 +101,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     IngredientPriceId = createdPrice.IngredientPriceId,
                     Price = createdPrice.Price,
                     EffectiveDate = createdPrice.EffectiveDate,
-                    IngredientID = createdPrice.IngredientID,
+                    IngredientID = createdPrice.IngredientId,
                     IngredientName = ingredient.Name
                 };
 

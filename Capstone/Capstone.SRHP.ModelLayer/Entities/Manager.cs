@@ -17,7 +17,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("User")]
-        public int UserID { get; set; }
+        public int UserId { get; set; }
 
         [Required]
         public WorkDays WorkDays { get; set; }

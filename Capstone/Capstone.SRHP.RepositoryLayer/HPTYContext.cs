@@ -30,7 +30,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Hotpot> Hotpots { get; set; }
         public virtual DbSet<HotPotInventory> HotPotInventorys { get; set; }
         public virtual DbSet<TurtorialVideo> TurtorialVideos { get; set; }
-        public virtual DbSet<ConditionLog> ConditionLogs { get; set; }
+        public virtual DbSet<DamageDevice> ConditionLogs { get; set; }
         public virtual DbSet<Ingredient> Ingredients { get; set; }
         public virtual DbSet<IngredientType> IngredientTypes { get; set; }
         public virtual DbSet<IngredientPrice> IngredientPrices { get; set; }
@@ -92,22 +92,22 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 entity.HasOne(u => u.Role)
                     .WithMany(r => r.Users)
-                    .HasForeignKey(u => u.RoleID)
+                    .HasForeignKey(u => u.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(u => u.Customer)
                     .WithOne(c => c.User)
-                    .HasForeignKey<Customer>(c => c.UserID)
+                    .HasForeignKey<Customer>(c => c.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(u => u.Staff)
                     .WithOne(s => s.User)
-                    .HasForeignKey<Staff>(s => s.UserID)
+                    .HasForeignKey<Staff>(s => s.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(u => u.Manager)
                     .WithOne(m => m.User)
-                    .HasForeignKey<Manager>(m => m.UserID)
+                    .HasForeignKey<Manager>(m => m.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -127,7 +127,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 entity.HasOne(d => d.Order)
                     .WithOne(o => o.Discount)
-                    .HasForeignKey<Order>(o => o.DiscountID)
+                    .HasForeignKey<Order>(o => o.DiscountId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 entity.HasOne(p => p.Order)
                     .WithOne(o => o.Payment)
-                    .HasForeignKey<Payment>(p => p.OrderID)
+                    .HasForeignKey<Payment>(p => p.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -148,12 +148,12 @@ namespace Capstone.HPTY.RepositoryLayer
             {
                 entity.HasOne(so => so.Order)
                     .WithOne(o => o.ShippingOrder)
-                    .HasForeignKey<ShippingOrder>(so => so.OrderID)
+                    .HasForeignKey<ShippingOrder>(so => so.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(so => so.Staff)
                     .WithMany(s => s.ShippingOrders)
-                    .HasForeignKey(so => so.StaffID)
+                    .HasForeignKey(so => so.StaffId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -187,7 +187,7 @@ namespace Capstone.HPTY.RepositoryLayer
             modelBuilder.Entity<Feedback>()
                 .HasOne(f => f.Order)
                 .WithOne(o => o.Feedback)
-                .HasForeignKey<Feedback>(f => f.OrderID)
+                .HasForeignKey<Feedback>(f => f.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
 
@@ -207,15 +207,15 @@ namespace Capstone.HPTY.RepositoryLayer
                 // Many-to-Many: Combo <-> Ingredient
                 entity.HasOne(ci => ci.Combo)
                     .WithMany(c => c.ComboIngredients)
-                    .HasForeignKey(ci => ci.ComboID)
+                    .HasForeignKey(ci => ci.ComboId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(ci => ci.Ingredient)
                     .WithMany(i => i.ComboIngredients)
-                    .HasForeignKey(ci => ci.IngredientID)
+                    .HasForeignKey(ci => ci.IngredientId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasIndex(ci => new { ci.ComboID, ci.IngredientID });
+                entity.HasIndex(ci => new { ci.ComboId, ci.IngredientId });
             });
 
             modelBuilder.Entity<CustomizationIngredient>(entity =>
@@ -225,15 +225,15 @@ namespace Capstone.HPTY.RepositoryLayer
                 // Many-to-Many: Customization <-> Ingredient
                 entity.HasOne(ci => ci.Customization)
                     .WithMany(c => c.CustomizationIngredients)
-                    .HasForeignKey(ci => ci.CustomizationID)
+                    .HasForeignKey(ci => ci.CustomizationId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(ci => ci.Ingredient)
                     .WithMany(i => i.CustomizationIngredients)
-                    .HasForeignKey(ci => ci.IngredientID)
+                    .HasForeignKey(ci => ci.IngredientId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasIndex(ci => new { ci.CustomizationID, ci.IngredientID });
+                entity.HasIndex(ci => new { ci.CustomizationId, ci.IngredientId });
             });
 
             // Combo Configuration
@@ -241,12 +241,12 @@ namespace Capstone.HPTY.RepositoryLayer
             {
                 entity.ToTable("Combos");
 
-                entity.Property(e => e.HotpotBrothID)
-                    .HasColumnName("HotpotBrothID");
+                entity.Property(e => e.HotpotBrothId)
+                    .HasColumnName("HotpotBrothId");
 
                 entity.HasOne(e => e.HotpotBroth)
                     .WithMany()
-                    .HasForeignKey(e => e.HotpotBrothID)
+                    .HasForeignKey(e => e.HotpotBrothId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -255,12 +255,12 @@ namespace Capstone.HPTY.RepositoryLayer
             {
                 entity.ToTable("Customizations");
 
-                entity.Property(e => e.HotpotBrothID)
-                    .HasColumnName("HotpotBrothID");
+                entity.Property(e => e.HotpotBrothId)
+                    .HasColumnName("HotpotBrothId");
 
                 entity.HasOne(e => e.HotpotBroth)
                     .WithMany()
-                    .HasForeignKey(e => e.HotpotBrothID)
+                    .HasForeignKey(e => e.HotpotBrothId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -276,7 +276,7 @@ namespace Capstone.HPTY.RepositoryLayer
             modelBuilder.Entity<Utensil>()
                 .HasOne(u => u.UtensilType)
                 .WithMany(ut => ut.Utensils)
-                .HasForeignKey(u => u.UtensilTypeID)
+                .HasForeignKey(u => u.UtensilTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<IngredientPrice>()
@@ -286,11 +286,11 @@ namespace Capstone.HPTY.RepositoryLayer
             modelBuilder.Entity<Ingredient>()
                 .HasOne(i => i.IngredientType)
                 .WithMany(it => it.Ingredients)
-                .HasForeignKey(i => i.IngredientTypeID)
+                .HasForeignKey(i => i.IngredientTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
 
-            modelBuilder.Entity<ConditionLog>(entity =>
+            modelBuilder.Entity<DamageDevice>(entity =>
             {
                 entity.HasKey(e => e.ConditionLogId);
 
@@ -310,16 +310,16 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired()
                     .HasConversion<int>();
 
-                modelBuilder.Entity<ConditionLog>()
+                modelBuilder.Entity<DamageDevice>()
                      .HasOne(c => c.Utensil)
                      .WithMany(u => u.ConditionLogs)
-                     .HasForeignKey(c => c.UtensilID);
+                     .HasForeignKey(c => c.UtensilId);
             });
 
             modelBuilder.Entity<TurtorialVideo>()
                 .HasMany(tv => tv.Combo)
                 .WithOne(h => h.TurtorialVideo)
-                .HasForeignKey(h => h.TurtorialVideoID)
+                .HasForeignKey(h => h.TurtorialVideoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
 
@@ -403,34 +403,34 @@ namespace Capstone.HPTY.RepositoryLayer
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 1 },
-                new User { UserId = 2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = 3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 2 },
-                new User { UserId = 4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = 5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = 6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 3 },
-                new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 },
-                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleID = 4 }
+                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
+                new User { UserId = 2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 }
             );
 
             modelBuilder.Entity<Staff>().HasData(
-                new Staff { StaffId = 1, UserID = 4 },
-                new Staff { StaffId = 2, UserID = 5 },
-                new Staff { StaffId = 3, UserID = 6 },
-                new Staff { StaffId = 4, UserID = 7 }
+                new Staff { StaffId = 1, UserId = 4 },
+                new Staff { StaffId = 2, UserId = 5 },
+                new Staff { StaffId = 3, UserId = 6 },
+                new Staff { StaffId = 4, UserId = 7 }
             );
 
             modelBuilder.Entity<Manager>().HasData(
-                new Manager { ManagerId = 1, UserID = 2 },
-                new Manager { ManagerId = 2, UserID = 3 }
+                new Manager { ManagerId = 1, UserId = 2 },
+                new Manager { ManagerId = 2, UserId = 3 }
             );
 
             modelBuilder.Entity<Customer>().HasData(
-                new Customer { CustomerId = 1, UserID = 8 },
-                new Customer { CustomerId = 2, UserID = 9 },
-                new Customer { CustomerId = 3, UserID = 10, LoyatyPoint = 200 }
+                new Customer { CustomerId = 1, UserId = 8 },
+                new Customer { CustomerId = 2, UserId = 9 },
+                new Customer { CustomerId = 3, UserId = 10, LoyatyPoint = 200 }
             );
 
 
@@ -725,7 +725,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 12.99m,
                     Status = true,
                     Quantity = 100,
-                    UtensilTypeID = 1,
+                    UtensilTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -739,7 +739,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 9.99m,
                     Status = true,
                     Quantity = 75,
-                    UtensilTypeID = 2,
+                    UtensilTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -753,7 +753,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 7.99m,
                     Status = true,
                     Quantity = 80,
-                    UtensilTypeID = 3,
+                    UtensilTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -767,7 +767,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 19.99m,
                     Status = true,
                     Quantity = 50,
-                    UtensilTypeID = 4,
+                    UtensilTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -781,7 +781,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 24.99m,
                     Status = true,
                     Quantity = 60,
-                    UtensilTypeID = 5,
+                    UtensilTypeId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }
@@ -858,7 +858,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 100,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 7,
+                    IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -871,7 +871,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 80,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 7,
+                    IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -884,7 +884,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 75,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 7,
+                    IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -899,7 +899,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 90,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 2,
+                    IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -912,7 +912,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 30,
                     Quantity = 120,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 2,
+                    IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -925,7 +925,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 60,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 2,
+                    IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -940,7 +940,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 25,
                     Quantity = 100,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 3,
+                    IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -953,7 +953,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 80,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 3,
+                    IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -966,7 +966,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 70,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 3,
+                    IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -981,7 +981,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 80,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 4,
+                    IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -994,7 +994,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 85,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 4,
+                    IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1007,7 +1007,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 25,
                     Quantity = 90,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 4,
+                    IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1022,7 +1022,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 60,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 5,
+                    IngredientTypeId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1035,7 +1035,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 65,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 5,
+                    IngredientTypeId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1050,7 +1050,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 70,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 6,
+                    IngredientTypeId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1063,7 +1063,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 65,
                     MeasurementUnit = "g",
-                    IngredientTypeID = 6,
+                    IngredientTypeId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1078,7 +1078,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 50,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 1,
+                    IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1091,7 +1091,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 45,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 1,
+                    IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1104,7 +1104,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 40,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 1,
+                    IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1117,7 +1117,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 55,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 1,
+                    IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1132,7 +1132,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 40,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 8,
+                    IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1145,7 +1145,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 45,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 8,
+                    IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1158,7 +1158,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 50,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 8,
+                    IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1171,7 +1171,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 35,
                     MeasurementUnit = "ml",
-                    IngredientTypeID = 8,
+                    IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }
@@ -1183,7 +1183,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 1,
                     Price = 0.13m, // $13 per kg = $0.13 per g
                     EffectiveDate = DateTime.Now.AddDays(-30),
-                    IngredientID = 1,
+                    IngredientId = 1,
                     CreatedAt = DateTime.Now.AddDays(-30),
                     IsDelete = false
                 },
@@ -1192,7 +1192,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 2,
                     Price = 0.14m, // $14 per kg = $0.14 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 1,
+                    IngredientId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1201,7 +1201,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 3,
                     Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.Now.AddDays(-30),
-                    IngredientID = 2,
+                    IngredientId = 2,
                     CreatedAt = DateTime.Now.AddDays(-30),
                     IsDelete = false
                 },
@@ -1210,7 +1210,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 4,
                     Price = 0.16m, // $16 per kg = $0.16 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 2,
+                    IngredientId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1219,7 +1219,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 5,
                     Price = 0.12m, // $12 per kg = $0.12 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 3,
+                    IngredientId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1230,7 +1230,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 6,
                     Price = 0.17m, // $17 per kg = $0.17 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 4,
+                    IngredientId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1239,7 +1239,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 7,
                     Price = 0.10m, // $10 per kg = $0.10 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 5,
+                    IngredientId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1248,7 +1248,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 8,
                     Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 6,
+                    IngredientId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1259,7 +1259,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 9,
                     Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 7,
+                    IngredientId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1268,7 +1268,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 10,
                     Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 8,
+                    IngredientId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1277,7 +1277,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 11,
                     Price = 0.04m, // $4 per kg = $0.04 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 9,
+                    IngredientId = 9,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1288,7 +1288,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 12,
                     Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 10,
+                    IngredientId = 10,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1297,7 +1297,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 13,
                     Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 11,
+                    IngredientId = 11,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1306,7 +1306,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 14,
                     Price = 0.065m, // $6.50 per kg = $0.065 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 12,
+                    IngredientId = 12,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1317,7 +1317,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 15,
                     Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 13,
+                    IngredientId = 13,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1326,7 +1326,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 16,
                     Price = 0.055m, // $5.50 per kg = $0.055 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 14,
+                    IngredientId = 14,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1337,7 +1337,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 17,
                     Price = 0.08m, // $8 per kg = $0.08 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 15,
+                    IngredientId = 15,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1346,7 +1346,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 18,
                     Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 16,
+                    IngredientId = 16,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1357,7 +1357,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 19,
                     Price = 0.009m, // $9 per liter = $0.009 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 17,
+                    IngredientId = 17,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1366,7 +1366,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 20,
                     Price = 0.008m, // $8 per liter = $0.008 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 18,
+                    IngredientId = 18,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1375,7 +1375,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 21,
                     Price = 0.0085m, // $8.50 per liter = $0.0085 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 19,
+                    IngredientId = 19,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1384,7 +1384,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 22,
                     Price = 0.0075m, // $7.50 per liter = $0.0075 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 20,
+                    IngredientId = 20,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1395,7 +1395,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 23,
                     Price = 0.005m, // $5 per liter = $0.005 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 21,
+                    IngredientId = 21,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1404,7 +1404,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 24,
                     Price = 0.004m, // $4 per liter = $0.004 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 22,
+                    IngredientId = 22,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1413,7 +1413,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 25,
                     Price = 0.0045m, // $4.50 per liter = $0.0045 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 23,
+                    IngredientId = 23,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
@@ -1422,7 +1422,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientPriceId = 26,
                     Price = 0.006m, // $6 per liter = $0.006 per ml
                     EffectiveDate = DateTime.Now,
-                    IngredientID = 24,
+                    IngredientId = 24,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
                 }

@@ -61,7 +61,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             // If there's a reason for the status change, log it as a condition
             if (!string.IsNullOrEmpty(reason))
             {
-                var conditionLog = new ConditionLog
+                var conditionLog = new DamageDevice
                 {
                     Name = isAvailable ? "Available" : "Unavailable",
                     Description = reason,
@@ -71,7 +71,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     HotPotInventoryId = inventoryId
                 };
 
-                _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
+                _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             }
 
             await _unitOfWork.CommitAsync();
@@ -106,7 +106,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<IEnumerable<ModelLayer.Entities.Utensil>> GetUtensilsByTypeAsync(int typeId)
         {
             return await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
-                .GetAll(u => u.UtensilTypeID == typeId)
+                .GetAll(u => u.UtensilTypeId == typeId)
                 .Include(u => u.UtensilType)
                 .ToListAsync();
         }
@@ -132,7 +132,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Load the utensil type for the response
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeID);
+                .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
 
             return utensil;
         }
@@ -151,24 +151,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             // If there's a reason for the status change, log it as a condition
             if (!string.IsNullOrEmpty(reason))
             {
-                var conditionLog = new ConditionLog
+                var conditionLog = new DamageDevice
                 {
                     Name = isAvailable ? "Available" : "Unavailable",
                     Description = reason,
                     Status = isAvailable ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
                     ScheduleType = isAvailable ? ModelLayer.Enum.MaintenanceScheduleType.Regular : ModelLayer.Enum.MaintenanceScheduleType.Unscheduled,
                     LoggedDate = DateTime.UtcNow,
-                    UtensilID = utensilId
+                    UtensilId = utensilId
                 };
 
-                _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
+                _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             }
 
             await _unitOfWork.CommitAsync();
 
             // Load the utensil type for the response
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeID);
+                .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
 
             return utensil;
         }
@@ -223,7 +223,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             var utensilTypes = await _unitOfWork.Repository<UtensilType>().GetAll().ToListAsync();
             foreach (var utensilType in utensilTypes)
             {
-                var typeUtensils = utensils.Where(u => u.UtensilTypeID == utensilType.UtensilTypeId).ToList();
+                var typeUtensils = utensils.Where(u => u.UtensilTypeId == utensilType.UtensilTypeId).ToList();
                 if (typeUtensils.Any())
                 {
                     var typeSummary = new EquipmentStatusDto

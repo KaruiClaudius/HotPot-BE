@@ -35,10 +35,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("User")]
-        public int UserID { get; set; }
+        public int UserId { get; set; }
 
         [ForeignKey("Discount")]
-        public int? DiscountID { get; set; }  
+        public int? DiscountId { get; set; }  
 
         public virtual User? User { get; set; }
         public virtual ShippingOrder? ShippingOrder { get; set; }

@@ -78,12 +78,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 await _feedbackHubContext.Clients.Group("Managers").SendAsync("ReceiveApprovedFeedback",
                     feedback.FeedbackId,
                     feedback.Title,
-                    feedback.UserID,
+                    feedback.UserId,
                     feedback.User?.Name ?? "Customer",
                     feedback.ApprovalDate);
 
                 // Notify the customer that their feedback was approved
-                await _feedbackHubContext.Clients.User(feedback.UserID.ToString()).SendAsync("FeedbackApproved",
+                await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("FeedbackApproved",
                     feedback.FeedbackId,
                     adminName,
                     feedback.ApprovalDate);
@@ -118,7 +118,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 // Notify the customer that their feedback was rejected
-                await _feedbackHubContext.Clients.User(feedback.UserID.ToString()).SendAsync("FeedbackRejected",
+                await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("FeedbackRejected",
                     feedback.FeedbackId,
                     adminName,
                     feedback.RejectionReason,

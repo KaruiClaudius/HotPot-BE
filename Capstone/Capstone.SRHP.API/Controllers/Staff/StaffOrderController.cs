@@ -305,7 +305,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 Notes = order.Notes ?? string.Empty,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status.ToString(),
-                UserID = order.UserID,
+                UserID = order.UserId,
                 UserName = order.User?.Name ?? "Unknown",
                 UserPhone = order.User?.PhoneNumber ?? "Unknown",
                 CreatedAt = order.CreatedAt,
@@ -327,13 +327,13 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 itemName = detail.Utensil.Name;
                 itemType = "Utensil";
-                itemId = detail.UtensilID;
+                itemId = detail.UtensilId;
             }
             else if (detail.Ingredient != null)
             {
                 itemName = detail.Ingredient.Name;
                 itemType = "Ingredient";
-                itemId = detail.IngredientID;
+                itemId = detail.IngredientId;
             }
             else if (detail.HotpotInventory != null)
             {
@@ -345,13 +345,13 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 itemName = detail.Customization.Name;
                 itemType = "Customization";
-                itemId = detail.CustomizationID;
+                itemId = detail.CustomizationId;
             }
             else if (detail.Combo != null)
             {
                 itemName = detail.Combo.Name;
                 itemType = "Combo";
-                itemId = detail.ComboID;
+                itemId = detail.ComboId;
             }
 
             return new OrderDetailDto

@@ -854,22 +854,22 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_ComboID",
                 table: "OrderDetails",
-                column: "ComboID");
+                column: "ComboId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_CustomizationID",
                 table: "OrderDetails",
-                column: "CustomizationID");
+                column: "CustomizationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_IngredientID",
                 table: "OrderDetails",
-                column: "IngredientID");
+                column: "IngredientId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_UtensilID",
                 table: "OrderDetails",
-                column: "UtensilID");
+                column: "UtensilId");
         }
 
         /// <inheritdoc />
@@ -1712,30 +1712,30 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_ComboID",
                 table: "OrderDetails",
-                column: "ComboID",
+                column: "ComboId",
                 unique: true,
-                filter: "[ComboID] IS NOT NULL");
+                filter: "[ComboId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_CustomizationID",
                 table: "OrderDetails",
-                column: "CustomizationID",
+                column: "CustomizationId",
                 unique: true,
-                filter: "[CustomizationID] IS NOT NULL");
+                filter: "[CustomizationId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_IngredientID",
                 table: "OrderDetails",
-                column: "IngredientID",
+                column: "IngredientId",
                 unique: true,
-                filter: "[IngredientID] IS NOT NULL");
+                filter: "[IngredientId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_UtensilID",
                 table: "OrderDetails",
-                column: "UtensilID",
+                column: "UtensilId",
                 unique: true,
-                filter: "[UtensilID] IS NOT NULL");
+                filter: "[UtensilId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Hotpots_OrderDetailId",

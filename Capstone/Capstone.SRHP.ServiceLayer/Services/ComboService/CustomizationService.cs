@@ -76,12 +76,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 if (userId.HasValue)
                 {
-                    query = query.Where(c => c.UserID == userId.Value);
+                    query = query.Where(c => c.UserId == userId.Value);
                 }
 
                 if (comboId.HasValue)
                 {
-                    query = query.Where(c => c.ComboID == comboId.Value);
+                    query = query.Where(c => c.ComboId == comboId.Value);
                 }
 
                 if (minSize.HasValue)
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
                         .Include(ci => ci.Ingredient)
-                        .Where(ci => ci.CustomizationID == customization.CustomizationId && !ci.IsDelete)
+                        .Where(ci => ci.CustomizationId == customization.CustomizationId && !ci.IsDelete)
                         .ToListAsync();
                 }
 
@@ -179,7 +179,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     // Load ingredients
                     customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
                         .Include(ci => ci.Ingredient)
-                        .Where(ci => ci.CustomizationID == id && !ci.IsDelete)
+                        .Where(ci => ci.CustomizationId == id && !ci.IsDelete)
                         .ToListAsync();
                 }
 
@@ -256,11 +256,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     Name = name,
                     Note = note,
-                    UserID = userId,
-                    ComboID = comboId,
-                    HotpotBrothID = brothId,
+                    UserId = userId,
+                    ComboId = comboId,
+                    HotpotBrothId = brothId,
                     Size = size,
-                    AppliedDiscountID = applicableDiscount?.SizeDiscountId,
+                    AppliedDiscountId = applicableDiscount?.SizeDiscountId,
                     BasePrice = 0,
                     TotalPrice = 0,
                     ImageURLs = imageURLs
@@ -300,7 +300,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         // Check if ingredient type is allowed
                         var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
                             .FindAsync(ait => ait.ComboId == comboId &&
-                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeId &&
                                                  !ait.IsDelete);
 
                         if (allowedType == null)
@@ -319,8 +319,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     // Add ingredient to customization
                     var customizationIngredient = new CustomizationIngredient
                     {
-                        CustomizationID = customization.CustomizationId,
-                        IngredientID = ingredientDto.IngredientID,
+                        CustomizationId = customization.CustomizationId,
+                        IngredientId = ingredientDto.IngredientID,
                         Quantity = ingredientDto.Quantity,
                         MeasurementUnit = ingredientDto.MeasurementUnit
                     };
@@ -417,16 +417,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
 
                 // Validate HotpotBroth if it's being changed
-                if (existingCustomization.HotpotBrothID != entity.HotpotBrothID)
+                if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
                 {
-                    await ValidateHotpotBroth(entity.HotpotBrothID);
+                    await ValidateHotpotBroth(entity.HotpotBrothId);
                 }
 
                 // Get applicable discount for this size if size changed
-                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountID.HasValue)
+                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
                 {
                     var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
-                    entity.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
+                    entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
                 }
 
                 // Update customization basic info
@@ -436,7 +436,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Remove existing ingredients
                 var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                    .FindAll(ci => ci.CustomizationID == id)
+                    .FindAll(ci => ci.CustomizationId == id)
                     .ToListAsync();
 
                 foreach (var existingIngredient in existingIngredients)
@@ -450,11 +450,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 decimal basePrice = 0;
 
                 // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothID);
+                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
                 basePrice += brothPrice;
 
                 // Get the combo for validation
-                var combo = await _comboService.GetByIdAsync(entity.ComboID);
+                var combo = await _comboService.GetByIdAsync(entity.ComboId);
 
                 // Add ingredients
                 foreach (var ingredientDto in ingredients)
@@ -479,8 +479,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     {
                         // Check if ingredient type is allowed
                         var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .FindAsync(ait => ait.ComboId == entity.ComboID &&
-                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                            .FindAsync(ait => ait.ComboId == entity.ComboId &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeId &&
                                                  !ait.IsDelete);
 
                         if (allowedType == null)
@@ -499,8 +499,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     // Add ingredient to customization
                     var customizationIngredient = new CustomizationIngredient
                     {
-                        CustomizationID = id,
-                        IngredientID = ingredientDto.IngredientID,
+                        CustomizationId = id,
+                        IngredientId = ingredientDto.IngredientID,
                         Quantity = ingredientDto.Quantity,
                         MeasurementUnit = ingredientDto.MeasurementUnit
                     };
@@ -539,9 +539,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Calculate total price with discount
                 decimal totalPrice = basePrice;
-                if (entity.AppliedDiscountID.HasValue)
+                if (entity.AppliedDiscountId.HasValue)
                 {
-                    var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountID.Value);
+                    var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
                     if (discount != null)
                     {
                         totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
@@ -572,7 +572,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Check if this customization is used by any orders
                 var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
-                    .AnyAsync(od => od.CustomizationID == id && !od.IsDelete);
+                    .AnyAsync(od => od.CustomizationId == id && !od.IsDelete);
 
                 if (isUsedByOrder)
                     throw new ValidationException("Cannot delete this customization as it is used by existing orders");
@@ -583,7 +583,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Soft delete customization ingredients
                 var customizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                    .FindAll(ci => ci.CustomizationID == id && !ci.IsDelete)
+                    .FindAll(ci => ci.CustomizationId == id && !ci.IsDelete)
                     .ToListAsync();
 
                 foreach (var ingredient in customizationIngredients)
@@ -655,7 +655,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         // Check if ingredient type is allowed
                         var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
                             .FindAsync(ait => ait.ComboId == comboId &&
-                                                 ait.IngredientTypeId == ingredient.IngredientTypeID &&
+                                                 ait.IngredientTypeId == ingredient.IngredientTypeId &&
                                                  !ait.IsDelete);
 
                         if (allowedType == null)
@@ -731,7 +731,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (broth == null)
                 throw new ValidationException("Invalid hotpot broth selected");
 
-            if (broth.IngredientTypeID != BROTH_TYPE_ID)
+            if (broth.IngredientTypeId != BROTH_TYPE_ID)
                 throw new ValidationException("Selected ingredient is not a broth type");
 
             if (broth.Quantity <= 0)

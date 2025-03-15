@@ -102,7 +102,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (userId.HasValue)
                 {
-                    query = query.Where(o => o.UserID == userId.Value);
+                    query = query.Where(o => o.UserId == userId.Value);
                 }
 
                 if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
@@ -134,11 +134,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (hasHotpot.Value)
                     {
-                        query = query.Where(o => o.OrderDetails.Any(od => od.HotpotInventoryID.HasValue));
+                        query = query.Where(o => o.OrderDetails.Any(od => od.HotpotInventoryId.HasValue));
                     }
                     else
                     {
-                        query = query.Where(o => !o.OrderDetails.Any(od => od.HotpotInventoryID.HasValue));
+                        query = query.Where(o => !o.OrderDetails.Any(od => od.HotpotInventoryId.HasValue));
                     }
                 }
 
@@ -277,7 +277,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
-                            UtensilID = item.UtensilID
+                            UtensilId = item.UtensilID
                         };
 
                         orderDetails.Add(orderDetail);
@@ -309,7 +309,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             VolumeWeight = item.VolumeWeight,
                             Unit = ingredient.MeasurementUnit, // Store the ingredient's unit
                             UnitPrice = unitPrice,
-                            IngredientID = item.IngredientID
+                            IngredientId = item.IngredientID
                         };
 
                         orderDetails.Add(orderDetail);
@@ -343,7 +343,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 Quantity = 1, // Each hotpot inventory item is a single unit
                                 UnitPrice = hotpot.Price,
-                                HotpotInventoryID = hotpotInventory.HotPotInventoryId
+                                HotpotInventoryId = hotpotInventory.HotPotInventoryId
                             };
 
                             orderDetails.Add(orderDetail);
@@ -360,7 +360,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             throw new ValidationException($"Customization with ID {item.CustomizationID} not found");
 
                         // Verify the customization belongs to the current user
-                        if (customization.UserID != userId)
+                        if (customization.UserId != userId)
                             throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
 
                         unitPrice = customization.TotalPrice;
@@ -370,7 +370,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
-                            CustomizationID = item.CustomizationID
+                            CustomizationId = item.CustomizationID
                         };
 
                         orderDetails.Add(orderDetail);
@@ -390,7 +390,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
-                            ComboID = item.ComboID
+                            ComboId = item.ComboID
                         };
 
                         orderDetails.Add(orderDetail);
@@ -416,12 +416,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Create order
                 var order = new Order
                 {
-                    UserID = userId,
+                    UserId = userId,
                     Address = request.Address,
                     Notes = request.Notes,
                     TotalPrice = totalPrice,
                     Status = OrderStatus.Pending,
-                    DiscountID = request.DiscountId,
+                    DiscountId = request.DiscountId,
                     HotpotDeposit = hotpotDeposit,
                     OrderDetails = orderDetails
                 };
@@ -441,8 +441,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // will be generated separately when the user proceeds to payment
                     var payment = new Payment
                     {
-                        UserID = userId,
-                        OrderID = order.OrderId,
+                        UserId = userId,
+                        OrderId = order.OrderId,
                         Price = totalPrice,
                         Type = PaymentType.Online,
                         Status = PaymentStatus.Pending,
@@ -501,7 +501,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.Notes = request.Notes;
 
                 // Update discount if provided
-                if (request.DiscountId.HasValue && request.DiscountId != order.DiscountID)
+                if (request.DiscountId.HasValue && request.DiscountId != order.DiscountId)
                 {
                     var discount = await _discountService.GetByIdAsync(request.DiscountId.Value);
                     if (discount == null)
@@ -513,10 +513,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     // Calculate new total price with discount
                     decimal basePrice = order.TotalPrice;
-                    if (order.DiscountID.HasValue)
+                    if (order.DiscountId.HasValue)
                     {
                         // Remove old discount first
-                        var oldDiscount = await _discountService.GetByIdAsync(order.DiscountID.Value);
+                        var oldDiscount = await _discountService.GetByIdAsync(order.DiscountId.Value);
                         if (oldDiscount != null)
                         {
                             basePrice = basePrice / (1 - (decimal)(oldDiscount.DiscountPercentage / 100));
@@ -525,19 +525,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     // Apply new discount
                     order.TotalPrice = basePrice - (basePrice * (decimal)(discount.DiscountPercentage / 100));
-                    order.DiscountID = request.DiscountId;
+                    order.DiscountId = request.DiscountId;
                 }
-                else if (request.DiscountId == null && order.DiscountID.HasValue)
+                else if (request.DiscountId == null && order.DiscountId.HasValue)
                 {
                     // Remove discount
-                    var oldDiscount = await _discountService.GetByIdAsync(order.DiscountID.Value);
+                    var oldDiscount = await _discountService.GetByIdAsync(order.DiscountId.Value);
                     if (oldDiscount != null)
                     {
                         // Restore original price
                         order.TotalPrice = order.TotalPrice / (1 - (decimal)(oldDiscount.DiscountPercentage / 100));
                     }
 
-                    order.DiscountID = null;
+                    order.DiscountId = null;
                 }
 
                 // Update order
@@ -591,22 +591,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
                     {
-                        if (detail.UtensilID.HasValue)
+                        if (detail.UtensilId.HasValue)
                         {
-                            await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
+                            await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
                         }
-                        else if (detail.IngredientID.HasValue && detail.VolumeWeight.HasValue)
+                        else if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
                         {
                             // Return ingredient volume/weight
                             await _ingredientService.UpdateIngredientQuantityAsync(
-                                detail.IngredientID.Value,
+                                detail.IngredientId.Value,
                                 detail.VolumeWeight.Value);
                         }
-                        else if (detail.HotpotInventoryID.HasValue)
+                        else if (detail.HotpotInventoryId.HasValue)
                         {
                             // Update hotpot inventory status back to Available
                             var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                .GetById(detail.HotpotInventoryID.Value);
+                                .GetById(detail.HotpotInventoryId.Value);
 
                             if (hotpotInventory != null)
                             {
@@ -627,10 +627,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is completed, update hotpot inventory status
                 else if (status == OrderStatus.Completed)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryID.Value);
+                            .GetById(detail.HotpotInventoryId.Value);
 
                         if (hotpotInventory != null)
                         {
@@ -650,10 +650,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is delivered, update hotpot inventory status to InUse
                 else if (status == OrderStatus.Delivered)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryID.Value);
+                            .GetById(detail.HotpotInventoryId.Value);
 
                         if (hotpotInventory != null)
                         {
@@ -666,10 +666,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is returning, update hotpot inventory status to Maintenance
                 else if (status == OrderStatus.Returning)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryID.HasValue))
+                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryID.Value);
+                            .GetById(detail.HotpotInventoryId.Value);
 
                         if (hotpotInventory != null)
                         {
@@ -714,22 +714,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Return inventory quantities
                 foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
                 {
-                    if (detail.UtensilID.HasValue)
+                    if (detail.UtensilId.HasValue)
                     {
-                        await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilID.Value, detail.Quantity);
+                        await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
                     }
-                    else if (detail.IngredientID.HasValue && detail.VolumeWeight.HasValue)
+                    else if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
                     {
                         // Return ingredient volume/weight
                         await _ingredientService.UpdateIngredientQuantityAsync(
-                            detail.IngredientID.Value,
+                            detail.IngredientId.Value,
                             detail.VolumeWeight.Value);
                     }
-                    else if (detail.HotpotInventoryID.HasValue)
+                    else if (detail.HotpotInventoryId.HasValue)
                     {
                         // Update hotpot inventory status back to Available
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryID.Value);
+                            .GetById(detail.HotpotInventoryId.Value);
 
                         if (hotpotInventory != null)
                         {

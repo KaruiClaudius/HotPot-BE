@@ -132,7 +132,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Either UtensilID or HotPotInventoryId must be provided, but not both"
+                        Message = "Either UtensilId or HotPotInventoryId must be provided, but not both"
                     });
                 }
 
@@ -163,14 +163,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     }
                 }
 
-                var conditionLog = new ConditionLog
+                var conditionLog = new DamageDevice
                 {
                     Name = request.Name,
                     Description = request.Description,
                     Status = request.Status,
                     ScheduleType = request.ScheduleType,
                     LoggedDate = DateTime.UtcNow,
-                    UtensilID = request.UtensilID,
+                    UtensilId = request.UtensilID,
                     HotPotInventoryId = request.HotPotInventoryId
                 };
 
@@ -477,7 +477,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        private static ConditionLogDto MapToConditionLogDto(ConditionLog log)
+        private static ConditionLogDto MapToConditionLogDto(DamageDevice log)
         {
             if (log == null) return null;
 
@@ -489,7 +489,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Status = log.Status,
                 ScheduleType = log.ScheduleType,
                 LoggedDate = log.LoggedDate,
-                UtensilID = log.UtensilID,
+                UtensilID = log.UtensilId,
                 HotPotInventoryId = log.HotPotInventoryId,
                 UtensilName = log.Utensil?.Name,
                 HotPotInventorySeriesNumber = log.HotPotInventory?.SeriesNumber,

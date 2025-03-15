@@ -64,7 +64,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
             if (roleId.HasValue)
             {
-                query = query.Where(u => u.RoleID == roleId.Value);
+                query = query.Where(u => u.RoleId == roleId.Value);
             }
 
             if (isActive.HasValue)
@@ -115,7 +115,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     return ascending ? query.OrderBy(u => u.Email) : query.OrderByDescending(u => u.Email);
                 case "roleid":
                 case "role":
-                    return ascending ? query.OrderBy(u => u.RoleID) : query.OrderByDescending(u => u.RoleID);
+                    return ascending ? query.OrderBy(u => u.RoleId) : query.OrderByDescending(u => u.RoleId);
                 case "createdat":
                 case "created":
                     return ascending ? query.OrderBy(u => u.CreatedAt) : query.OrderByDescending(u => u.CreatedAt);
@@ -174,7 +174,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     existingUser.PhoneNumber = entity.PhoneNumber;
                     existingUser.Address = entity.Address;
                     existingUser.ImageURL = entity.ImageURL;
-                    existingUser.RoleID = entity.RoleID;
+                    existingUser.RoleId = entity.RoleId;
                     existingUser.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
 
@@ -218,9 +218,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     throw new NotFoundException($"Không tìm thấy tài khoản");
 
                 // If role is changing, handle role-specific tables
-                if (existingUser.RoleID != entity.RoleID)
+                if (existingUser.RoleId != entity.RoleId)
                 {
-                    await HandleRoleChangeAsync(existingUser, entity.RoleID);
+                    await HandleRoleChangeAsync(existingUser, entity.RoleId);
                 }
 
                 // Update user properties
@@ -250,7 +250,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                 // Soft delete role-specific entry
                 var role = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.RoleId == user.RoleID);
+                    .FindAsync(r => r.RoleId == user.RoleId);
 
                 if (role != null)
                 {
@@ -285,18 +285,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             {
                 case "customer":
                     return await _unitOfWork.Repository<Customer>()
-                        .FindAsync(c => c.UserID == userId && !c.IsDelete);
+                        .FindAsync(c => c.UserId == userId && !c.IsDelete);
 
                 case "staff":
                     return await _unitOfWork.Repository<Staff>()
                         .Include(s => s.WorkShifts)
                         .Include(s => s.ShippingOrders)
-                        .FirstOrDefaultAsync(s => s.UserID == userId && !s.IsDelete);
+                        .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDelete);
 
                 case "manager":
                     return await _unitOfWork.Repository<Manager>()
                         .Include(m => m.WorkShifts)
-                        .FirstOrDefaultAsync(m => m.UserID == userId && !m.IsDelete);
+                        .FirstOrDefaultAsync(m => m.UserId == userId && !m.IsDelete);
 
                 default:
                     return null;
@@ -309,7 +309,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             {
                 // Use the repository method that returns an EF Core queryable
                 var query = _unitOfWork.Repository<User>()
-                    .GetAll(u => u.RoleID == roleId && !u.IsDelete)
+                    .GetAll(u => u.RoleId == roleId && !u.IsDelete)
                     .Include(u => u.Role);
 
                 // Now ToListAsync will work
@@ -388,7 +388,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             // Get old and new role names
             var oldRole = await _unitOfWork.Repository<Role>()
-                .FindAsync(r => r.RoleId == user.RoleID);
+                .FindAsync(r => r.RoleId == user.RoleId);
             var newRole = await _unitOfWork.Repository<Role>()
                 .FindAsync(r => r.RoleId == newRoleId);
 
@@ -399,7 +399,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             await SoftDeleteRoleSpecificEntryAsync(user.UserId, oldRole.Name);
 
             // Create new role-specific entry
-            user.RoleID = newRoleId;
+            user.RoleId = newRoleId;
             await CreateRoleSpecificEntryAsync(user);
         }
 
@@ -409,7 +409,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             {
                 case "customer":
                     var customer = await _unitOfWork.Repository<Customer>()
-                        .FindAsync(c => c.UserID == userId);
+                        .FindAsync(c => c.UserId == userId);
                     if (customer != null)
                     {
                         customer.IsDelete = true;
@@ -419,7 +419,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                 case "staff":
                     var staff = await _unitOfWork.Repository<Staff>()
-                        .FindAsync(s => s.UserID == userId);
+                        .FindAsync(s => s.UserId == userId);
                     if (staff != null)
                     {
                         staff.IsDelete = true;
@@ -429,7 +429,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                 case "manager":
                     var manager = await _unitOfWork.Repository<Manager>()
-                        .FindAsync(m => m.UserID == userId);
+                        .FindAsync(m => m.UserId == userId);
                     if (manager != null)
                     {
                         manager.IsDelete = true;
@@ -444,7 +444,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             try
             {
                 var role = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.RoleId == user.RoleID);
+                    .FindAsync(r => r.RoleId == user.RoleId);
 
                 if (role == null)
                     throw new ValidationException($"Không tìm thấy Role của user {user.Name}");
@@ -454,7 +454,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 {
                     case "customer":
                         var existingCustomer = await _unitOfWork.Repository<Customer>()
-                            .FindAsync(c => c.UserID == user.UserId);
+                            .FindAsync(c => c.UserId == user.UserId);
 
                         if (existingCustomer != null)
                         {
@@ -465,7 +465,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         {
                             var customer = new Customer
                             {
-                                UserID = user.UserId,
+                                UserId = user.UserId,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             };
@@ -475,7 +475,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                     case "staff":
                         var existingStaff = await _unitOfWork.Repository<Staff>()
-                            .FindAsync(s => s.UserID == user.UserId);
+                            .FindAsync(s => s.UserId == user.UserId);
 
                         if (existingStaff != null)
                         {
@@ -486,7 +486,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         {
                             var staff = new Staff
                             {
-                                UserID = user.UserId,
+                                UserId = user.UserId,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             };
@@ -496,7 +496,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                     case "manager":
                         var existingManager = await _unitOfWork.Repository<Manager>()
-                            .FindAsync(m => m.UserID == user.UserId);
+                            .FindAsync(m => m.UserId == user.UserId);
 
                         if (existingManager != null)
                         {
@@ -507,7 +507,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         {
                             var manager = new Manager
                             {
-                                UserID = user.UserId,
+                                UserId = user.UserId,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             };

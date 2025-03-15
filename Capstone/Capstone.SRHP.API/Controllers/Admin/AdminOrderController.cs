@@ -183,14 +183,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         itemType = "Utensil";
                         itemName = detail.Utensil.Name;
                         imageUrl = detail.Utensil.ImageURL;
-                        itemId = detail.UtensilID;
+                        itemId = detail.UtensilId;
                     }
                     else if (detail.Ingredient != null)
                     {
                         itemType = "Ingredient";
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
-                        itemId = detail.IngredientID;
+                        itemId = detail.IngredientId;
 
                         // Add volume/weight information for ingredients
                         response.Items.Add(new OrderItemResponse
@@ -223,14 +223,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         itemType = "Customization";
                         itemName = detail.Customization.Name;
-                        itemId = detail.CustomizationID;
+                        itemId = detail.CustomizationId;
                     }
                     else if (detail.Combo != null)
                     {
                         itemType = "Combo";
                         itemName = detail.Combo.Name;
                         imageUrl = detail.Combo.ImageURL;
-                        itemId = detail.ComboID;
+                        itemId = detail.ComboId;
                     }
 
                     response.Items.Add(new OrderItemResponse

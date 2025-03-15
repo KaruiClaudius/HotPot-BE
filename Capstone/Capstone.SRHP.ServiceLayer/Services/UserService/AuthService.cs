@@ -72,7 +72,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 if (existingUser != null)
                 {
                     // Only reactivate if the existing user was a Customer
-                    if (existingUser.RoleID != customerRole.RoleId)
+                    if (existingUser.RoleId != customerRole.RoleId)
                     {
                         throw new ValidationException("SĐT đã được sử dụng cho 1 vai trò khác");
                     }
@@ -97,7 +97,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         Password = hashedPassword,
                         Name = request.Name,
                         PhoneNumber = normalizedPhoneNumber,
-                        RoleID = customerRole.RoleId, // Always set to Customer role
+                        RoleId = customerRole.RoleId, // Always set to Customer role
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -214,7 +214,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             try
             {
                 var existingCustomer = await _unitOfWork.Repository<Customer>()
-                    .FindAsync(c => c.UserID == user.UserId);
+                    .FindAsync(c => c.UserId == user.UserId);
 
                 if (existingCustomer != null)
                 {
@@ -225,7 +225,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 {
                     var customer = new Customer
                     {
-                        UserID = user.UserId,
+                        UserId = user.UserId,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -286,7 +286,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         Name = payload.Name,
                         // Generate a random password since the user won't use it
                         Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
-                        RoleID = customerRole.RoleId,
+                        RoleId = customerRole.RoleId,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
