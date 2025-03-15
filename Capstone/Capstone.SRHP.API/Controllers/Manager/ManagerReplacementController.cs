@@ -22,7 +22,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             _replacementService = replacementService;
         }
 
-        [HttpGet("manager/all")]
+        [HttpGet("all")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>>> GetAllReplacementRequests()
         {
@@ -33,7 +33,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 dtos, "Replacement requests retrieved successfully"));
         }
 
-        [HttpGet("manager/status/{status}")]
+        [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>>> GetReplacementRequestsByStatus(ReplacementRequestStatus status)
@@ -48,7 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 dtos, $"Replacement requests with status '{status}' retrieved successfully"));
         }
 
-        [HttpGet("manager/id/{id}")]
+        [HttpGet("id/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> GetReplacementRequestById(int id)
@@ -64,7 +64,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 dto, "Replacement request retrieved successfully"));
         }
 
-        [HttpPut("manager/{id}/review")]
+        [HttpPut("{id}/review")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -95,7 +95,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpPut("manager/{id}/assign-staff")]
+        [HttpPut("{id}/assign-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -126,7 +126,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpPut("manager/{id}/mark-complete")]
+        [HttpPut("{id}/mark-complete")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -157,7 +157,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpGet("manager/dashboard")]
+        [HttpGet("dashboard")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<ReplacementDashboardDto>>> GetReplacementDashboard()
         {

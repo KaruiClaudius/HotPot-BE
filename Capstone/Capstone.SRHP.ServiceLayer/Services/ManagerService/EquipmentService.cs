@@ -121,29 +121,107 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             if (conditionLog == null)
                 return new List<int>();
 
-            // This is a simplified example. In a real application, you would determine
-            // which customers are affected by the equipment failure based on your business logic.
-            // For example, customers who have active orders using the affected equipment.
+            var affectedCustomerIds = new HashSet<int>();
 
-            // For demonstration purposes, we'll return an empty list
-            return new List<int>();
+            // Check for customers who have submitted replacement requests for this condition log
+            if (conditionLog.ReplacementRequests != null && conditionLog.ReplacementRequests.Any())
+            {
+                foreach (var request in conditionLog.ReplacementRequests)
+                {
+                    if (request.CustomerId > 0)
+                        affectedCustomerIds.Add(request.CustomerId);
+                }
+            }
+
+            // Check for customers with active orders using the affected equipment
+            if (conditionLog.HotPotInventoryId.HasValue)
+            {
+                // Get customers who have orders with this hot pot inventory
+                var hotPotCustomers = await _unitOfWork.Repository<OrderDetail>()
+                    .AsQueryable(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
+                    .Include(od => od.Order)
+                    .Select(od => od.Order.User.Customer.CustomerId)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var customerId in hotPotCustomers)
+                {
+                    affectedCustomerIds.Add(customerId);
+                }
+            }
+
+            if (conditionLog.UtensilId.HasValue)
+            {
+                // Get customers who have orders with this utensil
+                var utensilCustomers = await _unitOfWork.Repository<OrderDetail>()
+                    .AsQueryable(od => od.UtensilId == conditionLog.UtensilId)
+                    .Include(od => od.Order)
+                    .Select(od => od.Order.User.Customer.CustomerId)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var customerId in utensilCustomers)
+                {
+                    affectedCustomerIds.Add(customerId);
+                }
+            }
+
+            return affectedCustomerIds;
         }
 
         public async Task<bool> AssignStaffToResolutionAsync(int conditionLogId, int staffId)
         {
+            // First check if the staff exists
+            var staff = await _unitOfWork.Repository<Staff>()
+                .FindAsync(s => s.StaffId == staffId);
+
+            if (staff == null)
+                return false;
+
+            // Then get the condition log with its replacement requests
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .AsQueryable(c => c.ConditionLogId == conditionLogId)
+                .Include(c => c.ReplacementRequests)
+                .FirstOrDefaultAsync();
 
             if (conditionLog == null)
                 return false;
 
-            // In a real application, you would have a relationship between ConditionLog and Staff
-            // For this example, we'll just update the status
+            // Update the condition log status
             conditionLog.Status = MaintenanceStatus.InProgress;
             conditionLog.UpdatedAt = DateTime.UtcNow;
 
-            await _unitOfWork.CommitAsync();
+            // Create a replacement request if none exists to track the staff assignment
+            if (conditionLog.ReplacementRequests == null || !conditionLog.ReplacementRequests.Any())
+            {
+                var replacementRequest = new ReplacementRequest
+                {
+                    RequestReason = $"Maintenance for condition log #{conditionLogId}",
+                    Status = ReplacementRequestStatus.InProgress,
+                    RequestDate = DateTime.UtcNow,
+                    ConditionLogId = conditionLogId,
+                    AssignedStaffId = staffId,
+                    EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
+                        EquipmentType.HotPot : EquipmentType.Utensil,
+                    HotPotInventoryId = conditionLog.HotPotInventoryId,
+                    UtensilId = conditionLog.UtensilId
+                };
 
+                await _unitOfWork.Repository<ReplacementRequest>().InsertAsync(replacementRequest);
+            }
+            else
+            {
+                // Update existing replacement requests to assign the staff
+                foreach (var request in conditionLog.ReplacementRequests)
+                {
+                    request.AssignedStaffId = staffId;
+                    request.Status = ReplacementRequestStatus.InProgress;
+                    request.ReviewDate = DateTime.UtcNow;
+                    request.ReviewNotes = $"Assigned to staff #{staffId} for resolution";
+                }
+            }
+
+            await _unitOfWork.CommitAsync();
             return true;
         }
 
