@@ -11,7 +11,7 @@ using static Capstone.HPTY.RepositoryLayer.Utils.AuthenTools;
 
 namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
-    [Route("api/[controller]")]
+    [Route("api/customer/order-history")]
     [ApiController]
     [Authorize(Roles = "Customer")]
 

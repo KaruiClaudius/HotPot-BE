@@ -14,7 +14,7 @@ using Mapster;
 
 namespace Capstone.HPTY.API.Controllers.Staff
 {
-    [Route("api/[controller]")]
+    [Route("api/staff/replacement")]
     [ApiController]
     [Authorize(Roles = "Staff")]
     public class StaffReplacementController : ControllerBase

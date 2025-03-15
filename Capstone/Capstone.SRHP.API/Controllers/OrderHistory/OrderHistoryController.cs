@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
-    [Route("api/[controller]")]
+    [Route("api/order-history")]
     [ApiController]
     [Authorize(Roles = "Staff,Admin")]
 
@@ -25,7 +25,6 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
             _orderHistoryService = orderHistoryService;
             _logger = logger;
         }
-
         /// <summary>
         /// Get order history with optional filtering
         /// </summary>

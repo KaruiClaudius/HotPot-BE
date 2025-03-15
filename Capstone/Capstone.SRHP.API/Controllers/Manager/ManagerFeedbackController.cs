@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
-    [Route("api/[controller]")]
+    [Route("api/manager/feedback")]
     [ApiController]
     [Authorize(Roles = "Manager")]
     public class ManagerFeedbackController : ControllerBase
