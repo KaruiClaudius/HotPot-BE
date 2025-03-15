@@ -10,7 +10,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
-    public class ConditionLog : BaseEntity
+    public class DamageDevice : BaseEntity
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -33,14 +33,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DataType(DataType.DateTime)]
         public DateTime LoggedDate { get; set; }
 
-        public int? UtensilID { get; set; }
+        public int? UtensilId { get; set; }
         public int? HotPotInventoryId { get; set; }
 
 
         [ForeignKey(nameof(HotPotInventoryId))]
         public virtual HotPotInventory? HotPotInventory { get; set; }
 
-        [ForeignKey(nameof(UtensilID))]
+        [ForeignKey(nameof(UtensilId))]
         public virtual Utensil? Utensil { get; set; }
 
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }

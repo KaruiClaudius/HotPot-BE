@@ -52,7 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
         public async Task<IEnumerable<Feedback>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10)
         {
             return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.UserID == userId)
+                .GetAll(f => f.UserId == userId)
                 .Include(f => f.Order)
                 .Include(f => f.Manager)
                 .Include(f => f.ApprovedByUser)
@@ -65,7 +65,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
         public async Task<IEnumerable<Feedback>> GetFeedbackByOrderIdAsync(int orderId)
         {
             return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.OrderID == orderId)
+                .GetAll(f => f.OrderId == orderId)
                 .Include(f => f.User)
                 .Include(f => f.Manager)
                 .Include(f => f.ApprovedByUser)
@@ -102,8 +102,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 Title = request.Title,
                 Comment = request.Comment,
                 ImageURLs = request.ImageURLs,
-                OrderID = request.OrderId,
-                UserID = request.UserId,
+                OrderId = request.OrderId,
+                UserId = request.UserId,
                 CreatedAt = DateTime.UtcNow
             };
 

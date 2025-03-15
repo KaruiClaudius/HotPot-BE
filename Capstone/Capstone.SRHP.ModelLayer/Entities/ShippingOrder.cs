@@ -17,11 +17,11 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("Order")]
-        public int OrderID { get; set; }
+        public int OrderId { get; set; }
 
         [Required]
         [ForeignKey("Staff")]
-        public int StaffID { get; set; }
+        public int StaffId { get; set; }
 
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
         public DateTime? DeliveryTime { get; set; }

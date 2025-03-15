@@ -56,7 +56,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual Staff? AssignedStaff { get; set; }
 
         [ForeignKey("ConditionLogId")]
-        public virtual ConditionLog? ConditionLog { get; set; }
+        public virtual DamageDevice? ConditionLog { get; set; }
 
         [ForeignKey("HotPotInventoryId")]
         public virtual HotPotInventory? HotPotInventory { get; set; }

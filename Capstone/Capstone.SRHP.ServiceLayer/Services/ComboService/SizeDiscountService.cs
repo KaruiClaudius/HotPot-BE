@@ -238,10 +238,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Check if this discount is used by any customizations or combos
             var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
-                .AnyAsync(c => c.AppliedDiscountID == id && !c.IsDelete);
+                .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
 
             var isUsedByCombo = await _unitOfWork.Repository<Combo>()
-                .AnyAsync(c => c.AppliedDiscountID == id && !c.IsDelete);
+                .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
 
             if (isUsedByCustomization || isUsedByCombo)
                 throw new ValidationException("Cannot delete this discount as it is used by existing customizations or combos");

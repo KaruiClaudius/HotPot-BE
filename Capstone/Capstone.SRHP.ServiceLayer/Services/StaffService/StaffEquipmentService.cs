@@ -165,7 +165,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 _logger.LogInformation("Logging inspection for {EquipmentType} with ID: {EquipmentId}", request.EquipmentType, request.EquipmentId);
 
                 // Create condition log
-                var conditionLog = new ConditionLog
+                var conditionLog = new DamageDevice
                 {
                     Name = request.ConditionName,
                     Description = request.ConditionDescription,
@@ -208,7 +208,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         throw new NotFoundException($"Utensil with ID {request.EquipmentId} not found");
                     }
 
-                    conditionLog.UtensilID = request.EquipmentId;
+                    conditionLog.UtensilId = request.EquipmentId;
 
                     // Update availability status if requested
                     if (request.SetAsAvailable)
@@ -227,7 +227,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 }
 
                 // Save condition log
-                await _unitOfWork.Repository<ConditionLog>().InsertAsync(conditionLog);
+                await _unitOfWork.Repository<DamageDevice>().InsertAsync(conditionLog);
                 await _unitOfWork.CommitAsync();
 
                 // Return response
@@ -307,7 +307,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 _logger.LogInformation("Getting inspection history for {EquipmentType} with ID: {EquipmentId}",
                     equipmentType, equipmentId);
 
-                List<ConditionLog> conditionLogs;
+                List<DamageDevice> conditionLogs;
 
                 if (equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase))
                 {
@@ -321,7 +321,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     }
 
                     // Get condition logs for this HotPot
-                    conditionLogs = await _unitOfWork.Repository<ConditionLog>()
+                    conditionLogs = await _unitOfWork.Repository<DamageDevice>()
                         .AsQueryable()
                         .Where(c => c.HotPotInventoryId == equipmentId)
                         .OrderByDescending(c => c.LoggedDate)
@@ -339,9 +339,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     }
 
                     // Get condition logs for this Utensil
-                    conditionLogs = await _unitOfWork.Repository<ConditionLog>()
+                    conditionLogs = await _unitOfWork.Repository<DamageDevice>()
                         .AsQueryable()
-                        .Where(c => c.UtensilID == equipmentId)
+                        .Where(c => c.UtensilId == equipmentId)
                         .OrderByDescending(c => c.LoggedDate)
                         .ToListAsync();
                 }
@@ -356,7 +356,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     ConditionLogId = log.ConditionLogId,
                     EquipmentId = equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase)
                         ? log.HotPotInventoryId.Value
-                        : log.UtensilID.Value,
+                        : log.UtensilId.Value,
                     EquipmentType = equipmentType,
                     ConditionName = log.Name,
                     ConditionDescription = log.Description,

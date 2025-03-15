@@ -340,14 +340,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         public async Task<int> GetOrderCountByDiscountAsync(int discountId)
         {
             return await _unitOfWork.Repository<Order>()
-                .CountAsync(o => !o.IsDelete && o.DiscountID == discountId);
+                .CountAsync(o => !o.IsDelete && o.DiscountId == discountId);
         }
 
         public async Task<Dictionary<int, int>> GetOrderCountsByDiscountsAsync(IEnumerable<int> discountIds)
         {
             var counts = await _unitOfWork.Repository<Order>()
-                .FindAll(o => !o.IsDelete && discountIds.Contains(o.DiscountID.Value))
-                .GroupBy(o => o.DiscountID.Value)
+                .FindAll(o => !o.IsDelete && discountIds.Contains(o.DiscountId.Value))
+                .GroupBy(o => o.DiscountId.Value)
                 .Select(g => new { DiscountId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.DiscountId, x => x.Count);
 

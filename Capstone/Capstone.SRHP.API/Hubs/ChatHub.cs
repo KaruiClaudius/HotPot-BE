@@ -95,7 +95,7 @@ namespace Capstone.HPTY.API.Hubs
             }
 
             // Notify the customer that a manager has accepted their chat
-            if (session.Customer != null && _userConnections.TryGetValue(session.Customer.UserID, out string customerConnectionId))
+            if (session.Customer != null && _userConnections.TryGetValue(session.Customer.UserId, out string customerConnectionId))
             {
                 await Clients.Client(customerConnectionId).SendAsync("ChatAccepted",
                     session.ChatSessionId,
@@ -113,7 +113,7 @@ namespace Capstone.HPTY.API.Hubs
             var session = await _chatService.EndChatSessionAsync(sessionId);
 
             // Notify both parties that the chat has ended
-            if (session.Customer != null && _userConnections.TryGetValue(session.Customer.UserID, out string customerConnectionId))
+            if (session.Customer != null && _userConnections.TryGetValue(session.Customer.UserId, out string customerConnectionId))
             {
                 await Clients.Client(customerConnectionId).SendAsync("ChatEnded", sessionId);
             }

@@ -202,7 +202,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var dto = new OrderHistoryDto
             {
                 OrderId = order.OrderId,
-                UserId = order.UserID,
+                UserId = order.UserId,
                 CustomerName = order.User?.Name ?? "Unknown",
                 Address = order.Address,
                 Notes = order.Notes ?? string.Empty,

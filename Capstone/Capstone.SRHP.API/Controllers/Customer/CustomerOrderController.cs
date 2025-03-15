@@ -130,7 +130,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
-                if (order.UserID != userId && !User.IsInRole("Admin"))
+                if (order.UserId != userId && !User.IsInRole("Admin"))
                     return Forbid();
 
                 var orderResponse = MapOrderToResponse(order);
@@ -185,7 +185,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
-                if (order.UserID != userId && !User.IsInRole("Admin"))
+                if (order.UserId != userId && !User.IsInRole("Admin"))
                     return Forbid();
 
                 // Use the new UpdateAsync method that takes UpdateOrderRequest directly
@@ -242,7 +242,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
-                if (order.UserID != userId && !User.IsInRole("Admin"))
+                if (order.UserId != userId && !User.IsInRole("Admin"))
                     return Forbid();
 
                 await _orderService.DeleteAsync(id);
@@ -339,14 +339,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemType = "Utensil";
                         itemName = detail.Utensil.Name;
                         imageUrl = detail.Utensil.ImageURL;
-                        itemId = detail.UtensilID;
+                        itemId = detail.UtensilId;
                     }
                     else if (detail.Ingredient != null)
                     {
                         itemType = "Ingredient";
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
-                        itemId = detail.IngredientID;
+                        itemId = detail.IngredientId;
 
                         // Add volume/weight and unit information to the response
                         response.Items.Add(new OrderItemResponse
@@ -377,14 +377,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     {
                         itemType = "Customization";
                         itemName = detail.Customization.Name;
-                        itemId = detail.CustomizationID;
+                        itemId = detail.CustomizationId;
                     }
                     else if (detail.Combo != null)
                     {
                         itemType = "Combo";
                         itemName = detail.Combo.Name;
                         imageUrl = detail.Combo.ImageURL;
-                        itemId = detail.ComboID;
+                        itemId = detail.ComboId;
                     }
 
                     response.Items.Add(new OrderItemResponse

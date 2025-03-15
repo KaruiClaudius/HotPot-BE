@@ -10,13 +10,13 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
 {
-    public interface IConditionLogService : IBaseService<ConditionLog>
+    public interface IConditionLogService : IBaseService<DamageDevice>
     {
-        Task<PagedResult<ConditionLog>> GetPagedAsync(int pageNumber, int pageSize);
-        Task<IEnumerable<ConditionLog>> GetByItemTypeAsync(MaintenanceItemType itemType);
-        Task<IEnumerable<ConditionLog>> GetByItemAsync(MaintenanceItemType itemType, int itemId);
-        Task<IEnumerable<ConditionLog>> GetByStatusAsync(MaintenanceStatus status);
-        Task<IEnumerable<ConditionLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
-        Task<IEnumerable<ConditionLog>> GetByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
+        Task<PagedResult<DamageDevice>> GetPagedAsync(int pageNumber, int pageSize);
+        Task<IEnumerable<DamageDevice>> GetByItemTypeAsync(MaintenanceItemType itemType);
+        Task<IEnumerable<DamageDevice>> GetByItemAsync(MaintenanceItemType itemType, int itemId);
+        Task<IEnumerable<DamageDevice>> GetByStatusAsync(MaintenanceStatus status);
+        Task<IEnumerable<DamageDevice>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<IEnumerable<DamageDevice>> GetByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
     }
 }

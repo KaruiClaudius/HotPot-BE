@@ -63,12 +63,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Check if shipping order already exists
             var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                .FindAsync(so => so.OrderID == orderId);
+                .FindAsync(so => so.OrderId == orderId);
 
             if (existingShippingOrder != null)
             {
                 // Update existing shipping order
-                existingShippingOrder.StaffID = staffId;
+                existingShippingOrder.StaffId = staffId;
                 existingShippingOrder.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.CommitAsync();
                 return existingShippingOrder;
@@ -77,8 +77,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             // Create new shipping order
             var shippingOrder = new ShippingOrder
             {
-                OrderID = orderId,
-                StaffID = staffId,
+                OrderId = orderId,
+                StaffId = staffId,
                 IsDelivered = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -112,7 +112,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Get all shipping orders for this staff
             var shippingOrders = await _unitOfWork.Repository<ShippingOrder>()
-                .GetAll(so => so.StaffID == staffId && !so.IsDelete)
+                .GetAll(so => so.StaffId == staffId && !so.IsDelete)
                 .Include(so => so.Order)
                 .Include(so => so.Staff)
                 .ThenInclude(s => s.User)
@@ -188,7 +188,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             if (isDelivered)
             {
                 var order = await _unitOfWork.Repository<Order>()
-                    .FindAsync(o => o.OrderId == shippingOrder.OrderID);
+                    .FindAsync(o => o.OrderId == shippingOrder.OrderId);
 
                 if (order != null)
                 {

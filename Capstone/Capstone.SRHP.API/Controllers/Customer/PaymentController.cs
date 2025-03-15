@@ -99,7 +99,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                     var isAdmin = User.IsInRole("Admin");
 
-                    if (result.Transaction.UserID != currentUserId && !isAdmin)
+                    if (result.Transaction.UserId != currentUserId && !isAdmin)
                     {
                         return Forbid();
                     }
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                             var isAdmin = User.IsInRole("Admin");
 
-                            if (transaction.UserID != currentUserId && !isAdmin)
+                            if (transaction.UserId != currentUserId && !isAdmin)
                             {
                                 return Forbid();
                             }
@@ -284,7 +284,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Type = p.Type.ToString(),
                     Price = p.Price,
                     Status = p.Status.ToString(),
-                    OrderId = p.OrderID,
+                    OrderId = p.OrderId,
                     CreatedAt = p.CreatedAt,
                     UpdatedAt = p.UpdatedAt
                 });
@@ -313,7 +313,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 // Verify the user is accessing their own payment
                 var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (payment.UserID != currentUserId && !User.IsInRole("Admin"))
+                if (payment.UserId != currentUserId && !User.IsInRole("Admin"))
                 {
                     return Forbid();
                 }
@@ -325,7 +325,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Type = payment.Type.ToString(),
                     Price = payment.Price,
                     Status = payment.Status.ToString(),
-                    OrderId = payment.OrderID,
+                    OrderId = payment.OrderId,
                     CreatedAt = payment.CreatedAt,
                     UpdatedAt = payment.UpdatedAt
                 };
@@ -353,7 +353,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
 
                 var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (order.UserID != currentUserId && !User.IsInRole("Admin"))
+                if (order.UserId != currentUserId && !User.IsInRole("Admin"))
                 {
                     return Forbid();
                 }
@@ -372,7 +372,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Type = payment.Type.ToString(),
                     Price = payment.Price,
                     Status = payment.Status.ToString(),
-                    OrderId = payment.OrderID,
+                    OrderId = payment.OrderId,
                     CreatedAt = payment.CreatedAt,
                     UpdatedAt = payment.UpdatedAt
                 };

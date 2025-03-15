@@ -30,7 +30,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpPost("failures")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ConditionLog>>> LogEquipmentFailure([FromBody] EquipmentFailureDto failureDto)
+        public async Task<ActionResult<ApiResponse<DamageDevice>>> LogEquipmentFailure([FromBody] EquipmentFailureDto failureDto)
         {
             try
             {
@@ -40,13 +40,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 if ((!hasUtensil && !hasHotPot) || (hasUtensil && hasHotPot))
                 {
-                    return BadRequest(ApiResponse<ConditionLog>.ErrorResponse(
-                        "Exactly one equipment type (either UtensilID or HotPotInventoryId) must be specified with a valid ID"));
+                    return BadRequest(ApiResponse<DamageDevice>.ErrorResponse(
+                        "Exactly one equipment type (either UtensilId or HotPotInventoryId) must be specified with a valid ID"));
                 }
 
 
                 // Map DTO to entity using Mapster
-                var conditionLog = failureDto.Adapt<ConditionLog>();
+                var conditionLog = failureDto.Adapt<DamageDevice>();
 
                 var result = await _equipmentService.LogEquipmentFailureAsync(conditionLog);
 
@@ -59,11 +59,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     result.LoggedDate);
 
                 return CreatedAtAction(nameof(GetConditionLog), new { id = result.ConditionLogId },
-                    ApiResponse<ConditionLog>.SuccessResponse(result, "Equipment failure logged successfully"));
+                    ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment failure logged successfully"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ConditionLog>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<DamageDevice>.ErrorResponse(ex.Message));
             }
         }
 
@@ -71,7 +71,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ConditionLog>>> UpdateResolutionTimeline(
+        public async Task<ActionResult<ApiResponse<DamageDevice>>> UpdateResolutionTimeline(
             int id,
             [FromBody] UpdateResolutionTimelineRequest request)
         {
@@ -105,44 +105,44 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         request.Message);
                 }
 
-                return Ok(ApiResponse<ConditionLog>.SuccessResponse(result, "Resolution timeline updated successfully"));
+                return Ok(ApiResponse<DamageDevice>.SuccessResponse(result, "Resolution timeline updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<ConditionLog>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<DamageDevice>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ConditionLog>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<DamageDevice>.ErrorResponse(ex.Message));
             }
         }
 
         [HttpGet("failures/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<ConditionLog>>> GetConditionLog(int id)
+        public async Task<ActionResult<ApiResponse<DamageDevice>>> GetConditionLog(int id)
         {
             var conditionLog = await _equipmentService.GetConditionLogByIdAsync(id);
             if (conditionLog == null)
-                return NotFound(ApiResponse<ConditionLog>.ErrorResponse($"Condition log with ID {id} not found"));
+                return NotFound(ApiResponse<DamageDevice>.ErrorResponse($"Condition log with ID {id} not found"));
 
-            return Ok(ApiResponse<ConditionLog>.SuccessResponse(conditionLog, "Condition log retrieved successfully"));
+            return Ok(ApiResponse<DamageDevice>.SuccessResponse(conditionLog, "Condition log retrieved successfully"));
         }
 
         [HttpGet("failures/active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLog>>>> GetActiveConditionLogs()
+        public async Task<ActionResult<ApiResponse<IEnumerable<DamageDevice>>>> GetActiveConditionLogs()
         {
             var conditionLogs = await _equipmentService.GetActiveConditionLogsAsync();
-            return Ok(ApiResponse<IEnumerable<ConditionLog>>.SuccessResponse(conditionLogs, "Active condition logs retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<DamageDevice>>.SuccessResponse(conditionLogs, "Active condition logs retrieved successfully"));
         }
 
         [HttpGet("failures/status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLog>>>> GetConditionLogsByStatus(MaintenanceStatus status)
+        public async Task<ActionResult<ApiResponse<IEnumerable<DamageDevice>>>> GetConditionLogsByStatus(MaintenanceStatus status)
         {
             var conditionLogs = await _equipmentService.GetConditionLogsByStatusAsync(status);
-            return Ok(ApiResponse<IEnumerable<ConditionLog>>.SuccessResponse(conditionLogs, $"Condition logs with status {status} retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<DamageDevice>>.SuccessResponse(conditionLogs, $"Condition logs with status {status} retrieved successfully"));
         }
 
         [HttpPost("failures/{id}/assign")]
@@ -225,10 +225,10 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("failures/customer/{customerId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLog>>>> GetCustomerAffectedEquipment(int customerId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<DamageDevice>>>> GetCustomerAffectedEquipment(int customerId)
         {
             var conditionLogs = await _equipmentService.GetActiveConditionLogsAsync();
-            return Ok(ApiResponse<IEnumerable<ConditionLog>>.SuccessResponse(conditionLogs, "Customer affected equipment retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<DamageDevice>>.SuccessResponse(conditionLogs, "Customer affected equipment retrieved successfully"));
         }
 
         [HttpPost("failures/notify-customer")]

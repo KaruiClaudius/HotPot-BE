@@ -176,10 +176,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             }
 
             // Load staff user information
-            if (staff.UserID > 0)
+            if (staff.UserId > 0)
             {
                 staff.User = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staff.UserID);
+                    .FindAsync(u => u.UserId == staff.UserId);
             }
 
             // Notify customer about the assignment
@@ -208,7 +208,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             request.UpdatedAt = DateTime.UtcNow;
 
             // Create a condition log entry for the replacement
-            var conditionLog = new ConditionLog
+            var conditionLog = new DamageDevice
             {
                 Name = "Equipment Replacement",
                 Description = $"Equipment replaced. Reason: {request.RequestReason}. Notes: {completionNotes}",
@@ -224,10 +224,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             }
             else if (request.EquipmentType == EquipmentType.Utensil && request.UtensilId.HasValue)
             {
-                conditionLog.UtensilID = request.UtensilId.Value;
+                conditionLog.UtensilId = request.UtensilId.Value;
             }
 
-            _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
+            _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 
             // Update the request with the condition log ID

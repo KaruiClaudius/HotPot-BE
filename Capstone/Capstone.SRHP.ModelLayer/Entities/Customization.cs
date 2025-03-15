@@ -70,18 +70,18 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("User")]
-        public int UserID { get; set; }
+        public int UserId { get; set; }
 
         [Required]
         [ForeignKey("HotpotBroth")]
-        public int HotpotBrothID { get; set; }
+        public int HotpotBrothId { get; set; }
 
         [Required]
         [ForeignKey("Combo")]
-        public int ComboID { get; set; }
+        public int ComboId { get; set; }
 
         [ForeignKey("AppliedDiscount")]
-        public int? AppliedDiscountID { get; set; }
+        public int? AppliedDiscountId { get; set; }
 
         public virtual User User { get; set; } = null!;
         public virtual Ingredient HotpotBroth { get; set; } = null!;

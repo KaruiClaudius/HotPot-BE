@@ -205,7 +205,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Name = ingredient.Name,
                 Description = ingredient.Description ?? string.Empty,
                 Price = 0, // This will be set by the caller
-                IngredientTypeID = ingredient.IngredientTypeID,
+                IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 ImageURL = ingredient.ImageURL ?? string.Empty,
                 IsAvailable = ingredient.Quantity > 0

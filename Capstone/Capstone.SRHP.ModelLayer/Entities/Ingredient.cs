@@ -34,14 +34,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Range(0, double.MaxValue)]
         public decimal Quantity { get; set; }
 
-        // Add a measurement unit
         [Required]
         [StringLength(20)]
         public string MeasurementUnit { get; set; }
 
         [Required]
         [ForeignKey("IngredientType")]
-        public int IngredientTypeID { get; set; }
+        public int IngredientTypeId { get; set; }
 
 
         public virtual IngredientType? IngredientType { get; set; }

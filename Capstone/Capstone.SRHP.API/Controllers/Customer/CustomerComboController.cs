@@ -141,7 +141,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     IsCustomizable = combo.IsCustomizable,
                     HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                     ImageURLs = combo.ImageURLs ?? new string[0],
-                    TurtorialVideoID = combo.TurtorialVideoID,
+                    TurtorialVideoID = combo.TurtorialVideoId,
                     TutorialVideoName = combo.TurtorialVideo?.Name,
                     TutorialVideoUrl = combo.TurtorialVideo?.VideoURL
                 };
@@ -176,7 +176,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     } : null,
                     Ingredients = combo.ComboIngredients?.Where(ci => !ci.IsDelete).Select(ci => new CustomerComboIngredientDto
                     {
-                        IngredientID = ci.IngredientID,
+                        IngredientID = ci.IngredientId,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
                         Quantity = ci.Quantity,
                         MeasurementUnit = ci.MeasurementUnit // Added measurement unit

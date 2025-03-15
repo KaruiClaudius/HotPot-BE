@@ -20,7 +20,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ConditionLog> LogEquipmentFailureAsync(ConditionLog conditionLog)
+        public async Task<DamageDevice> LogEquipmentFailureAsync(DamageDevice conditionLog)
         {
             // Validate foreign keys before attempting to save
             if (conditionLog.HotPotInventoryId.HasValue)
@@ -35,22 +35,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 }
             }
 
-            if (conditionLog.UtensilID.HasValue)
+            if (conditionLog.UtensilId.HasValue)
             {
                 var utensilExists = await _unitOfWork.Repository<Utensil>()
                     .AsQueryable()
-                    .AnyAsync(u => u.UtensilId == conditionLog.UtensilID.Value);
+                    .AnyAsync(u => u.UtensilId == conditionLog.UtensilId.Value);
 
                 if (!utensilExists)
                 {
-                    throw new InvalidOperationException($"Utensil with ID {conditionLog.UtensilID.Value} does not exist.");
+                    throw new InvalidOperationException($"Utensil with ID {conditionLog.UtensilId.Value} does not exist.");
                 }
             }
 
             // Ensure at least one equipment type is specified
-            if (!conditionLog.HotPotInventoryId.HasValue && !conditionLog.UtensilID.HasValue)
+            if (!conditionLog.HotPotInventoryId.HasValue && !conditionLog.UtensilId.HasValue)
             {
-                throw new InvalidOperationException("Either HotPotInventoryId or UtensilID must be specified.");
+                throw new InvalidOperationException("Either HotPotInventoryId or UtensilId must be specified.");
             }
 
             // Set default values
@@ -63,15 +63,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 conditionLog.ScheduleType = MaintenanceScheduleType.Emergency;
             }
 
-            _unitOfWork.Repository<ConditionLog>().Insert(conditionLog);
+            _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 
             return conditionLog;
         }
 
-        public async Task<ConditionLog> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
+        public async Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
         {
-            var conditionLog = await _unitOfWork.Repository<ConditionLog>()
+            var conditionLog = await _unitOfWork.Repository<DamageDevice>()
                 .FindAsync(c => c.ConditionLogId == conditionLogId);
 
             if (conditionLog == null)
@@ -86,18 +86,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             return conditionLog;
         }
 
-        public async Task<ConditionLog> GetConditionLogByIdAsync(int conditionLogId)
+        public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .AsQueryable(c => c.ConditionLogId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetActiveConditionLogsAsync()
+        public async Task<IEnumerable<DamageDevice>> GetActiveConditionLogsAsync()
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .GetAll(c => c.Status != MaintenanceStatus.Completed)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
@@ -105,9 +105,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<ConditionLog>> GetConditionLogsByStatusAsync(MaintenanceStatus status)
+        public async Task<IEnumerable<DamageDevice>> GetConditionLogsByStatusAsync(MaintenanceStatus status)
         {
-            return await _unitOfWork.Repository<ConditionLog>()
+            return await _unitOfWork.Repository<DamageDevice>()
                 .GetAll(c => c.Status == status)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
@@ -131,7 +131,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         public async Task<bool> AssignStaffToResolutionAsync(int conditionLogId, int staffId)
         {
-            var conditionLog = await _unitOfWork.Repository<ConditionLog>()
+            var conditionLog = await _unitOfWork.Repository<DamageDevice>()
                 .FindAsync(c => c.ConditionLogId == conditionLogId);
 
             if (conditionLog == null)
@@ -149,7 +149,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         public async Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes)
         {
-            var conditionLog = await _unitOfWork.Repository<ConditionLog>()
+            var conditionLog = await _unitOfWork.Repository<DamageDevice>()
                 .FindAsync(c => c.ConditionLogId == conditionLogId);
 
             if (conditionLog == null)

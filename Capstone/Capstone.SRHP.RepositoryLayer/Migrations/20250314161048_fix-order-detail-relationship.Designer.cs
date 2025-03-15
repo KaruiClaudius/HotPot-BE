@@ -117,7 +117,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboId"));
 
-                    b.Property<int?>("AppliedDiscountID")
+                    b.Property<int?>("AppliedDiscountId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("BasePrice")
@@ -130,9 +130,9 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("HotpotBrothID")
+                    b.Property<int>("HotpotBrothId")
                         .HasColumnType("int")
-                        .HasColumnName("HotpotBrothID");
+                        .HasColumnName("HotpotBrothId");
 
                     b.Property<string>("ImageURL")
                         .HasMaxLength(2000)
@@ -158,7 +158,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("TurtorialVideoID")
+                    b.Property<int>("TurtorialVideoId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -166,13 +166,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("ComboId");
 
-                    b.HasIndex("AppliedDiscountID");
+                    b.HasIndex("AppliedDiscountId");
 
-                    b.HasIndex("HotpotBrothID");
+                    b.HasIndex("HotpotBrothId");
 
                     b.HasIndex("IngredientId");
 
-                    b.HasIndex("TurtorialVideoID");
+                    b.HasIndex("TurtorialVideoId");
 
                     b.ToTable("Combos", (string)null);
                 });
@@ -225,13 +225,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboIngredientId"));
 
-                    b.Property<int>("ComboID")
+                    b.Property<int>("ComboId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("IngredientID")
+                    b.Property<int>("IngredientId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDelete")
@@ -250,14 +250,14 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("ComboIngredientId");
 
-                    b.HasIndex("IngredientID");
+                    b.HasIndex("IngredientId");
 
-                    b.HasIndex("ComboID", "IngredientID");
+                    b.HasIndex("ComboId", "IngredientId");
 
                     b.ToTable("ComboIngredients");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ConditionLog", b =>
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.DamageDevice", b =>
                 {
                     b.Property<int>("ConditionLogId")
                         .ValueGeneratedOnAdd()
@@ -295,14 +295,14 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UtensilID")
+                    b.Property<int?>("UtensilId")
                         .HasColumnType("int");
 
                     b.HasKey("ConditionLogId");
 
                     b.HasIndex("HotPotInventoryId");
 
-                    b.HasIndex("UtensilID");
+                    b.HasIndex("UtensilId");
 
                     b.ToTable("ConditionLogs");
                 });
@@ -333,12 +333,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("CustomerId");
 
-                    b.HasIndex("UserID")
+                    b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Customers");
@@ -378,21 +378,21 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomizationId"));
 
-                    b.Property<int?>("AppliedDiscountID")
+                    b.Property<int?>("AppliedDiscountId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("BasePrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("ComboID")
+                    b.Property<int>("ComboId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("HotpotBrothID")
+                    b.Property<int>("HotpotBrothId")
                         .HasColumnType("int")
-                        .HasColumnName("HotpotBrothID");
+                        .HasColumnName("HotpotBrothId");
 
                     b.Property<string>("ImageURL")
                         .HasMaxLength(2000)
@@ -422,21 +422,21 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("CustomizationId");
 
-                    b.HasIndex("AppliedDiscountID");
+                    b.HasIndex("AppliedDiscountId");
 
-                    b.HasIndex("ComboID")
+                    b.HasIndex("ComboId")
                         .IsUnique();
 
-                    b.HasIndex("HotpotBrothID");
+                    b.HasIndex("HotpotBrothId");
 
                     b.HasIndex("IngredientId");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Customizations", (string)null);
                 });
@@ -452,10 +452,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("CustomizationID")
+                    b.Property<int>("CustomizationId")
                         .HasColumnType("int");
 
-                    b.Property<int>("IngredientID")
+                    b.Property<int>("IngredientId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDelete")
@@ -474,9 +474,9 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("CustomizationIngredientId");
 
-                    b.HasIndex("IngredientID");
+                    b.HasIndex("IngredientId");
 
-                    b.HasIndex("CustomizationID", "IngredientID");
+                    b.HasIndex("CustomizationId", "IngredientId");
 
                     b.ToTable("CustomizationIngredients");
                 });
@@ -865,7 +865,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<int>("IngredientTypeID")
+                    b.Property<int>("IngredientTypeId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDelete")
@@ -892,7 +892,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("IngredientId");
 
-                    b.HasIndex("IngredientTypeID");
+                    b.HasIndex("IngredientTypeId");
 
                     b.ToTable("Ingredients");
 
@@ -1225,7 +1225,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime>("EffectiveDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("IngredientID")
+                    b.Property<int>("IngredientId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDelete")
@@ -1239,7 +1239,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("IngredientPriceId");
 
-                    b.HasIndex("IngredientID");
+                    b.HasIndex("IngredientId");
 
                     b.ToTable("IngredientPrices");
 
@@ -1582,7 +1582,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.Property<int>("WorkDays")
@@ -1590,7 +1590,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("ManagerId");
 
-                    b.HasIndex("UserID")
+                    b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Managers");
@@ -1630,7 +1630,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("DiscountID")
+                    b.Property<int?>("DiscountId")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("HotpotDeposit")
@@ -1653,16 +1653,16 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("OrderId");
 
-                    b.HasIndex("DiscountID")
+                    b.HasIndex("DiscountId")
                         .IsUnique()
-                        .HasFilter("[DiscountID] IS NOT NULL");
+                        .HasFilter("[DiscountId] IS NOT NULL");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Orders");
                 });
@@ -1675,25 +1675,25 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderDetailId"));
 
-                    b.Property<int?>("ComboID")
+                    b.Property<int?>("ComboId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("CustomizationID")
+                    b.Property<int?>("CustomizationId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("HotpotInventoryID")
+                    b.Property<int?>("HotpotInventoryId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("IngredientID")
+                    b.Property<int?>("IngredientId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<int>("OrderID")
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
 
                     b.Property<int>("Quantity")
@@ -1709,7 +1709,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UtensilID")
+                    b.Property<int?>("UtensilId")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("VolumeWeight")
@@ -1717,17 +1717,17 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("OrderDetailId");
 
-                    b.HasIndex("ComboID");
+                    b.HasIndex("ComboId");
 
-                    b.HasIndex("CustomizationID");
+                    b.HasIndex("CustomizationId");
 
-                    b.HasIndex("HotpotInventoryID");
+                    b.HasIndex("HotpotInventoryId");
 
-                    b.HasIndex("IngredientID");
+                    b.HasIndex("IngredientId");
 
-                    b.HasIndex("OrderID");
+                    b.HasIndex("OrderId");
 
-                    b.HasIndex("UtensilID");
+                    b.HasIndex("UtensilId");
 
                     b.ToTable("OrderDetails");
                 });
@@ -1746,7 +1746,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("OrderID")
+                    b.Property<int?>("OrderId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Price")
@@ -1765,16 +1765,16 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("PaymentId");
 
-                    b.HasIndex("OrderID")
+                    b.HasIndex("OrderId")
                         .IsUnique()
-                        .HasFilter("[OrderID] IS NOT NULL");
+                        .HasFilter("[OrderId] IS NOT NULL");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Payments");
                 });
@@ -1933,7 +1933,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelivered")
                         .HasColumnType("bit");
 
-                    b.Property<int>("OrderID")
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
 
                     b.Property<byte[]>("ProofImage")
@@ -1948,7 +1948,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<byte[]>("SignatureData")
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<int>("StaffID")
+                    b.Property<int>("StaffId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1956,10 +1956,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("ShippingOrderId");
 
-                    b.HasIndex("OrderID")
+                    b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.HasIndex("StaffID");
+                    b.HasIndex("StaffId");
 
                     b.ToTable("ShippingOrders");
                 });
@@ -2015,7 +2015,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.Property<int>("WorkDays")
@@ -2023,7 +2023,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("StaffId");
 
-                    b.HasIndex("UserID")
+                    b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Staffs");
@@ -2193,7 +2193,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("RefreshTokenExpiry")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("RoleID")
+                    b.Property<int>("RoleId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2205,7 +2205,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .IsUnique()
                         .HasFilter("[PhoneNumber] IS NOT NULL");
 
-                    b.HasIndex("RoleID");
+                    b.HasIndex("RoleId");
 
                     b.ToTable("Users");
 
@@ -2369,12 +2369,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UtensilTypeID")
+                    b.Property<int>("UtensilTypeId")
                         .HasColumnType("int");
 
                     b.HasKey("UtensilId");
 
-                    b.HasIndex("UtensilTypeID");
+                    b.HasIndex("UtensilTypeId");
 
                     b.ToTable("Utensils");
 
@@ -2586,7 +2586,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int?>("ManagerId")
                         .HasColumnType("int");
 
-                    b.Property<int>("OrderID")
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
 
                     b.Property<string>("RejectionReason")
@@ -2608,7 +2608,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserID")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("FeedbackId");
@@ -2617,10 +2617,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("ManagerId");
 
-                    b.HasIndex("OrderID")
+                    b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Feedback");
                 });
@@ -2701,11 +2701,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.SizeDiscount", "AppliedDiscount")
                         .WithMany("Combos")
-                        .HasForeignKey("AppliedDiscountID");
+                        .HasForeignKey("AppliedDiscountId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "HotpotBroth")
                         .WithMany()
-                        .HasForeignKey("HotpotBrothID")
+                        .HasForeignKey("HotpotBrothId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2715,7 +2715,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.TurtorialVideo", "TurtorialVideo")
                         .WithMany("Combo")
-                        .HasForeignKey("TurtorialVideoID")
+                        .HasForeignKey("TurtorialVideoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2749,13 +2749,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Combo", "Combo")
                         .WithMany("ComboIngredients")
-                        .HasForeignKey("ComboID")
+                        .HasForeignKey("ComboId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "Ingredient")
                         .WithMany("ComboIngredients")
-                        .HasForeignKey("IngredientID")
+                        .HasForeignKey("IngredientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2764,7 +2764,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Navigation("Ingredient");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ConditionLog", b =>
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.DamageDevice", b =>
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.HotPotInventory", "HotPotInventory")
                         .WithMany("ConditionLogs")
@@ -2772,7 +2772,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Utensil", "Utensil")
                         .WithMany("ConditionLogs")
-                        .HasForeignKey("UtensilID");
+                        .HasForeignKey("UtensilId");
 
                     b.Navigation("HotPotInventory");
 
@@ -2783,7 +2783,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithOne("Customer")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Customer", "UserID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Customer", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2794,17 +2794,17 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.SizeDiscount", "AppliedDiscount")
                         .WithMany("Customizations")
-                        .HasForeignKey("AppliedDiscountID");
+                        .HasForeignKey("AppliedDiscountId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Combo", "Combo")
                         .WithOne("Customization")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Customization", "ComboID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Customization", "ComboId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "HotpotBroth")
                         .WithMany()
-                        .HasForeignKey("HotpotBrothID")
+                        .HasForeignKey("HotpotBrothId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2814,7 +2814,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithMany("Customizations")
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2831,13 +2831,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Customization", "Customization")
                         .WithMany("CustomizationIngredients")
-                        .HasForeignKey("CustomizationID")
+                        .HasForeignKey("CustomizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "Ingredient")
                         .WithMany("CustomizationIngredients")
-                        .HasForeignKey("IngredientID")
+                        .HasForeignKey("IngredientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2861,7 +2861,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.IngredientType", "IngredientType")
                         .WithMany("Ingredients")
-                        .HasForeignKey("IngredientTypeID")
+                        .HasForeignKey("IngredientTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2872,7 +2872,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "Ingredient")
                         .WithMany("IngredientPrices")
-                        .HasForeignKey("IngredientID")
+                        .HasForeignKey("IngredientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2883,7 +2883,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithOne("Manager")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Manager", "UserID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Manager", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2894,12 +2894,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Discount", "Discount")
                         .WithOne("Order")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Order", "DiscountID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Order", "DiscountId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithMany("Orders")
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2912,29 +2912,29 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Combo", "Combo")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("ComboID");
+                        .HasForeignKey("ComboId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Customization", "Customization")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("CustomizationID");
+                        .HasForeignKey("CustomizationId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.HotPotInventory", "HotpotInventory")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("HotpotInventoryID");
+                        .HasForeignKey("HotpotInventoryId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Ingredient", "Ingredient")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("IngredientID");
+                        .HasForeignKey("IngredientId");
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("OrderID")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Utensil", "Utensil")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("UtensilID");
+                        .HasForeignKey("UtensilId");
 
                     b.Navigation("Combo");
 
@@ -2953,12 +2953,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
                         .WithOne("Payment")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Payment", "OrderID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Payment", "OrderId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2973,7 +2973,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .WithMany("ReplacementRequests")
                         .HasForeignKey("AssignedStaffId");
 
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.ConditionLog", "ConditionLog")
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.DamageDevice", "DamageDevice")
                         .WithMany("ReplacementRequests")
                         .HasForeignKey("ConditionLogId");
 
@@ -2993,7 +2993,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.Navigation("AssignedStaff");
 
-                    b.Navigation("ConditionLog");
+                    b.Navigation("DamageDevice");
 
                     b.Navigation("Customer");
 
@@ -3006,13 +3006,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
                         .WithOne("ShippingOrder")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.ShippingOrder", "OrderID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.ShippingOrder", "OrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Staff", "Staff")
                         .WithMany("ShippingOrders")
-                        .HasForeignKey("StaffID")
+                        .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3025,7 +3025,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithOne("Staff")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Staff", "UserID")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.Staff", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3036,7 +3036,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Role", "Role")
                         .WithMany("Users")
-                        .HasForeignKey("RoleID")
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3047,7 +3047,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.UtensilType", "UtensilType")
                         .WithMany("Utensils")
-                        .HasForeignKey("UtensilTypeID")
+                        .HasForeignKey("UtensilTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3066,13 +3066,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
                         .WithOne("Feedback")
-                        .HasForeignKey("Feedback", "OrderID")
+                        .HasForeignKey("Feedback", "OrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "User")
                         .WithMany("Feedbacks")
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3131,7 +3131,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Navigation("OrderDetails");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ConditionLog", b =>
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.DamageDevice", b =>
                 {
                     b.Navigation("ReplacementRequests");
                 });

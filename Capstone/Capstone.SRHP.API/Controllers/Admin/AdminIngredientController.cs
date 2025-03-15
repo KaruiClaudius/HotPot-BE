@@ -162,7 +162,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     MinStockLevel = request.MinStockLevel,
                     Quantity = request.Quantity,
                     MeasurementUnit = request.MeasurementUnit, // New field
-                    IngredientTypeID = request.IngredientTypeID
+                    IngredientTypeId = request.IngredientTypeID
                 };
 
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
@@ -240,7 +240,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     existingIngredient.MeasurementUnit = request.MeasurementUnit;
 
                 if (request.IngredientTypeID.HasValue && request.IngredientTypeID > 0)
-                    existingIngredient.IngredientTypeID = request.IngredientTypeID.Value;
+                    existingIngredient.IngredientTypeId = request.IngredientTypeID.Value;
 
                 await _ingredientService.UpdateIngredientAsync(id, existingIngredient);
 
@@ -411,7 +411,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
                 MeasurementUnit = ingredient.MeasurementUnit, 
-                IngredientTypeID = ingredient.IngredientTypeID,
+                IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Price = 0, 
                 CreatedAt = ingredient.CreatedAt,

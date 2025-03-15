@@ -226,7 +226,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new ValidationException($"Combo with name {combo.Name} already exists");
 
                 // Validate HotpotBroth
-                await ValidateHotpotBroth(combo.HotpotBrothID);
+                await ValidateHotpotBroth(combo.HotpotBrothId);
 
                 // If combo is customizable, ensure allowed types are provided
                 if (combo.IsCustomizable && (allowedTypes == null || allowedTypes.Count == 0))
@@ -237,7 +237,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await _unitOfWork.CommitAsync();
 
                 // Set the video ID on the combo
-                combo.TurtorialVideoID = video.TurtorialVideoId;
+                combo.TurtorialVideoId = video.TurtorialVideoId;
 
                 // Set initial base price (will be updated after ingredients are added)
                 combo.BasePrice = 0;
@@ -245,7 +245,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Get applicable discount for this size
                 var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
+                combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
 
                 // Insert combo
                 _unitOfWork.Repository<Combo>().Insert(combo);
@@ -258,10 +258,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     {
                         // Validate ingredient exists
                         var ingredientExists = await _unitOfWork.Repository<Ingredient>()
-                            .AnyAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
+                            .AnyAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
 
                         if (!ingredientExists)
-                            throw new ValidationException($"Ingredient with ID {ingredient.IngredientID} not found");
+                            throw new ValidationException($"Ingredient with ID {ingredient.IngredientId} not found");
 
                         // Validate measurement unit
                         if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
@@ -269,7 +269,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                         // Get the ingredient to check its measurement unit
                         var ingredientEntity = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == ingredient.IngredientID && !i.IsDelete);
+                            .FindAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
 
                         // Standardize measurement unit
                         ingredient.MeasurementUnit = StandardizeMeasurementUnit(ingredient.MeasurementUnit);
@@ -294,7 +294,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             }
                         }
 
-                        ingredient.ComboID = combo.ComboId;
+                        ingredient.ComboId = combo.ComboId;
                         _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
                     }
                     await _unitOfWork.CommitAsync();
@@ -382,22 +382,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new ValidationException($"Another combo with name {combo.Name} already exists");
 
                 // Validate HotpotBroth if it's being changed
-                if (existingCombo.HotpotBrothID != combo.HotpotBrothID)
+                if (existingCombo.HotpotBrothId != combo.HotpotBrothId)
                 {
-                    await ValidateHotpotBroth(combo.HotpotBrothID);
+                    await ValidateHotpotBroth(combo.HotpotBrothId);
                 }
 
                 // Validate TurtorialVideo if it's being changed
-                if (existingCombo.TurtorialVideoID != combo.TurtorialVideoID)
+                if (existingCombo.TurtorialVideoId != combo.TurtorialVideoId)
                 {
-                    await ValidateTurtorialVideo(combo.TurtorialVideoID);
+                    await ValidateTurtorialVideo(combo.TurtorialVideoId);
                 }
 
                 // Get applicable discount for this size if size changed
-                if (existingCombo.Size != combo.Size || !combo.AppliedDiscountID.HasValue)
+                if (existingCombo.Size != combo.Size || !combo.AppliedDiscountId.HasValue)
                 {
                     var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                    combo.AppliedDiscountID = applicableDiscount?.SizeDiscountId;
+                    combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
                 }
 
                 // Update combo
@@ -428,25 +428,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Check if this combo is used by any customizations or orders
                 var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
-                    .AnyAsync(c => c.ComboID == id && !c.IsDelete);
+                    .AnyAsync(c => c.ComboId == id && !c.IsDelete);
 
                 var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
-                    .AnyAsync(od => od.ComboID == id && !od.IsDelete);
+                    .AnyAsync(od => od.ComboId == id && !od.IsDelete);
 
                 if (isUsedByCustomization || isUsedByOrder)
                     throw new ValidationException("Cannot delete this combo as it is used by existing customizations or orders");
 
                 // Check if the tutorial video is used by other combos
-                var videoId = combo.TurtorialVideoID;
+                var videoId = combo.TurtorialVideoId;
                 var videoUsedByOtherCombos = await _unitOfWork.Repository<Combo>()
-                    .AnyAsync(c => c.TurtorialVideoID == videoId && c.ComboId != id && !c.IsDelete);
+                    .AnyAsync(c => c.TurtorialVideoId == videoId && c.ComboId != id && !c.IsDelete);
 
                 // Soft delete combo and related entities
                 combo.SoftDelete();
 
                 // Soft delete combo ingredients
                 var comboIngredients = await _unitOfWork.Repository<ComboIngredient>()
-                    .FindAll(ci => ci.ComboID == id && !ci.IsDelete)
+                    .FindAll(ci => ci.ComboId == id && !ci.IsDelete)
                     .ToListAsync();
 
                 foreach (var ingredient in comboIngredients)
@@ -522,7 +522,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             // Get all available ingredients of this type
             return await _unitOfWork.Repository<Ingredient>()
-                .FindAll(i => i.IngredientTypeID == ingredientTypeId && i.Quantity > 0 && !i.IsDelete)
+                .FindAll(i => i.IngredientTypeId == ingredientTypeId && i.Quantity > 0 && !i.IsDelete)
                 .ToListAsync();
         }
 
@@ -535,7 +535,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (broth == null)
                 throw new ValidationException("Invalid hotpot broth selected");
 
-            if (broth.IngredientTypeID != BROTH_TYPE_ID)
+            if (broth.IngredientTypeId != BROTH_TYPE_ID)
                 throw new ValidationException("Selected ingredient is not a broth type");
 
             if (broth.Quantity <= 0)
@@ -547,7 +547,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             return await _unitOfWork.Repository<ComboIngredient>()
                 .Include(ci => ci.Ingredient)
-                .Where(ci => ci.ComboID == comboId && !ci.IsDelete)
+                .Where(ci => ci.ComboId == comboId && !ci.IsDelete)
                 .ToListAsync();
         }
 
@@ -613,12 +613,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             decimal basePrice = 0;
 
             // Add hotpot broth price
-            if (combo.HotpotBrothID > 0)
+            if (combo.HotpotBrothId > 0)
             {
                 var broth = await _unitOfWork.Repository<Ingredient>()
-                    .FindAsync(i => i.IngredientId == combo.HotpotBrothID && !i.IsDelete);
+                    .FindAsync(i => i.IngredientId == combo.HotpotBrothId && !i.IsDelete);
 
-                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothID);
+                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothId);
 
                 if (broth != null)
                 {
@@ -629,7 +629,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             // Add prices of all ingredients
             foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
             {
-                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientID);
+                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientId);
                 if (comboIngredient.Ingredient != null)
                 {
                     // Get the ingredient's standard unit price

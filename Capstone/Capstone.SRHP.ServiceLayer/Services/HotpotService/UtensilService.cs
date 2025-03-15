@@ -49,7 +49,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             if (typeId.HasValue)
             {
-                query = query.Where(u => u.UtensilTypeID == typeId.Value);
+                query = query.Where(u => u.UtensilTypeId == typeId.Value);
             }
 
             if (isAvailable.HasValue)
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             // Validate UtensilType exists
             var utensilType = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeID && !ut.IsDelete);
+                .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeId && !ut.IsDelete);
 
             if (utensilType == null)
                 throw new ValidationException("loại dụng cụ không hợp lệ");
@@ -168,7 +168,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     existingUtensil.Price = entity.Price;
                     existingUtensil.Status = entity.Status;
                     existingUtensil.Quantity = entity.Quantity;
-                    existingUtensil.UtensilTypeID = entity.UtensilTypeID;
+                    existingUtensil.UtensilTypeId = entity.UtensilTypeId;
                     existingUtensil.LastMaintainDate = DateTime.UtcNow;
                     existingUtensil.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
@@ -201,7 +201,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             // Validate UtensilType exists
             var utensilType = await _unitOfWork.Repository<UtensilType>()
-                .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeID && !ut.IsDelete);
+                .FindAsync(ut => ut.UtensilTypeId == entity.UtensilTypeId && !ut.IsDelete);
 
             if (utensilType == null)
                 throw new ValidationException("loại dụng cụ không hợp lệ");
@@ -221,7 +221,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             existingUtensil.Price = entity.Price;
             existingUtensil.Status = entity.Status;
             existingUtensil.Quantity = entity.Quantity;
-            existingUtensil.UtensilTypeID = entity.UtensilTypeID;
+            existingUtensil.UtensilTypeId = entity.UtensilTypeId;
             existingUtensil.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
@@ -308,7 +308,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             // Check if type is in use
             var isInUse = await _unitOfWork.Repository<Utensil>()
-                .AnyAsync(u => u.UtensilTypeID == id && !u.IsDelete);
+                .AnyAsync(u => u.UtensilTypeId == id && !u.IsDelete);
 
             if (isInUse)
                 throw new ValidationException("loại này đang được sử dụng, không thể xoá");
@@ -320,8 +320,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
         public async Task<Dictionary<int, int>> GetUtensilCountsByTypesAsync(IEnumerable<int> typeIds)
         {
             var counts = await _unitOfWork.Repository<Utensil>()
-                .FindAll(u => !u.IsDelete && typeIds.Contains(u.UtensilTypeID))
-                .GroupBy(u => u.UtensilTypeID)
+                .FindAll(u => !u.IsDelete && typeIds.Contains(u.UtensilTypeId))
+                .GroupBy(u => u.UtensilTypeId)
                 .Select(g => new { TypeId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.TypeId, x => x.Count);
 

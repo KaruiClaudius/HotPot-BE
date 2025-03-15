@@ -35,7 +35,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 // Use the generic repository through unit of work to query shipping orders
                 var shippingOrdersQuery = _unitOfWork.Repository<ShippingOrder>()
                     .AsQueryable()
-                    .Where(so => so.StaffID == staffId)
+                    .Where(so => so.StaffId == staffId)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
@@ -105,7 +105,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 // Use the generic repository through unit of work to query pending shipping orders
                 var pendingShippingOrdersQuery = _unitOfWork.Repository<ShippingOrder>()
                     .AsQueryable()
-                    .Where(so => so.StaffID == staffId && !so.IsDelivered)
+                    .Where(so => so.StaffId == staffId && !so.IsDelivered)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
@@ -161,7 +161,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             var dto = new ShippingListDto
             {
                 ShippingOrderId = shippingOrder.ShippingOrderId,
-                OrderID = shippingOrder.OrderID,
+                OrderID = shippingOrder.OrderId,
                 DeliveryTime = shippingOrder.DeliveryTime,
                 DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
                 IsDelivered = shippingOrder.IsDelivered,

@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -18,7 +12,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [Range(1, int.MaxValue)]
         public int Quantity { get; set; }
-        // New field for volume/weight
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal? VolumeWeight { get; set; }
 
@@ -30,30 +24,30 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal UnitPrice { get; set; }  
 
-        public int OrderID { get; set; }
+        public int OrderId { get; set; }
 
-        public int? UtensilID { get; set; }
-        public int? IngredientID { get; set; }
-        public int? HotpotInventoryID { get; set; }
-        public int? CustomizationID { get; set; }
-        public int? ComboID { get; set; }
+        public int? UtensilId { get; set; }
+        public int? IngredientId { get; set; }
+        public int? HotpotInventoryId { get; set; }
+        public int? CustomizationId { get; set; }
+        public int? ComboId { get; set; }
 
 
         public virtual Order? Order { get; set; } = null!;
 
-        [ForeignKey(nameof(UtensilID))]
+        [ForeignKey(nameof(UtensilId))]
         public virtual Utensil? Utensil { get; set; }
 
-        [ForeignKey(nameof(IngredientID))]
+        [ForeignKey(nameof(IngredientId))]
         public virtual Ingredient? Ingredient { get; set; }
 
-        [ForeignKey(nameof(HotpotInventoryID))]
+        [ForeignKey(nameof(HotpotInventoryId))]
         public virtual HotPotInventory? HotpotInventory { get; set; }
 
-        [ForeignKey(nameof(CustomizationID))]
+        [ForeignKey(nameof(CustomizationId))]
         public virtual Customization? Customization { get; set; }
 
-        [ForeignKey(nameof(ComboID))]
+        [ForeignKey(nameof(ComboId))]
         public virtual Combo? Combo { get; set; }
 
     }

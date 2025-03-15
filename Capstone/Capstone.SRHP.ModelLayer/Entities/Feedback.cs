@@ -61,11 +61,11 @@ public class Feedback : BaseEntity
 
     [Required]
     [ForeignKey("Order")]
-    public int OrderID { get; set; }
+    public int OrderId { get; set; }
 
     [Required]
     [ForeignKey("User")]
-    public int UserID { get; set; }
+    public int UserId { get; set; }
 
     // New properties for approval process
     public FeedbackApprovalStatus ApprovalStatus { get; set; } = FeedbackApprovalStatus.Pending;

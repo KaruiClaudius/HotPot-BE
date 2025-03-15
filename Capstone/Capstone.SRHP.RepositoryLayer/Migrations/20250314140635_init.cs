@@ -1055,7 +1055,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Ingredients",
-                columns: new[] { "IngredientId", "CreatedAt", "Description", "ImageURL", "IngredientTypeID", "IsDelete", "MeasurementUnit", "MinStockLevel", "Name", "Quantity", "UpdatedAt" },
+                columns: new[] { "IngredientId", "CreatedAt", "Description", "ImageURL", "IngredientTypeId", "IsDelete", "MeasurementUnit", "MinStockLevel", "Name", "Quantity", "UpdatedAt" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2848), "Thinly sliced premium beef perfect for hotpot.", "https://example.com/images/sliced-beef.jpg", 7, false, "g", 20m, "Sliced Beef", 100m, null },
@@ -1086,7 +1086,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Users",
-                columns: new[] { "UserId", "Address", "CreatedAt", "Email", "ImageURL", "IsDelete", "Name", "Password", "PhoneNumber", "RefreshToken", "RefreshTokenExpiry", "RoleID", "UpdatedAt" },
+                columns: new[] { "UserId", "Address", "CreatedAt", "Email", "ImageURL", "IsDelete", "Name", "Password", "PhoneNumber", "RefreshToken", "RefreshTokenExpiry", "RoleId", "UpdatedAt" },
                 values: new object[,]
                 {
                     { 1, null, new DateTime(2025, 3, 14, 21, 6, 32, 377, DateTimeKind.Utc).AddTicks(6005), "Admin@gmail.com", null, false, "Admin", "$2a$12$5UBhC4v1TB1pbNY39K15e.endofTEZE35A9eR8rN8kO1nMVAhRZqu", "987654321", null, null, 1, null },
@@ -1103,7 +1103,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Utensils",
-                columns: new[] { "UtensilId", "CreatedAt", "Description", "ImageURL", "IsDelete", "LastMaintainDate", "Material", "Name", "Price", "Quantity", "Status", "UpdatedAt", "UtensilTypeID" },
+                columns: new[] { "UtensilId", "CreatedAt", "Description", "ImageURL", "IsDelete", "LastMaintainDate", "Material", "Name", "Price", "Quantity", "Status", "UpdatedAt", "UtensilTypeId" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(2685), "Set of 5 pairs of traditional bamboo chopsticks.", "https://example.com/images/bamboo-chopsticks.jpg", false, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2679), "Bamboo", "Bamboo Chopsticks Set", 12.99m, 100, true, null, 1 },
@@ -1115,7 +1115,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Customers",
-                columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "Note", "UpdatedAt", "UserID" },
+                columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "Note", "UpdatedAt", "UserId" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2075), false, null, null, 8 },
@@ -1124,12 +1124,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Customers",
-                columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "LoyatyPoint", "Note", "UpdatedAt", "UserID" },
+                columns: new[] { "CustomerId", "CreatedAt", "IsDelete", "LoyatyPoint", "Note", "UpdatedAt", "UserId" },
                 values: new object[] { 3, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2083), false, 200.0, null, null, 10 });
 
             migrationBuilder.InsertData(
                 table: "IngredientPrices",
-                columns: new[] { "IngredientPriceId", "CreatedAt", "EffectiveDate", "IngredientID", "IsDelete", "Price", "UpdatedAt" },
+                columns: new[] { "IngredientPriceId", "CreatedAt", "EffectiveDate", "IngredientId", "IsDelete", "Price", "UpdatedAt" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7438), new DateTime(2025, 2, 12, 21, 6, 34, 703, DateTimeKind.Local).AddTicks(7429), 1, false, 0.13m, null },
@@ -1162,7 +1162,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Managers",
-                columns: new[] { "ManagerId", "CreatedAt", "IsDelete", "UpdatedAt", "UserID", "WorkDays" },
+                columns: new[] { "ManagerId", "CreatedAt", "IsDelete", "UpdatedAt", "UserId", "WorkDays" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(2028), false, null, 2, 0 },
@@ -1171,7 +1171,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             migrationBuilder.InsertData(
                 table: "Staffs",
-                columns: new[] { "StaffId", "CreatedAt", "IsDelete", "UpdatedAt", "UserID", "WorkDays" },
+                columns: new[] { "StaffId", "CreatedAt", "IsDelete", "UpdatedAt", "UserId", "WorkDays" },
                 values: new object[,]
                 {
                     { 1, new DateTime(2025, 3, 14, 21, 6, 34, 703, DateTimeKind.Utc).AddTicks(1903), false, null, 4, 0 },
@@ -1218,22 +1218,22 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ComboIngredients_ComboID_IngredientID",
                 table: "ComboIngredients",
-                columns: new[] { "ComboID", "IngredientID" });
+                columns: new[] { "ComboId", "IngredientId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ComboIngredients_IngredientID",
                 table: "ComboIngredients",
-                column: "IngredientID");
+                column: "IngredientId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Combos_AppliedDiscountID",
                 table: "Combos",
-                column: "AppliedDiscountID");
+                column: "AppliedDiscountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Combos_HotpotBrothID",
                 table: "Combos",
-                column: "HotpotBrothID");
+                column: "HotpotBrothId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Combos_IngredientId",
@@ -1243,7 +1243,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Combos_TurtorialVideoID",
                 table: "Combos",
-                column: "TurtorialVideoID");
+                column: "TurtorialVideoId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConditionLogs_HotPotInventoryId",
@@ -1253,39 +1253,39 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ConditionLogs_UtensilID",
                 table: "ConditionLogs",
-                column: "UtensilID");
+                column: "UtensilId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customers_UserID",
                 table: "Customers",
-                column: "UserID",
+                column: "UserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_CustomizationIngredients_CustomizationID_IngredientID",
                 table: "CustomizationIngredients",
-                columns: new[] { "CustomizationID", "IngredientID" });
+                columns: new[] { "CustomizationId", "IngredientId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_CustomizationIngredients_IngredientID",
                 table: "CustomizationIngredients",
-                column: "IngredientID");
+                column: "IngredientId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customizations_AppliedDiscountID",
                 table: "Customizations",
-                column: "AppliedDiscountID");
+                column: "AppliedDiscountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customizations_ComboID",
                 table: "Customizations",
-                column: "ComboID",
+                column: "ComboId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customizations_HotpotBrothID",
                 table: "Customizations",
-                column: "HotpotBrothID");
+                column: "HotpotBrothId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customizations_IngredientId",
@@ -1295,7 +1295,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Customizations_UserID",
                 table: "Customizations",
-                column: "UserID");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Feedback_ApprovedByUserId",
@@ -1310,13 +1310,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Feedback_OrderID",
                 table: "Feedback",
-                column: "OrderID",
+                column: "OrderId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Feedback_UserID",
                 table: "Feedback",
-                column: "UserID");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_HotPotInventorys_HotpotId",
@@ -1337,17 +1337,17 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_IngredientPrices_IngredientID",
                 table: "IngredientPrices",
-                column: "IngredientID");
+                column: "IngredientId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Ingredients_IngredientTypeID",
                 table: "Ingredients",
-                column: "IngredientTypeID");
+                column: "IngredientTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Managers_UserID",
                 table: "Managers",
-                column: "UserID",
+                column: "UserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1358,64 +1358,64 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_ComboID",
                 table: "OrderDetails",
-                column: "ComboID",
+                column: "ComboId",
                 unique: true,
-                filter: "[ComboID] IS NOT NULL");
+                filter: "[ComboId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_CustomizationID",
                 table: "OrderDetails",
-                column: "CustomizationID",
+                column: "CustomizationId",
                 unique: true,
-                filter: "[CustomizationID] IS NOT NULL");
+                filter: "[CustomizationId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_HotpotInventoryID",
                 table: "OrderDetails",
-                column: "HotpotInventoryID");
+                column: "HotpotInventoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_IngredientID",
                 table: "OrderDetails",
-                column: "IngredientID",
+                column: "IngredientId",
                 unique: true,
-                filter: "[IngredientID] IS NOT NULL");
+                filter: "[IngredientId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_OrderID",
                 table: "OrderDetails",
-                column: "OrderID");
+                column: "OrderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderDetails_UtensilID",
                 table: "OrderDetails",
-                column: "UtensilID",
+                column: "UtensilId",
                 unique: true,
-                filter: "[UtensilID] IS NOT NULL");
+                filter: "[UtensilId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_DiscountID",
                 table: "Orders",
-                column: "DiscountID",
+                column: "DiscountId",
                 unique: true,
-                filter: "[DiscountID] IS NOT NULL");
+                filter: "[DiscountId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_UserID",
                 table: "Orders",
-                column: "UserID");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Payments_OrderID",
                 table: "Payments",
-                column: "OrderID",
+                column: "OrderId",
                 unique: true,
-                filter: "[OrderID] IS NOT NULL");
+                filter: "[OrderId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Payments_UserID",
                 table: "Payments",
-                column: "UserID");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ReplacementRequests_AssignedStaffId",
@@ -1445,18 +1445,18 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ShippingOrders_OrderID",
                 table: "ShippingOrders",
-                column: "OrderID",
+                column: "OrderId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ShippingOrders_StaffID",
                 table: "ShippingOrders",
-                column: "StaffID");
+                column: "StaffId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Staffs_UserID",
                 table: "Staffs",
-                column: "UserID",
+                column: "UserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1474,12 +1474,12 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Users_RoleID",
                 table: "Users",
-                column: "RoleID");
+                column: "RoleId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Utensils_UtensilTypeID",
                 table: "Utensils",
-                column: "UtensilTypeID");
+                column: "UtensilTypeId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_ConditionLogs_HotPotInventorys_HotPotInventoryId",

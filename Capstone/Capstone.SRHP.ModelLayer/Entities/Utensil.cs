@@ -45,12 +45,12 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("UtensilType")]
-        public int UtensilTypeID { get; set; }
+        public int UtensilTypeId { get; set; }
 
         public virtual UtensilType? UtensilType { get; set; }
         public virtual ICollection<OrderDetail> OrderDetails { get; set; }
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
-        public virtual ICollection<ConditionLog>? ConditionLogs { get; set; }
+        public virtual ICollection<DamageDevice>? ConditionLogs { get; set; }
 
         public Utensil()
         {

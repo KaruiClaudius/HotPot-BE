@@ -22,8 +22,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(20)]
         public string MeasurementUnit { get; set; }
 
-        public int ComboID { get; set; }
-        public int IngredientID { get; set; }
+        public int ComboId { get; set; }
+        public int IngredientId { get; set; }
 
         public virtual Combo Combo { get; set; } = null!;
 

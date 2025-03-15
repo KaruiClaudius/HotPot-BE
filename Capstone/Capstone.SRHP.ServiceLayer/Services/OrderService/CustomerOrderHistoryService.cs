@@ -49,7 +49,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Start with all orders for this user that aren't deleted
                 var query = _unitOfWork.Repository<Order>()
                     .AsQueryable()
-                    .Where(o => o.UserID == userId && !o.IsDelete);
+                    .Where(o => o.UserId == userId && !o.IsDelete);
 
                 // Apply filters
                 if (filter.StartDate.HasValue)
@@ -132,7 +132,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
-                    .Where(o => o.OrderId == orderId && o.UserID == userId && !o.IsDelete)
+                    .Where(o => o.OrderId == orderId && o.UserId == userId && !o.IsDelete)
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
@@ -215,7 +215,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var dto = new OrderHistoryDto
             {
                 OrderId = order.OrderId,
-                UserId = order.UserID,
+                UserId = order.UserId,
                 CustomerName = order.User?.Name ?? "Unknown",
                 Address = order.Address,
                 Notes = order.Notes ?? string.Empty,
