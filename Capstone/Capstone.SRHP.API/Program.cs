@@ -94,17 +94,14 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-    endpoints.MapHub<ChatHub>("/chatHub");
-    endpoints.MapHub<EquipmentHub>("/equipmentHub");
-    endpoints.MapHub<FeedbackHub>("/feedbackHub");
-    endpoints.MapHub<ScheduleHub>("/scheduleHub");
-    endpoints.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
-    endpoints.MapHub<EquipmentStockHub>("/equipmentStockHub");
-    endpoints.MapHub<NotificationHub>("/notificationHub");
-});
+app.MapControllers();
+app.MapHub<ChatHub>("/chatHub");
+app.MapHub<EquipmentHub>("/equipmentHub");
+app.MapHub<FeedbackHub>("/feedbackHub");
+app.MapHub<ScheduleHub>("/scheduleHub");
+app.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
+app.MapHub<EquipmentStockHub>("/equipmentStockHub");
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
 
