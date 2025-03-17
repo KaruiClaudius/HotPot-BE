@@ -9,21 +9,21 @@ using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {    
-    public class Manager : BaseEntity
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int ManagerId { get; set; }
+    //public class Manager : BaseEntity
+    //{
+    //    [Key]
+    //    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    //    public int ManagerId { get; set; }
 
-        [Required]
-        [ForeignKey("User")]
-        public int UserId { get; set; }
+    //    [Required]
+    //    [ForeignKey("User")]
+    //    public int UserId { get; set; }
 
-        [Required]
-        public WorkDays WorkDays { get; set; }
+    //    [Required]
+    //    public WorkDays WorkDays { get; set; }
 
-        public virtual User? User { get; set; }
-        public virtual ICollection<WorkShift>? WorkShifts { get; set; } = new List<WorkShift>();
-    }
+    //    public virtual User? User { get; set; }
+    //    public virtual ICollection<WorkShift>? WorkShifts { get; set; } = new List<WorkShift>();
+    //}
 
 }

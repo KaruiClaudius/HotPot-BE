@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -40,14 +41,24 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(15)]
         public string? PhoneNumber { get; set; }
 
+
+        [Range(0, double.MaxValue)]
+        public double? LoyatyPoint { get; set; } 
+
+        public WorkDays? WorkDays { get; set; }
+
+        [StringLength(1000)]
+        public string? Note { get; set; }
+
         [Required]
         [ForeignKey("Role")]
         public int RoleId { get; set; }
 
         public virtual Role? Role { get; set; }
-        public virtual Customer? Customer { get; set; }
-        public virtual Staff? Staff { get; set; }
-        public virtual Manager? Manager { get; set; }
+        //public virtual Customer? Customer { get; set; }
+        //public virtual Staff? Staff { get; set; }
+        //public virtual Manager? Manager { get; set; }
+
         public virtual ICollection<Customization>? Customizations { get; set; }
 
         [InverseProperty("User")]
@@ -57,5 +68,18 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [InverseProperty("ApprovedByUser")]
         public virtual ICollection<Feedback>? ApprovedFeedbacks { get; set; }
 
+        //customer
+        public virtual ICollection<ReplacementRequest>? CustomerReplacementRequests { get; set; }
+
+        //staff
+        [InverseProperty("Staff")]
+        public virtual ICollection<WorkShift>? StaffWorkShifts { get; set; } = new List<WorkShift>();
+        public virtual ICollection<ShippingOrder>? ShippingOrders { get; set; }
+        public virtual ICollection<ReplacementRequest>? StaffReplacementRequests { get; set; }
+
+
+        //manager
+        [InverseProperty("Managers")]
+        public virtual ICollection<WorkShift>? MangerWorkShifts { get; set; } = new List<WorkShift>();
     }
 }

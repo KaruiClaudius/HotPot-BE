@@ -351,7 +351,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         // Add volume/weight and unit information to the response
                         response.Items.Add(new OrderItemResponse
                         {
-                            OrderDetailId = detail.OrderDetailId,
+                            OrderDetailId = detail.SellOrderDetailId,
                             Quantity = detail.Quantity,
                             VolumeWeight = detail.VolumeWeight,
                             Unit = detail.Ingredient.MeasurementUnit, // Add the unit (kg, g, l, ml, etc.)
@@ -389,7 +389,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                     response.Items.Add(new OrderItemResponse
                     {
-                        OrderDetailId = detail.OrderDetailId,
+                        OrderDetailId = detail.SellOrderDetailId,
                         Quantity = detail.Quantity,
                         UnitPrice = detail.UnitPrice,
                         TotalPrice = detail.UnitPrice * detail.Quantity,

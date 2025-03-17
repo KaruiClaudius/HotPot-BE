@@ -20,7 +20,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Payment> Payments { get; set; }
         public virtual DbSet<WorkShift> WorkShifts { get; set; }
         public virtual DbSet<Order> Orders { get; set; }
-        public virtual DbSet<OrderDetail> OrderDetails { get; set; }
+        public virtual DbSet<SellOrderDetail> SellOrderDetails { get; set; }
+        public virtual DbSet<RentOrderDetail> RentOrderDetails { get; set; }
         public virtual DbSet<Customization> Customizations { get; set; }
         public virtual DbSet<CustomizationIngredient> CustomizationIngredients { get; set; }
         public virtual DbSet<Combo> Combos { get; set; }
@@ -34,9 +35,9 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Ingredient> Ingredients { get; set; }
         public virtual DbSet<IngredientType> IngredientTypes { get; set; }
         public virtual DbSet<IngredientPrice> IngredientPrices { get; set; }
-        public virtual DbSet<Staff> Staffs { get; set; }
-        public virtual DbSet<Manager> Managers { get; set; }
-        public virtual DbSet<Customer> Customers { get; set; }
+        //public virtual DbSet<Staff> Staffs { get; set; }
+        //public virtual DbSet<Manager> Managers { get; set; }
+        //public virtual DbSet<Customer> Customers { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
         public virtual DbSet<ChatMessage> ChatMessages { get; set; }
         public virtual DbSet<ChatSession> ChatSessions { get; set; }
@@ -95,27 +96,27 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasForeignKey(u => u.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(u => u.Customer)
-                    .WithOne(c => c.User)
-                    .HasForeignKey<Customer>(c => c.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                //entity.HasOne(u => u.Customer)
+                //    .WithOne(c => c.User)
+                //    .HasForeignKey<Customer>(c => c.UserId)
+                //    .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(u => u.Staff)
-                    .WithOne(s => s.User)
-                    .HasForeignKey<Staff>(s => s.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                //entity.HasOne(u => u.Staff)
+                //    .WithOne(s => s.User)
+                //    .HasForeignKey<Staff>(s => s.UserId)
+                //    .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(u => u.Manager)
-                    .WithOne(m => m.User)
-                    .HasForeignKey<Manager>(m => m.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                //entity.HasOne(u => u.Manager)
+                //    .WithOne(m => m.User)
+                //    .HasForeignKey<Manager>(m => m.UserId)
+                //    .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<Customer>(entity =>
-            {
-                entity.Property(c => c.LoyatyPoint)
-                    .HasDefaultValue(0);
-            });
+            //modelBuilder.Entity<Customer>(entity =>
+            //{
+            //    entity.Property(c => c.LoyatyPoint)
+            //        .HasDefaultValue(0);
+            //});
 
             modelBuilder.Entity<Discount>(entity =>
             {
@@ -412,26 +413,26 @@ namespace Capstone.HPTY.RepositoryLayer
                 new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
                 new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
                 new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
-                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 }
+                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4, LoyatyPoint = 200 }
             );
 
-            modelBuilder.Entity<Staff>().HasData(
-                new Staff { StaffId = 1, UserId = 4 },
-                new Staff { StaffId = 2, UserId = 5 },
-                new Staff { StaffId = 3, UserId = 6 },
-                new Staff { StaffId = 4, UserId = 7 }
-            );
+            //modelBuilder.Entity<Staff>().HasData(
+            //    new Staff { StaffId = 1, UserId = 4 },
+            //    new Staff { StaffId = 2, UserId = 5 },
+            //    new Staff { StaffId = 3, UserId = 6 },
+            //    new Staff { StaffId = 4, UserId = 7 }
+            //);
 
-            modelBuilder.Entity<Manager>().HasData(
-                new Manager { ManagerId = 1, UserId = 2 },
-                new Manager { ManagerId = 2, UserId = 3 }
-            );
+            //modelBuilder.Entity<Manager>().HasData(
+            //    new Manager { ManagerId = 1, UserId = 2 },
+            //    new Manager { ManagerId = 2, UserId = 3 }
+            //);
 
-            modelBuilder.Entity<Customer>().HasData(
-                new Customer { CustomerId = 1, UserId = 8 },
-                new Customer { CustomerId = 2, UserId = 9 },
-                new Customer { CustomerId = 3, UserId = 10, LoyatyPoint = 200 }
-            );
+            //modelBuilder.Entity<Customer>().HasData(
+            //    new Customer { CustomerId = 1, UserId = 8 },
+            //    new Customer { CustomerId = 2, UserId = 9 },
+            //    new Customer { CustomerId = 3, UserId = 10, LoyatyPoint = 200 }
+            //);
 
 
             modelBuilder.Entity<UtensilType>().HasData(

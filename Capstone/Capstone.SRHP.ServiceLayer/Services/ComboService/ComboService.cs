@@ -430,7 +430,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
                     .AnyAsync(c => c.ComboId == id && !c.IsDelete);
 
-                var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
+                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail >()
                     .AnyAsync(od => od.ComboId == id && !od.IsDelete);
 
                 if (isUsedByCustomization || isUsedByOrder)

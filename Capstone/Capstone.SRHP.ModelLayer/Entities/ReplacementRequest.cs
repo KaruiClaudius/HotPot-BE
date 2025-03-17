@@ -50,10 +50,12 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int? UtensilId { get; set; }
 
         // Navigation properties
-        public virtual Customer? Customer { get; set; }
+        [InverseProperty("CustomerReplacementRequests")]
+        public virtual User? Customer { get; set; }
 
         [ForeignKey("AssignedStaffId")]
-        public virtual Staff? AssignedStaff { get; set; }
+        [InverseProperty("StaffReplacementRequests")]
+        public virtual User? AssignedStaff { get; set; }
 
         [ForeignKey("ConditionLogId")]
         public virtual DamageDevice? ConditionLog { get; set; }

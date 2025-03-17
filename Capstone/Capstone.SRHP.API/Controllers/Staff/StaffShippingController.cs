@@ -99,7 +99,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
- 
+
         /// Get pending (not delivered) shipping orders for a staff member      
         [HttpGet("pending/{staffId}")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<ShippingListDto>>), StatusCodes.Status200OK)]
@@ -131,7 +131,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
-        
+
         /// Update delivery notes for a shipping order     
         [HttpPut("{id}/notes")]
         [ProducesResponseType(typeof(ApiResponse<ShippingListDto>), StatusCodes.Status200OK)]

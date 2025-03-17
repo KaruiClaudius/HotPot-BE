@@ -27,8 +27,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(500)]
         public string? Topic { get; set; }
 
-        public virtual Customer? Customer { get; set; }
-        public virtual Manager? Manager { get; set; }  
+        public virtual User? Customer { get; set; }
+        public virtual User? Manager { get; set; }  
         public virtual ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
     }
 }
