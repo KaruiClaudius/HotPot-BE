@@ -29,6 +29,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string ItemName { get; set; }
         public string ItemType { get; set; }
         public int Quantity { get; set; }
+        public bool IsRental { get; set; }
+
+        // Rental-specific properties
+        public DateTime? RentalStartDate { get; set; }
+        public DateTime? ExpectedReturnDate { get; set; }
     }
 
     public class UpdateDeliveryNotesRequest

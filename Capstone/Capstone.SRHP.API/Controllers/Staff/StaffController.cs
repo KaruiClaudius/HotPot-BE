@@ -63,7 +63,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                var staff = await _staffService.GetStaffByUserIdAsync(userId);
+                var staff = await _staffService.GetStaffByIdAsync(userId);
                 var staffDto = staff.Adapt<StaffDto>();
 
                 return Ok(ApiResponse<StaffDto>.SuccessResponse(staffDto, $"Staff with User ID {userId} retrieved successfully"));

@@ -14,7 +14,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
    public class EquipmentService : IEquipmentService
     {
         private readonly IUnitOfWork _unitOfWork;
-
+        private const int CUSTOMER_ROLE_ID = 4; // Customer role ID
+        private const int STAFF_ROLE_ID = 3;    // Staff role ID
         public EquipmentService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
@@ -136,15 +137,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             // Check for customers with active orders using the affected equipment
             if (conditionLog.HotPotInventoryId.HasValue)
             {
-                // Get customers who have orders with this hot pot inventory
-                var hotPotCustomers = await _unitOfWork.Repository<SellOrderDetail >()
-                    .AsQueryable(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
+                // Get customers who have orders with this hot pot inventory in sell order details
+                var hotPotSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
+                    .AsQueryable()
+                    .Where(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
                     .Include(od => od.Order)
-                    .Select(od => od.Order.User.Customer.CustomerId)
+                        .ThenInclude(o => o.User)
+                    .Where(od => od.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(od => od.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 
-                foreach (var customerId in hotPotCustomers)
+                foreach (var customerId in hotPotSellCustomers)
+                {
+                    affectedCustomerIds.Add(customerId);
+                }
+
+                // Get customers who have orders with this hot pot inventory in rent order details
+                var hotPotRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
+                    .AsQueryable()
+                    .Where(rd => rd.HotpotInventoryId == conditionLog.HotPotInventoryId)
+                    .Include(rd => rd.Order)
+                        .ThenInclude(o => o.User)
+                    .Where(rd => rd.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(rd => rd.Order.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var customerId in hotPotRentCustomers)
                 {
                     affectedCustomerIds.Add(customerId);
                 }
@@ -152,15 +172,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             if (conditionLog.UtensilId.HasValue)
             {
-                // Get customers who have orders with this utensil
-                var utensilCustomers = await _unitOfWork.Repository<SellOrderDetail >()
-                    .AsQueryable(od => od.UtensilId == conditionLog.UtensilId)
+                // Get customers who have orders with this utensil in sell order details
+                var utensilSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
+                    .AsQueryable()
+                    .Where(od => od.UtensilId == conditionLog.UtensilId)
                     .Include(od => od.Order)
-                    .Select(od => od.Order.User.Customer.CustomerId)
+                        .ThenInclude(o => o.User)
+                    .Where(od => od.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(od => od.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 
-                foreach (var customerId in utensilCustomers)
+                foreach (var customerId in utensilSellCustomers)
+                {
+                    affectedCustomerIds.Add(customerId);
+                }
+
+                // Get customers who have orders with this utensil in rent order details
+                var utensilRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
+                    .AsQueryable()
+                    .Where(rd => rd.UtensilId == conditionLog.UtensilId)
+                    .Include(rd => rd.Order)
+                        .ThenInclude(o => o.User)
+                    .Where(rd => rd.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(rd => rd.Order.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var customerId in utensilRentCustomers)
                 {
                     affectedCustomerIds.Add(customerId);
                 }
@@ -171,58 +210,68 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         public async Task<bool> AssignStaffToResolutionAsync(int conditionLogId, int staffId)
         {
-            // First check if the staff exists
-            var staff = await _unitOfWork.Repository<Staff>()
-                .FindAsync(s => s.StaffId == staffId);
-
-            if (staff == null)
-                return false;
-
-            // Then get the condition log with its replacement requests
-            var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable(c => c.ConditionLogId == conditionLogId)
-                .Include(c => c.ReplacementRequests)
-                .FirstOrDefaultAsync();
-
-            if (conditionLog == null)
-                return false;
-
-            // Update the condition log status
-            conditionLog.Status = MaintenanceStatus.InProgress;
-            conditionLog.UpdatedAt = DateTime.UtcNow;
-
-            // Create a replacement request if none exists to track the staff assignment
-            if (conditionLog.ReplacementRequests == null || !conditionLog.ReplacementRequests.Any())
+            try
             {
-                var replacementRequest = new ReplacementRequest
-                {
-                    RequestReason = $"Maintenance for condition log #{conditionLogId}",
-                    Status = ReplacementRequestStatus.InProgress,
-                    RequestDate = DateTime.UtcNow,
-                    ConditionLogId = conditionLogId,
-                    AssignedStaffId = staffId,
-                    EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
-                        EquipmentType.HotPot : EquipmentType.Utensil,
-                    HotPotInventoryId = conditionLog.HotPotInventoryId,
-                    UtensilId = conditionLog.UtensilId
-                };
+                // First check if the staff exists (user with staff role)
+                var staff = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
-                await _unitOfWork.Repository<ReplacementRequest>().InsertAsync(replacementRequest);
-            }
-            else
-            {
-                // Update existing replacement requests to assign the staff
-                foreach (var request in conditionLog.ReplacementRequests)
+                if (staff == null)
+                    return false;
+
+                // Then get the condition log with its replacement requests
+                var conditionLog = await _unitOfWork.Repository<DamageDevice>()
+                    .AsQueryable()
+                    .Where(c => c.ConditionLogId == conditionLogId)
+                    .Include(c => c.ReplacementRequests)
+                    .FirstOrDefaultAsync();
+
+                if (conditionLog == null)
+                    return false;
+
+                // Update the condition log status
+                conditionLog.Status = MaintenanceStatus.InProgress;
+                conditionLog.SetUpdateDate();
+
+                // Create a replacement request if none exists to track the staff assignment
+                if (conditionLog.ReplacementRequests == null || !conditionLog.ReplacementRequests.Any())
                 {
-                    request.AssignedStaffId = staffId;
-                    request.Status = ReplacementRequestStatus.InProgress;
-                    request.ReviewDate = DateTime.UtcNow;
-                    request.ReviewNotes = $"Assigned to staff #{staffId} for resolution";
+                    var replacementRequest = new ReplacementRequest
+                    {
+                        RequestReason = $"Maintenance for condition log #{conditionLogId}",
+                        Status = ReplacementRequestStatus.InProgress,
+                        RequestDate = DateTime.UtcNow,
+                        ConditionLogId = conditionLogId,
+                        AssignedStaffId = staffId,
+                        EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
+                            EquipmentType.HotPot : EquipmentType.Utensil,
+                        HotPotInventoryId = conditionLog.HotPotInventoryId,
+                        UtensilId = conditionLog.UtensilId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Repository<ReplacementRequest>().InsertAsync(replacementRequest);
                 }
-            }
+                else
+                {
+                    // Update existing replacement requests to assign the staff
+                    foreach (var request in conditionLog.ReplacementRequests)
+                    {
+                        request.AssignedStaffId = staffId;
+                        request.Status = ReplacementRequestStatus.InProgress;
+                        request.ReviewDate = DateTime.UtcNow;
+                        request.ReviewNotes = $"Assigned to staff #{staffId} for resolution";
+                        request.SetUpdateDate();
+                    }
+                }
 
-            await _unitOfWork.CommitAsync();
-            return true;
+                await _unitOfWork.CommitAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         public async Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes)

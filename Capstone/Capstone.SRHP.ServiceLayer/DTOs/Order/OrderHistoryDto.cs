@@ -16,6 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
         public string Notes { get; set; }
         public decimal TotalPrice { get; set; }
         public OrderStatus Status { get; set; }
+        public decimal? HotpotDeposit { get; set; }
         public string StatusName => Status.ToString();
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -30,7 +31,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
         public string ItemName { get; set; }
         public string ItemType { get; set; }
         public int Quantity { get; set; }
+        public decimal? VolumeWeight { get; set; }
+        public string Unit { get; set; }
         public decimal Price { get; set; }
+        public bool IsRental { get; set; }
+
+        // Rental-specific properties
+        public DateTime? RentalStartDate { get; set; }
+        public DateTime? ExpectedReturnDate { get; set; }
+        public DateTime? ActualReturnDate { get; set; }
+        public decimal? LateFee { get; set; }
+        public decimal? DamageFee { get; set; }
+        public string RentalNotes { get; set; }
+        public string ReturnCondition { get; set; }
     }
 
     public class OrderHistoryFilterRequest

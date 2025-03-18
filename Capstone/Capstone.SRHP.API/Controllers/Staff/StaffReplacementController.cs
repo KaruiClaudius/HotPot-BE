@@ -52,10 +52,10 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null || staff.Staff == null)
+                if (staff == null)
                     return BadRequest(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.ErrorResponse("User is not a staff member"));
 
-                var requests = await _replacementService.GetAssignedReplacementRequestsAsync(staff.Staff.StaffId);
+                var requests = await _replacementService.GetAssignedReplacementRequestsAsync(staff.UserId);
                 var dtos = requests.Select(MapToSummaryDto).ToList();
 
 
@@ -93,7 +93,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null || staff.Staff == null)
+                if (staff == null)
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
 
                 var request = await _replacementService.GetReplacementRequestByIdAsync(id);
@@ -102,7 +102,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
 
                 // Ensure the staff is assigned to this request
-                if (request.AssignedStaffId != staff.Staff.StaffId)
+                if (request.AssignedStaffId != staff.UserId)
                     return Forbid();
 
                 var dto = MapToDetailDto(request);
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null || staff.Staff == null)
+                if (staff == null)
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
 
                 var request = await _replacementService.GetReplacementRequestByIdAsync(id);
@@ -152,7 +152,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
 
                 // Ensure the staff is assigned to this request
-                if (request.AssignedStaffId != staff.Staff.StaffId)
+                if (request.AssignedStaffId != staff.UserId)
                     return Forbid();
 
                 var updatedRequest = await _replacementService.UpdateReplacementStatusAsync(
@@ -203,7 +203,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var staff = await _userService.GetByIdAsync(userId);
 
-                if (staff == null || staff.Staff == null)
+                if (staff == null)
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a staff member"));
 
                 var request = await _replacementService.GetReplacementRequestByIdAsync(id);
@@ -212,7 +212,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
 
                 // Ensure the staff is assigned to this request
-                if (request.AssignedStaffId != staff.Staff.StaffId)
+                if (request.AssignedStaffId != staff.UserId)
                     return Forbid();
 
                 var updatedRequest = await _replacementService.MarkReplacementAsCompletedAsync(
@@ -262,8 +262,8 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 CompletionDate = request.CompletionDate,
                 EquipmentType = request.EquipmentType,
                 EquipmentName = equipmentName,
-                CustomerName = request.Customer?.User?.Name ?? "Unknown Customer",
-                AssignedStaffName = request.AssignedStaff?.User?.Name
+                CustomerName = request.Customer.Name ?? "Unknown Customer",
+                AssignedStaffName = request.AssignedStaff?.Name
             };
         }
 
@@ -282,12 +282,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 EquipmentType = request.EquipmentType,
 
                 CustomerId = request.CustomerId,
-                CustomerName = request.Customer?.User?.Name ?? "Unknown Customer",
-                CustomerEmail = request.Customer?.User?.Email ?? "Unknown Email",
-                CustomerPhone = request.Customer?.User?.PhoneNumber ?? "Unknown Phone",
+                CustomerName = request.Customer?.Name ?? "Unknown Customer",
+                CustomerEmail = request.Customer?.Email ?? "Unknown Email",
+                CustomerPhone = request.Customer?.PhoneNumber ?? "Unknown Phone",
 
                 AssignedStaffId = request.AssignedStaffId,
-                AssignedStaffName = request.AssignedStaff?.User?.Name,
+                AssignedStaffName = request.AssignedStaff?.Name,
 
                 HotPotInventoryId = request.HotPotInventoryId,
                 HotPotSeriesNumber = request.HotPotInventory?.SeriesNumber,

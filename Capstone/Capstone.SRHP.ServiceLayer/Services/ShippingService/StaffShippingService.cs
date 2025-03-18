@@ -65,20 +65,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.OrderDetails)
-                            .ThenInclude(od => od.Utensil)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
                             .ThenInclude(od => od.Ingredient)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
-                        .ThenInclude(od => od.HotpotInventory)
-                        .ThenInclude(hi => hi.Hotpot)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.OrderDetails)
                             .ThenInclude(od => od.Customization)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.OrderDetails)
-                            .ThenInclude(od => od.Combo);
+                            .ThenInclude(od => od.Combo)
+                    .Include(so => so.Order)
+                        .ThenInclude(o => o.RentOrderDetails)
+                            .ThenInclude(rd => rd.Utensil)
+                    .Include(so => so.Order)
+                        .ThenInclude(o => o.RentOrderDetails)
+                            .ThenInclude(rd => rd.HotpotInventory)
+                                .ThenInclude(hi => hi != null ? hi.Hotpot : null);
 
                 var shippingOrder = await shippingOrderQuery.FirstOrDefaultAsync();
 
@@ -173,7 +173,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 Items = new List<ShippingItemDto>()
             };
 
-            // Map order details to shipping items
+            // Map sell order details to shipping items
             if (shippingOrder.Order?.OrderDetails != null)
             {
                 foreach (var detail in shippingOrder.Order.OrderDetails)
@@ -181,20 +181,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     string itemName = "Unknown";
                     string itemType = "Unknown";
 
-                    if (detail.Utensil != null)
-                    {
-                        itemName = detail.Utensil.Name;
-                        itemType = "Utensil";
-                    }
-                    else if (detail.Ingredient != null)
+                    if (detail.Ingredient != null)
                     {
                         itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
-                    }
-                    else if (detail.HotpotInventory != null)
-                    {
-                        itemName = detail.HotpotInventory.Hotpot.Name;
-                        itemType = "Hotpot";
                     }
                     else if (detail.Customization != null)
                     {
@@ -212,7 +202,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
-                        Quantity = detail.Quantity
+                        Quantity = detail.Quantity ?? 0,
+                        IsRental = false
+                    });
+                }
+            }
+
+            // Map rental order details to shipping items
+            if (shippingOrder.Order?.RentOrderDetails != null)
+            {
+                foreach (var rental in shippingOrder.Order.RentOrderDetails)
+                {
+                    string itemName = "Unknown";
+                    string itemType = "Rental";
+
+                    if (rental.Utensil != null)
+                    {
+                        itemName = rental.Utensil.Name;
+                        itemType = "Utensil Rental";
+                    }
+                    else if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
+                    {
+                        itemName = rental.HotpotInventory.Hotpot.Name;
+                        itemType = "Hotpot Rental";
+                    }
+
+                    dto.Items.Add(new ShippingItemDto
+                    {
+                        OrderDetailId = rental.RentableOrderDetailId,
+                        ItemName = itemName,
+                        ItemType = itemType,
+                        Quantity = rental.Quantity,
+                        IsRental = true,
+                        RentalStartDate = rental.RentalStartDate,
+                        ExpectedReturnDate = rental.ExpectedReturnDate
                     });
                 }
             }

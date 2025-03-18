@@ -15,8 +15,15 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
         Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status);
         Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string notes);
         Task<Order> CancelOrderAsync(int orderId, string cancellationReason);
-        Task<PagedResult<Order>> GetOrderHistoryAsync(int pageNumber, int pageSize, OrderStatus? status = null, DateTime? startDate = null, DateTime? endDate = null);
+        Task<PagedResult<Order>> GetOrderHistoryAsync(
+            int pageNumber,
+            int pageSize,
+            OrderStatus? status = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null);
         Task<Order> GetOrderWithDetailsAsync(int orderId);
+        Task<Order> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate);
+        Task<int> UpdateOrdersStatusAsync(OrderStatus currentStatus, OrderStatus newStatus);
     }
 
 }

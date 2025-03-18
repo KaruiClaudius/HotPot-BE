@@ -15,6 +15,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
     public class ScheduleService : IScheduleService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private const int STAFF_ROLE_ID = 3; // Staff role ID
+        private const int MANAGER_ROLE_ID = 2; // Manager role ID
 
         public ScheduleService(IUnitOfWork unitOfWork)
         {
@@ -41,8 +43,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
         public async Task<IEnumerable<WorkShift>> GetStaffWorkShiftsAsync(int staffId)
         {
-            var staff = await _unitOfWork.Repository<Staff>()
-                .FindAsync(s => s.StaffId == staffId);
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(s => s.UserId == staffId && s.RoleId == STAFF_ROLE_ID);
 
             if (staff == null)
                 throw new KeyNotFoundException($"Staff with ID {staffId} not found");
@@ -56,8 +58,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
         public async Task<IEnumerable<WorkShift>> GetManagerWorkShiftsAsync(int managerId)
         {
-            var manager = await _unitOfWork.Repository<Manager>()
-                .FindAsync(m => m.ManagerId == managerId);
+            var manager = await _unitOfWork.Repository<User>()
+                .FindAsync(m => m.UserId == managerId && m.RoleId == MANAGER_ROLE_ID);
 
             if (manager == null)
                 throw new KeyNotFoundException($"Manager with ID {managerId} not found");
@@ -107,10 +109,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             return true;
         }
 
-        public async Task<Staff> AssignStaffWorkDaysAsync(int staffId, WorkDays workDays)
+        public async Task<User> AssignStaffWorkDaysAsync(int staffId, WorkDays workDays)
         {
-            var staff = await _unitOfWork.Repository<Staff>()
-                .FindAsync(s => s.StaffId == staffId);
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(s => s.UserId == staffId && s.RoleId == STAFF_ROLE_ID);
 
             if (staff == null)
                 throw new KeyNotFoundException($"Staff with ID {staffId} not found");
@@ -122,10 +124,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             return staff;
         }
 
-        public async Task<Manager> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts)
+        public async Task<User> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts)
         {
-            var manager = await _unitOfWork.Repository<Manager>()
-                .FindAsync(m => m.ManagerId == managerId);
+            var manager = await _unitOfWork.Repository<User>()
+                .FindAsync(m => m.UserId == managerId && m.RoleId == MANAGER_ROLE_ID);
 
             if (manager == null)
                 throw new KeyNotFoundException($"Manager with ID {managerId} not found");
@@ -143,12 +145,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             }
 
             // Clear existing work shifts and add the new ones
-            if (manager.WorkShifts != null)
+            if (manager.MangerWorkShifts != null)
             {
-                manager.WorkShifts.Clear();
+                // Detach the manager from all current work shifts
+                foreach (var shift in manager.MangerWorkShifts.ToList())
+                {
+                    shift.Managers.Remove(manager);
+                }
+
+                // Clear the manager's work shifts collection
+                manager.MangerWorkShifts.Clear();
+
+                // Add the new work shifts
                 foreach (var shift in workShifts)
                 {
-                    manager.WorkShifts.Add(shift);
+                    manager.MangerWorkShifts.Add(shift);
+                    if (!shift.Managers.Contains(manager))
+                    {
+                        shift.Managers.Add(manager);
+                    }
                 }
             }
 

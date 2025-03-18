@@ -5,18 +5,21 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using static Capstone.HPTY.ModelLayer.Exceptions.ValidationException;
 
 namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 {
     public class FeedbackService : IFeedbackService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private const int MANAGER_ROLE_ID = 2; // Manager role ID
 
 
         public FeedbackService(IUnitOfWork unitOfWork)
@@ -227,36 +230,55 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
         public async Task<Feedback> RespondToFeedbackAsync(int feedbackId, int managerId, string response)
         {
-            // Verify feedback exists
-            var feedback = await _unitOfWork.Repository<Feedback>()
-                .FindAsync(f => f.FeedbackId == feedbackId);
+            try
+            {
+                // Verify feedback exists
+                var feedback = await _unitOfWork.Repository<Feedback>()
+                    .FindAsync(f => f.FeedbackId == feedbackId);
 
-            if (feedback == null)
-                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
+                if (feedback == null)
+                    throw new NotFoundException($"Feedback with ID {feedbackId} not found");
 
-            // Verify manager exists
-            var manager = await _unitOfWork.Repository<Manager>()
-                .FindAsync(m => m.ManagerId == managerId);
+                // Verify manager exists (user with manager role)
+                var manager = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.UserId == managerId && u.RoleId == MANAGER_ROLE_ID && !u.IsDelete);
 
-            if (manager == null)
-                throw new KeyNotFoundException($"Manager with ID {managerId} not found");
+                if (manager == null)
+                    throw new NotFoundException($"Manager with ID {managerId} not found");
 
-            // Check if feedback is approved
-            if (feedback.ApprovalStatus != FeedbackApprovalStatus.Approved)
-                throw new InvalidOperationException($"Cannot respond to feedback with ID {feedbackId} because it has not been approved");
+                // Check if feedback is approved
+                if (feedback.ApprovalStatus != FeedbackApprovalStatus.Approved)
+                    throw new ValidationException($"Cannot respond to feedback with ID {feedbackId} because it has not been approved");
 
-            // Update the feedback with the response
-            feedback.Response = response;
-            feedback.ResponseDate = DateTime.UtcNow;
-            feedback.ManagerId = managerId;
-            feedback.UpdatedAt = DateTime.UtcNow;
+                // Update the feedback with the response
+                feedback.Response = response;
+                feedback.ResponseDate = DateTime.UtcNow;
+                feedback.ManagerId = managerId;
+                feedback.SetUpdateDate();
 
-            await _unitOfWork.CommitAsync();
+                await _unitOfWork.CommitAsync();
 
-            // Load the manager for the response
-            feedback.Manager = manager;
+                // Load the manager for the response
+                feedback.Manager = manager;
 
-            return feedback;
+                return feedback;
+            }
+            catch (NotFoundException)
+            {
+                // Re-throw NotFoundException to be handled by the caller
+                throw;
+            }
+            catch (ValidationException)
+            {
+                // Re-throw ValidationException to be handled by the caller
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception and throw a more specific exception
+                // _logger.LogError(ex, "Error responding to feedback {FeedbackId} by manager {ManagerId}", feedbackId, managerId);
+                throw new ServiceException($"An error occurred while responding to feedback: {ex.Message}", ex);
+            }
         }
         public async Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status)
         {

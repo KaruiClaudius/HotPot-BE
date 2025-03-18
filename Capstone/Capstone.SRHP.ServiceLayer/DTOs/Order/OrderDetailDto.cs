@@ -9,10 +9,21 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
     public class OrderDetailDto
     {
         public int OrderDetailId { get; set; }
-        public int Quantity { get; set; }
+
+        public int? Quantity { get; set; }
+
+        public decimal? VolumeWeight { get; set; }
+
+        public string Unit { get; set; }
+
         public decimal UnitPrice { get; set; }
+
         public string ItemName { get; set; }
-        public string ItemType { get; set; } // "Utensil", "Ingredient", "Hotpot", "Customization", "Combo"
+
+        public string ItemType { get; set; } // "Ingredient", "Customization", "Combo"
+
         public int? ItemId { get; set; }
+
+        public int OrderId { get; set; }
     }
 }

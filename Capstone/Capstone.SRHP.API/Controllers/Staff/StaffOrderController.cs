@@ -315,7 +315,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
         // Helper method to map OrderDetail to OrderDetailDto
-        private OrderDetailDto MapToOrderDetailDto(SellOrderDetail  detail)
+        private OrderDetailDto MapToOrderDetailDto(SellOrderDetail detail)
         {
             if (detail == null) return null;
 
@@ -323,23 +323,11 @@ namespace Capstone.HPTY.API.Controllers.Staff
             string itemType = "Unknown";
             int? itemId = null;
 
-            if (detail.Utensil != null)
-            {
-                itemName = detail.Utensil.Name;
-                itemType = "Utensil";
-                itemId = detail.UtensilId;
-            }
-            else if (detail.Ingredient != null)
+            if (detail.Ingredient != null)
             {
                 itemName = detail.Ingredient.Name;
                 itemType = "Ingredient";
                 itemId = detail.IngredientId;
-            }
-            else if (detail.HotpotInventory != null)
-            {
-                itemName = detail.HotpotInventory.Hotpot.Name;
-                itemType = "Hotpot";
-                itemId = detail.HotpotInventory.Hotpot.HotpotId;
             }
             else if (detail.Customization != null)
             {
@@ -361,7 +349,9 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 UnitPrice = detail.UnitPrice,
                 ItemName = itemName,
                 ItemType = itemType,
-                ItemId = itemId
+                ItemId = itemId,
+                VolumeWeight = detail.VolumeWeight,
+                Unit = detail.Unit
             };
         }
     }

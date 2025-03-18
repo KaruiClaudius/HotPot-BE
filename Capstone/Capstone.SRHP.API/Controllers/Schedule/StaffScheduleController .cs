@@ -50,11 +50,11 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 int userId = int.Parse(userIdClaim.Value);
 
                 // Find the staff ID associated with this user ID
-                var staff = await _staffService.GetStaffByUserIdAsync(userId);
+                var staff = await _staffService.GetStaffByIdAsync(userId);
                 if (staff == null)
                     return NotFound($"Staff record not found for user ID {userId}");
 
-                var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.StaffId);
+                var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.UserId);
                 var shiftDtos = shifts.Adapt<IEnumerable<WorkShiftDto>>();
                 return Ok(shiftDtos);
             }

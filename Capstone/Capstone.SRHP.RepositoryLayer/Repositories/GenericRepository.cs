@@ -30,7 +30,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
             return _context.Set<T>().AsQueryable().Where(predicate).ToList();
         }
         public async Task<T> FindAsync(Expression<Func<T, bool>> predicate,
-                Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
+        Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null)
         {
             IQueryable<T> query = _dbSet;
 
@@ -39,6 +39,7 @@ namespace Capstone.HPTY.RepositoryLayer.Repositories
                 query = include(query);
             }
 
+            // Use FirstOrDefaultAsync instead of FirstAsync to handle null results
             return await query.FirstOrDefaultAsync(predicate);
         }
 

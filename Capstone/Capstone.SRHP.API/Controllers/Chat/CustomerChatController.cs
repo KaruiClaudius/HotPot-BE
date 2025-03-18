@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
@@ -46,17 +47,25 @@ public class CustomerChatController : ControllerBase
     [HttpPost("sessions")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ApiResponse<ChatSession>>> CreateChatSession([FromBody] CreateChatSessionRequest request)
     {
         try
         {
+            // Validate request
+            if (request == null || request.CustomerId <= 0 || string.IsNullOrWhiteSpace(request.Topic))
+            {
+                return BadRequest(ApiResponse<ChatSession>.ErrorResponse("Invalid request. Customer ID and topic are required."));
+            }
+
             var session = await _chatService.CreateChatSessionAsync(request.CustomerId, request.Topic);
 
-            // Get customer name
+            // Get customer name directly from the User entity
             string customerName = "Customer";
-            if (session.Customer?.User != null)
+            if (session.Customer != null)
             {
-                customerName = session.Customer.User.Name ?? "Customer";
+                customerName = session.Customer.Name ?? "Customer";
             }
 
             // Notify managers about the new chat request via SignalR
@@ -70,13 +79,18 @@ public class CustomerChatController : ControllerBase
             return CreatedAtAction(nameof(GetChatSession), new { sessionId = session.ChatSessionId },
                 ApiResponse<ChatSession>.SuccessResponse(session, "Chat session created successfully"));
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
             return NotFound(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
         }
-        catch (Exception ex)
+        catch (ValidationException ex)
         {
             return BadRequest(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse<ChatSession>.ErrorResponse("An error occurred while creating the chat session. Please try again later."));
         }
     }
 

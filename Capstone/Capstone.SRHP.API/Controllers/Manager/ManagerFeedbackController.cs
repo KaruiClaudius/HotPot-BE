@@ -117,9 +117,9 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Get manager name for notification
                 string managerName = "Manager";
-                if (feedback.Manager?.User != null)
+                if (feedback.Manager != null)
                 {
-                    managerName = feedback.Manager.User.Name;
+                    managerName = feedback.Manager.Name;
                 }
 
                 // Notify the customer about the response via SignalR

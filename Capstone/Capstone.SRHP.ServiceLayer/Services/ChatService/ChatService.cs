@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
     public class ChatService : IChatService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private const int CUSTOMER_ROLE_ID = 4; // Customer role ID
+        private const int MANAGER_ROLE_ID = 2;  // Manager role ID
 
         public ChatService(IUnitOfWork unitOfWork)
         {
@@ -42,29 +45,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 .FindAsync(m => m.ChatMessageId == messageId);
         }
 
-        //public async Task<IEnumerable<ChatMessage>> GetChatHistoryAsync(int userId1, int userId2, int pageNumber = 1, int pageSize = 20)
-        //{
-        //    var messages = await _unitOfWork.Repository<ChatMessage>()
-        //        .GetAll(m => m.SenderUserId == userId1 && m.ReceiverUserId == userId2 ||
-        //                     m.SenderUserId == userId2 && m.ReceiverUserId == userId1)
-        //        .OrderByDescending(m => m.CreatedAt)
-        //        .Skip((pageNumber - 1) * pageSize)
-        //        .Take(pageSize)
-        //        .ToListAsync();
-
-        //    return messages.OrderBy(m => m.CreatedAt);
-        //}
-
         public async Task<ChatSession> CreateChatSessionAsync(int customerId, string topic)
         {
-            // Verify customer exists
-            var customer = await _unitOfWork.Repository<Customer>()
-                .AsQueryable(c => c.CustomerId == customerId)
-                .Include(c => c.User)
+            // Verify customer exists (user with customer role)
+            var customer = await _unitOfWork.Repository<User>()
+                .AsQueryable()
+                .Where(u => u.UserId == customerId && u.RoleId == CUSTOMER_ROLE_ID && !u.IsDelete)
                 .FirstOrDefaultAsync();
 
             if (customer == null)
-                throw new KeyNotFoundException($"Customer with ID {customerId} not found");
+                throw new NotFoundException($"Customer with ID {customerId} not found");
 
             var chatSession = new ChatSession
             {
@@ -77,7 +67,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             _unitOfWork.Repository<ChatSession>().Insert(chatSession);
             await _unitOfWork.CommitAsync();
 
-            // Load the customer with user details for the response
+            // Load the customer details for the response
             chatSession.Customer = customer;
 
             return chatSession;
@@ -85,23 +75,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 
         public async Task<ChatSession> AssignManagerToChatSessionAsync(int sessionId, int managerId)
         {
-            // Verify manager exists (manager is a User with appropriate role)
-            var manager = await _unitOfWork.Repository<Manager>()
-                .AsQueryable(manager => manager.ManagerId == managerId)
-                .Include(manager => manager.User)
+            // Verify manager exists (user with manager role)
+            var manager = await _unitOfWork.Repository<User>()
+                .AsQueryable()
+                .Where(u => u.UserId == managerId && u.RoleId == MANAGER_ROLE_ID && !u.IsDelete)
                 .FirstOrDefaultAsync();
 
             if (manager == null)
-                throw new KeyNotFoundException($"Manager with ID {managerId} not found");
+                throw new NotFoundException($"Manager with ID {managerId} not found");
 
             var chatSession = await _unitOfWork.Repository<ChatSession>()
                 .FindAsync(s => s.ChatSessionId == sessionId);
 
             if (chatSession == null)
-                throw new KeyNotFoundException($"Chat session with ID {sessionId} not found");
+                throw new NotFoundException($"Chat session with ID {sessionId} not found");
 
             chatSession.ManagerId = managerId;
-            chatSession.UpdatedAt = DateTime.UtcNow;
+            chatSession.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
 
@@ -117,10 +107,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 .FindAsync(s => s.ChatSessionId == sessionId);
 
             if (chatSession == null)
-                throw new KeyNotFoundException($"Chat session with ID {sessionId} not found");
+                throw new NotFoundException($"Chat session with ID {sessionId} not found");
 
             chatSession.IsActive = false;
-            chatSession.UpdatedAt = DateTime.UtcNow;
+            chatSession.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
 
@@ -132,18 +122,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             return await _unitOfWork.Repository<ChatSession>()
                 .GetAll(s => s.IsActive)
                 .Include(s => s.Customer)
-                    .ThenInclude(c => c.User)
                 .Include(s => s.Manager)
-                .ThenInclude(m => m.User)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<ChatSession>> GetManagerChatHistoryAsync(int managerId)
         {
+            // Verify manager exists (user with manager role)
+            var manager = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == managerId && u.RoleId == MANAGER_ROLE_ID && !u.IsDelete);
+
+            if (manager == null)
+                throw new NotFoundException($"Manager with ID {managerId} not found");
+
             return await _unitOfWork.Repository<ChatSession>()
                 .GetAll(s => s.ManagerId == managerId)
                 .Include(s => s.Customer)
-                    .ThenInclude(c => c.User)
                 .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
         }
@@ -167,9 +161,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
         public async Task<ChatSession> GetChatSessionAsync(int sessionId)
         {
             return await _unitOfWork.Repository<ChatSession>()
-                .AsQueryable(s => s.ChatSessionId == sessionId)
+                .AsQueryable()
+                .Where(s => s.ChatSessionId == sessionId)
                 .Include(s => s.Customer)
-                    .ThenInclude(c => c.User)
                 .Include(s => s.Manager)
                 .Include(s => s.Messages.OrderBy(m => m.CreatedAt))
                 .FirstOrDefaultAsync();
@@ -181,11 +175,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 .FindAsync(s => s.ChatSessionId == sessionId);
 
             if (session == null)
-                throw new KeyNotFoundException($"Chat session with ID {sessionId} not found");
+                throw new NotFoundException($"Chat session with ID {sessionId} not found");
 
             return await _unitOfWork.Repository<ChatMessage>()
-                .GetAll(m => m.SenderUserId == session.CustomerId && m.ReceiverUserId == session.ManagerId ||
-                             m.SenderUserId == session.ManagerId && m.ReceiverUserId == session.CustomerId)
+                .GetAll(m => (m.SenderUserId == session.CustomerId && m.ReceiverUserId == session.ManagerId) ||
+                             (m.SenderUserId == session.ManagerId && m.ReceiverUserId == session.CustomerId))
                 .OrderByDescending(m => m.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -201,11 +195,63 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 return false;
 
             message.IsRead = true;
-            message.UpdatedAt = DateTime.UtcNow;
+            message.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
             return true;
         }
 
-     }
+        // New method to get chat history between two users
+        public async Task<IEnumerable<ChatMessage>> GetChatHistoryAsync(int userId1, int userId2, int pageNumber = 1, int pageSize = 20)
+        {
+            var messages = await _unitOfWork.Repository<ChatMessage>()
+                .GetAll(m => (m.SenderUserId == userId1 && m.ReceiverUserId == userId2) ||
+                             (m.SenderUserId == userId2 && m.ReceiverUserId == userId1))
+                .OrderByDescending(m => m.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Return in chronological order
+            return messages.OrderBy(m => m.CreatedAt);
+        }
+
+        // New method to efficiently update chat session properties
+        public async Task<ChatSession> UpdateChatSessionAsync(int sessionId, ChatSession sessionUpdate)
+        {
+            var session = await _unitOfWork.Repository<ChatSession>()
+                .FindAsync(s => s.ChatSessionId == sessionId);
+
+            if (session == null)
+                throw new NotFoundException($"Chat session with ID {sessionId} not found");
+
+            // Using the approach from source [0] to update entity properties
+            // This is a cleaner way to update multiple properties
+            _unitOfWork.Context.Entry(session).CurrentValues.SetValues(sessionUpdate);
+
+            // Mark the entity as updated
+            session.SetUpdateDate();
+
+            await _unitOfWork.CommitAsync();
+
+            return await GetChatSessionAsync(sessionId);
+        }
+
+        // New method to get all chat sessions for a customer
+        public async Task<IEnumerable<ChatSession>> GetCustomerChatHistoryAsync(int customerId)
+        {
+            // Verify customer exists (user with customer role)
+            var customer = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == customerId && u.RoleId == CUSTOMER_ROLE_ID && !u.IsDelete);
+
+            if (customer == null)
+                throw new NotFoundException($"Customer with ID {customerId} not found");
+
+            return await _unitOfWork.Repository<ChatSession>()
+                .GetAll(s => s.CustomerId == customerId)
+                .Include(s => s.Manager)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+        }
+    }
 }

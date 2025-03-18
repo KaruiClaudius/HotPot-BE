@@ -53,58 +53,91 @@ namespace Capstone.HPTY.API.Hubs
 
         public async Task InitiateChat(int customerId, string topic)
         {
-            // Create a new chat session
-            var session = await _chatService.CreateChatSessionAsync(customerId, topic);
-
-            // Get customer name - adjust this based on your User model structure
-            string customerName = "Customer";
-            if (session.Customer?.User != null)
+            try
             {
-                // Use whatever properties your User model has for names
-                customerName = session.Customer.User.Name ?? "Customer";
-            }
+                // Create a new chat session
+                var session = await _chatService.CreateChatSessionAsync(customerId, topic);
 
-            // Notify all managers about the new chat request
-            await Clients.Group("Managers").SendAsync("NewChatRequest",
-                session.ChatSessionId,
-                session.CustomerId,
-                customerName,
-                session.Topic,
-                session.CreatedAt);
+                // Get customer name from the User entity
+                string customerName = "Customer";
+                if (session.Customer != null)
+                {
+                    // Use the name property directly from the User entity
+                    customerName = session.Customer.Name ?? "Customer";
+                }
 
-            // Notify the customer that their request is being processed
-            if (_userConnections.TryGetValue(customerId, out string connectionId))
-            {
-                await Clients.Client(connectionId).SendAsync("ChatInitiated",
+                // Notify all managers about the new chat request
+                await Clients.Group("Managers").SendAsync("NewChatRequest",
                     session.ChatSessionId,
-                    session.Topic);
+                    session.CustomerId,
+                    customerName,
+                    session.Topic,
+                    session.CreatedAt);
+
+                // Notify the customer that their request is being processed
+                if (_userConnections.TryGetValue(customerId, out string connectionId))
+                {
+                    await Clients.Client(connectionId).SendAsync("ChatInitiated",
+                        session.ChatSessionId,
+                        session.Topic);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                // _logger.LogError(ex, "Error initiating chat for customer {CustomerId} with topic {Topic}", customerId, topic);
+
+                // Notify the customer about the error
+                if (_userConnections.TryGetValue(customerId, out string connectionId))
+                {
+                    await Clients.Client(connectionId).SendAsync("ChatError",
+                        "Unable to initiate chat. Please try again later.");
+                }
+
+                // Rethrow or handle as appropriate for your application
+                throw;
             }
         }
 
         public async Task AcceptChat(int managerId, int sessionId)
         {
-            // Assign the manager to the chat session
-            var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, managerId);
-
-            // Get manager name - adjust this based on your User model structure
-            string managerName = "Manager";
-            if (session.Manager != null)
+            try
             {
-                // Use whatever properties your User model has for names
-                managerName = session.Manager.User.Name ?? "Manager";
-            }
+                // Assign the manager to the chat session
+                var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, managerId);
 
-            // Notify the customer that a manager has accepted their chat
-            if (session.Customer != null && _userConnections.TryGetValue(session.Customer.UserId, out string customerConnectionId))
+                // Get manager name from the User entity
+                string managerName = "Manager";
+                if (session.Manager != null)
+                {
+                    // Use the name property directly from the User entity
+                    managerName = session.Manager.Name ?? "Manager";
+                }
+
+                // Notify the customer that a manager has accepted their chat
+                if (session.Customer != null && _userConnections.TryGetValue(session.CustomerId, out string customerConnectionId))
+                {
+                    await Clients.Client(customerConnectionId).SendAsync("ChatAccepted",
+                        session.ChatSessionId,
+                        managerId,
+                        managerName);
+                }
+
+                // Notify other managers that this chat has been taken
+                await Clients.GroupExcept("Managers", Context.ConnectionId).SendAsync("ChatTaken", sessionId, managerId);
+            }
+            catch (Exception ex)
             {
-                await Clients.Client(customerConnectionId).SendAsync("ChatAccepted",
-                    session.ChatSessionId,
-                    managerId,
-                    managerName);
-            }
+                // Log the exception
+                // _logger.LogError(ex, "Error accepting chat {SessionId} by manager {ManagerId}", sessionId, managerId);
 
-            // Notify other managers that this chat has been taken
-            await Clients.GroupExcept("Managers", Context.ConnectionId).SendAsync("ChatTaken", sessionId, managerId);
+                // Notify the manager about the error
+                await Clients.Caller.SendAsync("ChatError",
+                    "Unable to accept chat. Please try again later.");
+
+                // Rethrow or handle as appropriate for your application
+                throw;
+            }
         }
 
         public async Task EndChat(int sessionId, int userId)
