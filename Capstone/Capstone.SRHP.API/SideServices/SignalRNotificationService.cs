@@ -37,7 +37,7 @@ namespace Capstone.HPTY.API.SideServices
                 request.EquipmentType.ToString(),
                 equipmentName,
                 request.RequestReason,
-                request.Customer?.User?.Name ?? "Unknown Customer",
+                request.Customer?.Name ?? "Unknown Customer",
                 request.RequestDate);
         }
 
@@ -59,13 +59,13 @@ namespace Capstone.HPTY.API.SideServices
                 request.EquipmentType.ToString(),
                 equipmentName,
                 request.Status.ToString(),
-                request.AssignedStaff?.User?.Name ?? "Unassigned",
+                request.AssignedStaff?.Name ?? "Unassigned",
                 DateTime.UtcNow);
         }
 
         public async Task NotifyCustomerAboutReplacementAsync(ReplacementRequest request)
         {
-            if (request.Customer?.User?.UserId == null)
+            if (request.Customer?.UserId == null)
                 return;
 
             string equipmentName = "";
@@ -79,7 +79,7 @@ namespace Capstone.HPTY.API.SideServices
                 equipmentName = request.Utensil.Name;
             }
 
-            await _hubContext.Clients.User(request.Customer.User.UserId.ToString()).SendAsync("ReceiveReplacementUpdate",
+            await _hubContext.Clients.User(request.Customer.UserId.ToString()).SendAsync("ReceiveReplacementUpdate",
                 request.ReplacementRequestId,
                 request.EquipmentType.ToString(),
                 equipmentName,

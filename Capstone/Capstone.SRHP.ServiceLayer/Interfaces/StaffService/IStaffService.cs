@@ -9,11 +9,11 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
 {
     public interface IStaffService
     {
-        Task<Staff> GetStaffByIdAsync(int staffId);
-        Task<Staff> GetStaffByUserIdAsync(int userId);
-        Task<IEnumerable<Staff>> GetAllStaffAsync();
-        Task<Staff> CreateStaffAsync(Staff staff);
-        Task UpdateStaffAsync(int staffId, Staff staff);
-        Task DeleteStaffAsync(int staffId);
+        Task<User> GetStaffByIdAsync(int userId);
+        Task<IEnumerable<User>> GetAllStaffAsync();
+        Task<User> CreateStaffAsync(User staff);
+        Task UpdateStaffAsync(int userId, User staffUpdate);
+        Task DeleteStaffAsync(int userId);
+        Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts);
     }
 }

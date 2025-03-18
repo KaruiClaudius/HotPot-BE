@@ -10,15 +10,15 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService
 {
     public interface IScheduleService
     {
-            Task<WorkShift> GetWorkShiftByIdAsync(int shiftId);
-            Task<IEnumerable<WorkShift>> GetAllWorkShiftsAsync();
-            Task<IEnumerable<WorkShift>> GetStaffWorkShiftsAsync(int staffId);
-            Task<IEnumerable<WorkShift>> GetManagerWorkShiftsAsync(int managerId);
-            Task<WorkShift> CreateWorkShiftAsync(WorkShift workShift);
-            Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan shiftStartTime, WorkDays daysOfWeek, AttendanceStatus? status);
-            Task<bool> DeleteWorkShiftAsync(int shiftId);
-            Task<Staff> AssignStaffWorkDaysAsync(int staffId, WorkDays workDays);
-            Task<Manager> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts);       
+        Task<WorkShift> GetWorkShiftByIdAsync(int shiftId);
+        Task<IEnumerable<WorkShift>> GetAllWorkShiftsAsync();
+        Task<IEnumerable<WorkShift>> GetStaffWorkShiftsAsync(int staffId);
+        Task<IEnumerable<WorkShift>> GetManagerWorkShiftsAsync(int managerId);
+        Task<WorkShift> CreateWorkShiftAsync(WorkShift workShift);
+        Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan shiftStartTime, WorkDays daysOfWeek, AttendanceStatus? status);
+        Task<bool> DeleteWorkShiftAsync(int shiftId);
+        Task<User> AssignStaffWorkDaysAsync(int staffId, WorkDays workDays);
+        Task<User> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts);
 
     }
 }

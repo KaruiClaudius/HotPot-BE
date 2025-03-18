@@ -32,7 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                _logger.LogInformation("Staff getting order history with filters");
+                _logger.LogInformation("Getting order history with filters");
 
                 // Start with all orders that aren't deleted
                 var query = _unitOfWork.Repository<Order>()
@@ -62,22 +62,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     query = query.Where(o => o.User.Name.Contains(filter.CustomerName));
                 }
 
-                // Include related data
+                // Include related data for both sell and rent order details
                 query = query
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.HotpotInventory)
-                        .ThenInclude(hi => hi.Hotpot)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Combo)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(rd => rd.Utensil)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(rd => rd.HotpotInventory)
+                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .OrderByDescending(o => o.CreatedAt);
 
                 // Get total count for pagination
@@ -114,7 +114,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                _logger.LogInformation("Staff getting details for order ID: {OrderId}", orderId);
+                _logger.LogInformation("Getting details for order ID: {OrderId}", orderId);
 
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
@@ -123,16 +123,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
                     .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.HotpotInventory)
-                        .ThenInclude(hi => hi.Hotpot)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Combo)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(rd => rd.Utensil)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(rd => rd.HotpotInventory)
+                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .FirstOrDefaultAsync();
 
                 if (order == null)
@@ -153,7 +153,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                _logger.LogInformation("Staff getting orders with status: {Status}", status);
+                _logger.LogInformation("Getting orders with status: {Status}", status);
 
                 var filter = new OrderHistoryFilterRequest
                 {
@@ -175,7 +175,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                _logger.LogInformation("Staff getting orders between {StartDate} and {EndDate}", startDate, endDate);
+                _logger.LogInformation("Getting orders between {StartDate} and {EndDate}", startDate, endDate);
 
                 var filter = new OrderHistoryFilterRequest
                 {
@@ -208,6 +208,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Notes = order.Notes ?? string.Empty,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status,
+                HotpotDeposit = order.HotpotDeposit,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
                 HasShipping = order.ShippingOrder != null,
@@ -215,44 +216,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Items = new List<OrderItemDto>()
             };
 
-            // Map order details to order items
-            if (order.OrderDetails != null)
+            // Map sell order details to order items
+            if (order.OrderDetails != null && order.OrderDetails.Any())
             {
                 foreach (var detail in order.OrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
-                    decimal price = 0;
+                    decimal price = detail.UnitPrice;
 
-                    if (detail.Utensil != null)
-                    {
-                        itemName = detail.Utensil.Name;
-                        itemType = "Utensil";
-                        price = detail.Utensil.Price;
-                    }
-                    else if (detail.Ingredient != null)
+                    if (detail.Ingredient != null)
                     {
                         itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
-                        price = detail.Ingredient.IngredientPrices.FirstOrDefault()?.Price ?? 0;
-                    }
-                    else if (detail.HotpotInventory != null)
-                    {
-                        itemName = detail.HotpotInventory.Hotpot.Name;
-                        itemType = "Hotpot";
-                        price = detail.HotpotInventory.Hotpot.Price;
                     }
                     else if (detail.Customization != null)
                     {
                         itemName = detail.Customization.Name;
                         itemType = "Customization";
-                        price = detail.Customization.TotalPrice;
                     }
                     else if (detail.Combo != null)
                     {
                         itemName = detail.Combo.Name;
                         itemType = "Combo";
-                        price = detail.Combo.TotalPrice;
                     }
 
                     dto.Items.Add(new OrderItemDto
@@ -260,8 +246,49 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
-                        Quantity = detail.Quantity,
-                        Price = price
+                        Quantity = detail.Quantity ?? 0,
+                        VolumeWeight = detail.VolumeWeight,
+                        Unit = detail.Unit,
+                        Price = price,
+                        IsRental = false
+                    });
+                }
+            }
+
+            // Map rental order details to order items
+            if (order.RentOrderDetails != null && order.RentOrderDetails.Any())
+            {
+                foreach (var rental in order.RentOrderDetails)
+                {
+                    string itemName = "Unknown";
+                    string itemType = "Rental";
+
+                    if (rental.Utensil != null)
+                    {
+                        itemName = rental.Utensil.Name;
+                        itemType = "Utensil Rental";
+                    }
+                    else if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
+                    {
+                        itemName = rental.HotpotInventory.Hotpot.Name;
+                        itemType = "Hotpot Rental";
+                    }
+
+                    dto.Items.Add(new OrderItemDto
+                    {
+                        OrderDetailId = rental.RentableOrderDetailId,
+                        ItemName = itemName,
+                        ItemType = itemType,
+                        Quantity = rental.Quantity,
+                        Price = rental.RentalPrice,
+                        IsRental = true,
+                        RentalStartDate = rental.RentalStartDate,
+                        ExpectedReturnDate = rental.ExpectedReturnDate,
+                        ActualReturnDate = rental.ActualReturnDate,
+                        LateFee = rental.LateFee,
+                        DamageFee = rental.DamageFee,
+                        RentalNotes = rental.RentalNotes,
+                        ReturnCondition = rental.ReturnCondition
                     });
                 }
             }

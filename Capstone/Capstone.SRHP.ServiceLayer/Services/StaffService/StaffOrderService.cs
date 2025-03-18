@@ -32,16 +32,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             return await _unitOfWork.Repository<Order>()
                 .Include(o => o.User)
                 .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.HotpotInventory)
-                    .ThenInclude(hi => hi.Hotpot)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Customization)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Combo)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.Utensil)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.HotpotInventory)
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                 .Where(o => o.Status == OrderStatus.Processing && !o.IsDelete)
                 .ToListAsync();
         }
@@ -51,16 +51,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             return await _unitOfWork.Repository<Order>()
                 .Include(o => o.User)
                 .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.HotpotInventory)
-                    .ThenInclude(hi => hi.Hotpot)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Customization)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Combo)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.Utensil)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.HotpotInventory)
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                 .Where(o => o.Status == status && !o.IsDelete)
                 .ToListAsync();
         }
@@ -107,7 +107,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 ? $"Cancelled: {cancellationReason}"
                 : $"{order.Notes}\n\nCancelled ({DateTime.UtcNow:g}): {cancellationReason}";
 
-            await _orderService.UpdateAsync(orderId, order);
+            // Using the approach from source [0] to update entity properties
+            // This is a cleaner way to update specific properties
+            _unitOfWork.Context.Entry(order).Property(o => o.Notes).IsModified = true;
+            await _unitOfWork.CommitAsync();
 
             return await _orderService.GetByIdAsync(orderId);
         }
@@ -120,8 +123,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             DateTime? endDate = null)
         {
             var query = _unitOfWork.Repository<Order>()
+                .AsQueryable()
                 .Include(o => o.User)
                 .Include(o => o.OrderDetails)
+                .Include(o => o.RentOrderDetails)
                 .Where(o => !o.IsDelete);
 
             // Apply filters
@@ -132,7 +137,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 query = query.Where(o => o.CreatedAt >= startDate.Value);
 
             if (endDate.HasValue)
-                query = query.Where(o => o.CreatedAt <= endDate.Value);
+            {
+                // Add one day to include the end date fully
+                var endDatePlusOne = endDate.Value.AddDays(1);
+                query = query.Where(o => o.CreatedAt < endDatePlusOne);
+            }
 
             var totalCount = await query.CountAsync();
 
@@ -154,18 +163,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         public async Task<Order> GetOrderWithDetailsAsync(int orderId)
         {
             var order = await _unitOfWork.Repository<Order>()
+                .AsQueryable()
                 .Include(o => o.User)
                 .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Utensil)
-                .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Ingredient)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.HotpotInventory)
-                    .ThenInclude(hi => hi.Hotpot)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Customization)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Combo)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.Utensil)
+                .Include(o => o.RentOrderDetails)
+                    .ThenInclude(rd => rd.HotpotInventory)
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                 .Include(o => o.Discount)
                 .Include(o => o.Payment)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
@@ -174,6 +184,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new NotFoundException($"Order with ID {orderId} not found");
 
             return order;
+        }
+
+        // New method to efficiently update order properties using EF Core's SetValues
+        public async Task<Order> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate)
+        {
+            var order = await _unitOfWork.Repository<Order>()
+                .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
+
+            if (order == null)
+                throw new NotFoundException($"Order with ID {orderId} not found");
+
+            // Using the approach from source [0] to update entity properties
+            // This is a cleaner way to update multiple properties
+            _unitOfWork.Context.Entry(order).CurrentValues.SetValues(orderUpdate);
+
+            // Mark the entity as updated
+            order.SetUpdateDate();
+
+            await _unitOfWork.CommitAsync();
+
+            return await GetOrderWithDetailsAsync(orderId);
+        }
+
+        // New method to efficiently update multiple orders using ExecuteUpdate (EF Core 7+)
+        public async Task<int> UpdateOrdersStatusAsync(OrderStatus currentStatus, OrderStatus newStatus)
+        {
+            // Using the approach from source [1] and [2] for bulk updates
+            // This is much more efficient than loading all entities and updating them one by one
+            return await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Where(o => o.Status == currentStatus && !o.IsDelete)
+                .ExecuteUpdateAsync(o =>
+                    o.SetProperty(x => x.Status, newStatus)
+                     .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
         }
     }
 }

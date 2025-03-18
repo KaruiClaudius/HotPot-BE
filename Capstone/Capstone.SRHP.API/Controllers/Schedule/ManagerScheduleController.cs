@@ -26,6 +26,8 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         private readonly IUserService _userService;
         private readonly IManagerService _managerService;
         private readonly IStaffService _staffService;
+        private const int STAFF_ROLE_ID = 3;    
+        private const int MANAGER_ROLE_ID = 2;  
 
         public ManagerScheduleController(
             IScheduleService scheduleService,
@@ -55,11 +57,11 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 int userId = int.Parse(userIdClaim.Value);
 
                 // Find the manager ID associated with this user ID
-                var manager = await _managerService.GetManagerByUserIdAsync(userId);
+                var manager = await _managerService.GetManagerByIdAsync(userId);
                 if (manager == null)
                     return NotFound($"Manager record not found for user ID {userId}");
 
-                var shifts = await _scheduleService.GetManagerWorkShiftsAsync(manager.ManagerId);
+                var shifts = await _scheduleService.GetManagerWorkShiftsAsync(userId);
                 var shiftDtos = shifts.Adapt<List<WorkShiftDto>>();
 
                 return Ok(shiftDtos);
@@ -85,7 +87,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 foreach (var staff in staffMembers)
                 {
-                    var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.StaffId);
+                    var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.UserId);
 
                     staffSchedules.Add(new StaffScheduleDto
                     {

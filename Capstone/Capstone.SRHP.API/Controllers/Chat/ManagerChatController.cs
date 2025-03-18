@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
@@ -52,25 +53,32 @@ public class ManagerChatController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ApiResponse<ChatSession>>> AssignManagerToSession(
-        int sessionId,
-        [FromBody] AssignManagerRequest request)
+    int sessionId,
+    [FromBody] AssignManagerRequest request)
     {
         try
         {
+            // Validate request
+            if (request == null || request.ManagerId <= 0)
+            {
+                return BadRequest(ApiResponse<ChatSession>.ErrorResponse("Invalid request. Manager ID is required."));
+            }
+
             var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, request.ManagerId);
 
-            // Get manager name
+            // Get manager name directly from the User entity
             string managerName = "Manager";
             if (session.Manager != null)
             {
-                managerName = session.Manager.User.Name ?? "Manager";
+                managerName = session.Manager.Name ?? "Manager";
             }
 
             // Notify the customer that a manager has accepted their chat
             if (session.Customer != null)
             {
-                await _chatHubContext.Clients.User(session.Customer.UserId.ToString()).SendAsync("ChatAccepted",
+                await _chatHubContext.Clients.User(session.CustomerId.ToString()).SendAsync("ChatAccepted",
                     session.ChatSessionId,
                     request.ManagerId,
                     managerName);
@@ -83,13 +91,18 @@ public class ManagerChatController : ControllerBase
 
             return Ok(ApiResponse<ChatSession>.SuccessResponse(session, "Manager assigned to chat session successfully"));
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
             return NotFound(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
         }
-        catch (Exception ex)
+        catch (ValidationException ex)
         {
             return BadRequest(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse<ChatSession>.ErrorResponse("An error occurred while assigning the manager to the chat session. Please try again later."));
         }
     }
 

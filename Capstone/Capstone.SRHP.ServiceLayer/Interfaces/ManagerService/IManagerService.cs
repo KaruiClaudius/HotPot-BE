@@ -9,11 +9,11 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
     public interface IManagerService
     {
-        Task<Manager> GetManagerByIdAsync(int managerId);
-        Task<Manager> GetManagerByUserIdAsync(int userId);
-        Task<IEnumerable<Manager>> GetAllManagersAsync();
-        Task<Manager> CreateManagerAsync(Manager manager);
-        Task UpdateManagerAsync(int managerId, Manager manager);
-        Task DeleteManagerAsync(int managerId);
+        Task<User> GetManagerByIdAsync(int userId);
+        Task<IEnumerable<User>> GetAllManagersAsync();
+        Task<User> CreateManagerAsync(User manager);
+        Task UpdateManagerAsync(int userId, User managerUpdate);
+        Task DeleteManagerAsync(int userId);
+        Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts);
     }
 }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
-
+        private const int CUSTOMER_ROLE_ID = 4; // Customer role ID
+        private const int STAFF_ROLE_ID = 3;    // Staff role ID
 
         public ReplacementRequestService(
             IUnitOfWork unitOfWork,
@@ -35,7 +37,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
+                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .OrderByDescending(r => r.RequestDate)
                 .ToListAsync();
         }
@@ -48,7 +52,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
+                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .OrderByDescending(r => r.RequestDate)
                 .ToListAsync();
         }
@@ -56,12 +62,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         public async Task<ReplacementRequest> GetReplacementRequestByIdAsync(int requestId)
         {
             return await _unitOfWork.Repository<ReplacementRequest>()
-                .AsQueryable(r => r.ReplacementRequestId == requestId)
+                .AsQueryable()
+                .Where(r => r.ReplacementRequestId == requestId)
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
+                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .FirstOrDefaultAsync();
         }
 
@@ -71,35 +80,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
-                throw new KeyNotFoundException($"Replacement request with ID {requestId} not found");
+                throw new NotFoundException($"Replacement request with ID {requestId} not found");
 
             if (request.Status != ReplacementRequestStatus.Pending)
-                throw new InvalidOperationException("Only pending requests can be reviewed");
+                throw new ValidationException("Only pending requests can be reviewed");
 
             request.Status = isApproved ? ReplacementRequestStatus.Approved : ReplacementRequestStatus.Rejected;
             request.ReviewDate = DateTime.UtcNow;
             request.ReviewNotes = reviewNotes;
-            request.UpdatedAt = DateTime.UtcNow;
+            request.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
 
             // Load related entities for notification
             if (request.CustomerId > 0)
             {
-                if (request.CustomerId > 0)
-                {
-                    request.Customer = await _unitOfWork.Repository<Customer>()
-                        .AsQueryable(c => c.CustomerId == request.CustomerId)
-                        .Include(c => c.User)
-                        .FirstOrDefaultAsync();
-                }
-
+                request.Customer = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == request.CustomerId && u.RoleId == CUSTOMER_ROLE_ID)
+                    .FirstOrDefaultAsync();
             }
 
             if (request.HotPotInventoryId.HasValue)
             {
                 request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
                     .Include(h => h.Hotpot)
                     .FirstOrDefaultAsync();
             }
@@ -107,7 +113,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             if (request.UtensilId.HasValue)
             {
                 request.Utensil = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable(u => u.UtensilId == request.UtensilId.Value)
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
                     .Include(u => u.UtensilType)
                     .FirstOrDefaultAsync();
             }
@@ -127,20 +134,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
-                throw new KeyNotFoundException($"Replacement request with ID {requestId} not found");
+                throw new NotFoundException($"Replacement request with ID {requestId} not found");
 
             if (request.Status != ReplacementRequestStatus.Approved)
-                throw new InvalidOperationException("Only approved requests can be assigned to staff");
+                throw new ValidationException("Only approved requests can be assigned to staff");
 
-            var staff = await _unitOfWork.Repository<Staff>()
-                .FindAsync(s => s.StaffId == staffId);
+            // Verify staff exists (user with staff role)
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
             if (staff == null)
-                throw new KeyNotFoundException($"Staff with ID {staffId} not found");
+                throw new NotFoundException($"Staff with ID {staffId} not found");
 
             request.AssignedStaffId = staffId;
             request.Status = ReplacementRequestStatus.InProgress;
-            request.UpdatedAt = DateTime.UtcNow;
+            request.SetUpdateDate();
 
             await _unitOfWork.CommitAsync();
 
@@ -149,20 +157,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
             if (request.CustomerId > 0)
             {
-                if (request.CustomerId > 0)
-                {
-                    request.Customer = await _unitOfWork.Repository<Customer>()
-                        .AsQueryable(c => c.CustomerId == request.CustomerId)
-                        .Include(c => c.User)
-                        .FirstOrDefaultAsync();
-                }
-
+                request.Customer = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == request.CustomerId && u.RoleId == CUSTOMER_ROLE_ID)
+                    .FirstOrDefaultAsync();
             }
 
             if (request.HotPotInventoryId.HasValue)
             {
                 request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
                     .Include(h => h.Hotpot)
                     .FirstOrDefaultAsync();
             }
@@ -170,16 +175,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             if (request.UtensilId.HasValue)
             {
                 request.Utensil = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable(u => u.UtensilId == request.UtensilId.Value)
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
                     .Include(u => u.UtensilType)
                     .FirstOrDefaultAsync();
-            }
-
-            // Load staff user information
-            if (staff.UserId > 0)
-            {
-                staff.User = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staff.UserId);
             }
 
             // Notify customer about the assignment
@@ -197,15 +196,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
-                throw new KeyNotFoundException($"Replacement request with ID {requestId} not found");
+                throw new NotFoundException($"Replacement request with ID {requestId} not found");
 
             if (request.Status != ReplacementRequestStatus.InProgress)
-                throw new InvalidOperationException("Only in-progress requests can be marked as completed");
+                throw new ValidationException("Only in-progress requests can be marked as completed");
 
             request.Status = ReplacementRequestStatus.Completed;
             request.CompletionDate = DateTime.UtcNow;
             request.AdditionalNotes = (request.AdditionalNotes ?? "") + "\nCompletion Notes: " + completionNotes;
-            request.UpdatedAt = DateTime.UtcNow;
+            request.SetUpdateDate();
 
             // Create a condition log entry for the replacement
             var conditionLog = new DamageDevice
@@ -237,28 +236,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             // Load related entities for notification
             if (request.CustomerId > 0)
             {
-                if (request.CustomerId > 0)
-                {
-                    request.Customer = await _unitOfWork.Repository<Customer>()
-                        .AsQueryable(c => c.CustomerId == request.CustomerId)
-                        .Include(c => c.User)
-                        .FirstOrDefaultAsync();
-                }
-
+                request.Customer = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == request.CustomerId && u.RoleId == CUSTOMER_ROLE_ID)
+                    .FirstOrDefaultAsync();
             }
 
             if (request.AssignedStaffId.HasValue)
             {
-                request.AssignedStaff = await _unitOfWork.Repository<Staff>()
-                    .AsQueryable(s => s.StaffId == request.AssignedStaffId.Value)
-                    .Include(s => s.User)
+                request.AssignedStaff = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == request.AssignedStaffId.Value && u.RoleId == STAFF_ROLE_ID)
                     .FirstOrDefaultAsync();
             }
 
             if (request.HotPotInventoryId.HasValue)
             {
                 request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
                     .Include(h => h.Hotpot)
                     .FirstOrDefaultAsync();
             }
@@ -266,7 +262,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             if (request.UtensilId.HasValue)
             {
                 request.Utensil = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable(u => u.UtensilId == request.UtensilId.Value)
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
                     .Include(u => u.UtensilType)
                     .FirstOrDefaultAsync();
             }
@@ -286,12 +283,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
         public async Task<IEnumerable<ReplacementRequest>> GetAssignedReplacementRequestsAsync(int staffId)
         {
+            // Verify staff exists (user with staff role)
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
+
+            if (staff == null)
+                throw new NotFoundException($"Staff with ID {staffId} not found");
+
             return await _unitOfWork.Repository<ReplacementRequest>()
                 .GetAll(r => r.AssignedStaffId == staffId)
                 .Include(r => r.Customer)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
+                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .OrderByDescending(r => r.RequestDate)
                 .ToListAsync();
         }
@@ -302,18 +308,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
-                throw new KeyNotFoundException($"Replacement request with ID {requestId} not found");
+                throw new NotFoundException($"Replacement request with ID {requestId} not found");
 
             // Validate status transitions
             if (status == ReplacementRequestStatus.Completed && request.Status != ReplacementRequestStatus.InProgress)
-                throw new InvalidOperationException("Only in-progress requests can be marked as completed");
+                throw new ValidationException("Only in-progress requests can be marked as completed");
 
             if (status == ReplacementRequestStatus.InProgress && request.Status != ReplacementRequestStatus.Approved)
-                throw new InvalidOperationException("Only approved requests can be marked as in-progress");
+                throw new ValidationException("Only approved requests can be marked as in-progress");
 
             request.Status = status;
             request.AdditionalNotes = (request.AdditionalNotes ?? "") + "\n" + notes;
-            request.UpdatedAt = DateTime.UtcNow;
+            request.SetUpdateDate();
 
             if (status == ReplacementRequestStatus.Completed)
             {
@@ -333,10 +339,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         {
             // Validate the request
             if (request.EquipmentType == EquipmentType.HotPot && !request.HotPotInventoryId.HasValue)
-                throw new ArgumentException("HotPot inventory ID is required for HotPot equipment type");
+                throw new ValidationException("HotPot inventory ID is required for HotPot equipment type");
 
             if (request.EquipmentType == EquipmentType.Utensil && !request.UtensilId.HasValue)
-                throw new ArgumentException("Utensil ID is required for Utensil equipment type");
+                throw new ValidationException("Utensil ID is required for Utensil equipment type");
+
+            // Verify customer exists (user with customer role)
+            var customer = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == request.CustomerId && u.RoleId == CUSTOMER_ROLE_ID && !u.IsDelete);
+
+            if (customer == null)
+                throw new NotFoundException($"Customer with ID {request.CustomerId} not found");
 
             // Set default values
             request.Status = ReplacementRequestStatus.Pending;
@@ -347,21 +360,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             await _unitOfWork.CommitAsync();
 
             // Load related entities for notification
-            if (request.CustomerId > 0)
-            {
-                if (request.CustomerId > 0)
-                {
-                    request.Customer = await _unitOfWork.Repository<Customer>()
-                        .AsQueryable(c => c.CustomerId == request.CustomerId)
-                        .Include(c => c.User)
-                        .FirstOrDefaultAsync();
-                }
-            }
+            request.Customer = customer;
 
             if (request.HotPotInventoryId.HasValue)
             {
                 request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
                     .Include(h => h.Hotpot)
                     .FirstOrDefaultAsync();
             }
@@ -369,7 +374,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             if (request.UtensilId.HasValue)
             {
                 request.Utensil = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable(u => u.UtensilId == request.UtensilId.Value)
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
                     .Include(u => u.UtensilType)
                     .FirstOrDefaultAsync();
             }
@@ -382,29 +388,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
         public async Task<IEnumerable<ReplacementRequest>> GetCustomerReplacementRequestsAsync(int customerId)
         {
+            // Verify customer exists (user with customer role)
+            var customer = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == customerId && u.RoleId == CUSTOMER_ROLE_ID && !u.IsDelete);
+
+            if (customer == null)
+                throw new NotFoundException($"Customer with ID {customerId} not found");
+
             return await _unitOfWork.Repository<ReplacementRequest>()
                 .GetAll(r => r.CustomerId == customerId)
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
+                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .OrderByDescending(r => r.RequestDate)
                 .ToListAsync();
         }
 
         public async Task<ReplacementRequest> CancelReplacementRequestAsync(int requestId, int customerId)
         {
+            // Verify customer exists (user with customer role)
+            var customer = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == customerId && u.RoleId == CUSTOMER_ROLE_ID && !u.IsDelete);
+
+            if (customer == null)
+                throw new NotFoundException($"Customer with ID {customerId} not found");
+
             var request = await _unitOfWork.Repository<ReplacementRequest>()
                 .FindAsync(r => r.ReplacementRequestId == requestId && r.CustomerId == customerId);
 
             if (request == null)
-                throw new KeyNotFoundException($"Replacement request with ID {requestId} not found for customer {customerId}");
+                throw new NotFoundException($"Replacement request with ID {requestId} not found for customer {customerId}");
 
             if (request.Status != ReplacementRequestStatus.Pending)
-                throw new InvalidOperationException("Only pending requests can be cancelled");
+                throw new ValidationException("Only pending requests can be cancelled");
 
             request.Status = ReplacementRequestStatus.Cancelled;
-            request.UpdatedAt = DateTime.UtcNow;
+            request.SetUpdateDate();
             request.AdditionalNotes = (request.AdditionalNotes ?? "") + "\nCancelled by customer.";
 
             await _unitOfWork.CommitAsync();
@@ -415,4 +437,3 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
     }
 }
-
