@@ -44,6 +44,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
         public decimal? DamageFee { get; set; }
         public string RentalNotes { get; set; }
         public string ReturnCondition { get; set; }
+
+        public int? RentalDuration { get; set; }
+        public DateTime? RentalEndDate { get; set; }
     }
 
     public class OrderHistoryFilterRequest

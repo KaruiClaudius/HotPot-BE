@@ -74,11 +74,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.Utensil)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.HotpotInventory)
                         .ThenInclude(hi => hi.Hotpot)
                     .Include(o => o.OrderDetails)
@@ -136,11 +136,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.Utensil)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.HotpotInventory)
                     .Include(o => o.OrderDetails)
                         .ThenInclude(od => od.Customization)
@@ -228,10 +228,51 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Items = new List<OrderItemDto>()
             };
 
-            // Map order details to order items
-            if (order.OrderDetails != null)
+            // Map sell order details to order items
+            if (order.OrderDetails != null && order.OrderDetails.Any())
             {
                 foreach (var detail in order.OrderDetails)
+                {
+                    string itemName = "Unknown";
+                    string itemType = "Unknown";
+                    decimal price = 0;
+
+                    if (detail.Ingredient != null)
+                    {
+                        itemName = detail.Ingredient.Name;
+                        itemType = "Ingredient";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
+                    }
+                    else if (detail.Customization != null)
+                    {
+                        itemName = detail.Customization.Name;
+                        itemType = "Customization";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
+                    }
+                    else if (detail.Combo != null)
+                    {
+                        itemName = detail.Combo.Name;
+                        itemType = "Combo";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
+                    }
+
+                    dto.Items.Add(new OrderItemDto
+                    {
+                        OrderDetailId = detail.SellOrderDetailId,
+                        ItemName = itemName,
+                        ItemType = itemType,
+                        Quantity = detail.Quantity ?? 1,
+                        Price = price,
+                        VolumeWeight = detail.VolumeWeight,
+                        Unit = detail.Unit
+                    });
+                }
+            }
+
+            // Map rent order details to order items
+            if (order.RentOrderDetails != null && order.RentOrderDetails.Any())
+            {
+                foreach (var detail in order.RentOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
@@ -241,40 +282,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         itemName = detail.Utensil.Name;
                         itemType = "Utensil";
-                        price = detail.Utensil.Price;
+                        price = detail.RentalPrice; // Use the UnitPrice from the order detail
                     }
-                    else if (detail.Ingredient != null)
-                    {
-                        itemName = detail.Ingredient.Name;
-                        itemType = "Ingredient";
-                        price = detail.Ingredient.IngredientPrices.FirstOrDefault()?.Price ?? 0;
-                    }
-                    else if (detail.HotpotInventory != null)
+                    else if (detail.HotpotInventory != null && detail.HotpotInventory.Hotpot != null)
                     {
                         itemName = detail.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot";
-                        price = detail.HotpotInventory.Hotpot.Price;
-                    }
-                    else if (detail.Customization != null)
-                    {
-                        itemName = detail.Customization.Name;
-                        itemType = "Customization";
-                        price = detail.Customization.TotalPrice;
-                    }
-                    else if (detail.Combo != null)
-                    {
-                        itemName = detail.Combo.Name;
-                        itemType = "Combo";
-                        price = detail.Combo.TotalPrice;
+                        price = detail.RentalPrice; // Use the UnitPrice from the order detail
                     }
 
                     dto.Items.Add(new OrderItemDto
                     {
-                        OrderDetailId = detail.SellOrderDetailId,
+                        OrderDetailId = detail.RentableOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
                         Quantity = detail.Quantity,
-                        Price = price
+                        Price = price,
+                        RentalStartDate = detail.RentalStartDate,
+                        RentalEndDate = detail.ExpectedReturnDate
                     });
                 }
             }
