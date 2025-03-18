@@ -23,7 +23,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public bool Status { get; set; }
 
         public virtual Hotpot? Hotpot { get; set; }
-        public virtual ICollection<OrderDetail> OrderDetails { get; set; }
+        public virtual ICollection<RentOrderDetail>? RentOrderDetails { get; set; }
         public virtual ICollection<DamageDevice>? ConditionLogs { get; set; }
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
 

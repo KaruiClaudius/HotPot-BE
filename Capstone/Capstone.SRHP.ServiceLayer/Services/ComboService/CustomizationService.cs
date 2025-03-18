@@ -571,7 +571,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new NotFoundException($"Customization with ID {id} not found");
 
                 // Check if this customization is used by any orders
-                var isUsedByOrder = await _unitOfWork.Repository<OrderDetail>()
+                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail >()
                     .AnyAsync(od => od.CustomizationId == id && !od.IsDelete);
 
                 if (isUsedByOrder)

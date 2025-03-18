@@ -21,7 +21,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public WorkDays DaysOfWeek { get; set; }
         public AttendanceStatus? Status { get; set; }
 
-        public virtual ICollection<Staff> Staff { get; set; } = new List<Staff>();
-        public virtual ICollection<Manager> Managers { get; set; } = new List<Manager>();
+        [InverseProperty("StaffWorkShifts")]
+        public virtual ICollection<User> Staff { get; set; } = new List<User>();
+
+        [InverseProperty("MangerWorkShifts")]
+        public virtual ICollection<User> Managers { get; set; } = new List<User>();
     }
 }

@@ -137,7 +137,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             if (conditionLog.HotPotInventoryId.HasValue)
             {
                 // Get customers who have orders with this hot pot inventory
-                var hotPotCustomers = await _unitOfWork.Repository<OrderDetail>()
+                var hotPotCustomers = await _unitOfWork.Repository<SellOrderDetail >()
                     .AsQueryable(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
                     .Include(od => od.Order)
                     .Select(od => od.Order.User.Customer.CustomerId)
@@ -153,7 +153,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             if (conditionLog.UtensilId.HasValue)
             {
                 // Get customers who have orders with this utensil
-                var utensilCustomers = await _unitOfWork.Repository<OrderDetail>()
+                var utensilCustomers = await _unitOfWork.Repository<SellOrderDetail >()
                     .AsQueryable(od => od.UtensilId == conditionLog.UtensilId)
                     .Include(od => od.Order)
                     .Select(od => od.Order.User.Customer.CustomerId)

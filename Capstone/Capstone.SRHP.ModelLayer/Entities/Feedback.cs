@@ -79,7 +79,7 @@ public class Feedback : BaseEntity
 
     public virtual User? User { get; set; }
     public virtual Order? Order { get; set; }
-    public virtual Manager? Manager { get; set; }
+    public virtual User? Manager { get; set; }
     public virtual User? ApprovedByUser { get; set; }
 }
 

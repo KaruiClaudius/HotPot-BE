@@ -270,7 +270,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     dto.Items.Add(new OrderItemDto
                     {
-                        OrderDetailId = detail.OrderDetailId,
+                        OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
                         Quantity = detail.Quantity,

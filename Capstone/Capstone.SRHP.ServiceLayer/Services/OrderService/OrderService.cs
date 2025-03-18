@@ -244,7 +244,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     throw new ValidationException("Order must contain at least one item");
 
                 // Create order details
-                var orderDetails = new List<OrderDetail>();
+                var orderDetails = new List<SellOrderDetail >();
                 decimal totalPrice = 0;
                 decimal hotpotDeposit = 0;
 
@@ -273,7 +273,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         unitPrice = utensil.Price;
 
                         // Create order detail for utensil
-                        var orderDetail = new OrderDetail
+                        var orderDetail = new SellOrderDetail 
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
@@ -303,7 +303,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         decimal totalIngredientPrice = unitPrice * item.VolumeWeight.Value;
 
                         // Create order detail for ingredient
-                        var orderDetail = new OrderDetail
+                        var orderDetail = new SellOrderDetail 
                         {
                             Quantity = 1,
                             VolumeWeight = item.VolumeWeight,
@@ -339,7 +339,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
 
                             // Create order detail with reference to specific hotpot inventory
-                            var orderDetail = new OrderDetail
+                            var orderDetail = new SellOrderDetail 
                             {
                                 Quantity = 1, // Each hotpot inventory item is a single unit
                                 UnitPrice = hotpot.Price,
@@ -366,7 +366,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         unitPrice = customization.TotalPrice;
 
                         // Create order detail for customization
-                        var orderDetail = new OrderDetail
+                        var orderDetail = new SellOrderDetail 
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
@@ -386,7 +386,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         unitPrice = combo.BasePrice;
 
                         // Create order detail for combo
-                        var orderDetail = new OrderDetail
+                        var orderDetail = new SellOrderDetail 
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,

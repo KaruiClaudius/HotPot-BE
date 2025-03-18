@@ -315,7 +315,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
         // Helper method to map OrderDetail to OrderDetailDto
-        private OrderDetailDto MapToOrderDetailDto(OrderDetail detail)
+        private OrderDetailDto MapToOrderDetailDto(SellOrderDetail  detail)
         {
             if (detail == null) return null;
 
@@ -356,7 +356,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
             return new OrderDetailDto
             {
-                OrderDetailId = detail.OrderDetailId,
+                OrderDetailId = detail.SellOrderDetailId,
                 Quantity = detail.Quantity,
                 UnitPrice = detail.UnitPrice,
                 ItemName = itemName,

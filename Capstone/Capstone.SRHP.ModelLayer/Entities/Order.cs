@@ -45,7 +45,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual Feedback? Feedback { get; set; }
         public virtual Discount? Discount { get; set; }
         public virtual Payment? Payment { get; set; }
-        public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+        public virtual ICollection<SellOrderDetail> OrderDetails { get; set; } = new List<SellOrderDetail >();
+        public virtual ICollection<RentOrderDetail> RentOrderDetails { get; set; } = new List<RentOrderDetail>();
 
 
     }

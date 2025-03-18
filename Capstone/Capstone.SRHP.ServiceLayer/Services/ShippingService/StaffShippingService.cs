@@ -209,7 +209,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
                     dto.Items.Add(new ShippingItemDto
                     {
-                        OrderDetailId = detail.OrderDetailId,
+                        OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
                         Quantity = detail.Quantity

@@ -44,6 +44,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
 
         public virtual Order? Order { get; set; }
-        public virtual Staff? Staff { get; set; }
+        public virtual User? Staff { get; set; }
     }
 }
