@@ -297,6 +297,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
+
         // Helper methods
         private OrderResponse MapOrderToResponse(Order order)
         {
@@ -324,24 +325,17 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Payment = null
             };
 
-            // Map order details
-            if (order.OrderDetails != null)
+            // Map sell order details
+            if (order.SellOrderDetails != null)
             {
-                foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
+                foreach (var detail in order.SellOrderDetails.Where(d => !d.IsDelete))
                 {
                     string itemType = "";
                     string itemName = "Unknown";
                     string imageUrl = null;
                     int? itemId = null;
 
-                    if (detail.Utensil != null)
-                    {
-                        itemType = "Utensil";
-                        itemName = detail.Utensil.Name;
-                        imageUrl = detail.Utensil.ImageURL;
-                        itemId = detail.UtensilId;
-                    }
-                    else if (detail.Ingredient != null)
+                    if (detail.IngredientId.HasValue && detail.Ingredient != null)
                     {
                         itemType = "Ingredient";
                         itemName = detail.Ingredient.Name;
@@ -354,32 +348,28 @@ namespace Capstone.HPTY.API.Controllers.Customer
                             OrderDetailId = detail.SellOrderDetailId,
                             Quantity = detail.Quantity,
                             VolumeWeight = detail.VolumeWeight,
-                            Unit = detail.Ingredient.MeasurementUnit, // Add the unit (kg, g, l, ml, etc.)
+                            Unit = detail.Unit ?? detail.Ingredient.MeasurementUnit, // Add the unit (kg, g, l, ml, etc.)
                             UnitPrice = detail.UnitPrice,
-                            TotalPrice = detail.UnitPrice * (detail.VolumeWeight ?? 1),
+                            TotalPrice = detail.VolumeWeight.HasValue ?
+                                detail.UnitPrice * detail.VolumeWeight.Value :
+                                detail.UnitPrice * (detail.Quantity ?? 1),
                             ItemType = itemType,
                             ItemName = itemName,
                             ImageUrl = imageUrl,
-                            ItemId = itemId
+                            ItemId = itemId,
+                            IsSellable = true
                         });
 
                         // Skip the default add below for ingredients
                         continue;
                     }
-                    else if (detail.HotpotInventory?.Hotpot != null)
-                    {
-                        itemType = "Hotpot";
-                        itemName = detail.HotpotInventory.Hotpot.Name;
-                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
-                        itemId = detail.HotpotInventory.HotpotId;
-                    }
-                    else if (detail.Customization != null)
+                    else if (detail.CustomizationId.HasValue && detail.Customization != null)
                     {
                         itemType = "Customization";
                         itemName = detail.Customization.Name;
                         itemId = detail.CustomizationId;
                     }
-                    else if (detail.Combo != null)
+                    else if (detail.ComboId.HasValue && detail.Combo != null)
                     {
                         itemType = "Combo";
                         itemName = detail.Combo.Name;
@@ -392,11 +382,55 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         OrderDetailId = detail.SellOrderDetailId,
                         Quantity = detail.Quantity,
                         UnitPrice = detail.UnitPrice,
-                        TotalPrice = detail.UnitPrice * detail.Quantity,
+                        TotalPrice = detail.UnitPrice * (detail.Quantity ?? 1),
                         ItemType = itemType,
                         ItemName = itemName,
                         ImageUrl = imageUrl,
-                        ItemId = itemId
+                        ItemId = itemId,
+                        IsSellable = true
+                    });
+                }
+            }
+
+            // Map rent order details
+            if (order.RentOrderDetails != null)
+            {
+                foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    string itemType = "";
+                    string itemName = "Unknown";
+                    string imageUrl = null;
+                    int? itemId = null;
+
+                    if (detail.UtensilId.HasValue && detail.Utensil != null)
+                    {
+                        itemType = "Utensil";
+                        itemName = detail.Utensil.Name;
+                        imageUrl = detail.Utensil.ImageURL;
+                        itemId = detail.UtensilId;
+                    }
+                    else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                    {
+                        itemType = "Hotpot";
+                        itemName = detail.HotpotInventory.Hotpot.Name;
+                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
+                        itemId = detail.HotpotInventory.HotpotId;
+                    }
+
+                    response.Items.Add(new OrderItemResponse
+                    {
+                        OrderDetailId = detail.RentOrderDetailId,
+                        Quantity = detail.Quantity,
+                        UnitPrice = detail.RentalPrice,
+                        TotalPrice = detail.RentalPrice * detail.Quantity,
+                        ItemType = itemType,
+                        ItemName = itemName,
+                        ImageUrl = imageUrl,
+                        ItemId = itemId,
+                        IsSellable = false,
+                        RentalStartDate = detail.RentalStartDate,
+                        ExpectedReturnDate = detail.ExpectedReturnDate,
+                        ActualReturnDate = detail.ActualReturnDate
                     });
                 }
             }
@@ -432,7 +466,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
         private decimal CalculateDiscountAmount(decimal totalPrice, decimal discountPercent)
         {
-            return totalPrice * (decimal)(discountPercent / 100);
+            return totalPrice * (discountPercent / 100);
         }
     }
 }

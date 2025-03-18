@@ -43,15 +43,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
+            // Start a transaction
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
             try
             {
                 string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
 
-
-
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.PhoneNumber == request.PhoneNumber);
+                    .FindAsync(u => u.PhoneNumber == normalizedPhoneNumber);
 
                 if (existingUser != null && !existingUser.IsDelete)
                 {
@@ -85,8 +86,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     existingUser.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
 
-                    // Reactivate customer record
-                    await CreateCustomerEntryAsync(existingUser);
                     resultUser = existingUser;
                 }
                 else
@@ -98,6 +97,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         Name = request.Name,
                         PhoneNumber = normalizedPhoneNumber,
                         RoleId = customerRole.RoleId, // Always set to Customer role
+                        LoyatyPoint = 0, // Initialize loyalty points for new customers
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -105,20 +105,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     _unitOfWork.Repository<User>().Insert(newUser);
                     await _unitOfWork.CommitAsync();
 
-                    // Create customer record
-                    await CreateCustomerEntryAsync(newUser);
                     resultUser = newUser;
                 }
+
+                // Commit the transaction
+                await transaction.CommitAsync();
 
                 return await GenerateAuthResponseAsync(resultUser);
             }
             catch (ValidationException)
             {
+                // Rollback the transaction
+                await transaction.RollbackAsync();
                 // Rethrow validation exceptions directly
                 throw;
             }
             catch (Exception ex)
             {
+                // Rollback the transaction
+                await transaction.RollbackAsync();
                 throw new Exception("Đăng ký gặp trục trặc", ex);
             }
         }
@@ -208,42 +213,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             };
         }
 
-
-        private async Task CreateCustomerEntryAsync(User user)
-        {
-            try
-            {
-                var existingCustomer = await _unitOfWork.Repository<Customer>()
-                    .FindAsync(c => c.UserId == user.UserId);
-
-                if (existingCustomer != null)
-                {
-                    existingCustomer.IsDelete = false;
-                    existingCustomer.SetUpdateDate();
-                }
-                else
-                {
-                    var customer = new Customer
-                    {
-                        UserId = user.UserId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _unitOfWork.Repository<Customer>().Insert(customer);
-                }
-
-                await _unitOfWork.CommitAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"lỗi tạo entry", ex);
-            }
-        }
-
         public async Task<AuthResponse> GoogleLoginAsync(string idToken)
         {
+            // Start a transaction
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
             try
-            {             
+            {
                 // Verify the Google token
                 var payload = await _jwtService.VerifyGoogleTokenAsync(idToken);
 
@@ -266,43 +242,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         existingUser.SetUpdateDate();
                         await _unitOfWork.CommitAsync();
 
-                        // Reactivate customer record
-                        await CreateCustomerEntryAsync(existingUser);
-
-                        return await GenerateAuthResponseAsync(existingUser);
+                        user = existingUser;
                     }
-
-                    // Get Customer role
-                    var customerRole = await _unitOfWork.Repository<Role>()
-                        .FindAsync(r => r.Name == "Customer");
-
-                    if (customerRole == null)
-                        throw new ValidationException("Role Khách hàng không tìm thấy");
-
-                    // Create new user
-                    user = new User
+                    else
                     {
-                        Email = payload.Email,
-                        Name = payload.Name,
-                        // Generate a random password since the user won't use it
-                        Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
-                        RoleId = customerRole.RoleId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+                        // Get Customer role
+                        var customerRole = await _unitOfWork.Repository<Role>()
+                            .FindAsync(r => r.Name == "Customer");
 
-                    _unitOfWork.Repository<User>().Insert(user);
-                    await _unitOfWork.CommitAsync();
+                        if (customerRole == null)
+                            throw new ValidationException("Role Khách hàng không tìm thấy");
 
-                    // Create customer record
-                    await CreateCustomerEntryAsync(user);
+                        // Create new user
+                        user = new User
+                        {
+                            Email = payload.Email,
+                            Name = payload.Name,
+                            // Generate a random password since the user won't use it
+                            Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                            RoleId = customerRole.RoleId,
+                            LoyatyPoint = 0, // Initialize loyalty points for new customers
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        _unitOfWork.Repository<User>().Insert(user);
+                        await _unitOfWork.CommitAsync();
+                    }
                 }
+
+                // Commit the transaction
+                await transaction.CommitAsync();
 
                 // Generate JWT token and return auth response
                 return await GenerateAuthResponseAsync(user);
             }
             catch (Exception ex)
             {
+                // Rollback the transaction
+                await transaction.RollbackAsync();
                 throw new UnauthorizedException("Đăng nhập Google gặp trục trặc: " + ex.Message);
             }
         }

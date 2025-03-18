@@ -25,6 +25,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.UserService
         Task<bool> IsEmailUniqueAsync(string email);
         Task<Role> GetByRoleNameAsync(string roleNAme);
         Task UpdatePasswordAsync(int id, string newPassword);
-        Task<object> GetRoleSpecificDataAsync(int userId);
     }
 }

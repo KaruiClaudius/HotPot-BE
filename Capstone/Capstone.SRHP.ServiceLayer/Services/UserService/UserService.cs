@@ -47,9 +47,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             // Start with a base query that includes all related entities
             var query = _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
-                .Include(u => u.Customer)
-                .Include(u => u.Staff)
-                .Include(u => u.Manager)
                 .AsQueryable();
 
             // Apply filters
@@ -131,11 +128,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         public async Task<User> GetByIdAsync(int id)
         {
             var user = await _unitOfWork.Repository<User>()
-                .Include(u => u.Role)
-                .Include(u=> u.Customer)
-                .Include(u=>u.Manager)
-                .Include(u=>u.Staff)
-                .FirstOrDefaultAsync(u => u.UserId == id && !u.IsDelete);
+               .Include(u => u.Role)
+               .FirstOrDefaultAsync(u => u.UserId == id && !u.IsDelete);
 
             if (user == null)
                 throw new NotFoundException($"Không tìm thấy tài khoản");
@@ -146,7 +140,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             try
             {
-
                 if (!string.IsNullOrWhiteSpace(entity.PhoneNumber))
                 {
                     entity.PhoneNumber = NormalizePhoneNumber(entity.PhoneNumber);
@@ -175,11 +168,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     existingUser.Address = entity.Address;
                     existingUser.ImageURL = entity.ImageURL;
                     existingUser.RoleId = entity.RoleId;
+                    existingUser.WorkDays = entity.WorkDays;
+                    existingUser.LoyatyPoint = entity.LoyatyPoint;
+                    existingUser.Note = entity.Note;
                     existingUser.SetUpdateDate();
                     await _unitOfWork.CommitAsync();
 
-                    // Reactivate role-specific entry
-                    await CreateRoleSpecificEntryAsync(existingUser);
                     resultUser = existingUser;
                 }
                 else
@@ -187,9 +181,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                     // Create new user
                     _unitOfWork.Repository<User>().Insert(entity);
                     await _unitOfWork.CommitAsync();
-
-                    // Create role-specific entry
-                    await CreateRoleSpecificEntryAsync(entity);
                     resultUser = entity;
                 }
 
@@ -217,17 +208,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 if (existingUser == null)
                     throw new NotFoundException($"Không tìm thấy tài khoản");
 
-                // If role is changing, handle role-specific tables
-                if (existingUser.RoleId != entity.RoleId)
-                {
-                    await HandleRoleChangeAsync(existingUser, entity.RoleId);
-                }
-
                 // Update user properties
                 existingUser.Name = entity.Name;
                 existingUser.PhoneNumber = entity.PhoneNumber;
                 existingUser.Address = entity.Address;
                 existingUser.ImageURL = entity.ImageURL;
+                existingUser.WorkDays = entity.WorkDays;
+                existingUser.LoyatyPoint = entity.LoyatyPoint;
+                existingUser.Note = entity.Note;
+
+                // If role is changing, you might need additional logic here
+                if (existingUser.RoleId != entity.RoleId)
+                {
+                    existingUser.RoleId = entity.RoleId;
+                    // Any additional role-specific logic can be added here
+                }
+
                 existingUser.SetUpdateDate();
 
                 await _unitOfWork.CommitAsync();
@@ -248,15 +244,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 if (user == null)
                     throw new NotFoundException($"Không tìm thấy tài khoản");
 
-                // Soft delete role-specific entry
-                var role = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.RoleId == user.RoleId);
-
-                if (role != null)
-                {
-                    await SoftDeleteRoleSpecificEntryAsync(id, role.Name);
-                }
-
                 // Soft delete user
                 user.SoftDelete();
                 user.SetUpdateDate();
@@ -276,32 +263,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .FirstOrDefaultAsync(u => u.Email == email && !u.IsDelete);
         }
 
-        public async Task<object> GetRoleSpecificDataAsync(int userId)
-        {
-            var user = await GetByIdAsync(userId);
-            if (user?.Role == null) return null;
-
-            switch (user.Role.Name.ToLower())
-            {
-                case "customer":
-                    return await _unitOfWork.Repository<Customer>()
-                        .FindAsync(c => c.UserId == userId && !c.IsDelete);
-
-                case "staff":
-                    return await _unitOfWork.Repository<Staff>()
-                        .Include(s => s.WorkShifts)
-                        .Include(s => s.ShippingOrders)
-                        .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDelete);
-
-                case "manager":
-                    return await _unitOfWork.Repository<Manager>()
-                        .Include(m => m.WorkShifts)
-                        .FirstOrDefaultAsync(m => m.UserId == userId && !m.IsDelete);
-
-                default:
-                    return null;
-            }
-        }
 
         public async Task<IEnumerable<User>> GetByRoleAsync(int roleId)
         {
@@ -382,146 +343,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             phoneNumber = new string(phoneNumber.Where(char.IsDigit).ToArray());
 
             return phoneNumber;
-        }
-
-        private async Task HandleRoleChangeAsync(User user, int newRoleId)
-        {
-            // Get old and new role names
-            var oldRole = await _unitOfWork.Repository<Role>()
-                .FindAsync(r => r.RoleId == user.RoleId);
-            var newRole = await _unitOfWork.Repository<Role>()
-                .FindAsync(r => r.RoleId == newRoleId);
-
-            if (oldRole == null || newRole == null)
-                throw new ValidationException("Không tìm thấy Role");
-
-            // Soft delete old role-specific entry
-            await SoftDeleteRoleSpecificEntryAsync(user.UserId, oldRole.Name);
-
-            // Create new role-specific entry
-            user.RoleId = newRoleId;
-            await CreateRoleSpecificEntryAsync(user);
-        }
-
-        private async Task SoftDeleteRoleSpecificEntryAsync(int userId, string roleName)
-        {
-            switch (roleName.ToLower())
-            {
-                case "customer":
-                    var customer = await _unitOfWork.Repository<Customer>()
-                        .FindAsync(c => c.UserId == userId);
-                    if (customer != null)
-                    {
-                        customer.IsDelete = true;
-                        customer.SetUpdateDate();
-                    }
-                    break;
-
-                case "staff":
-                    var staff = await _unitOfWork.Repository<Staff>()
-                        .FindAsync(s => s.UserId == userId);
-                    if (staff != null)
-                    {
-                        staff.IsDelete = true;
-                        staff.SetUpdateDate();
-                    }
-                    break;
-
-                case "manager":
-                    var manager = await _unitOfWork.Repository<Manager>()
-                        .FindAsync(m => m.UserId == userId);
-                    if (manager != null)
-                    {
-                        manager.IsDelete = true;
-                        manager.SetUpdateDate();
-                    }
-                    break;
-            }
-        }
-
-        private async Task CreateRoleSpecificEntryAsync(User user)
-        {
-            try
-            {
-                var role = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.RoleId == user.RoleId);
-
-                if (role == null)
-                    throw new ValidationException($"Không tìm thấy Role của user {user.Name}");
-
-                // Create or reactivate role-specific record based on role
-                switch (role.Name.ToLower())
-                {
-                    case "customer":
-                        var existingCustomer = await _unitOfWork.Repository<Customer>()
-                            .FindAsync(c => c.UserId == user.UserId);
-
-                        if (existingCustomer != null)
-                        {
-                            existingCustomer.IsDelete = false;
-                            existingCustomer.SetUpdateDate();
-                        }
-                        else
-                        {
-                            var customer = new Customer
-                            {
-                                UserId = user.UserId,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _unitOfWork.Repository<Customer>().Insert(customer);
-                        }
-                        break;
-
-                    case "staff":
-                        var existingStaff = await _unitOfWork.Repository<Staff>()
-                            .FindAsync(s => s.UserId == user.UserId);
-
-                        if (existingStaff != null)
-                        {
-                            existingStaff.IsDelete = false;
-                            existingStaff.SetUpdateDate();
-                        }
-                        else
-                        {
-                            var staff = new Staff
-                            {
-                                UserId = user.UserId,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _unitOfWork.Repository<Staff>().Insert(staff);
-                        }
-                        break;
-
-                    case "manager":
-                        var existingManager = await _unitOfWork.Repository<Manager>()
-                            .FindAsync(m => m.UserId == user.UserId);
-
-                        if (existingManager != null)
-                        {
-                            existingManager.IsDelete = false;
-                            existingManager.SetUpdateDate();
-                        }
-                        else
-                        {
-                            var manager = new Manager
-                            {
-                                UserId = user.UserId,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _unitOfWork.Repository<Manager>().Insert(manager);
-                        }
-                        break;
-                }
-
-                await _unitOfWork.CommitAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Lỗi khi tạo mục nhập dành riêng cho role cho người dùng", ex);
-            }
         }
     }
 }

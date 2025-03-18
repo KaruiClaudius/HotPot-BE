@@ -53,19 +53,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<PagedResult<Order>> GetOrdersAsync(
-             string searchTerm = null,
-             int? userId = null,
-             string status = null,
-             DateTime? fromDate = null,
-             DateTime? toDate = null,
-             decimal? minPrice = null,
-             decimal? maxPrice = null,
-             bool? hasHotpot = null,
-             string paymentStatus = null,
-             int pageNumber = 1,
-             int pageSize = 10,
-             string sortBy = "CreatedAt",
-             bool ascending = false)
+         string searchTerm = null,
+         int? userId = null,
+         string status = null,
+         DateTime? fromDate = null,
+         DateTime? toDate = null,
+         decimal? minPrice = null,
+         decimal? maxPrice = null,
+         bool? hasHotpot = null,
+         string paymentStatus = null,
+         int pageNumber = 1,
+         int pageSize = 10,
+         string sortBy = "CreatedAt",
+         bool ascending = false)
         {
             try
             {
@@ -75,17 +75,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.Discount)
                     .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.SellOrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
                     .Where(o => !o.IsDelete);
 
                 // Apply filters
@@ -134,11 +134,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (hasHotpot.Value)
                     {
-                        query = query.Where(o => o.OrderDetails.Any(od => od.HotpotInventoryId.HasValue));
+                        query = query.Where(o => o.RentOrderDetails.Any(od => od.HotpotInventoryId.HasValue));
                     }
                     else
                     {
-                        query = query.Where(o => !o.OrderDetails.Any(od => od.HotpotInventoryId.HasValue));
+                        query = query.Where(o => !o.RentOrderDetails.Any(od => od.HotpotInventoryId.HasValue));
                     }
                 }
 
@@ -206,17 +206,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.Discount)
                     .Include(o => o.Payment)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
+                        .ThenInclude(od => od.Customization)
+                    .Include(o => o.SellOrderDetails)
+                        .ThenInclude(od => od.Combo)
+                    .Include(o => o.RentOrderDetails)
+                        .ThenInclude(od => od.Utensil)
+                    .Include(o => o.RentOrderDetails)
                         .ThenInclude(od => od.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Combo)
                     .FirstOrDefaultAsync(o => o.OrderId == id && !o.IsDelete);
 
                 if (order == null)
@@ -244,7 +244,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     throw new ValidationException("Order must contain at least one item");
 
                 // Create order details
-                var orderDetails = new List<SellOrderDetail >();
+                var sellOrderDetails = new List<SellOrderDetail>();
+                var rentOrderDetails = new List<RentOrderDetail>();
                 decimal totalPrice = 0;
                 decimal hotpotDeposit = 0;
 
@@ -272,15 +273,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                         unitPrice = utensil.Price;
 
-                        // Create order detail for utensil
-                        var orderDetail = new SellOrderDetail 
+                        // Create rent order detail for utensil
+                        var orderDetail = new RentOrderDetail
                         {
                             Quantity = (int)item.Quantity,
-                            UnitPrice = unitPrice,
+                            RentalPrice = unitPrice,
+                            RentalStartDate = DateTime.Now,
+                            ExpectedReturnDate = DateTime.Now.AddDays(7), // Default rental period
                             UtensilId = item.UtensilID
                         };
 
-                        orderDetails.Add(orderDetail);
+                        rentOrderDetails.Add(orderDetail);
                         totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
                     else if (item.IngredientID.HasValue)
@@ -302,17 +305,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         unitPrice = latestPrice;
                         decimal totalIngredientPrice = unitPrice * item.VolumeWeight.Value;
 
-                        // Create order detail for ingredient
-                        var orderDetail = new SellOrderDetail 
+                        // Create sell order detail for ingredient
+                        var orderDetail = new SellOrderDetail
                         {
-                            Quantity = 1,
+                            Quantity = null, // Using VolumeWeight instead
                             VolumeWeight = item.VolumeWeight,
                             Unit = ingredient.MeasurementUnit, // Store the ingredient's unit
                             UnitPrice = unitPrice,
                             IngredientId = item.IngredientID
                         };
 
-                        orderDetails.Add(orderDetail);
+                        sellOrderDetails.Add(orderDetail);
                         totalPrice += totalIngredientPrice;
                     }
                     else if (item.HotpotID.HasValue)
@@ -338,15 +341,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             hotpotInventory.Status = false;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
 
-                            // Create order detail with reference to specific hotpot inventory
-                            var orderDetail = new SellOrderDetail 
+                            // Create rent order detail with reference to specific hotpot inventory
+                            var orderDetail = new RentOrderDetail
                             {
                                 Quantity = 1, // Each hotpot inventory item is a single unit
-                                UnitPrice = hotpot.Price,
+                                RentalPrice = hotpot.Price,
+                                RentalStartDate = DateTime.Now,
+                                ExpectedReturnDate = DateTime.Now.AddDays(7), // Default rental period
                                 HotpotInventoryId = hotpotInventory.HotPotInventoryId
                             };
 
-                            orderDetails.Add(orderDetail);
+                            rentOrderDetails.Add(orderDetail);
                             totalPrice += hotpot.Price;
 
                             // Calculate hotpot deposit (70% of hotpot price)
@@ -365,15 +370,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                         unitPrice = customization.TotalPrice;
 
-                        // Create order detail for customization
-                        var orderDetail = new SellOrderDetail 
+                        // Create sell order detail for customization
+                        var orderDetail = new SellOrderDetail
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
                             CustomizationId = item.CustomizationID
                         };
 
-                        orderDetails.Add(orderDetail);
+                        sellOrderDetails.Add(orderDetail);
                         totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
                     else if (item.ComboID.HasValue)
@@ -385,15 +390,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         // Combo price already includes any combo-specific discounts
                         unitPrice = combo.BasePrice;
 
-                        // Create order detail for combo
-                        var orderDetail = new SellOrderDetail 
+                        // Create sell order detail for combo
+                        var orderDetail = new SellOrderDetail
                         {
                             Quantity = (int)item.Quantity,
                             UnitPrice = unitPrice,
                             ComboId = item.ComboID
                         };
 
-                        orderDetails.Add(orderDetail);
+                        sellOrderDetails.Add(orderDetail);
                         totalPrice += (decimal)(unitPrice * item.Quantity);
                     }
                 }
@@ -423,7 +428,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Status = OrderStatus.Pending,
                     DiscountId = request.DiscountId,
                     HotpotDeposit = hotpotDeposit,
-                    OrderDetails = orderDetails
+                    SellOrderDetails = sellOrderDetails,
+                    RentOrderDetails = rentOrderDetails
                 };
 
                 _unitOfWork.Repository<Order>().Insert(order);
@@ -484,6 +490,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 throw;
             }
         }
+
+
         public async Task<Order> UpdateAsync(int id, UpdateOrderRequest request)
         {
             try
@@ -589,18 +597,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is cancelled, return inventory quantities
                 if (status == OrderStatus.Cancelled)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
+                    // Handle sellable items
+                    foreach (var detail in order.SellOrderDetails.Where(d => !d.IsDelete))
                     {
-                        if (detail.UtensilId.HasValue)
-                        {
-                            await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
-                        }
-                        else if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
+                        if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
                         {
                             // Return ingredient volume/weight
                             await _ingredientService.UpdateIngredientQuantityAsync(
                                 detail.IngredientId.Value,
                                 detail.VolumeWeight.Value);
+                        }
+                    }
+
+                    // Handle rentable items
+                    foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete))
+                    {
+                        if (detail.UtensilId.HasValue)
+                        {
+                            await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
                         }
                         else if (detail.HotpotInventoryId.HasValue)
                         {
@@ -627,7 +641,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is completed, update hotpot inventory status
                 else if (status == OrderStatus.Completed)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                             .GetById(detail.HotpotInventoryId.Value);
@@ -650,7 +664,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is delivered, update hotpot inventory status to InUse
                 else if (status == OrderStatus.Delivered)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                             .GetById(detail.HotpotInventoryId.Value);
@@ -666,7 +680,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is returning, update hotpot inventory status to Maintenance
                 else if (status == OrderStatus.Returning)
                 {
-                    foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                             .GetById(detail.HotpotInventoryId.Value);
@@ -711,19 +725,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SoftDelete();
                 await _unitOfWork.CommitAsync();
 
-                // Return inventory quantities
-                foreach (var detail in order.OrderDetails.Where(d => !d.IsDelete))
+                // Return inventory quantities for sellable items
+                foreach (var detail in order.SellOrderDetails.Where(d => !d.IsDelete))
                 {
-                    if (detail.UtensilId.HasValue)
-                    {
-                        await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
-                    }
-                    else if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
+                    if (detail.IngredientId.HasValue && detail.VolumeWeight.HasValue)
                     {
                         // Return ingredient volume/weight
                         await _ingredientService.UpdateIngredientQuantityAsync(
                             detail.IngredientId.Value,
                             detail.VolumeWeight.Value);
+                    }
+                }
+
+                // Return inventory quantities for rentable items
+                foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.UtensilId.HasValue)
+                    {
+                        await _utensilService.UpdateUtensilQuantityAsync(detail.UtensilId.Value, detail.Quantity);
                     }
                     else if (detail.HotpotInventoryId.HasValue)
                     {
@@ -739,7 +758,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         }
                     }
                 }
-
                 // Cancel payment if exists and pending
                 var payment = await _paymentService.GetPaymentByOrderIdAsync(id);
                 if (payment != null && payment.Status == PaymentStatus.Pending)

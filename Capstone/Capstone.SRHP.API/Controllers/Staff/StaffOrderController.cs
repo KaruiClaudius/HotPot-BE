@@ -310,7 +310,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 UserPhone = order.User?.PhoneNumber ?? "Unknown",
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                OrderDetails = order.OrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>()
+                OrderDetails = order.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>()
             };
         }
 

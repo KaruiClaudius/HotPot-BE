@@ -12,7 +12,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int RentableOrderDetailId { get; set; }
+        public int RentOrderDetailId { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]

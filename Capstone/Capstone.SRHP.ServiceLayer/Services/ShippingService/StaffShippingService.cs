@@ -39,7 +39,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails);
+                        .ThenInclude(o => o.SellOrderDetails);
 
                 var shippingOrders = await shippingOrdersQuery.ToListAsync();
                 return shippingOrders.Select(MapToShippingListDto).ToList();
@@ -64,13 +64,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
+                        .ThenInclude(o => o.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
+                        .ThenInclude(o => o.SellOrderDetails)
                             .ThenInclude(od => od.Customization)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
+                        .ThenInclude(o => o.SellOrderDetails)
                             .ThenInclude(od => od.Combo)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.RentOrderDetails)
@@ -109,7 +109,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.OrderDetails)
+                        .ThenInclude(o => o.SellOrderDetails)
                     .OrderBy(so => so.DeliveryTime);
 
                 var pendingShippingOrders = await pendingShippingOrdersQuery.ToListAsync();
@@ -174,9 +174,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             };
 
             // Map sell order details to shipping items
-            if (shippingOrder.Order?.OrderDetails != null)
+            if (shippingOrder.Order?.SellOrderDetails != null)
             {
-                foreach (var detail in shippingOrder.Order.OrderDetails)
+                foreach (var detail in shippingOrder.Order.SellOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
@@ -229,7 +229,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
                     dto.Items.Add(new ShippingItemDto
                     {
-                        OrderDetailId = rental.RentableOrderDetailId,
+                        OrderDetailId = rental.RentOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
                         Quantity = rental.Quantity,

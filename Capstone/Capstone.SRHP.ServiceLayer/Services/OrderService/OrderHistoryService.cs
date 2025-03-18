@@ -67,11 +67,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
                     .Include(o => o.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
@@ -122,11 +122,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.OrderDetails)
+                    .Include(o => o.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
                     .Include(o => o.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
@@ -217,9 +217,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             };
 
             // Map sell order details to order items
-            if (order.OrderDetails != null && order.OrderDetails.Any())
+            if (order.SellOrderDetails != null && order.SellOrderDetails.Any())
             {
-                foreach (var detail in order.OrderDetails)
+                foreach (var detail in order.SellOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
@@ -276,7 +276,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     dto.Items.Add(new OrderItemDto
                     {
-                        OrderDetailId = rental.RentableOrderDetailId,
+                        OrderDetailId = rental.RentOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
                         Quantity = rental.Quantity,
