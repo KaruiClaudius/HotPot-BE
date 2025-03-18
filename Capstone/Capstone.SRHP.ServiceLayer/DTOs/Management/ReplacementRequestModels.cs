@@ -67,39 +67,36 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public EquipmentType EquipmentType { get; set; }
         public string EquipmentName { get; set; }
         public string CustomerName { get; set; }
-        public string? AssignedStaffName { get; set; }
+        public string AssignedStaffName { get; set; }
     }
 
     public class ReplacementRequestDetailDto
     {
         public int ReplacementRequestId { get; set; }
         public string RequestReason { get; set; }
-        public string? AdditionalNotes { get; set; }
+        public string AdditionalNotes { get; set; }
         public ReplacementRequestStatus Status { get; set; }
         public DateTime RequestDate { get; set; }
         public DateTime? ReviewDate { get; set; }
-        public string? ReviewNotes { get; set; }
+        public string ReviewNotes { get; set; }
         public DateTime? CompletionDate { get; set; }
         public EquipmentType EquipmentType { get; set; }
 
-        // Customer info
         public int CustomerId { get; set; }
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
 
-        // Staff info
         public int? AssignedStaffId { get; set; }
-        public string? AssignedStaffName { get; set; }
+        public string AssignedStaffName { get; set; }
 
-        // Equipment info
         public int? HotPotInventoryId { get; set; }
-        public string? HotPotSeriesNumber { get; set; }
-        public string? HotPotName { get; set; }
+        public string HotPotSeriesNumber { get; set; }
+        public string HotPotName { get; set; }
 
         public int? UtensilId { get; set; }
-        public string? UtensilName { get; set; }
-        public string? UtensilType { get; set; }
+        public string UtensilName { get; set; }
+        public string UtensilType { get; set; }
     }
     public class ReplacementDashboardDto
     {
