@@ -118,6 +118,9 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<ICustomerOrderHistoryService, CustomerOrderHistoryService>();
             services.AddScoped<IOrderHistoryService, OrderHistoryService>();
 
+            // Rent Order Services
+            services.AddScoped<IRentOrderService, RentOrderService>();
+
             // External Services
             services.AddHttpClient();
             services.AddMemoryCache();

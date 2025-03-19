@@ -26,8 +26,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         private readonly IUserService _userService;
         private readonly IManagerService _managerService;
         private readonly IStaffService _staffService;
-        private const int STAFF_ROLE_ID = 3;    
-        private const int MANAGER_ROLE_ID = 2;  
 
         public ManagerScheduleController(
             IScheduleService scheduleService,
