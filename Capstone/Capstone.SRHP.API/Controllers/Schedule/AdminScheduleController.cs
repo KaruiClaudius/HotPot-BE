@@ -20,10 +20,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
     public class AdminScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
-        private readonly IHubContext<ScheduleHub> _scheduleHubContext;
-        private const int STAFF_ROLE_ID = 3;    
-        private const int MANAGER_ROLE_ID = 2;  
-
+        private readonly IHubContext<ScheduleHub> _scheduleHubContext;       
         public AdminScheduleController(IScheduleService scheduleService, IHubContext<ScheduleHub> scheduleHubContext)
         {
             _scheduleService = scheduleService;

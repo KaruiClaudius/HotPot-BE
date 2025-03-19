@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
 {
@@ -15,5 +17,17 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
         Task UpdateStaffAsync(int userId, User staffUpdate);
         Task DeleteStaffAsync(int userId);
         Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts);
-    }
+
+
+        // Pickup Interface
+        Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null);
+        Task<bool> CompletePickupAssignmentAsync(
+            int assignmentId,
+            DateTime completedDate,
+            string returnCondition = null,
+            decimal? damageFee = null);
+        Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId);
+        Task<PagedResult<RentOrderDetail>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10);
+        Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10);
+}
 }

@@ -7,6 +7,8 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,7 +48,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         public async Task<User> CreateStaffAsync(User staff)
         {
-            // Ensure the user has the staff role
             staff.RoleId = STAFF_ROLE_ID;
 
             _unitOfWork.Repository<User>().Insert(staff);
@@ -89,6 +90,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             await _unitOfWork.CommitAsync();
         }
 
+        // Pickup Service Methods
         public async Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts)
         {
             var staff = await _unitOfWork.Repository<User>()
@@ -135,6 +137,260 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
             staff.SetUpdateDate();
             await _unitOfWork.CommitAsync();
+        }
+
+        public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
+        {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                // Verify the staff member exists
+                var staff = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
+
+                if (staff == null)
+                    throw new NotFoundException($"Staff with ID {staffId} not found");
+
+                // Verify the rent order detail exists
+                var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
+                    .GetById(rentOrderDetailId);
+
+                if (rentOrderDetail == null)
+                    throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
+
+                // Check if this rental is already assigned
+                var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
+                    .FindAsync(a => a.RentOrderDetailId == rentOrderDetailId && a.CompletedDate == null);
+
+                if (existingAssignment != null)
+                {
+                    // Update existing assignment
+                    existingAssignment.StaffId = staffId;
+                    existingAssignment.Notes = notes;
+                    existingAssignment.AssignedDate = DateTime.UtcNow;
+                    existingAssignment.SetUpdateDate();
+
+                    await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(existingAssignment);
+                }
+                else
+                {
+                    // Create new assignment
+                    var assignment = new StaffPickupAssignment
+                    {
+                        RentOrderDetailId = rentOrderDetailId,
+                        StaffId = staffId,
+                        AssignedDate = DateTime.UtcNow,
+                        Notes = notes
+                    };
+
+                    _unitOfWork.Repository<StaffPickupAssignment>().Insert(assignment);
+                }
+
+                await _unitOfWork.CommitAsync();
+                transaction.Commit();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw new ApplicationException($"Failed to assign staff to pickup: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<bool> CompletePickupAssignmentAsync(
+            int assignmentId,
+            DateTime completedDate,
+            string returnCondition = null,
+            decimal? damageFee = null)
+        {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                var assignment = await _unitOfWork.Repository<StaffPickupAssignment>()
+                    .GetById(assignmentId);
+
+                if (assignment == null)
+                    throw new NotFoundException($"Assignment with ID {assignmentId} not found");
+
+                assignment.CompletedDate = completedDate;
+                assignment.Notes = string.IsNullOrEmpty(assignment.Notes)
+                    ? $"Return condition: {returnCondition}"
+                    : $"{assignment.Notes}\nReturn condition: {returnCondition}";
+                assignment.SetUpdateDate();
+
+                await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(assignment);
+
+                // Update the RentOrderDetail with the actual return date
+                var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
+                    .GetById(assignment.RentOrderDetailId);
+
+                if (rentOrderDetail != null)
+                {
+                    rentOrderDetail.ActualReturnDate = completedDate;
+
+                    // Set damage fee if provided
+                    if (damageFee.HasValue)
+                    {
+                        rentOrderDetail.DamageFee = damageFee.Value;
+                    }
+
+                    // Calculate late fee if applicable
+                    if (completedDate > rentOrderDetail.ExpectedReturnDate)
+                    {
+                        var daysLate = (completedDate - rentOrderDetail.ExpectedReturnDate).Days;
+                        rentOrderDetail.LateFee = daysLate * (rentOrderDetail.RentalPrice * 0.1m); // 10% of rental price per day
+                    }
+
+                    await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
+                }
+
+                await _unitOfWork.CommitAsync();
+                transaction.Commit();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw new ApplicationException($"Failed to complete pickup assignment: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId)
+        {
+            // Verify the staff member exists
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
+
+            if (staff == null)
+                throw new NotFoundException($"Staff with ID {staffId} not found");
+
+            // Get all assignments for this staff member
+            var assignments = await _unitOfWork.Repository<StaffPickupAssignment>()
+                .AsQueryable(a => a.StaffId == staffId)
+                .Include(a => a.Staff)
+                .Include(a => a.RentOrderDetail)
+                    .ThenInclude(r => r.Order)
+                        .ThenInclude(o => o.User)
+                .Include(a => a.RentOrderDetail.Utensil)
+                .Include(a => a.RentOrderDetail.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
+                .ToListAsync();
+
+            // Map to DTOs
+            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            {
+                AssignmentId = a.AssignmentId,
+                RentOrderDetailId = a.RentOrderDetailId,
+                StaffId = a.StaffId,
+                StaffName = a.Staff?.Name,
+                AssignedDate = a.AssignedDate,
+                CompletedDate = a.CompletedDate,
+                Notes = a.Notes,
+                CustomerName = a.RentOrderDetail?.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
+                EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
+                               a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
+                               "Unknown",
+                Quantity = a.RentOrderDetail?.Quantity ?? 0,
+                ExpectedReturnDate = a.RentOrderDetail?.ExpectedReturnDate ?? DateTime.Now
+            }).ToList();
+
+            return assignmentDtos;
+        }
+
+        public async Task<PagedResult<RentOrderDetail>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            var today = DateTime.Today;
+
+            // Get all rent order details that are due for pickup today or overdue
+            var pendingPickupsQuery = _unitOfWork.Repository<RentOrderDetail>()
+                .AsQueryable(r => r.ExpectedReturnDate.Date <= today && r.ActualReturnDate == null && !r.IsDelete)
+                .Include(r => r.Order)
+                    .ThenInclude(o => o.User)
+                .Include(r => r.Utensil)
+                .Include(r => r.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null);
+
+            // Get all rent order details that are already assigned
+            var assignedPickupIds = await _unitOfWork.Repository<StaffPickupAssignment>()
+                .AsQueryable(a => a.CompletedDate == null)
+                .Select(a => a.RentOrderDetailId)
+                .ToListAsync();
+
+            // Filter out the assigned pickups
+            var unassignedPickupsQuery = pendingPickupsQuery.Where(p => !assignedPickupIds.Contains(p.RentOrderDetailId));
+
+            // Get total count before applying pagination
+            var totalCount = await unassignedPickupsQuery.CountAsync();
+
+            // Apply pagination
+            var items = await unassignedPickupsQuery
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<RentOrderDetail>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            // Get all current assignments (not completed)
+            var query = _unitOfWork.Repository<StaffPickupAssignment>()
+                .AsQueryable(a => a.CompletedDate == null && !a.IsDelete)
+                .Include(a => a.Staff)
+                .Include(a => a.RentOrderDetail)
+                    .ThenInclude(r => r.Order)
+                        .ThenInclude(o => o.User)
+                .Include(a => a.RentOrderDetail.Utensil)
+                .Include(a => a.RentOrderDetail.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null);
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var assignments = await query
+                .OrderBy(a => a.AssignedDate)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Map to DTOs
+            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            {
+                AssignmentId = a.AssignmentId,
+                RentOrderDetailId = a.RentOrderDetailId,
+                StaffId = a.StaffId,
+                StaffName = a.Staff?.Name,
+                AssignedDate = a.AssignedDate,
+                CompletedDate = a.CompletedDate,
+                Notes = a.Notes,
+                CustomerName = a.RentOrderDetail?.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
+                EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
+                               a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
+                               "Unknown",
+                Quantity = a.RentOrderDetail?.Quantity ?? 0,
+                ExpectedReturnDate = a.RentOrderDetail?.ExpectedReturnDate ?? DateTime.Now
+            }).ToList();
+
+            return new PagedResult<StaffPickupAssignmentDto>
+            {
+                Items = assignmentDtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }

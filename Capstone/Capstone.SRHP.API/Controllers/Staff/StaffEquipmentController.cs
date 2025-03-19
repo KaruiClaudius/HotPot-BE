@@ -2,6 +2,7 @@
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +10,8 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/staff/equipments")]
     [ApiController]
+    [Authorize(Roles = "Staff")]
+
     public class StaffEquipmentController : ControllerBase
     {
         private readonly IStaffEquipmentService _staffEquipmentService;
