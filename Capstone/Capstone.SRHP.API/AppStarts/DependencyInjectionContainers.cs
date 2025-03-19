@@ -5,6 +5,7 @@ using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
@@ -16,6 +17,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.ComboService;
+using Capstone.HPTY.ServiceLayer.Services.Customer;
 using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
@@ -79,7 +81,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             services.AddScoped<IOrderService, OrderService>();
 
-
+            services.AddScoped<IUnifiedProductService, UnifiedProductService>();
 
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUtensilService, UtensilService>();

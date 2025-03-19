@@ -30,20 +30,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         #region Ingredient Methods
 
         public async Task<PagedResult<Ingredient>> GetIngredientsAsync(
-     string searchTerm = null,
-     int? typeId = null,
-     bool? isLowStock = null,
-     int pageNumber = 1,
-     int pageSize = 10,
-     string sortBy = "Name",
-     bool ascending = true)
+            string searchTerm = null,
+            int? typeId = null,
+            bool? isLowStock = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "Name",
+            bool ascending = true)
         {
             try
             {
                 // Start with base query
                 var query = _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
-                    .Include(i => i.IngredientPrices)
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
                     .Where(i => !i.IsDelete);
 
                 // Apply search filter
@@ -69,6 +71,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     query = query.Where(i => i.Quantity <= i.MinStockLevel);
                 }
 
+                // Apply price filter if specified
+                if (minPrice.HasValue || maxPrice.HasValue)
+                {
+                    // Get current date for price comparison
+                    var currentDate = DateTime.UtcNow;
+
+                    // Create a subquery to get the latest price for each ingredient
+                    var latestPrices = _unitOfWork.Repository<IngredientPrice>()
+                        .AsQueryable()
+                        .Where(p => !p.IsDelete && p.EffectiveDate <= currentDate)
+                        .GroupBy(p => p.IngredientId)
+                        .Select(g => new
+                        {
+                            IngredientId = g.Key,
+                            LatestPrice = g.OrderByDescending(p => p.EffectiveDate)
+                                           .Select(p => p.Price)
+                                           .FirstOrDefault()
+                        });
+
+                    // Apply price filters using the subquery
+                    if (minPrice.HasValue)
+                    {
+                        var ingredientIdsAboveMinPrice = latestPrices
+                            .Where(lp => lp.LatestPrice >= minPrice.Value)
+                            .Select(lp => lp.IngredientId);
+
+                        query = query.Where(i => ingredientIdsAboveMinPrice.Contains(i.IngredientId));
+                    }
+
+                    if (maxPrice.HasValue)
+                    {
+                        var ingredientIdsBelowMaxPrice = latestPrices
+                            .Where(lp => lp.LatestPrice <= maxPrice.Value)
+                            .Select(lp => lp.IngredientId);
+
+                        query = query.Where(i => ingredientIdsBelowMaxPrice.Contains(i.IngredientId));
+                    }
+                }
+
                 // Get total count before applying pagination
                 var totalCount = await query.CountAsync();
 
@@ -77,6 +118,64 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 switch (sortBy?.ToLower())
                 {
+                    case "price":
+                        // Sort by the latest price
+                        if (ascending)
+                        {
+                            // Get ingredients with their latest prices
+                            var ingredientsWithPrices = await query.Select(i => new
+                            {
+                                Ingredient = i,
+                                LatestPrice = i.IngredientPrices
+                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                                    .OrderByDescending(p => p.EffectiveDate)
+                                    .Select(p => p.Price)
+                                    .FirstOrDefault()
+                            })
+                            .OrderBy(x => x.LatestPrice)
+                            .Skip((pageNumber - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToListAsync();
+
+                            // Extract just the ingredients in the correct order
+                            var items = ingredientsWithPrices.Select(x => x.Ingredient).ToList();
+
+                            return new PagedResult<Ingredient>
+                            {
+                                Items = items,
+                                TotalCount = totalCount,
+                                PageNumber = pageNumber,
+                                PageSize = pageSize
+                            };
+                        }
+                        else
+                        {
+                            // Get ingredients with their latest prices
+                            var ingredientsWithPrices = await query.Select(i => new
+                            {
+                                Ingredient = i,
+                                LatestPrice = i.IngredientPrices
+                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                                    .OrderByDescending(p => p.EffectiveDate)
+                                    .Select(p => p.Price)
+                                    .FirstOrDefault()
+                            })
+                            .OrderByDescending(x => x.LatestPrice)
+                            .Skip((pageNumber - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToListAsync();
+
+                            // Extract just the ingredients in the correct order
+                            var items = ingredientsWithPrices.Select(x => x.Ingredient).ToList();
+
+                            return new PagedResult<Ingredient>
+                            {
+                                Items = items,
+                                TotalCount = totalCount,
+                                PageNumber = pageNumber,
+                                PageSize = pageSize
+                            };
+                        }
                     case "type":
                     case "typename":
                         orderedQuery = ascending
@@ -110,15 +209,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         break;
                 }
 
-                // Apply pagination
-                var items = await orderedQuery
+                // Apply pagination for non-price sorting
+                var standardItems = await orderedQuery
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
                 return new PagedResult<Ingredient>
                 {
-                    Items = items,
+                    Items = standardItems,
                     TotalCount = totalCount,
                     PageNumber = pageNumber,
                     PageSize = pageSize
