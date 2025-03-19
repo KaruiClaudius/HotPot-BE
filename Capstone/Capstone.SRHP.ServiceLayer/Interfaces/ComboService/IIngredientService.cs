@@ -8,16 +8,18 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
-    public interface IIngredientService 
+    public interface IIngredientService
     {
         Task<PagedResult<Ingredient>> GetIngredientsAsync(
-                string searchTerm = null,
-                int? typeId = null,
-                bool? isLowStock = null,
-                int pageNumber = 1,
-                int pageSize = 10,
-                string sortBy = "Name",
-                bool ascending = true);
+                   string searchTerm = null,
+                   int? typeId = null,
+                   bool? isLowStock = null,
+                   decimal? minPrice = null,
+                   decimal? maxPrice = null,
+                   int pageNumber = 1,
+                   int pageSize = 10,
+                   string sortBy = "Name",
+                   bool ascending = true);
 
         // Basic CRUD for ingredients
         Task<Ingredient> GetIngredientByIdAsync(int id);

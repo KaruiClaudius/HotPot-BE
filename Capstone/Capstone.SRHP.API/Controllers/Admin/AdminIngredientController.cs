@@ -32,6 +32,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
             [FromQuery] bool? isLowStock = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
             [FromQuery] string sortBy = "Name",
             [FromQuery] bool ascending = true)
         {
@@ -49,7 +51,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogInformation("Admin retrieving ingredients with filters");
 
                 var pagedIngredients = await _ingredientService.GetIngredientsAsync(
-                    searchTerm, typeId, isLowStock, pageNumber, pageSize, sortBy, ascending);
+                    searchTerm, typeId, isLowStock, minPrice, maxPrice, pageNumber, pageSize, sortBy, ascending);
 
                 // Get all ingredient IDs from the current page
                 var ingredientIds = pagedIngredients.Items.Select(i => i.IngredientId).ToList();
