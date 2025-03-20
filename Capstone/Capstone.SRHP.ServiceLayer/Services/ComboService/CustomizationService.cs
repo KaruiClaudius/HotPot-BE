@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
@@ -202,267 +203,80 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             List<CustomizationIngredientDto> ingredients,
             string[]? imageURLs = null)
         {
-            // Use the execution strategy provided by EF Core
-            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            // Validate inputs
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ValidationException("Customization name cannot be empty");
+
+            if (size <= 0)
+                throw new ValidationException("Size must be greater than 0");
+
+            // Get the combo
+            var combo = await _comboService.GetByIdAsync(comboId);
+            if (combo == null)
+                throw new NotFoundException($"Combo with ID {comboId} not found");
+
+            if (!combo.IsCustomizable)
+                throw new ValidationException("This combo is not customizable");
+
+            // Validate user
+            var user = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == userId && !u.IsDelete);
+
+            if (user == null)
+                throw new ValidationException($"User with ID {userId} not found");
+
+            // Validate broth
+            await ValidateHotpotBroth(brothId);
+
+            // Validate image URLs if provided
+            if (imageURLs != null && imageURLs.Length > 0)
             {
-                // Validate inputs
-                if (string.IsNullOrWhiteSpace(name))
-                    throw new ValidationException("Customization name cannot be empty");
-
-                if (size <= 0)
-                    throw new ValidationException("Size must be greater than 0");
-
-                // Get the combo
-                var combo = await _comboService.GetByIdAsync(comboId);
-                if (combo == null)
-                    throw new NotFoundException($"Combo with ID {comboId} not found");
-
-                if (!combo.IsCustomizable)
-                    throw new ValidationException("This combo is not customizable");
-
-                // Validate user
-                var user = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == userId && !u.IsDelete);
-
-                if (user == null)
-                    throw new ValidationException($"User with ID {userId} not found");
-
-                // Validate broth
-                await ValidateHotpotBroth(brothId);
-
-                // Validate image URLs if provided
-                if (imageURLs != null && imageURLs.Length > 0)
+                foreach (var url in imageURLs)
                 {
-                    foreach (var url in imageURLs)
+                    if (string.IsNullOrWhiteSpace(url))
                     {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            throw new ValidationException("Image URLs cannot be empty");
-                        }
-
-                        // Optional: Add URL format validation if needed
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
-                            throw new ValidationException($"Invalid image URL format: {url}");
-                        }
-                    }
-                }
-
-                using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
-                {
-                    // Get applicable discount for this size
-                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
-
-                    // Create new customization
-                    var customization = new Customization
-                    {
-                        Name = name,
-                        Note = note,
-                        UserId = userId,
-                        ComboId = comboId,
-                        HotpotBrothId = brothId,
-                        Size = size,
-                        AppliedDiscountId = applicableDiscount?.SizeDiscountId,
-                        BasePrice = 0,
-                        TotalPrice = 0,
-                        ImageURLs = imageURLs
-                    };
-
-                    _unitOfWork.Repository<Customization>().Insert(customization);
-                    await _unitOfWork.CommitAsync();
-
-                    // Add ingredients and calculate base price
-                    decimal basePrice = 0;
-
-                    // Add broth price
-                    var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
-                    basePrice += brothPrice;
-
-                    // Add selected ingredients
-                    foreach (var ingredientDto in ingredients)
-                    {
-                        // Validate ingredient exists
-                        var ingredient = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
-
-                        if (ingredient == null)
-                            throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
-
-                        // Validate quantity
-                        if (ingredientDto.Quantity <= 0)
-                            throw new ValidationException("Ingredient quantity must be greater than 0");
-
-                        // Validate measurement unit
-                        if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
-                            throw new ValidationException("Measurement unit cannot be empty");
-
-                        // If this is a customizable combo, validate that the ingredient is allowed
-                        if (combo.IsCustomizable)
-                        {
-                            // Check if ingredient type is allowed
-                            var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                                .FindAsync(ait => ait.ComboId == comboId &&
-                                                     ait.IngredientTypeId == ingredient.IngredientTypeId &&
-                                                     !ait.IsDelete);
-
-                            if (allowedType == null)
-                                throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
-
-                            // Validate minimum quantity requirement
-                            // Convert quantities to the same unit for comparison
-                            decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
-                                ? ingredientDto.Quantity
-                                : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
-
-                            if (convertedQuantity < allowedType.MinQuantity)
-                                throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
-                        }
-
-                        // Add ingredient to customization
-                        var customizationIngredient = new CustomizationIngredient
-                        {
-                            CustomizationId = customization.CustomizationId,
-                            IngredientId = ingredientDto.IngredientID,
-                            Quantity = ingredientDto.Quantity,
-                            MeasurementUnit = ingredientDto.MeasurementUnit
-                        };
-
-                        _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
-
-                        // Add to base price - convert to ingredient's unit for pricing if needed
-                        var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-
-                        if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
-                        {
-                            basePrice += ingredientPrice * ingredientDto.Quantity;
-                        }
-                        else
-                        {
-                            // Convert the quantity to the ingredient's unit for pricing
-                            try
-                            {
-                                var convertedQuantity = ConvertMeasurement(
-                                    ingredientDto.Quantity,
-                                    ingredientDto.MeasurementUnit,
-                                    ingredient.MeasurementUnit);
-
-                                basePrice += ingredientPrice * convertedQuantity;
-                            }
-                            catch
-                            {
-                                // If conversion fails, use the original quantity as a fallback
-                                basePrice += ingredientPrice * ingredientDto.Quantity;
-                            }
-                        }
+                        throw new ValidationException("Image URLs cannot be empty");
                     }
 
-                    // Update base price
-                    customization.BasePrice = basePrice;
-
-                    // Calculate total price with discount
-                    decimal totalPrice = basePrice;
-                    if (applicableDiscount != null)
+                    // Optional: Add URL format validation if needed
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
                     {
-                        totalPrice = basePrice * (1 - (applicableDiscount.DiscountPercentage / 100m));
+                        throw new ValidationException($"Invalid image URL format: {url}");
                     }
-
-                    // Update total price
-                    customization.TotalPrice = totalPrice;
-                    await _unitOfWork.Repository<Customization>().Update(customization, customization.CustomizationId);
-
-                    await _unitOfWork.CommitAsync();
-                    await transaction.CommitAsync();
-
-                    return await GetByIdAsync(customization.CustomizationId) ?? throw new InvalidOperationException("Customization creation failed");
                 }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            });
-        }
+            }
 
-
-
-        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
-        {
-            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
             {
-                using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                var existingCustomization = await GetByIdAsync(id);
-                if (existingCustomization == null)
-                    throw new NotFoundException($"Customization with ID {id} not found");
+                // Get applicable discount for this size
+                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
 
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(entity.Name))
-                    throw new ValidationException("Customization name cannot be empty");
-
-                if (entity.Size <= 0)
-                    throw new ValidationException("Size must be greater than 0");
-
-                // Validate image URLs if provided
-                if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
+                // Create new customization
+                var customization = new Customization
                 {
-                    foreach (var url in entity.ImageURLs)
-                    {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            throw new ValidationException("Image URLs cannot be empty");
-                        }
+                    Name = name,
+                    Note = note,
+                    UserId = userId,
+                    ComboId = comboId,
+                    HotpotBrothId = brothId,
+                    Size = size,
+                    AppliedDiscountId = applicableDiscount?.SizeDiscountId,
+                    BasePrice = 0,
+                    TotalPrice = 0,
+                    ImageURLs = imageURLs
+                };
 
-                        // Optional: Add URL format validation if needed
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
-                            throw new ValidationException($"Invalid image URL format: {url}");
-                        }
-                    }
-                }
-
-                // Validate HotpotBroth if it's being changed
-                if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
-                {
-                    await ValidateHotpotBroth(entity.HotpotBrothId);
-                }
-
-                // Get applicable discount for this size if size changed
-                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
-                {
-                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
-                    entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
-                }
-
-                // Update customization basic info
-                entity.SetUpdateDate();
-                await _unitOfWork.Repository<Customization>().Update(entity, id);
+                _unitOfWork.Repository<Customization>().Insert(customization);
                 await _unitOfWork.CommitAsync();
 
-                // Remove existing ingredients
-                var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                    .FindAll(ci => ci.CustomizationId == id)
-                    .ToListAsync();
-
-                foreach (var existingIngredient in existingIngredients)
-                {
-                    existingIngredient.SoftDelete();
-                    existingIngredient.SetUpdateDate();
-                }
-                await _unitOfWork.CommitAsync();
-
-                // Add new ingredients
+                // Add ingredients and calculate base price
                 decimal basePrice = 0;
 
                 // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
+                var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
                 basePrice += brothPrice;
 
-                // Get the combo for validation
-                var combo = await _comboService.GetByIdAsync(entity.ComboId);
-
-                // Add ingredients
+                // Add selected ingredients
                 foreach (var ingredientDto in ingredients)
                 {
                     // Validate ingredient exists
@@ -481,11 +295,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         throw new ValidationException("Measurement unit cannot be empty");
 
                     // If this is a customizable combo, validate that the ingredient is allowed
-                    if (combo != null && combo.IsCustomizable)
+                    if (combo.IsCustomizable)
                     {
                         // Check if ingredient type is allowed
                         var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .FindAsync(ait => ait.ComboId == entity.ComboId &&
+                            .FindAsync(ait => ait.ComboId == comboId &&
                                                  ait.IngredientTypeId == ingredient.IngredientTypeId &&
                                                  !ait.IsDelete);
 
@@ -505,7 +319,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     // Add ingredient to customization
                     var customizationIngredient = new CustomizationIngredient
                     {
-                        CustomizationId = id,
+                        CustomizationId = customization.CustomizationId,
                         IngredientId = ingredientDto.IngredientID,
                         Quantity = ingredientDto.Quantity,
                         MeasurementUnit = ingredientDto.MeasurementUnit
@@ -541,32 +355,214 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
 
                 // Update base price
-                entity.BasePrice = basePrice;
+                customization.BasePrice = basePrice;
 
                 // Calculate total price with discount
                 decimal totalPrice = basePrice;
-                if (entity.AppliedDiscountId.HasValue)
+                if (applicableDiscount != null)
                 {
-                    var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
-                    if (discount != null)
-                    {
-                        totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
-                    }
+                    totalPrice = basePrice * (1 - (applicableDiscount.DiscountPercentage / 100m));
                 }
 
                 // Update total price
-                entity.TotalPrice = totalPrice;
-                await _unitOfWork.Repository<Customization>().Update(entity, id);
+                customization.TotalPrice = totalPrice;
+                await _unitOfWork.Repository<Customization>().Update(customization, customization.CustomizationId);
+
                 await _unitOfWork.CommitAsync();
 
-                await transaction.CommitAsync();
-            }
-            catch
+                return await GetByIdAsync(customization.CustomizationId) ?? throw new InvalidOperationException("Customization creation failed");
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                await transaction.RollbackAsync();
-                throw;
+                _logger.LogError(ex, "tạo tùy chỉnh gặp trục trặc", ex);
             }
-            });
+        });
+        }
+
+
+
+        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+           {
+               var existingCustomization = await GetByIdAsync(id);
+               if (existingCustomization == null)
+                   throw new NotFoundException($"Customization with ID {id} not found");
+
+               // Validate basic properties
+               if (string.IsNullOrWhiteSpace(entity.Name))
+                   throw new ValidationException("Customization name cannot be empty");
+
+               if (entity.Size <= 0)
+                   throw new ValidationException("Size must be greater than 0");
+
+               // Validate image URLs if provided
+               if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
+               {
+                   foreach (var url in entity.ImageURLs)
+                   {
+                       if (string.IsNullOrWhiteSpace(url))
+                       {
+                           throw new ValidationException("Image URLs cannot be empty");
+                       }
+
+                       // Optional: Add URL format validation if needed
+                       if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                       {
+                           throw new ValidationException($"Invalid image URL format: {url}");
+                       }
+                   }
+               }
+
+               // Validate HotpotBroth if it's being changed
+               if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
+               {
+                   await ValidateHotpotBroth(entity.HotpotBrothId);
+               }
+
+               // Get applicable discount for this size if size changed
+               if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
+               {
+                   var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
+                   entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+               }
+
+               // Update customization basic info
+               entity.SetUpdateDate();
+               await _unitOfWork.Repository<Customization>().Update(entity, id);
+               await _unitOfWork.CommitAsync();
+
+               // Remove existing ingredients
+               var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                   .FindAll(ci => ci.CustomizationId == id)
+                   .ToListAsync();
+
+               foreach (var existingIngredient in existingIngredients)
+               {
+                   existingIngredient.SoftDelete();
+                   existingIngredient.SetUpdateDate();
+               }
+               await _unitOfWork.CommitAsync();
+
+               // Add new ingredients
+               decimal basePrice = 0;
+
+               // Add broth price
+               var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
+               basePrice += brothPrice;
+
+               // Get the combo for validation
+               var combo = await _comboService.GetByIdAsync(entity.ComboId);
+
+               // Add ingredients
+               foreach (var ingredientDto in ingredients)
+               {
+                   // Validate ingredient exists
+                   var ingredient = await _unitOfWork.Repository<Ingredient>()
+                       .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+
+                   if (ingredient == null)
+                       throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+
+                   // Validate quantity
+                   if (ingredientDto.Quantity <= 0)
+                       throw new ValidationException("Ingredient quantity must be greater than 0");
+
+                   // Validate measurement unit
+                   if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
+                       throw new ValidationException("Measurement unit cannot be empty");
+
+                   // If this is a customizable combo, validate that the ingredient is allowed
+                   if (combo != null && combo.IsCustomizable)
+                   {
+                       // Check if ingredient type is allowed
+                       var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                           .FindAsync(ait => ait.ComboId == entity.ComboId &&
+                                                ait.IngredientTypeId == ingredient.IngredientTypeId &&
+                                                !ait.IsDelete);
+
+                       if (allowedType == null)
+                           throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+
+                       // Validate minimum quantity requirement
+                       // Convert quantities to the same unit for comparison
+                       decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
+                           ? ingredientDto.Quantity
+                           : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
+
+                       if (convertedQuantity < allowedType.MinQuantity)
+                           throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
+                   }
+
+                   // Add ingredient to customization
+                   var customizationIngredient = new CustomizationIngredient
+                   {
+                       CustomizationId = id,
+                       IngredientId = ingredientDto.IngredientID,
+                       Quantity = ingredientDto.Quantity,
+                       MeasurementUnit = ingredientDto.MeasurementUnit
+                   };
+
+                   _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
+
+                   // Add to base price - convert to ingredient's unit for pricing if needed
+                   var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
+
+                   if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
+                   {
+                       basePrice += ingredientPrice * ingredientDto.Quantity;
+                   }
+                   else
+                   {
+                       // Convert the quantity to the ingredient's unit for pricing
+                       try
+                       {
+                           var convertedQuantity = ConvertMeasurement(
+                               ingredientDto.Quantity,
+                               ingredientDto.MeasurementUnit,
+                               ingredient.MeasurementUnit);
+
+                           basePrice += ingredientPrice * convertedQuantity;
+                       }
+                       catch
+                       {
+                           // If conversion fails, use the original quantity as a fallback
+                           basePrice += ingredientPrice * ingredientDto.Quantity;
+                       }
+                   }
+               }
+
+               // Update base price
+               entity.BasePrice = basePrice;
+
+               // Calculate total price with discount
+               decimal totalPrice = basePrice;
+               if (entity.AppliedDiscountId.HasValue)
+               {
+                   var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
+                   if (discount != null)
+                   {
+                       totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
+                   }
+               }
+
+               // Update total price
+               entity.TotalPrice = totalPrice;
+               await _unitOfWork.Repository<Customization>().Update(entity, id);
+               await _unitOfWork.CommitAsync();
+
+           },
+       ex =>
+       {
+           // Only log for exceptions that aren't validation or not found
+           if (!(ex is NotFoundException || ex is ValidationException))
+           {
+               _logger.LogError(ex, "Cập nhật gặp trục trặc", ex);
+           }
+       });
         }
 
         public async Task DeleteAsync(int id)
@@ -578,7 +574,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new NotFoundException($"Customization with ID {id} not found");
 
                 // Check if this customization is used by any orders
-                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail >()
+                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail>()
                     .AnyAsync(od => od.CustomizationId == id && !od.IsDelete);
 
                 if (isUsedByOrder)

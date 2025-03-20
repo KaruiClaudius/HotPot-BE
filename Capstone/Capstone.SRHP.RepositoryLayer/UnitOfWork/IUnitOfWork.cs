@@ -23,5 +23,8 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
         Task<int> CommitAsync(string userId = null);
         IExecutionStrategy CreateExecutionStrategy();
 
+        Task ExecuteInTransactionAsync(Func<Task> operation, Action<Exception> exceptionHandler = null);
+        Task<TResult> ExecuteInTransactionAsync<TResult>(Func<Task<TResult>> operation, Action<Exception> exceptionHandler = null);
+
     }
 }

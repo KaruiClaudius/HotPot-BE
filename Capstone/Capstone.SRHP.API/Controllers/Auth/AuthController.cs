@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-
+using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -55,6 +55,77 @@ namespace Capstone.HPTY.API.Controllers.Auth
 
         }
 
+        /// <summary>
+        /// Retrieves the profile information for the authenticated user
+        /// </summary>
+        [Authorize]
+        [HttpGet("profile")]
+        [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+                {
+                    return Unauthorized(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Chưa xác thực, vui lòng đăng nhập"
+                    });
+                }
+
+                var user = await _userService.GetByIdAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Không tìm thấy người dùng"
+                    });
+                }
+
+                // Map User to UserDto
+                var userDto = new UserDto
+                {
+                    UserId = user.UserId,
+                    Name = user.Name,
+                    Email = user.Email ?? string.Empty,
+                    PhoneNumber = user.PhoneNumber ?? string.Empty,
+                    Address = user.Address ?? string.Empty,
+                    RoleName = user.Role?.Name ?? "Customer",
+                    ImageURL = user.ImageURL ?? string.Empty,
+                    LoyatyPoint = user.LoyatyPoint ?? 0.0
+                };
+
+                return Ok(new ApiResponse<UserDto>
+                {
+                    Success = true,
+                    Message = "Lấy thông tin người dùng thành công",
+                    Data = userDto
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user profile");
+                return StatusCode(500, new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Gặp trục trặc khi lấy thông tin người dùng"
+                });
+            }
+        }
+
         [HttpPost("register")]
         [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
@@ -77,6 +148,110 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 {
                     Status = "Error",
                     Message = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Updates the profile information for the authenticated user
+        /// </summary>
+        [Authorize]
+        [HttpPut("profile")]
+        [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileUpdateRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+                {
+                    return Unauthorized(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Chưa xác thực, vui lòng đăng nhập"
+                    });
+                }
+
+                // Get the current user to preserve existing data
+                var currentUser = await _userService.GetByIdAsync(id);
+                if (currentUser == null)
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = "Không tìm thấy người dùng"
+                    });
+                }
+
+                // Create a User entity with updated fields
+                var userToUpdate = new User
+                {
+                    UserId = id,
+                    Name = request.Name ?? currentUser.Name,
+                    Address = request.Address ?? currentUser.Address,
+                    ImageURL = request.ImageURL ?? currentUser.ImageURL,
+                    Email = request.Email ?? currentUser.Email,
+
+                    // Preserve existing data
+                    PhoneNumber = currentUser.PhoneNumber,
+                    RoleId = currentUser.RoleId,
+                    LoyatyPoint = currentUser.LoyatyPoint,
+                    WorkDays = currentUser.WorkDays,
+                    Note = currentUser.Note
+                };
+
+                // Update the user
+                await _userService.UpdateAsync(id, userToUpdate);
+
+                // Get the updated user
+                var updatedUser = await _userService.GetByIdAsync(id);
+
+                // Map to DTO
+                var userDto = new UserDto
+                {
+                    UserId = updatedUser.UserId,
+                    Name = updatedUser.Name,
+                    Email = updatedUser.Email ?? string.Empty,
+                    PhoneNumber = updatedUser.PhoneNumber ?? string.Empty,
+                    Address = updatedUser.Address ?? string.Empty,
+                    RoleName = updatedUser.Role?.Name ?? "Customer",
+                    ImageURL = updatedUser.ImageURL ?? string.Empty,
+                    LoyatyPoint = updatedUser.LoyatyPoint ?? 0.0
+                };
+
+                return Ok(new ApiResponse<UserDto>
+                {
+                    Success = true,
+                    Message = "Cập nhật thông tin người dùng thành công",
+                    Data = userDto
+                });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user profile");
+                return StatusCode(500, new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Gặp trục trặc khi cập nhật thông tin người dùng"
                 });
             }
         }

@@ -172,151 +172,127 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
         public async Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null)
         {
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-            return await executionStrategy.ExecuteAsync(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Hotpot name cannot be empty");
+
+                if (string.IsNullOrWhiteSpace(entity.Material))
+                    throw new ValidationException("Hotpot material cannot be empty");
+
+                if (string.IsNullOrWhiteSpace(entity.Size))
+                    throw new ValidationException("Size must be specified");
+
+                if (entity.Price <= 0)
+                    throw new ValidationException("Price must be greater than 0");
+
+                if (entity.BasePrice <= 0)
+                    throw new ValidationException("Base price must be greater than 0");
+
+                entity.LastMaintainDate = DateTime.UtcNow;
+
+                // Set quantity based on series numbers
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
-                    // Validate basic properties
-                    if (string.IsNullOrWhiteSpace(entity.Name))
-                        throw new ValidationException("Hotpot name cannot be empty");
-
-                    if (string.IsNullOrWhiteSpace(entity.Material))
-                        throw new ValidationException("Hotpot material cannot be empty");
-
-                    if (string.IsNullOrWhiteSpace(entity.Size))
-                        throw new ValidationException("Size must be specified");
-
-                    if (entity.Price <= 0)
-                        throw new ValidationException("Price must be greater than 0");
-
-                    if (entity.BasePrice <= 0)
-                        throw new ValidationException("Base price must be greater than 0");
-
-                    entity.LastMaintainDate = DateTime.UtcNow;
-
-                    // Set quantity based on series numbers
-                    if (seriesNumbers != null && seriesNumbers.Length > 0)
-                    {
-                        entity.Quantity = seriesNumbers.Length;
-                    }
-                    else
-                    {
-                        entity.Quantity = 0;
-                    }
-
-                    // Insert the hotpot
-                    _unitOfWork.Repository<Hotpot>().Insert(entity);
-                    await _unitOfWork.CommitAsync();
-
-                    // Add inventory items if series numbers are provided
-                    if (seriesNumbers != null && seriesNumbers.Length > 0)
-                    {
-                        await AddInventoryItemsInternalAsync(entity.HotpotId, seriesNumbers);
-                    }
-
-                    // Reload the hotpot with its inventory items
-                    var createdHotpot = await GetByIdAsync(entity.HotpotId);
-
-                    await transaction.CommitAsync();
-                    return createdHotpot;
+                    entity.Quantity = seriesNumbers.Length;
                 }
-                catch (ValidationException)
+                else
                 {
-                    await transaction.RollbackAsync();
-                    throw;
+                    entity.Quantity = 0;
                 }
-                catch (Exception ex)
+
+                // Insert the hotpot
+                _unitOfWork.Repository<Hotpot>().Insert(entity);
+                await _unitOfWork.CommitAsync();
+
+                // Add inventory items if series numbers are provided
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error creating hotpot");
-                    throw;
+                    await AddInventoryItemsInternalAsync(entity.HotpotId, seriesNumbers);
                 }
-            });
+
+                // Reload the hotpot with its inventory items
+                var createdHotpot = await GetByIdAsync(entity.HotpotId);
+
+                return createdHotpot;
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
+            {
+                _logger.LogError(ex, "Error creating hotpot");
+            }
+        });
         }
 
         public async Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null)
         {
-            var executionStrategy = _unitOfWork.Context.Database.CreateExecutionStrategy();
-
-            await executionStrategy.ExecuteAsync(async () =>
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                using var transaction = await _unitOfWork.BeginTransactionAsync();
-                try
+                var existingHotpot = await GetByIdAsync(id);
+                if (existingHotpot == null)
+                    throw new NotFoundException($"Hotpot with ID {id} not found");
+
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Hotpot name cannot be empty");
+
+                if (string.IsNullOrWhiteSpace(entity.Material))
+                    throw new ValidationException("Hotpot material cannot be empty");
+
+                if (string.IsNullOrWhiteSpace(entity.Size))
+                    throw new ValidationException("Size must be specified");
+
+                if (entity.Price <= 0)
+                    throw new ValidationException("Price must be greater than 0");
+
+                if (entity.BasePrice <= 0)
+                    throw new ValidationException("Base price must be greater than 0");
+
+                // If series numbers are provided, update inventory items and quantity
+                if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
-                    var existingHotpot = await GetByIdAsync(id);
-                    if (existingHotpot == null)
-                        throw new NotFoundException($"Hotpot with ID {id} not found");
+                    // Get existing inventory items
+                    var existingItems = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAll(i => i.HotpotId == id && !i.IsDelete)
+                        .ToListAsync();
 
-                    // Validate basic properties
-                    if (string.IsNullOrWhiteSpace(entity.Name))
-                        throw new ValidationException("Hotpot name cannot be empty");
-
-                    if (string.IsNullOrWhiteSpace(entity.Material))
-                        throw new ValidationException("Hotpot material cannot be empty");
-
-                    if (string.IsNullOrWhiteSpace(entity.Size))
-                        throw new ValidationException("Size must be specified");
-
-                    if (entity.Price <= 0)
-                        throw new ValidationException("Price must be greater than 0");
-
-                    if (entity.BasePrice <= 0)
-                        throw new ValidationException("Base price must be greater than 0");
-
-                    // If series numbers are provided, update inventory items and quantity
-                    if (seriesNumbers != null && seriesNumbers.Length > 0)
+                    // Soft delete all existing items
+                    foreach (var item in existingItems)
                     {
-                        // Get existing inventory items
-                        var existingItems = await _unitOfWork.Repository<HotPotInventory>()
-                            .FindAll(i => i.HotpotId == id && !i.IsDelete)
-                            .ToListAsync();
-
-                        // Soft delete all existing items
-                        foreach (var item in existingItems)
-                        {
-                            item.SoftDelete();
-                        }
-                        await _unitOfWork.CommitAsync();
-
-                        // Add new inventory items
-                        await AddInventoryItemsInternalAsync(id, seriesNumbers);
-
-                        // Update quantity to match the number of series numbers
-                        entity.Quantity = seriesNumbers.Length;
+                        item.SoftDelete();
                     }
-                    else
-                    {
-                        // Keep the existing quantity if no series numbers are provided
-                        entity.Quantity = existingHotpot.Quantity;
-                    }
-
-                    // Update the hotpot basic properties
-                    entity.SetUpdateDate();
-                    await _unitOfWork.Repository<Hotpot>().Update(entity, id);
                     await _unitOfWork.CommitAsync();
 
-                    await transaction.CommitAsync();
+                    // Add new inventory items
+                    await AddInventoryItemsInternalAsync(id, seriesNumbers);
+
+                    // Update quantity to match the number of series numbers
+                    entity.Quantity = seriesNumbers.Length;
                 }
-                catch (NotFoundException)
+                else
                 {
-                    await transaction.RollbackAsync();
-                    throw;
+                    // Keep the existing quantity if no series numbers are provided
+                    entity.Quantity = existingHotpot.Quantity;
                 }
-                catch (ValidationException)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
-                    throw;
-                }
-            });
+
+                // Update the hotpot basic properties
+                entity.SetUpdateDate();
+                await _unitOfWork.Repository<Hotpot>().Update(entity, id);
+                await _unitOfWork.CommitAsync();
+
+
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
+            {
+                _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
+            }
+        });
         }
 
         public async Task DeleteAsync(int id)
