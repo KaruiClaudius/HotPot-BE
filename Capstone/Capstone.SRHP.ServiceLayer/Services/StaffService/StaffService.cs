@@ -141,64 +141,69 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
         {
-            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            // Get the execution strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy();
+
+            // Execute everything in a retryable unit
+            return await strategy.ExecuteAsync(async () =>
             {
+                // Begin transaction inside the execution strategy
                 using var transaction = await _unitOfWork.BeginTransactionAsync();
 
-            try
-            {
-                // Verify the staff member exists
-                var staff = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
-
-                if (staff == null)
-                    throw new NotFoundException($"Staff with ID {staffId} not found");
-
-                // Verify the rent order detail exists
-                var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
-                    .GetById(rentOrderDetailId);
-
-                if (rentOrderDetail == null)
-                    throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
-
-                // Check if this rental is already assigned
-                var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .FindAsync(a => a.RentOrderDetailId == rentOrderDetailId && a.CompletedDate == null);
-
-                if (existingAssignment != null)
+                try
                 {
-                    // Update existing assignment
-                    existingAssignment.StaffId = staffId;
-                    existingAssignment.Notes = notes;
-                    existingAssignment.AssignedDate = DateTime.UtcNow;
-                    existingAssignment.SetUpdateDate();
+                    // Verify the staff member exists
+                    var staff = await _unitOfWork.Repository<User>()
+                        .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
-                    await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(existingAssignment);
-                }
-                else
-                {
-                    // Create new assignment
-                    var assignment = new StaffPickupAssignment
+                    if (staff == null)
+                        throw new NotFoundException($"Staff with ID {staffId} not found");
+
+                    // Verify the rent order detail exists
+                    var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
+                        .GetById(rentOrderDetailId);
+
+                    if (rentOrderDetail == null)
+                        throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
+
+                    // Check if this rental is already assigned
+                    var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
+                        .FindAsync(a => a.RentOrderDetailId == rentOrderDetailId && a.CompletedDate == null);
+
+                    if (existingAssignment != null)
                     {
-                        RentOrderDetailId = rentOrderDetailId,
-                        StaffId = staffId,
-                        AssignedDate = DateTime.UtcNow,
-                        Notes = notes
-                    };
+                        // Update existing assignment
+                        existingAssignment.StaffId = staffId;
+                        existingAssignment.Notes = notes;
+                        existingAssignment.AssignedDate = DateTime.UtcNow;
+                        existingAssignment.SetUpdateDate();
 
-                    _unitOfWork.Repository<StaffPickupAssignment>().Insert(assignment);
+                        await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(existingAssignment);
+                    }
+                    else
+                    {
+                        // Create new assignment
+                        var assignment = new StaffPickupAssignment
+                        {
+                            RentOrderDetailId = rentOrderDetailId,
+                            StaffId = staffId,
+                            AssignedDate = DateTime.UtcNow,
+                            Notes = notes
+                        };
+
+                        _unitOfWork.Repository<StaffPickupAssignment>().Insert(assignment);
+                    }
+
+                    await _unitOfWork.CommitAsync();
+                    transaction.Commit();
+
+                    return true;
                 }
-
-                await _unitOfWork.CommitAsync();
-                transaction.Commit();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
-                throw new ApplicationException($"Failed to assign staff to pickup: {ex.Message}", ex);
-            }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    throw new ApplicationException($"Failed to assign staff to pickup: {ex.Message}", ex);
+                }
             });
         }
 
@@ -208,9 +213,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             string returnCondition = null,
             decimal? damageFee = null)
         {
-            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
-            {
-                using var transaction = await _unitOfWork.BeginTransactionAsync();
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -262,7 +265,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 transaction.Rollback();
                 throw new ApplicationException($"Failed to complete pickup assignment: {ex.Message}", ex);
             }
-            });
         }
 
         public async Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId)

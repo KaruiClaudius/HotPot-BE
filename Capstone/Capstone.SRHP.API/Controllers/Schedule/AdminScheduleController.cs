@@ -37,7 +37,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             try
             {
                 var shifts = await _scheduleService.GetAllWorkShiftsAsync();
-                //return Ok(shifts.ToList().Adapt<List<WorkShiftDto>>());
+                return Ok(shifts.ToList().Adapt<List<WorkShiftDto>>());
             }
             catch (Exception ex)
             {

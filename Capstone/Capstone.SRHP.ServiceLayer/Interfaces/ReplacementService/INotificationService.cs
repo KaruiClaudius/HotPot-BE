@@ -23,7 +23,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService
         Task NotifyManagerNewPickupRequestAsync(int rentalId, string customerName);
         Task NotifyManagerAssignmentCompletedAsync(int assignmentId, int staffId, string staffName);
         Task NotifyAllStaffNewPendingPickupAsync(int rentalId, string customerName);
-        Task NotifyCustomerRentalCancelledAsync(int userId, int rentalId);
 
     }
 }

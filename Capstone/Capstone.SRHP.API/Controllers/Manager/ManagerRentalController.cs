@@ -16,7 +16,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/rentals")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager")]
 
     public class ManagerRentalController : ControllerBase
     {
@@ -147,7 +147,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateRentalDetail(int id, [FromBody] UpdateRentOrderDetailRequest request)
+        public async Task<IActionResult> AdjustReturnDateForException(int id, [FromBody] UpdateRentOrderDetailRequest request)
         {
             try
             {
@@ -179,39 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return StatusCode(500, new { message = ex.Message });
             }
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> CancelRental(int id)
-        {
-            try
-            {
-                var rentOrderDetail = await _rentOrderService.GetByIdAsync(id);
-                var result = await _rentOrderService.CancelRentOrderDetailAsync(id);
-
-                // Notify the customer about the cancellation
-                if (rentOrderDetail.Order?.UserId != null)
-                {
-                    await _notificationService.NotifyCustomerRentalCancelledAsync(
-                        rentOrderDetail.Order.UserId,
-                        id);
-                }
-
-                return Ok(new { message = "Rental cancelled successfully" });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        }       
 
         [HttpGet("{id}/calculate-late-fee")]
         public async Task<IActionResult> CalculateLateFee(int id, [FromQuery] DateTime actualReturnDate)

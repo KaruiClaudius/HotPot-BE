@@ -112,5 +112,10 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
         {
             return await _context.Database.BeginTransactionAsync();
         }
+
+        public IExecutionStrategy CreateExecutionStrategy()
+        {
+            return _context.Database.CreateExecutionStrategy();
+        }
     }
 }

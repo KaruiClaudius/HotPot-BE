@@ -185,19 +185,6 @@ namespace Capstone.HPTY.API.SideServices
                     CustomerName = customerName,
                     Timestamp = DateTime.UtcNow
                 });
-        }
-
-        public async Task NotifyCustomerRentalCancelledAsync(int userId, int rentalId)
-        {
-            await _hubContext.Clients.Group($"User_{userId}").SendAsync("ReceiveRentalNotification",
-                new
-                {
-                    Type = "RentalCancelled",
-                    Title = "Rental Cancelled",
-                    Message = "Your rental has been cancelled by the manager",
-                    RentalId = rentalId,
-                    Timestamp = DateTime.UtcNow
-                });
-        }
+        }       
     }
 }
