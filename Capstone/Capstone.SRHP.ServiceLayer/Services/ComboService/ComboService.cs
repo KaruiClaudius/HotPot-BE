@@ -355,81 +355,86 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         public async Task UpdateAsync(int id, Combo combo)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
+            await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                var existingCombo = await GetByIdAsync(id);
-                if (existingCombo == null)
-                    throw new NotFoundException($"Combo with ID {id} not found");
-
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(combo.Name))
-                    throw new ValidationException("Combo name cannot be empty");
-
-                if (combo.Size <= 0)
-                    throw new ValidationException("Combo size must be greater than 0");
-
-                // Note: We don't validate BasePrice here since we'll calculate it
-
-                // Validate image URLs if provided
-                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
                 {
-                    foreach (var url in combo.ImageURLs)
+                    var existingCombo = await GetByIdAsync(id);
+                    if (existingCombo == null)
+                        throw new NotFoundException($"Combo with ID {id} not found");
+
+                    // Validate basic properties
+                    if (string.IsNullOrWhiteSpace(combo.Name))
+                        throw new ValidationException("Combo name cannot be empty");
+
+                    if (combo.Size <= 0)
+                        throw new ValidationException("Combo size must be greater than 0");
+
+                    // Note: We don't validate BasePrice here since we'll calculate it
+
+                    // Validate image URLs if provided
+                    if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
                     {
-                        if (string.IsNullOrWhiteSpace(url))
-                            throw new ValidationException("Image URLs cannot be empty");
+                        foreach (var url in combo.ImageURLs)
+                        {
+                            if (string.IsNullOrWhiteSpace(url))
+                                throw new ValidationException("Image URLs cannot be empty");
 
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                            throw new ValidationException($"Invalid image URL format: {url}");
+                            if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                                throw new ValidationException($"Invalid image URL format: {url}");
+                        }
                     }
+
+                    // Check if combo name exists (excluding this one)
+                    var nameExists = await _unitOfWork.Repository<Combo>()
+                        .AnyAsync(c => c.Name == combo.Name && c.ComboId != id && !c.IsDelete);
+
+                    if (nameExists)
+                        throw new ValidationException($"Another combo with name {combo.Name} already exists");
+
+                    // Validate HotpotBroth if it's being changed
+                    if (existingCombo.HotpotBrothId != combo.HotpotBrothId)
+                    {
+                        await ValidateHotpotBroth(combo.HotpotBrothId);
+                    }
+
+                    // Validate TurtorialVideo if it's being changed
+                    if (existingCombo.TurtorialVideoId != combo.TurtorialVideoId)
+                    {
+                        await ValidateTurtorialVideo(combo.TurtorialVideoId);
+                    }
+
+                    // Get applicable discount for this size if size changed
+                    if (existingCombo.Size != combo.Size || !combo.AppliedDiscountId.HasValue)
+                    {
+                        var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
+                        combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+                    }
+
+                    // Update combo
+                    combo.SetUpdateDate();
+                    await _unitOfWork.Repository<Combo>().Update(combo, id);
+                    await _unitOfWork.CommitAsync();
+
+                    // Recalculate prices
+                    await UpdatePricesAsync(id);
+
+                    await transaction.CommitAsync();
                 }
-
-                // Check if combo name exists (excluding this one)
-                var nameExists = await _unitOfWork.Repository<Combo>()
-                    .AnyAsync(c => c.Name == combo.Name && c.ComboId != id && !c.IsDelete);
-
-                if (nameExists)
-                    throw new ValidationException($"Another combo with name {combo.Name} already exists");
-
-                // Validate HotpotBroth if it's being changed
-                if (existingCombo.HotpotBrothId != combo.HotpotBrothId)
+                catch
                 {
-                    await ValidateHotpotBroth(combo.HotpotBrothId);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Validate TurtorialVideo if it's being changed
-                if (existingCombo.TurtorialVideoId != combo.TurtorialVideoId)
-                {
-                    await ValidateTurtorialVideo(combo.TurtorialVideoId);
-                }
-
-                // Get applicable discount for this size if size changed
-                if (existingCombo.Size != combo.Size || !combo.AppliedDiscountId.HasValue)
-                {
-                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                    combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
-                }
-
-                // Update combo
-                combo.SetUpdateDate();
-                await _unitOfWork.Repository<Combo>().Update(combo, id);
-                await _unitOfWork.CommitAsync();
-
-                // Recalculate prices
-                await UpdatePricesAsync(id);
-
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task DeleteAsync(int id)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+             await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var combo = await GetByIdAsync(id);
@@ -497,6 +502,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         public async Task<IEnumerable<ComboAllowedIngredientType>> GetAllowedIngredientTypesAsync(int comboId)

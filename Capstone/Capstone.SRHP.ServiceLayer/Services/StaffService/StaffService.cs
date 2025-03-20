@@ -141,7 +141,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -197,6 +199,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 transaction.Rollback();
                 throw new ApplicationException($"Failed to assign staff to pickup: {ex.Message}", ex);
             }
+            });
         }
 
         public async Task<bool> CompletePickupAssignmentAsync(
@@ -205,7 +208,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             string returnCondition = null,
             decimal? damageFee = null)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -257,6 +262,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 transaction.Rollback();
                 throw new ApplicationException($"Failed to complete pickup assignment: {ex.Message}", ex);
             }
+            });
         }
 
         public async Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId)
