@@ -1183,16 +1183,16 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 1,
                     Price = 0.13m, // $13 per kg = $0.13 per g
-                    EffectiveDate = DateTime.Now.AddDays(-30),
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 1,
-                    CreatedAt = DateTime.Now.AddDays(-30),
+                    CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 2,
                     Price = 0.14m, // $14 per kg = $0.14 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1201,16 +1201,16 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 3,
                     Price = 0.15m, // $15 per kg = $0.15 per g
-                    EffectiveDate = DateTime.Now.AddDays(-30),
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 2,
-                    CreatedAt = DateTime.Now.AddDays(-30),
+                    CreatedAt = DateTime.Now,
                     IsDelete = false
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 4,
                     Price = 0.16m, // $16 per kg = $0.16 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1219,7 +1219,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 5,
                     Price = 0.12m, // $12 per kg = $0.12 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1230,7 +1230,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 6,
                     Price = 0.17m, // $17 per kg = $0.17 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1239,7 +1239,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 7,
                     Price = 0.10m, // $10 per kg = $0.10 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1248,7 +1248,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 8,
                     Price = 0.15m, // $15 per kg = $0.15 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1259,7 +1259,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 9,
                     Price = 0.06m, // $6 per kg = $0.06 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1268,7 +1268,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 10,
                     Price = 0.05m, // $5 per kg = $0.05 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1277,7 +1277,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 11,
                     Price = 0.04m, // $4 per kg = $0.04 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),   
                     IngredientId = 9,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1288,7 +1288,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 12,
                     Price = 0.07m, // $7 per kg = $0.07 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 10,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1297,7 +1297,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 13,
                     Price = 0.06m, // $6 per kg = $0.06 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 11,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1306,7 +1306,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 14,
                     Price = 0.065m, // $6.50 per kg = $0.065 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 12,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1317,7 +1317,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 15,
                     Price = 0.05m, // $5 per kg = $0.05 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 13,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1326,7 +1326,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 16,
                     Price = 0.055m, // $5.50 per kg = $0.055 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 14,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1337,7 +1337,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 17,
                     Price = 0.08m, // $8 per kg = $0.08 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 15,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1346,7 +1346,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 18,
                     Price = 0.07m, // $7 per kg = $0.07 per g
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 16,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1357,7 +1357,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 19,
                     Price = 0.009m, // $9 per liter = $0.009 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 17,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1366,7 +1366,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 20,
                     Price = 0.008m, // $8 per liter = $0.008 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 18,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1375,7 +1375,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 21,
                     Price = 0.0085m, // $8.50 per liter = $0.0085 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 19,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1384,7 +1384,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 22,
                     Price = 0.0075m, // $7.50 per liter = $0.0075 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 20,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1395,7 +1395,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 23,
                     Price = 0.005m, // $5 per liter = $0.005 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 21,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1404,7 +1404,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 24,
                     Price = 0.004m, // $4 per liter = $0.004 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 22,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1413,7 +1413,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 25,
                     Price = 0.0045m, // $4.50 per liter = $0.0045 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 23,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1422,7 +1422,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 26,
                     Price = 0.006m, // $6 per liter = $0.006 per ml
-                    EffectiveDate = DateTime.Now,
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 24,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
