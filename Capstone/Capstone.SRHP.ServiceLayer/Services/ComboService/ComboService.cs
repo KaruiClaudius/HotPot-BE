@@ -179,168 +179,178 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
         public async Task<Combo> CreateComboWithVideoAsync(
-    Combo combo,
-    TurtorialVideo video,
-    List<ComboIngredient> baseIngredients = null,
-    List<ComboAllowedIngredientType> allowedTypes = null)
+            Combo combo,
+            TurtorialVideo video,
+            List<ComboIngredient> baseIngredients = null,
+            List<ComboAllowedIngredientType> allowedTypes = null)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
+            // Use the execution strategy provided by EF Core
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                // Validate basic combo properties
-                if (string.IsNullOrWhiteSpace(combo.Name))
-                    throw new ValidationException("Combo name cannot be empty");
-
-                if (combo.Size <= 0)
-                    throw new ValidationException("Combo size must be greater than 0");
-
-                // Validate video properties
-                if (string.IsNullOrWhiteSpace(video.Name))
-                    throw new ValidationException("Video name cannot be empty");
-
-                if (string.IsNullOrWhiteSpace(video.VideoURL))
-                    throw new ValidationException("Video URL cannot be empty");
-
-                // Validate URL format
-                if (!Uri.TryCreate(video.VideoURL, UriKind.Absolute, out _) && !video.VideoURL.StartsWith("/"))
-                    throw new ValidationException($"Invalid video URL format: {video.VideoURL}");
-
-                // Validate image URLs if provided
-                if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
                 {
-                    foreach (var url in combo.ImageURLs)
-                    {
-                        if (string.IsNullOrWhiteSpace(url))
-                            throw new ValidationException("Image URLs cannot be empty");
+                    // Validate basic combo properties
+                    if (string.IsNullOrWhiteSpace(combo.Name))
+                        throw new ValidationException("Combo name cannot be empty");
 
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                            throw new ValidationException($"Invalid image URL format: {url}");
+                    if (combo.Size <= 0)
+                        throw new ValidationException("Combo size must be greater than 0");
+
+                    // Validate video properties if provided
+                    if (video != null)
+                    {
+                        if (string.IsNullOrWhiteSpace(video.Name))
+                            throw new ValidationException("Video name cannot be empty");
+
+                        if (string.IsNullOrWhiteSpace(video.VideoURL))
+                            throw new ValidationException("Video URL cannot be empty");
+
+                        // Validate URL format
+                        if (!Uri.TryCreate(video.VideoURL, UriKind.Absolute, out _) && !video.VideoURL.StartsWith("/"))
+                            throw new ValidationException($"Invalid video URL format: {video.VideoURL}");
                     }
-                }
 
-                // Check if combo name exists
-                var nameExists = await _unitOfWork.Repository<Combo>()
-                    .AnyAsync(c => c.Name == combo.Name && !c.IsDelete);
-
-                if (nameExists)
-                    throw new ValidationException($"Combo with name {combo.Name} already exists");
-
-                // Validate HotpotBroth
-                await ValidateHotpotBroth(combo.HotpotBrothId);
-
-                // If combo is customizable, ensure allowed types are provided
-                if (combo.IsCustomizable && (allowedTypes == null || allowedTypes.Count == 0))
-                    throw new ValidationException("Customizable combos must have at least one allowed ingredient type");
-
-                // First create the tutorial video
-                _unitOfWork.Repository<TurtorialVideo>().Insert(video);
-                await _unitOfWork.CommitAsync();
-
-                // Set the video ID on the combo
-                combo.TurtorialVideoId = video.TurtorialVideoId;
-
-                // Set initial base price (will be updated after ingredients are added)
-                combo.BasePrice = 0;
-                combo.TotalPrice = 0;
-
-                // Get applicable discount for this size
-                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
-                combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
-
-                // Insert combo
-                _unitOfWork.Repository<Combo>().Insert(combo);
-                await _unitOfWork.CommitAsync();
-
-                // Add base ingredients if provided
-                if (baseIngredients != null && baseIngredients.Count > 0)
-                {
-                    foreach (var ingredient in baseIngredients)
+                    // Validate image URLs if provided
+                    if (combo.ImageURLs != null && combo.ImageURLs.Length > 0)
                     {
-                        // Validate ingredient exists
-                        var ingredientExists = await _unitOfWork.Repository<Ingredient>()
-                            .AnyAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
-
-                        if (!ingredientExists)
-                            throw new ValidationException($"Ingredient with ID {ingredient.IngredientId} not found");
-
-                        // Validate measurement unit
-                        if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
-                            throw new ValidationException("Measurement unit cannot be empty");
-
-                        // Get the ingredient to check its measurement unit
-                        var ingredientEntity = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
-
-                        // Standardize measurement unit
-                        ingredient.MeasurementUnit = StandardizeMeasurementUnit(ingredient.MeasurementUnit);
-
-                        // If units don't match, try to convert
-                        if (ingredientEntity != null && ingredient.MeasurementUnit != ingredientEntity.MeasurementUnit)
+                        foreach (var url in combo.ImageURLs)
                         {
-                            try
-                            {
-                                // Convert quantity to match the ingredient's unit
-                                ingredient.Quantity = ConvertMeasurement(
-                                    ingredient.Quantity,
-                                    ingredient.MeasurementUnit,
-                                    ingredientEntity.MeasurementUnit);
+                            if (string.IsNullOrWhiteSpace(url))
+                                throw new ValidationException("Image URLs cannot be empty");
 
-                                // Update the unit to match
-                                ingredient.MeasurementUnit = ingredientEntity.MeasurementUnit;
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new ValidationException($"Error converting units: {ex.Message}");
-                            }
+                            if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                                throw new ValidationException($"Invalid image URL format: {url}");
                         }
-
-                        ingredient.ComboId = combo.ComboId;
-                        _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
                     }
-                    await _unitOfWork.CommitAsync();
-                }
 
-                // Add allowed ingredient types if this is a customizable combo
-                if (combo.IsCustomizable && allowedTypes != null && allowedTypes.Count > 0)
-                {
-                    foreach (var allowedType in allowedTypes)
+                    // Check if combo name exists
+                    var nameExists = await _unitOfWork.Repository<Combo>()
+                        .AnyAsync(c => c.Name == combo.Name && !c.IsDelete);
+
+                    if (nameExists)
+                        throw new ValidationException($"Combo with name {combo.Name} already exists");
+
+                    // Validate HotpotBroth
+                    await ValidateHotpotBroth(combo.HotpotBrothId);
+
+                    // If combo is customizable, ensure allowed types are provided
+                    if (combo.IsCustomizable && (allowedTypes == null || allowedTypes.Count == 0))
+                        throw new ValidationException("Customizable combos must have at least one allowed ingredient type");
+
+                    // First create the tutorial video if provided
+                    if (video != null)
                     {
-                        // Validate ingredient type exists
-                        var typeExists = await _unitOfWork.Repository<IngredientType>()
-                            .AnyAsync(it => it.IngredientTypeId == allowedType.IngredientTypeId && !it.IsDelete);
+                        _unitOfWork.Repository<TurtorialVideo>().Insert(video);
+                        await _unitOfWork.CommitAsync();
 
-                        if (!typeExists)
-                            throw new ValidationException($"Ingredient type with ID {allowedType.IngredientTypeId} not found");
-
-                        if (allowedType.MinQuantity <= 0)
-                            throw new ValidationException($"Min quantity for ingredient type must be greater than 0");
-
-                        // Validate measurement unit
-                        if (string.IsNullOrWhiteSpace(allowedType.MeasurementUnit))
-                            throw new ValidationException("Measurement unit cannot be empty");
-
-                        // Standardize measurement unit
-                        allowedType.MeasurementUnit = StandardizeMeasurementUnit(allowedType.MeasurementUnit);
-
-                        allowedType.ComboId = combo.ComboId;
-                        _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
+                        // Set the video ID on the combo
+                        combo.TurtorialVideoId = video.TurtorialVideoId;
                     }
+
+                    // Set initial base price (will be updated after ingredients are added)
+                    combo.BasePrice = 0;
+                    combo.TotalPrice = 0;
+
+                    // Get applicable discount for this size
+                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(combo.Size);
+                    combo.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+
+                    // Insert combo
+                    _unitOfWork.Repository<Combo>().Insert(combo);
                     await _unitOfWork.CommitAsync();
+
+                    // Add base ingredients if provided
+                    if (baseIngredients != null && baseIngredients.Count > 0)
+                    {
+                        foreach (var ingredient in baseIngredients)
+                        {
+                            // Validate ingredient exists
+                            var ingredientExists = await _unitOfWork.Repository<Ingredient>()
+                                .AnyAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
+
+                            if (!ingredientExists)
+                                throw new ValidationException($"Ingredient with ID {ingredient.IngredientId} not found");
+
+                            // Validate measurement unit
+                            if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
+                                throw new ValidationException("Measurement unit cannot be empty");
+
+                            // Get the ingredient to check its measurement unit
+                            var ingredientEntity = await _unitOfWork.Repository<Ingredient>()
+                                .FindAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
+
+                            // Standardize measurement unit
+                            ingredient.MeasurementUnit = StandardizeMeasurementUnit(ingredient.MeasurementUnit);
+
+                            // If units don't match, try to convert
+                            if (ingredientEntity != null && ingredient.MeasurementUnit != ingredientEntity.MeasurementUnit)
+                            {
+                                try
+                                {
+                                    // Convert quantity to match the ingredient's unit
+                                    ingredient.Quantity = ConvertMeasurement(
+                                        ingredient.Quantity,
+                                        ingredient.MeasurementUnit,
+                                        ingredientEntity.MeasurementUnit);
+
+                                    // Update the unit to match
+                                    ingredient.MeasurementUnit = ingredientEntity.MeasurementUnit;
+                                }
+                                catch (Exception ex)
+                                {
+                                    throw new ValidationException($"Error converting units: {ex.Message}");
+                                }
+                            }
+
+                            ingredient.ComboId = combo.ComboId;
+                            _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
+                        }
+                        await _unitOfWork.CommitAsync();
+                    }
+
+                    // Add allowed ingredient types if this is a customizable combo
+                    if (combo.IsCustomizable && allowedTypes != null && allowedTypes.Count > 0)
+                    {
+                        foreach (var allowedType in allowedTypes)
+                        {
+                            // Validate ingredient type exists
+                            var typeExists = await _unitOfWork.Repository<IngredientType>()
+                                .AnyAsync(it => it.IngredientTypeId == allowedType.IngredientTypeId && !it.IsDelete);
+
+                            if (!typeExists)
+                                throw new ValidationException($"Ingredient type with ID {allowedType.IngredientTypeId} not found");
+
+                            if (allowedType.MinQuantity <= 0)
+                                throw new ValidationException($"Min quantity for ingredient type must be greater than 0");
+
+                            // Validate measurement unit
+                            if (string.IsNullOrWhiteSpace(allowedType.MeasurementUnit))
+                                throw new ValidationException("Measurement unit cannot be empty");
+
+                            // Standardize measurement unit
+                            allowedType.MeasurementUnit = StandardizeMeasurementUnit(allowedType.MeasurementUnit);
+
+                            allowedType.ComboId = combo.ComboId;
+                            _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
+                        }
+                        await _unitOfWork.CommitAsync();
+                    }
+
+                    // Calculate base price and total price
+                    await UpdatePricesAsync(combo.ComboId);
+
+                    await transaction.CommitAsync();
+
+                    // Return the complete combo with all relationships loaded
+                    return await GetByIdAsync(combo.ComboId);
                 }
-
-                // Calculate base price and total price
-                await UpdatePricesAsync(combo.ComboId);
-
-                await transaction.CommitAsync();
-
-                // Return the complete combo with all relationships loaded
-                return await GetByIdAsync(combo.ComboId);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task UpdateAsync(int id, Combo combo)

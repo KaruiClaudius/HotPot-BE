@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Dashboard;
 using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
@@ -10,30 +11,150 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
-    [Route("api/admin/orders")]
+    [Route("api/admin/dashboard")]
     [ApiController]
     [Authorize(Roles = "Admin")]
-    public class AdminOrderController : ControllerBase
+    public class AdminDashboardController : ControllerBase
     {
         private readonly IOrderService _orderService;
         private readonly IUserService _userService;
-        private readonly ILogger<AdminOrderController> _logger;
+        private readonly IAnalyticsService _analyticsService; // You'll need to create this service
+        private readonly ILogger<AdminDashboardController> _logger;
 
-        public AdminOrderController(
+        public AdminDashboardController(
             IOrderService orderService,
             IUserService userService,
-            ILogger<AdminOrderController> logger)
+            IAnalyticsService analyticsService,
+            ILogger<AdminDashboardController> logger)
         {
             _orderService = orderService;
             _userService = userService;
+            _analyticsService = analyticsService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Get dashboard summary data
+        /// </summary>
+        [HttpGet("summary")]
+        public async Task<ActionResult<DashboardSummary>> GetDashboardSummary(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                // Set default date range if not provided (last 30 days)
+                if (!toDate.HasValue)
+                    toDate = DateTime.UtcNow;
+
+                if (!fromDate.HasValue)
+                    fromDate = toDate.Value.AddDays(-30);
+
+                var summary = await _analyticsService.GetDashboardSummaryAsync(fromDate.Value, toDate.Value);
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving dashboard summary");
+                return StatusCode(500, new { message = "An error occurred while retrieving dashboard summary" });
+            }
+        }
+
+        /// <summary>
+        /// Get most selling items
+        /// </summary>
+        [HttpGet("most-selling")]
+        public async Task<ActionResult<List<TopSellingItemDto>>> GetMostSellingItems(
+            [FromQuery] string itemType = null, // "All", "Ingredient", "Combo", "Customization", "Hotpot", "Utensil"
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int limit = 10)
+        {
+            try
+            {
+                // Set default date range if not provided (last 30 days)
+                if (!toDate.HasValue)
+                    toDate = DateTime.UtcNow;
+
+                if (!fromDate.HasValue)
+                    fromDate = toDate.Value.AddDays(-30);
+
+                var topItems = await _analyticsService.GetTopSellingItemsAsync(
+                    itemType, fromDate.Value, toDate.Value, limit);
+
+                return Ok(topItems);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving most selling items");
+                return StatusCode(500, new { message = "An error occurred while retrieving most selling items" });
+            }
+        }
+
+        /// <summary>
+        /// Get sales trend data
+        /// </summary>
+        [HttpGet("sales-trend")]
+        public async Task<ActionResult<List<SalesTrendDto>>> GetSalesTrend(
+            [FromQuery] string period = "daily", // "daily", "weekly", "monthly"
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                // Set default date range if not provided (last 30 days)
+                if (!toDate.HasValue)
+                    toDate = DateTime.UtcNow;
+
+                if (!fromDate.HasValue)
+                    fromDate = toDate.Value.AddDays(-30);
+
+                var salesTrend = await _analyticsService.GetSalesTrendAsync(
+                    period, fromDate.Value, toDate.Value);
+
+                return Ok(salesTrend);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sales trend");
+                return StatusCode(500, new { message = "An error occurred while retrieving sales trend" });
+            }
+        }
+
+        /// <summary>
+        /// Get orders grouped by status
+        /// </summary>
+        [HttpGet("orders-by-status")]
+        public async Task<ActionResult<OrdersByStatusDto>> GetOrdersByStatus(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int limit = 5)
+        {
+            try
+            {
+                // Set default date range if not provided (last 30 days)
+                if (!toDate.HasValue)
+                    toDate = DateTime.UtcNow;
+
+                if (!fromDate.HasValue)
+                    fromDate = toDate.Value.AddDays(-30);
+
+                var ordersByStatus = await _analyticsService.GetOrdersByStatusAsync(
+                    fromDate.Value, toDate.Value, limit);
+
+                return Ok(ordersByStatus);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving orders by status");
+                return StatusCode(500, new { message = "An error occurred while retrieving orders by status" });
+            }
+        }
 
         /// <summary>
         /// Get all orders with pagination, filtering, and sorting
         /// </summary>
-        [HttpGet]
+        [HttpGet("orders")]
         public async Task<ActionResult<PagedResult<OrderResponse>>> GetOrders(
             [FromQuery] string searchTerm = null,
             [FromQuery] int? userId = null,
@@ -90,12 +211,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-
-
         /// <summary>
         /// Get order by ID
         /// </summary>
-        [HttpGet("{id}")]
+        [HttpGet("orders/{id}")]
         public async Task<ActionResult<OrderResponse>> GetOrderById(int id)
         {
             try
@@ -118,7 +237,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         /// <summary>
         /// Update order status
         /// </summary>
-        [HttpPut("{id}/status")]
+        [HttpPut("orders/{id}/status")]
         public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
         {
             try

@@ -17,11 +17,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
     {
         private readonly IComboService _comboService;
         private readonly IIngredientService _ingredientService;
+        private readonly ILogger<AdminHotpotController> _logger;
 
-        public AdminComboController(IComboService comboService, IIngredientService ingredientService)
+        public AdminComboController(IComboService comboService, IIngredientService ingredientService, ILogger<AdminHotpotController> logger)
         {
             _comboService = comboService;
             _ingredientService = ingredientService;
+            _logger = logger;
         }
 
 
@@ -58,6 +60,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error get combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -77,9 +80,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error get by id combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
 
         [HttpPost]
         public async Task<ActionResult<ComboDto>> Create(CreateComboRequest request)
@@ -125,7 +130,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                _logger.LogError(ex, "Error creating combo");
+                return StatusCode(500, new { message = "An error occurred while creating the combo" });
             }
         }
 
@@ -173,6 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error create customize combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -212,6 +219,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error update combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -234,6 +242,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error delete combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
