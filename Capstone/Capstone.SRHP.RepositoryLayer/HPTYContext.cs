@@ -44,6 +44,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
         public virtual DbSet<ComboAllowedIngredientType> ComboAllowedIngredientTypes { get; set; }
         public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
+        public DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
+
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -117,6 +119,18 @@ namespace Capstone.HPTY.RepositoryLayer
             //    entity.Property(c => c.LoyatyPoint)
             //        .HasDefaultValue(0);
             //});
+
+            modelBuilder.Entity<StaffPickupAssignment>()
+                .HasOne(a => a.RentOrderDetail)
+                .WithMany()
+                .HasForeignKey(a => a.RentOrderDetailId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<StaffPickupAssignment>()
+                .HasOne(a => a.Staff)
+                .WithMany()
+                .HasForeignKey(a => a.StaffId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Discount>(entity =>
             {
