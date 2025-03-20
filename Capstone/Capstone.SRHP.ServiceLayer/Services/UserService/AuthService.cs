@@ -219,74 +219,77 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
         public async Task<AuthResponse> GoogleLoginAsync(string idToken)
         {
-            // Start a transaction
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                // Verify the Google token
-                var payload = await _jwtService.VerifyGoogleTokenAsync(idToken);
+                // Start a transaction
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
-                // Check if user exists by email
-                var user = await _unitOfWork.Repository<User>()
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Email == payload.Email && !u.IsDelete);
-
-                if (user == null)
+                try
                 {
-                    // Check if user exists but is deleted
-                    var existingUser = await _unitOfWork.Repository<User>()
-                        .FindAsync(u => u.Email == payload.Email);
+                    // Verify the Google token
+                    var payload = await _jwtService.VerifyGoogleTokenAsync(idToken);
 
-                    if (existingUser != null && existingUser.IsDelete)
+                    // Check if user exists by email
+                    var user = await _unitOfWork.Repository<User>()
+                        .Include(u => u.Role)
+                        .FirstOrDefaultAsync(u => u.Email == payload.Email && !u.IsDelete);
+
+                    if (user == null)
                     {
-                        // Reactivate user
-                        existingUser.IsDelete = false;
-                        existingUser.Name = payload.Name;
-                        existingUser.SetUpdateDate();
-                        await _unitOfWork.CommitAsync();
+                        // Check if user exists but is deleted
+                        var existingUser = await _unitOfWork.Repository<User>()
+                            .FindAsync(u => u.Email == payload.Email);
 
-                        user = existingUser;
-                    }
-                    else
-                    {
-                        // Get Customer role
-                        var customerRole = await _unitOfWork.Repository<Role>()
-                            .FindAsync(r => r.Name == "Customer");
-
-                        if (customerRole == null)
-                            throw new ValidationException("Role Khách hàng không tìm thấy");
-
-                        // Create new user
-                        user = new User
+                        if (existingUser != null && existingUser.IsDelete)
                         {
-                            Email = payload.Email,
-                            Name = payload.Name,
-                            // Generate a random password since the user won't use it
-                            Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
-                            RoleId = customerRole.RoleId,
-                            LoyatyPoint = 0, // Initialize loyalty points for new customers
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
+                            // Reactivate user
+                            existingUser.IsDelete = false;
+                            existingUser.Name = payload.Name;
+                            existingUser.SetUpdateDate();
+                            await _unitOfWork.CommitAsync();
 
-                        _unitOfWork.Repository<User>().Insert(user);
-                        await _unitOfWork.CommitAsync();
+                            user = existingUser;
+                        }
+                        else
+                        {
+                            // Get Customer role
+                            var customerRole = await _unitOfWork.Repository<Role>()
+                                .FindAsync(r => r.Name == "Customer");
+
+                            if (customerRole == null)
+                                throw new ValidationException("Role Khách hàng không tìm thấy");
+
+                            // Create new user
+                            user = new User
+                            {
+                                Email = payload.Email,
+                                Name = payload.Name,
+                                // Generate a random password since the user won't use it
+                                Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                                RoleId = customerRole.RoleId,
+                                LoyatyPoint = 0, // Initialize loyalty points for new customers
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+
+                            _unitOfWork.Repository<User>().Insert(user);
+                            await _unitOfWork.CommitAsync();
+                        }
                     }
+
+                    // Commit the transaction
+                    await transaction.CommitAsync();
+
+                    // Generate JWT token and return auth response
+                    return await GenerateAuthResponseAsync(user);
                 }
-
-                // Commit the transaction
-                await transaction.CommitAsync();
-
-                // Generate JWT token and return auth response
-                return await GenerateAuthResponseAsync(user);
-            }
-            catch (Exception ex)
-            {
-                // Rollback the transaction
-                await transaction.RollbackAsync();
-                throw new UnauthorizedException("Đăng nhập Google gặp trục trặc: " + ex.Message);
-            }
+                catch (Exception ex)
+                {
+                    // Rollback the transaction
+                    await transaction.RollbackAsync();
+                    throw new UnauthorizedException("Đăng nhập Google gặp trục trặc: " + ex.Message);
+                }
+            });
         }
     }
 }

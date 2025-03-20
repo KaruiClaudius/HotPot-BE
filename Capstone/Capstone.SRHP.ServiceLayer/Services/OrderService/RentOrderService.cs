@@ -216,7 +216,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<bool> RecordEquipmentReturnAsync(int rentOrderDetailId, RecordReturnRequest request)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -320,11 +322,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 _logger.LogError(ex, "Error recording equipment return for rent order detail {RentOrderDetailId}", rentOrderDetailId);
                 throw;
             }
+            });
         }
 
         public async Task<bool> UpdateRentOrderDetailAsync(int rentOrderDetailId, UpdateRentOrderDetailRequest request)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -397,11 +402,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 _logger.LogError(ex, "Error updating rent order detail {RentOrderDetailId}", rentOrderDetailId);
                 throw;
             }
+            });
         }
 
         public async Task<bool> CancelRentOrderDetailAsync(int rentOrderDetailId)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -485,6 +493,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 _logger.LogError(ex, "Error cancelling rent order detail {RentOrderDetailId}", rentOrderDetailId);
                 throw;
             }
+            });
         }
 
         public async Task<decimal> CalculateLateFeeAsync(int rentOrderDetailId, DateTime actualReturnDate)
@@ -588,7 +597,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<bool> ExtendRentalPeriodAsync(int rentOrderDetailId, DateTime newExpectedReturnDate)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -646,6 +657,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 _logger.LogError(ex, "Error extending rental period for rent order detail {RentOrderDetailId}", rentOrderDetailId);
                 throw;
             }
+            });
         }
 
         private async Task<decimal> CalculateOrderTotalAsync(int orderId)
