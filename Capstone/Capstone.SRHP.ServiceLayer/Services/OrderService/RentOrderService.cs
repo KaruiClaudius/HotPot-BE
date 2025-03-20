@@ -20,18 +20,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUtensilService _utensilService;
-        private readonly IHotpotService _hotpotService;
         private readonly ILogger<RentOrderService> _logger;
 
         public RentOrderService(
            IUnitOfWork unitOfWork,
-           IUtensilService utensilService,
-           IHotpotService hotpotService,
+           IUtensilService utensilService,    
            ILogger<RentOrderService> logger)
         {
             _unitOfWork = unitOfWork;
-            _utensilService = utensilService;
-            _hotpotService = hotpotService;
+            _utensilService = utensilService;          
             _logger = logger;
         }
 
