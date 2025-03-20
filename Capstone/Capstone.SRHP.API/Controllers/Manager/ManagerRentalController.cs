@@ -16,7 +16,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/rentals")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
 
     public class ManagerRentalController : ControllerBase
     {
@@ -35,16 +35,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpGet("unassigned-pickups")]
-        public async Task<ActionResult<ApiResponse<PagedResult<RentOrderDetail>>>> GetUnassignedPickups([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<ApiResponse<PagedResult<RentOrderDetailResponse>>>> GetUnassignedPickups([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var unassignedPickups = await _staffService.GetUnassignedPickupsAsync(pageNumber, pageSize);
-                return Ok(ApiResponse<PagedResult<RentOrderDetail>>.SuccessResponse(unassignedPickups, "Unassigned pickups retrieved successfully"));
+                var unassignedPickups = await _rentOrderService.GetUnassignedPickupsAsync(pageNumber, pageSize);
+                return Ok(ApiResponse<PagedResult<RentOrderDetailResponse>>.SuccessResponse(unassignedPickups, "Unassigned pickups retrieved successfully"));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse<PagedResult<RentOrderDetail>>.ErrorResponse(ex.Message));
+                return StatusCode(500, ApiResponse<PagedResult<RentOrderDetailDto>>.ErrorResponse(ex.Message));
             }
         }
 

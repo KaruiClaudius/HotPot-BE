@@ -23,5 +23,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<IEnumerable<RentOrderDetail>> GetRentalHistoryByEquipmentAsync(int? utensilId = null, int? hotpotInventoryId = null);
         Task<IEnumerable<RentOrderDetail>> GetRentalHistoryByUserAsync(int userId);
         Task<bool> ExtendRentalPeriodAsync(int rentOrderDetailId, DateTime newExpectedReturnDate);
+        Task<PagedResult<RentOrderDetailResponse>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10);
+
     }
 }

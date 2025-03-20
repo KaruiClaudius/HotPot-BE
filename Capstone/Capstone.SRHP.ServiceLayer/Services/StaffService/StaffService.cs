@@ -308,47 +308,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }).ToList();
 
             return assignmentDtos;
-        }
-
-        public async Task<PagedResult<RentOrderDetail>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10)
-        {
-            var today = DateTime.Today;
-
-            // Get all rent order details that are due for pickup today or overdue
-            var pendingPickupsQuery = _unitOfWork.Repository<RentOrderDetail>()
-                .AsQueryable(r => r.ExpectedReturnDate.Date <= today && r.ActualReturnDate == null && !r.IsDelete)
-                .Include(r => r.Order)
-                    .ThenInclude(o => o.User)
-                .Include(r => r.Utensil)
-                .Include(r => r.HotpotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null);
-
-            // Get all rent order details that are already assigned
-            var assignedPickupIds = await _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.CompletedDate == null)
-                .Select(a => a.RentOrderDetailId)
-                .ToListAsync();
-
-            // Filter out the assigned pickups
-            var unassignedPickupsQuery = pendingPickupsQuery.Where(p => !assignedPickupIds.Contains(p.RentOrderDetailId));
-
-            // Get total count before applying pagination
-            var totalCount = await unassignedPickupsQuery.CountAsync();
-
-            // Apply pagination
-            var items = await unassignedPickupsQuery
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<RentOrderDetail>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
-        }
+        }      
 
         public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
         {

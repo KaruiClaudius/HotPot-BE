@@ -27,7 +27,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
             string returnCondition = null,
             decimal? damageFee = null);
         Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId);
-        Task<PagedResult<RentOrderDetail>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10);
         Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10);
 }
 }

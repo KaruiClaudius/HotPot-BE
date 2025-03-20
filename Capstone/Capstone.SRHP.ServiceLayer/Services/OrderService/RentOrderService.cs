@@ -677,6 +677,65 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             return rentTotal + lateFees + damageFees + sellTotal;
         }
 
-       
+        public async Task<PagedResult<RentOrderDetailResponse>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            var today = DateTime.Today;
+
+            // Get all rent order details that are due for pickup today or overdue
+            var pendingPickupsQuery = _unitOfWork.Repository<RentOrderDetail>()
+                .AsQueryable(r => r.ExpectedReturnDate.Date <= today && r.ActualReturnDate == null && !r.IsDelete)
+                .Include(r => r.Order)
+                    .ThenInclude(o => o.User)
+                .Include(r => r.Utensil)
+                .Include(r => r.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null);
+
+            // Get all rent order details that are already assigned
+            var assignedPickupIds = await _unitOfWork.Repository<StaffPickupAssignment>()
+                .AsQueryable(a => a.CompletedDate == null)
+                .Select(a => a.RentOrderDetailId)
+                .ToListAsync();
+
+            // Filter out the assigned pickups
+            var unassignedPickupsQuery = pendingPickupsQuery.Where(p => !assignedPickupIds.Contains(p.RentOrderDetailId));
+
+            // Get total count before applying pagination
+            var totalCount = await unassignedPickupsQuery.CountAsync();
+
+            // Apply pagination
+            var items = await unassignedPickupsQuery
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Map to DTOs
+            var dtoItems = items.Select(item => new RentOrderDetailResponse
+            {
+                Id = item.RentOrderDetailId,
+                OrderId = item.OrderId,
+                EquipmentType = item.HotpotInventoryId.HasValue ? "Hotpot" : "Utensil",
+                EquipmentId = item.HotpotInventoryId ?? item.UtensilId ?? 0,
+                EquipmentName = item.HotpotInventoryId.HasValue
+                    ? item.HotpotInventory?.Hotpot?.Name
+                    : item.Utensil?.Name,
+                RentalStartDate = item.RentalStartDate.ToString("yyyy-MM-dd"),
+                ExpectedReturnDate = item.ExpectedReturnDate.ToString("yyyy-MM-dd"),
+                ActualReturnDate = item.ActualReturnDate?.ToString("yyyy-MM-dd"),
+                Status = item.ActualReturnDate.HasValue ? "Returned" : "Pending",
+                CustomerName = item.Order?.User?.Name,
+                CustomerAddress = item.Order?.Address,
+                CustomerPhone = item.Order?.User?.PhoneNumber,
+                Notes = item.RentalNotes
+            }).ToList();
+
+            return new PagedResult<RentOrderDetailResponse>
+            {
+                Items = dtoItems,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
     }
 }
