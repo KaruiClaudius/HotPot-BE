@@ -43,89 +43,93 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-            // Start a transaction
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
+            // Use the execution strategy provided by EF Core
+            return await _unitOfWork.Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
+                // Start a transaction
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
-                // Check if user exists (including soft-deleted)
-                var existingUser = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.PhoneNumber == normalizedPhoneNumber);
-
-                if (existingUser != null && !existingUser.IsDelete)
+                try
                 {
-                    throw new ValidationException("SĐT đã được sử dụng");
-                }
+                    string normalizedPhoneNumber = NormalizePhoneNumber(request.PhoneNumber);
 
-                // Hash password
-                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                    // Check if user exists (including soft-deleted)
+                    var existingUser = await _unitOfWork.Repository<User>()
+                        .FindAsync(u => u.PhoneNumber == normalizedPhoneNumber);
 
-                // Get Customer role
-                var customerRole = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.Name == "Customer");
-                if (customerRole == null)
-                    throw new ValidationException("Role Khách hàng không tìm thấy");
-
-                User resultUser;
-
-                if (existingUser != null)
-                {
-                    // Only reactivate if the existing user was a Customer
-                    if (existingUser.RoleId != customerRole.RoleId)
+                    if (existingUser != null && !existingUser.IsDelete)
                     {
-                        throw new ValidationException("SĐT đã được sử dụng cho 1 vai trò khác");
+                        throw new ValidationException("SĐT đã được sử dụng");
                     }
 
-                    // Reactivate soft-deleted user
-                    existingUser.IsDelete = false;
-                    existingUser.Name = request.Name;
-                    existingUser.PhoneNumber = normalizedPhoneNumber;
-                    existingUser.Password = hashedPassword; // Update password
-                    existingUser.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
+                    // Hash password
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-                    resultUser = existingUser;
-                }
-                else
-                {
-                    // Create new user with Customer role
-                    var newUser = new User
+                    // Get Customer role
+                    var customerRole = await _unitOfWork.Repository<Role>()
+                        .FindAsync(r => r.Name == "Customer");
+                    if (customerRole == null)
+                        throw new ValidationException("Role Khách hàng không tìm thấy");
+
+                    User resultUser;
+
+                    if (existingUser != null)
                     {
-                        Password = hashedPassword,
-                        Name = request.Name,
-                        PhoneNumber = normalizedPhoneNumber,
-                        RoleId = customerRole.RoleId, // Always set to Customer role
-                        LoyatyPoint = 0, // Initialize loyalty points for new customers
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+                        // Only reactivate if the existing user was a Customer
+                        if (existingUser.RoleId != customerRole.RoleId)
+                        {
+                            throw new ValidationException("SĐT đã được sử dụng cho 1 vai trò khác");
+                        }
 
-                    _unitOfWork.Repository<User>().Insert(newUser);
-                    await _unitOfWork.CommitAsync();
+                        // Reactivate soft-deleted user
+                        existingUser.IsDelete = false;
+                        existingUser.Name = request.Name;
+                        existingUser.PhoneNumber = normalizedPhoneNumber;
+                        existingUser.Password = hashedPassword; // Update password
+                        existingUser.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
 
-                    resultUser = newUser;
+                        resultUser = existingUser;
+                    }
+                    else
+                    {
+                        // Create new user with Customer role
+                        var newUser = new User
+                        {
+                            Password = hashedPassword,
+                            Name = request.Name,
+                            PhoneNumber = normalizedPhoneNumber,
+                            RoleId = customerRole.RoleId, // Always set to Customer role
+                            LoyatyPoint = 0, // Initialize loyalty points for new customers
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        _unitOfWork.Repository<User>().Insert(newUser);
+                        await _unitOfWork.CommitAsync();
+
+                        resultUser = newUser;
+                    }
+
+                    // Commit the transaction
+                    await transaction.CommitAsync();
+
+                    return await GenerateAuthResponseAsync(resultUser);
                 }
-
-                // Commit the transaction
-                await transaction.CommitAsync();
-
-                return await GenerateAuthResponseAsync(resultUser);
-            }
-            catch (ValidationException)
-            {
-                // Rollback the transaction
-                await transaction.RollbackAsync();
-                // Rethrow validation exceptions directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // Rollback the transaction
-                await transaction.RollbackAsync();
-                throw new Exception("Đăng ký gặp trục trặc", ex);
-            }
+                catch (ValidationException)
+                {
+                    // Rollback the transaction
+                    await transaction.RollbackAsync();
+                    // Rethrow validation exceptions directly
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // Rollback the transaction
+                    await transaction.RollbackAsync();
+                    throw new Exception("Đăng ký gặp trục trặc", ex);
+                }
+            });
         }
 
         private string NormalizePhoneNumber(string phoneNumber)
