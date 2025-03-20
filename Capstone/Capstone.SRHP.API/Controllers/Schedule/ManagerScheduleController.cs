@@ -23,18 +23,15 @@ namespace Capstone.HPTY.API.Controllers.Schedule
     public class ManagerScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
-        private readonly IUserService _userService;
         private readonly IManagerService _managerService;
         private readonly IStaffService _staffService;
 
         public ManagerScheduleController(
             IScheduleService scheduleService,
-            IUserService userService,
             IManagerService managerService,
             IStaffService staffService)
         {
             _scheduleService = scheduleService;
-            _userService = userService;
             _managerService = managerService;
             _staffService = staffService;
         }
