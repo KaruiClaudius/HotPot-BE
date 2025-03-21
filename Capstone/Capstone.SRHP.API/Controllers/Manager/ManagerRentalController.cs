@@ -6,6 +6,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Order;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,21 +17,25 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/rentals")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager")]
 
     public class ManagerRentalController : ControllerBase
     {
         private readonly IRentOrderService _rentOrderService;
         private readonly IStaffService _staffService;
+        private readonly IEquipmentReturnService _equipmentReturnService;
+
         private readonly INotificationService _notificationService;
 
         public ManagerRentalController(
             IRentOrderService rentOrderService,
             IStaffService staffService,
+            IEquipmentReturnService equipmentReturnService,
             INotificationService notificationService)
         {
             _rentOrderService = rentOrderService;
             _staffService = staffService;
+            _equipmentReturnService = equipmentReturnService;
             _notificationService = notificationService;
         }
 
@@ -151,7 +156,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                var rentOrderDetail = await _rentOrderService.GetByIdAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
                 var result = await _rentOrderService.UpdateRentOrderDetailAsync(id, request);
 
                 // Notify the customer if the return date has changed
