@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
@@ -193,14 +194,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<Customization> CreateCustomizationAsync(
-    int comboId,
-    int userId,
-    string name,
-    string? note,
-    int size,
-    int brothId,
-    List<CustomizationIngredientDto> ingredients,
-    string[]? imageURLs = null)
+            int comboId,
+            int userId,
+            string name,
+            string? note,
+            int size,
+            int brothId,
+            List<CustomizationIngredientDto> ingredients,
+            string[]? imageURLs = null)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(name))
@@ -245,8 +246,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
             }
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
             {
                 // Get applicable discount for this size
                 var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
@@ -369,197 +369,200 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await _unitOfWork.Repository<Customization>().Update(customization, customization.CustomizationId);
 
                 await _unitOfWork.CommitAsync();
-                await transaction.CommitAsync();
 
-                return await GetByIdAsync(customization.CustomizationId);
-            }
-            catch
+                return await GetByIdAsync(customization.CustomizationId) ?? throw new InvalidOperationException("Customization creation failed");
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                await transaction.RollbackAsync();
-                throw;
+                _logger.LogError(ex, "tạo tùy chỉnh gặp trục trặc", ex);
             }
+        });
         }
 
 
 
         public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                var existingCustomization = await GetByIdAsync(id);
-                if (existingCustomization == null)
-                    throw new NotFoundException($"Customization with ID {id} not found");
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+           {
+               var existingCustomization = await GetByIdAsync(id);
+               if (existingCustomization == null)
+                   throw new NotFoundException($"Customization with ID {id} not found");
 
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(entity.Name))
-                    throw new ValidationException("Customization name cannot be empty");
+               // Validate basic properties
+               if (string.IsNullOrWhiteSpace(entity.Name))
+                   throw new ValidationException("Customization name cannot be empty");
 
-                if (entity.Size <= 0)
-                    throw new ValidationException("Size must be greater than 0");
+               if (entity.Size <= 0)
+                   throw new ValidationException("Size must be greater than 0");
 
-                // Validate image URLs if provided
-                if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
-                {
-                    foreach (var url in entity.ImageURLs)
-                    {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            throw new ValidationException("Image URLs cannot be empty");
-                        }
+               // Validate image URLs if provided
+               if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
+               {
+                   foreach (var url in entity.ImageURLs)
+                   {
+                       if (string.IsNullOrWhiteSpace(url))
+                       {
+                           throw new ValidationException("Image URLs cannot be empty");
+                       }
 
-                        // Optional: Add URL format validation if needed
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
-                            throw new ValidationException($"Invalid image URL format: {url}");
-                        }
-                    }
-                }
+                       // Optional: Add URL format validation if needed
+                       if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                       {
+                           throw new ValidationException($"Invalid image URL format: {url}");
+                       }
+                   }
+               }
 
-                // Validate HotpotBroth if it's being changed
-                if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
-                {
-                    await ValidateHotpotBroth(entity.HotpotBrothId);
-                }
+               // Validate HotpotBroth if it's being changed
+               if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
+               {
+                   await ValidateHotpotBroth(entity.HotpotBrothId);
+               }
 
-                // Get applicable discount for this size if size changed
-                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
-                {
-                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
-                    entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
-                }
+               // Get applicable discount for this size if size changed
+               if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
+               {
+                   var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
+                   entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+               }
 
-                // Update customization basic info
-                entity.SetUpdateDate();
-                await _unitOfWork.Repository<Customization>().Update(entity, id);
-                await _unitOfWork.CommitAsync();
+               // Update customization basic info
+               entity.SetUpdateDate();
+               await _unitOfWork.Repository<Customization>().Update(entity, id);
+               await _unitOfWork.CommitAsync();
 
-                // Remove existing ingredients
-                var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                    .FindAll(ci => ci.CustomizationId == id)
-                    .ToListAsync();
+               // Remove existing ingredients
+               var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                   .FindAll(ci => ci.CustomizationId == id)
+                   .ToListAsync();
 
-                foreach (var existingIngredient in existingIngredients)
-                {
-                    existingIngredient.SoftDelete();
-                    existingIngredient.SetUpdateDate();
-                }
-                await _unitOfWork.CommitAsync();
+               foreach (var existingIngredient in existingIngredients)
+               {
+                   existingIngredient.SoftDelete();
+                   existingIngredient.SetUpdateDate();
+               }
+               await _unitOfWork.CommitAsync();
 
-                // Add new ingredients
-                decimal basePrice = 0;
+               // Add new ingredients
+               decimal basePrice = 0;
 
-                // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
-                basePrice += brothPrice;
+               // Add broth price
+               var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
+               basePrice += brothPrice;
 
-                // Get the combo for validation
-                var combo = await _comboService.GetByIdAsync(entity.ComboId);
+               // Get the combo for validation
+               var combo = await _comboService.GetByIdAsync(entity.ComboId);
 
-                // Add ingredients
-                foreach (var ingredientDto in ingredients)
-                {
-                    // Validate ingredient exists
-                    var ingredient = await _unitOfWork.Repository<Ingredient>()
-                        .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+               // Add ingredients
+               foreach (var ingredientDto in ingredients)
+               {
+                   // Validate ingredient exists
+                   var ingredient = await _unitOfWork.Repository<Ingredient>()
+                       .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
 
-                    if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+                   if (ingredient == null)
+                       throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
 
-                    // Validate quantity
-                    if (ingredientDto.Quantity <= 0)
-                        throw new ValidationException("Ingredient quantity must be greater than 0");
+                   // Validate quantity
+                   if (ingredientDto.Quantity <= 0)
+                       throw new ValidationException("Ingredient quantity must be greater than 0");
 
-                    // Validate measurement unit
-                    if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
-                        throw new ValidationException("Measurement unit cannot be empty");
+                   // Validate measurement unit
+                   if (string.IsNullOrWhiteSpace(ingredientDto.MeasurementUnit))
+                       throw new ValidationException("Measurement unit cannot be empty");
 
-                    // If this is a customizable combo, validate that the ingredient is allowed
-                    if (combo != null && combo.IsCustomizable)
-                    {
-                        // Check if ingredient type is allowed
-                        var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                            .FindAsync(ait => ait.ComboId == entity.ComboId &&
-                                                 ait.IngredientTypeId == ingredient.IngredientTypeId &&
-                                                 !ait.IsDelete);
+                   // If this is a customizable combo, validate that the ingredient is allowed
+                   if (combo != null && combo.IsCustomizable)
+                   {
+                       // Check if ingredient type is allowed
+                       var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+                           .FindAsync(ait => ait.ComboId == entity.ComboId &&
+                                                ait.IngredientTypeId == ingredient.IngredientTypeId &&
+                                                !ait.IsDelete);
 
-                        if (allowedType == null)
-                            throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+                       if (allowedType == null)
+                           throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
 
-                        // Validate minimum quantity requirement
-                        // Convert quantities to the same unit for comparison
-                        decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
-                            ? ingredientDto.Quantity
-                            : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
+                       // Validate minimum quantity requirement
+                       // Convert quantities to the same unit for comparison
+                       decimal convertedQuantity = ingredientDto.MeasurementUnit == allowedType.MeasurementUnit
+                           ? ingredientDto.Quantity
+                           : ConvertMeasurement(ingredientDto.Quantity, ingredientDto.MeasurementUnit, allowedType.MeasurementUnit);
 
-                        if (convertedQuantity < allowedType.MinQuantity)
-                            throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
-                    }
+                       if (convertedQuantity < allowedType.MinQuantity)
+                           throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity} {allowedType.MeasurementUnit}");
+                   }
 
-                    // Add ingredient to customization
-                    var customizationIngredient = new CustomizationIngredient
-                    {
-                        CustomizationId = id,
-                        IngredientId = ingredientDto.IngredientID,
-                        Quantity = ingredientDto.Quantity,
-                        MeasurementUnit = ingredientDto.MeasurementUnit
-                    };
+                   // Add ingredient to customization
+                   var customizationIngredient = new CustomizationIngredient
+                   {
+                       CustomizationId = id,
+                       IngredientId = ingredientDto.IngredientID,
+                       Quantity = ingredientDto.Quantity,
+                       MeasurementUnit = ingredientDto.MeasurementUnit
+                   };
 
-                    _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
+                   _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
 
-                    // Add to base price - convert to ingredient's unit for pricing if needed
-                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
+                   // Add to base price - convert to ingredient's unit for pricing if needed
+                   var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
 
-                    if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
-                    {
-                        basePrice += ingredientPrice * ingredientDto.Quantity;
-                    }
-                    else
-                    {
-                        // Convert the quantity to the ingredient's unit for pricing
-                        try
-                        {
-                            var convertedQuantity = ConvertMeasurement(
-                                ingredientDto.Quantity,
-                                ingredientDto.MeasurementUnit,
-                                ingredient.MeasurementUnit);
+                   if (ingredientDto.MeasurementUnit == ingredient.MeasurementUnit)
+                   {
+                       basePrice += ingredientPrice * ingredientDto.Quantity;
+                   }
+                   else
+                   {
+                       // Convert the quantity to the ingredient's unit for pricing
+                       try
+                       {
+                           var convertedQuantity = ConvertMeasurement(
+                               ingredientDto.Quantity,
+                               ingredientDto.MeasurementUnit,
+                               ingredient.MeasurementUnit);
 
-                            basePrice += ingredientPrice * convertedQuantity;
-                        }
-                        catch
-                        {
-                            // If conversion fails, use the original quantity as a fallback
-                            basePrice += ingredientPrice * ingredientDto.Quantity;
-                        }
-                    }
-                }
+                           basePrice += ingredientPrice * convertedQuantity;
+                       }
+                       catch
+                       {
+                           // If conversion fails, use the original quantity as a fallback
+                           basePrice += ingredientPrice * ingredientDto.Quantity;
+                       }
+                   }
+               }
 
-                // Update base price
-                entity.BasePrice = basePrice;
+               // Update base price
+               entity.BasePrice = basePrice;
 
-                // Calculate total price with discount
-                decimal totalPrice = basePrice;
-                if (entity.AppliedDiscountId.HasValue)
-                {
-                    var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
-                    if (discount != null)
-                    {
-                        totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
-                    }
-                }
+               // Calculate total price with discount
+               decimal totalPrice = basePrice;
+               if (entity.AppliedDiscountId.HasValue)
+               {
+                   var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
+                   if (discount != null)
+                   {
+                       totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
+                   }
+               }
 
-                // Update total price
-                entity.TotalPrice = totalPrice;
-                await _unitOfWork.Repository<Customization>().Update(entity, id);
-                await _unitOfWork.CommitAsync();
+               // Update total price
+               entity.TotalPrice = totalPrice;
+               await _unitOfWork.Repository<Customization>().Update(entity, id);
+               await _unitOfWork.CommitAsync();
 
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+           },
+       ex =>
+       {
+           // Only log for exceptions that aren't validation or not found
+           if (!(ex is NotFoundException || ex is ValidationException))
+           {
+               _logger.LogError(ex, "Cập nhật gặp trục trặc", ex);
+           }
+       });
         }
 
         public async Task DeleteAsync(int id)
@@ -571,7 +574,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new NotFoundException($"Customization with ID {id} not found");
 
                 // Check if this customization is used by any orders
-                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail >()
+                var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail>()
                     .AnyAsync(od => od.CustomizationId == id && !od.IsDelete);
 
                 if (isUsedByOrder)

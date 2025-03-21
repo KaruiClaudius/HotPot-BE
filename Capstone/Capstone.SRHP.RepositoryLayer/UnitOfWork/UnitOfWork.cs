@@ -117,5 +117,44 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
         {
             return _context.Database.CreateExecutionStrategy();
         }
+
+        public async Task ExecuteInTransactionAsync(Func<Task> operation, Action<Exception> exceptionHandler = null)
+        {
+            await Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await BeginTransactionAsync();
+                try
+                {
+                    await operation();
+                    await transaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    exceptionHandler?.Invoke(ex);
+                    throw;
+                }
+            });
+        }
+
+        public async Task<TResult> ExecuteInTransactionAsync<TResult>(Func<Task<TResult>> operation, Action<Exception> exceptionHandler = null)
+        {
+            return await Context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                using var transaction = await BeginTransactionAsync();
+                try
+                {
+                    var result = await operation();
+                    await transaction.CommitAsync();
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    exceptionHandler?.Invoke(ex);
+                    throw;
+                }
+            });
+        }
     }
 }

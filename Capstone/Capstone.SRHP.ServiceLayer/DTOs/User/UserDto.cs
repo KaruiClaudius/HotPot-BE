@@ -15,6 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.User
         public string Address { get; set; } = null!;
         public string RoleName { get; set; } = null!;
         public string ImageURL { get; set; } = null!;
+        public double LoyatyPoint { get; set; } = 0;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

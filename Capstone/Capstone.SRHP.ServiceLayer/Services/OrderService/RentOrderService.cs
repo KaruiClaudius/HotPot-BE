@@ -24,11 +24,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public RentOrderService(
            IUnitOfWork unitOfWork,
-           IUtensilService utensilService,    
+           IUtensilService utensilService,
            ILogger<RentOrderService> logger)
         {
             _unitOfWork = unitOfWork;
-            _utensilService = utensilService;          
+            _utensilService = utensilService;
             _logger = logger;
         }
 
@@ -213,9 +213,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<bool> RecordEquipmentReturnAsync(int rentOrderDetailId, RecordReturnRequest request)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
             {
                 var rentOrderDetail = await GetByIdAsync(rentOrderDetailId);
 
@@ -297,33 +295,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 await _unitOfWork.CommitAsync();
-                transaction.Commit();
 
                 return true;
-            }
-            catch (NotFoundException)
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                transaction.Rollback();
-                throw;
-            }
-            catch (ValidationException)
-            {
-                transaction.Rollback();
-                throw;
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
                 _logger.LogError(ex, "Error recording equipment return for rent order detail {RentOrderDetailId}", rentOrderDetailId);
-                throw;
             }
+        });
         }
 
         public async Task<bool> UpdateRentOrderDetailAsync(int rentOrderDetailId, UpdateRentOrderDetailRequest request)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
             {
                 var rentOrderDetail = await GetByIdAsync(rentOrderDetailId);
 
@@ -374,114 +361,93 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 await _unitOfWork.CommitAsync();
-                transaction.Commit();
-
                 return true;
-            }
-            catch (NotFoundException)
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                transaction.Rollback();
-                throw;
-            }
-            catch (ValidationException)
-            {
-                transaction.Rollback();
-                throw;
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
                 _logger.LogError(ex, "Error updating rent order detail {RentOrderDetailId}", rentOrderDetailId);
-                throw;
             }
+        });
         }
 
         public async Task<bool> CancelRentOrderDetailAsync(int rentOrderDetailId)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
-            {
-                var rentOrderDetail = await GetByIdAsync(rentOrderDetailId);
-
-                // Check if the rental has already started
-                if (rentOrderDetail.RentalStartDate <= DateTime.Now && rentOrderDetail.Order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Cannot cancel a rental that has already started");
-
-                // Get the order
-                var order = await _unitOfWork.Repository<Order>().GetById(rentOrderDetail.OrderId);
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {rentOrderDetail.OrderId} not found");
-
-                // Soft delete the rent order detail
-                rentOrderDetail.SoftDelete();
-                rentOrderDetail.SetUpdateDate();
-                await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
-
-                // Update order total
-                decimal totalPrice = await CalculateOrderTotalAsync(order.OrderId);
-                order.TotalPrice = totalPrice;
-
-                // If this was the only item in the order, cancel the order
-                var remainingRentals = await _unitOfWork.Repository<RentOrderDetail>()
-                    .CountAsync(r => r.OrderId == order.OrderId && !r.IsDelete);
-
-                var sellItems = await _unitOfWork.Repository<SellOrderDetail>()
-                    .CountAsync(s => s.OrderId == order.OrderId && !s.IsDelete);
-
-                if (remainingRentals == 0 && sellItems == 0)
+            return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
                 {
-                    order.Status = OrderStatus.Cancelled;
-                }
+                    var rentOrderDetail = await GetByIdAsync(rentOrderDetailId);
 
-                order.SetUpdateDate();
-                await _unitOfWork.Repository<Order>().UpdateDetached(order);
+                    // Check if the rental has already started
+                    if (rentOrderDetail.RentalStartDate <= DateTime.Now && rentOrderDetail.Order.Status != OrderStatus.Pending)
+                        throw new ValidationException("Cannot cancel a rental that has already started");
 
-                // Return inventory items to available status
-                if (rentOrderDetail.UtensilId.HasValue)
-                {
-                    await _utensilService.UpdateUtensilQuantityAsync(rentOrderDetail.UtensilId.Value, rentOrderDetail.Quantity);
-                }
-                else if (rentOrderDetail.HotpotInventoryId.HasValue)
-                {
-                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>().GetById(rentOrderDetail.HotpotInventoryId.Value);
-                    if (hotpotInventory != null)
+                    // Get the order
+                    var order = await _unitOfWork.Repository<Order>().GetById(rentOrderDetail.OrderId);
+                    if (order == null)
+                        throw new NotFoundException($"Order with ID {rentOrderDetail.OrderId} not found");
+
+                    // Soft delete the rent order detail
+                    rentOrderDetail.SoftDelete();
+                    rentOrderDetail.SetUpdateDate();
+                    await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
+
+                    // Update order total
+                    decimal totalPrice = await CalculateOrderTotalAsync(order.OrderId);
+                    order.TotalPrice = totalPrice;
+
+                    // If this was the only item in the order, cancel the order
+                    var remainingRentals = await _unitOfWork.Repository<RentOrderDetail>()
+                        .CountAsync(r => r.OrderId == order.OrderId && !r.IsDelete);
+
+                    var sellItems = await _unitOfWork.Repository<SellOrderDetail>()
+                        .CountAsync(s => s.OrderId == order.OrderId && !s.IsDelete);
+
+                    if (remainingRentals == 0 && sellItems == 0)
                     {
-                        hotpotInventory.Status = true; // Set to available
-                        hotpotInventory.SetUpdateDate();
-                        await _unitOfWork.Repository<HotPotInventory>().UpdateDetached(hotpotInventory);
+                        order.Status = OrderStatus.Cancelled;
+                    }
 
-                        // Update hotpot quantity
-                        if (hotpotInventory.Hotpot != null)
+                    order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().UpdateDetached(order);
+
+                    // Return inventory items to available status
+                    if (rentOrderDetail.UtensilId.HasValue)
+                    {
+                        await _utensilService.UpdateUtensilQuantityAsync(rentOrderDetail.UtensilId.Value, rentOrderDetail.Quantity);
+                    }
+                    else if (rentOrderDetail.HotpotInventoryId.HasValue)
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>().GetById(rentOrderDetail.HotpotInventoryId.Value);
+                        if (hotpotInventory != null)
                         {
-                            hotpotInventory.Hotpot.Quantity += 1;
-                            hotpotInventory.Hotpot.SetUpdateDate();
-                            await _unitOfWork.Repository<Hotpot>().UpdateDetached(hotpotInventory.Hotpot);
+                            hotpotInventory.Status = true; // Set to available
+                            hotpotInventory.SetUpdateDate();
+                            await _unitOfWork.Repository<HotPotInventory>().UpdateDetached(hotpotInventory);
+
+                            // Update hotpot quantity
+                            if (hotpotInventory.Hotpot != null)
+                            {
+                                hotpotInventory.Hotpot.Quantity += 1;
+                                hotpotInventory.Hotpot.SetUpdateDate();
+                                await _unitOfWork.Repository<Hotpot>().UpdateDetached(hotpotInventory.Hotpot);
+                            }
                         }
                     }
-                }
 
-                await _unitOfWork.CommitAsync();
-                transaction.Commit();
+                    await _unitOfWork.CommitAsync();
 
-                return true;
-            }
-            catch (NotFoundException)
+                    return true;
+                },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                transaction.Rollback();
-                throw;
-            }
-            catch (ValidationException)
-            {
-                transaction.Rollback();
-                throw;
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
                 _logger.LogError(ex, "Error cancelling rent order detail {RentOrderDetailId}", rentOrderDetailId);
-                throw;
             }
+        });
         }
 
         public async Task<decimal> CalculateLateFeeAsync(int rentOrderDetailId, DateTime actualReturnDate)
@@ -585,9 +551,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<bool> ExtendRentalPeriodAsync(int rentOrderDetailId, DateTime newExpectedReturnDate)
         {
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
-
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
             {
                 var rentOrderDetail = await GetByIdAsync(rentOrderDetailId);
 
@@ -623,26 +587,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 await _unitOfWork.CommitAsync();
-                transaction.Commit();
 
                 return true;
-            }
-            catch (NotFoundException)
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                transaction.Rollback();
-                throw;
-            }
-            catch (ValidationException)
-            {
-                transaction.Rollback();
-                throw;
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
                 _logger.LogError(ex, "Error extending rental period for rent order detail {RentOrderDetailId}", rentOrderDetailId);
-                throw;
             }
+        });
         }
 
         private async Task<decimal> CalculateOrderTotalAsync(int orderId)
