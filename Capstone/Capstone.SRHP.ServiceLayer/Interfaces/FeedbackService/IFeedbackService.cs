@@ -5,12 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService
 {
     public interface IFeedbackService
     {
+        Task<PagedResult<Feedback>> GetFilteredFeedbackAsync(FeedbackFilterRequest request);
         Task<Feedback> GetFeedbackByIdAsync(int feedbackId);
         Task<IEnumerable<Feedback>> GetAllFeedbackAsync(int pageNumber = 1, int pageSize = 10);
         Task<IEnumerable<Feedback>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10);
