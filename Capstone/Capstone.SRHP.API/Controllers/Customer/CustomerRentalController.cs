@@ -1,11 +1,10 @@
 ﻿using Capstone.HPTY.ModelLayer.Exceptions;
-using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Capstone.HPTY.API.Controllers.Customer
 {
@@ -16,13 +15,17 @@ namespace Capstone.HPTY.API.Controllers.Customer
     public class CustomerRentalController : ControllerBase
     {
         private readonly IRentOrderService _rentOrderService;
+        private readonly IEquipmentReturnService _equipmentReturnService;
         private readonly INotificationService _notificationService;
 
 
-        public CustomerRentalController(IRentOrderService rentOrderService, INotificationService notificationService)
+        public CustomerRentalController(IRentOrderService rentOrderService, 
+            INotificationService notificationService, 
+            IEquipmentReturnService equipmentReturnService)
         {
             _rentOrderService = rentOrderService;
             _notificationService = notificationService;
+            _equipmentReturnService = equipmentReturnService;
         }
 
 
@@ -78,7 +81,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var rentOrderDetail = await _rentOrderService.GetByIdAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
 
                 // Verify the rental belongs to the current user
                 var userIdClaim = User.FindFirst("uid");
@@ -110,7 +113,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Verify the rental belongs to the current user
-                var rentOrderDetail = await _rentOrderService.GetByIdAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
                 var userIdClaim = User.FindFirst("uid");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");

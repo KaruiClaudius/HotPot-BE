@@ -1,5 +1,4 @@
 ﻿using Capstone.HPTY.API.SideServices;
-using Capstone.HPTY.ModelLayer;
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -29,7 +28,6 @@ using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Microsoft.EntityFrameworkCore;
 using Net.payOS;
-using System.Threading.RateLimiting;
 
 namespace Capstone.HPTY.API.AppStarts
 {
@@ -120,6 +118,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Rent Order Services
             services.AddScoped<IRentOrderService, RentOrderService>();
+            services.AddScoped<IEquipmentReturnService, EquipmentReturnService>();
 
             // External Services
             services.AddHttpClient();

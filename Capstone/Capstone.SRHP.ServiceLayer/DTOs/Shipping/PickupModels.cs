@@ -38,5 +38,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string ReturnCondition { get; set; }
         public decimal? DamageFee { get; set; }
     }
-    
+
+    public class UnifiedReturnRequestDto
+    {
+        public int? AssignmentId { get; set; }
+        public int? RentOrderDetailId { get; set; }
+        public DateTime CompletedDate { get; set; }
+        public string ReturnCondition { get; set; }
+        public decimal? DamageFee { get; set; }
+        public string Notes { get; set; }
+    }
+
 }

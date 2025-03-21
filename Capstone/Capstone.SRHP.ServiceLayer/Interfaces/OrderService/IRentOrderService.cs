@@ -11,14 +11,11 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IRentOrderService
     {
-        Task<RentOrderDetail> GetByIdAsync(int rentOrderDetailId);
         Task<IEnumerable<RentOrderDetail>> GetByOrderIdAsync(int orderId);
-        Task<PagedResult<RentOrderDetail>> GetPendingPickupsAsync(int pageNumber = 1, int pageSize = 10);
+        Task<PagedResult<RentalListingDto>> GetPendingPickupsAsync(int pageNumber = 1, int pageSize = 10);
         Task<List<RentOrderDetailDto>> GetPendingPickupsByUserAsync(int userId);
-        Task<PagedResult<RentOrderDetail>> GetOverdueRentalsAsync(int pageNumber = 1, int pageSize = 10);
-        Task<bool> RecordEquipmentReturnAsync(int rentOrderDetailId, RecordReturnRequest request);
+        Task<PagedResult<RentalListingDto>> GetOverdueRentalsAsync(int pageNumber = 1, int pageSize = 10);
         Task<bool> UpdateRentOrderDetailAsync(int rentOrderDetailId, UpdateRentOrderDetailRequest request);
-        //Task<bool> CancelRentOrderDetailAsync(int rentOrderDetailId);
         Task<decimal> CalculateLateFeeAsync(int rentOrderDetailId, DateTime actualReturnDate);
         Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync(int? utensilId = null, int? hotpotInventoryId = null);
         Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByUserAsync(int userId);

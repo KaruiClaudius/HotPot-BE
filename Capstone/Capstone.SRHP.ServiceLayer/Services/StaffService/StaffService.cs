@@ -10,6 +10,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
+using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,11 +19,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     public class StaffService : IStaffService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IEquipmentReturnService _equipmentReturnService;
         private const int STAFF_ROLE_ID = 3; // Staff role ID
 
-        public StaffService(IUnitOfWork unitOfWork)
+        public StaffService(
+         IUnitOfWork unitOfWork,
+         IEquipmentReturnService equipmentReturnService)
         {
             _unitOfWork = unitOfWork;
+            _equipmentReturnService = equipmentReturnService;
         }
 
         public async Task<User> GetStaffByIdAsync(int userId)
@@ -244,58 +249,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             });
         }
 
-        public async Task<bool> CompletePickupAssignmentAsync(
-            int assignmentId,
-            DateTime completedDate,
-            string returnCondition = null,
-            decimal? damageFee = null)
-        {
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-            {
-                var assignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .GetById(assignmentId);
-
-                if (assignment == null)
-                    throw new NotFoundException($"Assignment with ID {assignmentId} not found");
-
-                assignment.CompletedDate = completedDate;
-                assignment.Notes = string.IsNullOrEmpty(assignment.Notes)
-                    ? $"Return condition: {returnCondition}"
-                    : $"{assignment.Notes}\nReturn condition: {returnCondition}";
-                assignment.SetUpdateDate();
-
-                await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(assignment);
-
-                // Update the RentOrderDetail with the actual return date
-                var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
-                    .GetById(assignment.RentOrderDetailId);
-
-                if (rentOrderDetail != null)
-                {
-                    rentOrderDetail.ActualReturnDate = completedDate;
-
-                    // Set damage fee if provided
-                    if (damageFee.HasValue)
-                    {
-                        rentOrderDetail.DamageFee = damageFee.Value;
-                    }
-
-                    // Calculate late fee if applicable
-                    if (completedDate > rentOrderDetail.ExpectedReturnDate)
-                    {
-                        var daysLate = (completedDate - rentOrderDetail.ExpectedReturnDate).Days;
-                        rentOrderDetail.LateFee = daysLate * (rentOrderDetail.RentalPrice * 0.1m); // 10% of rental price per day
-                    }
-
-                    await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
-                }
-
-                await _unitOfWork.CommitAsync();
-                return true;
-
-            });
-        }
-
         public async Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId)
         {
             // Verify the staff member exists
@@ -329,7 +282,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 Notes = a.Notes,
                 CustomerName = a.RentOrderDetail?.Order?.User?.Name,
                 CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
-                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber, 
+                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber,
                 EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
                                a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
                                "Unknown",
@@ -390,7 +343,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
-        }
+        }       
+
         private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
         {
             return dayOfWeek switch
