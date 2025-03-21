@@ -51,8 +51,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
             return await _unitOfWork.Repository<WorkShift>().GetAll()
                 .Where(w => (w.DaysOfWeek & staff.WorkDays) != 0)
-                .Include(w => w.Managers)
-                .OrderBy(w => w.ShiftStartTime)
+                .Include(w => w.Staff)
+                .OrderBy(w => w.DaysOfWeek)
                 .ToListAsync();
         }
 
@@ -66,7 +66,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
             return await _unitOfWork.Repository<WorkShift>().GetAll()
                 .Where(w => (w.DaysOfWeek & manager.WorkDays) != 0)
-                .Include(w => w.Staff)
+                .Include(w => w.Managers)
                 .OrderBy(w => w.ShiftStartTime)
                 .ToListAsync();
         }

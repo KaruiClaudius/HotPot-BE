@@ -16,7 +16,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/rentals")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
 
     public class ManagerRentalController : ControllerBase
     {
@@ -35,16 +35,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpGet("unassigned-pickups")]
-        public async Task<ActionResult<ApiResponse<PagedResult<RentOrderDetail>>>> GetUnassignedPickups([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<ApiResponse<PagedResult<RentOrderDetailResponse>>>> GetUnassignedPickups([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var unassignedPickups = await _staffService.GetUnassignedPickupsAsync(pageNumber, pageSize);
-                return Ok(ApiResponse<PagedResult<RentOrderDetail>>.SuccessResponse(unassignedPickups, "Unassigned pickups retrieved successfully"));
+                var unassignedPickups = await _rentOrderService.GetUnassignedPickupsAsync(pageNumber, pageSize);
+                return Ok(ApiResponse<PagedResult<RentOrderDetailResponse>>.SuccessResponse(unassignedPickups, "Unassigned pickups retrieved successfully"));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse<PagedResult<RentOrderDetail>>.ErrorResponse(ex.Message));
+                return StatusCode(500, ApiResponse<PagedResult<RentOrderDetailDto>>.ErrorResponse(ex.Message));
             }
         }
 
@@ -155,14 +155,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _rentOrderService.UpdateRentOrderDetailAsync(id, request);
 
                 // Notify the customer if the return date has changed
-                if (request.ExpectedReturnDate.HasValue &&
-                    rentOrderDetail.ExpectedReturnDate != request.ExpectedReturnDate.Value &&
+                if (!string.IsNullOrEmpty(request.ExpectedReturnDate) &&
+                    DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate) &&
+                    rentOrderDetail.ExpectedReturnDate != parsedDate &&
                     rentOrderDetail.Order?.UserId != null)
                 {
                     await _notificationService.NotifyCustomerRentalExtendedAsync(
                         rentOrderDetail.Order.UserId,
                         id,
-                        request.ExpectedReturnDate.Value);
+                        parsedDate);
                 }
 
                 return Ok(new { message = "Rental detail updated successfully" });
@@ -179,7 +180,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return StatusCode(500, new { message = ex.Message });
             }
-        }       
+        }
 
         [HttpGet("{id}/calculate-late-fee")]
         public async Task<IActionResult> CalculateLateFee(int id, [FromQuery] DateTime actualReturnDate)

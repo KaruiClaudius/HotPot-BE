@@ -20,6 +20,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             _staffService = staffService ?? throw new ArgumentNullException(nameof(staffService));
         }
 
+
         /// <summary>
         /// Gets a staff member by their ID
         /// </summary>
@@ -49,6 +50,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     new List<string> { ex.Message }));
             }
         }
+
 
         /// <summary>
         /// Gets a staff member by their user ID
@@ -80,6 +82,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+
         /// <summary>
         /// Gets all staff members
         /// </summary>
@@ -104,5 +107,23 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     new List<string> { ex.Message }));
             }
         }
-    }
+
+
+        [HttpGet("available")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ApiResponse<List<StaffAvailableDto>>>> GetAvailableStaff()
+        {
+            try
+            {
+                var availableStaff = await _staffService.GetAvailableStaffAsync();
+                return Ok(ApiResponse<List<StaffAvailableDto>>.SuccessResponse(availableStaff, "Available staff retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<List<StaffDto>>.ErrorResponse("An error occurred while retrieving available staff"));
+            }
+        }
+
+        }
 }

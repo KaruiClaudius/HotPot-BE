@@ -9,6 +9,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
+using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,6 +45,55 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(u => u.StaffWorkShifts)
                 .Where(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
                 .ToListAsync();
+        }
+
+        public async Task<List<StaffAvailableDto>> GetAvailableStaffAsync()
+        {
+            try
+            {
+                // Get current day of week
+                var today = DateTime.Now.DayOfWeek;
+                var workDay = MapDayOfWeekToWorkDays(today);
+
+                // Get all users with staff role who are not deleted
+                var staffUsers = await _unitOfWork.Repository<User>()
+                    .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
+                    .Include(u => u.StaffWorkShifts)
+                    .ToListAsync();
+
+                // Map to DTOs and determine availability
+                var staffDtos = new List<StaffAvailableDto>();
+                foreach (var staff in staffUsers)
+                {
+                    // Check if staff is scheduled to work today
+                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
+
+                    // Check if staff has too many active assignments
+                    if (isAvailable)
+                    {
+                        var activeAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
+                            .CountAsync(a => a.StaffId == staff.UserId && a.CompletedDate == null);
+
+                        // Define a threshold for maximum assignments (e.g., 5)
+                        isAvailable = activeAssignments < 5;
+                    }
+
+                    staffDtos.Add(new StaffAvailableDto
+                    {
+                        Id = staff.UserId,
+                        Name = staff.Name,
+                        Email = staff.Email ?? string.Empty,
+                        Phone = staff.PhoneNumber ?? string.Empty,
+                        IsAvailable = isAvailable
+                    });
+                }
+
+                return staffDtos;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         public async Task<User> CreateStaffAsync(User staff)
@@ -279,6 +329,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 Notes = a.Notes,
                 CustomerName = a.RentOrderDetail?.Order?.User?.Name,
                 CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber, 
                 EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
                                a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
                                "Unknown",
@@ -287,46 +338,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }).ToList();
 
             return assignmentDtos;
-        }
-
-        public async Task<PagedResult<RentOrderDetail>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10)
-        {
-            var today = DateTime.Today;
-
-            // Get all rent order details that are due for pickup today or overdue
-            var pendingPickupsQuery = _unitOfWork.Repository<RentOrderDetail>()
-                .AsQueryable(r => r.ExpectedReturnDate.Date <= today && r.ActualReturnDate == null && !r.IsDelete)
-                .Include(r => r.Order)
-                    .ThenInclude(o => o.User)
-                .Include(r => r.Utensil)
-                .Include(r => r.HotpotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null);
-
-            // Get all rent order details that are already assigned
-            var assignedPickupIds = await _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.CompletedDate == null)
-                .Select(a => a.RentOrderDetailId)
-                .ToListAsync();
-
-            // Filter out the assigned pickups
-            var unassignedPickupsQuery = pendingPickupsQuery.Where(p => !assignedPickupIds.Contains(p.RentOrderDetailId));
-
-            // Get total count before applying pagination
-            var totalCount = await unassignedPickupsQuery.CountAsync();
-
-            // Apply pagination
-            var items = await unassignedPickupsQuery
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<RentOrderDetail>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
         }
 
         public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
@@ -364,6 +375,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 Notes = a.Notes,
                 CustomerName = a.RentOrderDetail?.Order?.User?.Name,
                 CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber,
                 EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
                                a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
                                "Unknown",
@@ -377,6 +389,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 TotalCount = totalCount,
                 PageNumber = pageNumber,
                 PageSize = pageSize
+            };
+        }
+        private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
+        {
+            return dayOfWeek switch
+            {
+                DayOfWeek.Monday => WorkDays.Monday,
+                DayOfWeek.Tuesday => WorkDays.Tuesday,
+                DayOfWeek.Wednesday => WorkDays.Wednesday,
+                DayOfWeek.Thursday => WorkDays.Thursday,
+                DayOfWeek.Friday => WorkDays.Friday,
+                DayOfWeek.Saturday => WorkDays.Saturday,
+                DayOfWeek.Sunday => WorkDays.Sunday,
+                _ => WorkDays.Monday // Default case
             };
         }
     }
