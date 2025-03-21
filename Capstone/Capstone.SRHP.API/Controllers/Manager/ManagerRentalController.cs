@@ -155,14 +155,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _rentOrderService.UpdateRentOrderDetailAsync(id, request);
 
                 // Notify the customer if the return date has changed
-                if (request.ExpectedReturnDate.HasValue &&
-                    rentOrderDetail.ExpectedReturnDate != request.ExpectedReturnDate.Value &&
+                if (!string.IsNullOrEmpty(request.ExpectedReturnDate) &&
+                    DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate) &&
+                    rentOrderDetail.ExpectedReturnDate != parsedDate &&
                     rentOrderDetail.Order?.UserId != null)
                 {
                     await _notificationService.NotifyCustomerRentalExtendedAsync(
                         rentOrderDetail.Order.UserId,
                         id,
-                        request.ExpectedReturnDate.Value);
+                        parsedDate);
                 }
 
                 return Ok(new { message = "Rental detail updated successfully" });
@@ -179,7 +180,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return StatusCode(500, new { message = ex.Message });
             }
-        }       
+        }
 
         [HttpGet("{id}/calculate-late-fee")]
         public async Task<IActionResult> CalculateLateFee(int id, [FromQuery] DateTime actualReturnDate)

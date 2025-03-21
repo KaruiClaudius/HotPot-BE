@@ -16,11 +16,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
 
     public class UpdateRentOrderDetailRequest
     {
-        public int? Quantity { get; set; }
-        public decimal? RentalPrice { get; set; }
-        public DateTime? RentalStartDate { get; set; }
-        public DateTime? ExpectedReturnDate { get; set; }
-        public string RentalNotes { get; set; }
+        public string ExpectedReturnDate { get; set; }
+        public string Notes { get; set; }
     }
 
     public class RentOrderDetailDto
@@ -64,5 +61,17 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order
     public class ExtendRentalRequest
     {
         public DateTime NewExpectedReturnDate { get; set; }
+    }
+
+    public class RentalHistoryItem
+    {
+        public int Id { get; set; }
+        public int OrderId { get; set; }
+        public string CustomerName { get; set; }
+        public string EquipmentName { get; set; }
+        public string RentalStartDate { get; set; }
+        public string ExpectedReturnDate { get; set; }
+        public string ActualReturnDate { get; set; }
+        public string Status { get; set; }
     }
 }
