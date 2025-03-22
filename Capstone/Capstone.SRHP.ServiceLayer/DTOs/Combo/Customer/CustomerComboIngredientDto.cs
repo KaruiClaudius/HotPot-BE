@@ -10,7 +10,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo.customer
     {
         public int IngredientID { get; set; }
         public string IngredientName { get; set; }
-        public decimal Quantity { get; set; } // Changed from int to decimal
-        public string MeasurementUnit { get; set; } // Added measurement unit
+        public int Quantity { get; set; }
     }
 }

@@ -26,7 +26,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice);
         Task UpdateIngredientAsync(int id, Ingredient entity);
         Task DeleteIngredientAsync(int id);
-        Task UpdateIngredientQuantityAsync(int id, decimal quantityChange, string unit = null);
+        Task UpdateIngredientQuantityAsync(int id, int quantityChange);
 
 
         // ingredient type operations

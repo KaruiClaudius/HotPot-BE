@@ -14,7 +14,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [DataType(DataType.DateTime)]
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow.AddHours(7);
 
         [DataType(DataType.DateTime)]
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
@@ -24,10 +24,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DefaultValue(false)]
         public bool IsDelete { get; set; } = false;
 
-        protected BaseEntity()
-        {
-            CreatedAt = DateTime.UtcNow.AddHours(7); 
-        }
 
         public virtual void SetUpdateDate()
         {

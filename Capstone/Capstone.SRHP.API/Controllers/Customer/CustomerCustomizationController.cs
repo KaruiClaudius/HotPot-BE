@@ -115,15 +115,6 @@ public class CustomerCustomizationController : ControllerBase
     {
         try
         {
-            // Validate measurement units
-            foreach (var ingredient in request.Ingredients)
-            {
-                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
-                {
-                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
-                }
-            }
-
             var priceEstimate = await _customizationService.CalculatePriceEstimateAsync(
                 request.ComboId,
                 request.Size,
@@ -161,15 +152,6 @@ public class CustomerCustomizationController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token" });
             }
 
-            // Validate measurement units
-            foreach (var ingredient in request.Ingredients)
-            {
-                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
-                {
-                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
-                }
-            }
-
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
                 userId,
@@ -198,6 +180,7 @@ public class CustomerCustomizationController : ControllerBase
         }
     }
 
+
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateCustomization(int id, UpdateCustomizationRequest request)
     {
@@ -217,15 +200,6 @@ public class CustomerCustomizationController : ControllerBase
 
             if (existingCustomization.UserId != userId)
                 return Forbid();
-
-            // Validate measurement units
-            foreach (var ingredient in request.Ingredients)
-            {
-                if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
-                {
-                    return BadRequest(new { message = "Measurement unit cannot be empty for ingredients" });
-                }
-            }
 
             // Update customization properties
             existingCustomization.Name = request.Name;
@@ -339,7 +313,6 @@ public class CustomerCustomizationController : ControllerBase
                     IngredientID = ci.IngredientId,
                     Name = ci.Ingredient?.Name ?? string.Empty,
                     Quantity = ci.Quantity,
-                    MeasurementUnit = ci.MeasurementUnit, // Added measurement unit
                     Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result
                 })
                 .ToList()

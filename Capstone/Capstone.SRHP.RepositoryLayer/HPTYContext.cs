@@ -20,6 +20,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Payment> Payments { get; set; }
         public virtual DbSet<WorkShift> WorkShifts { get; set; }
         public virtual DbSet<Order> Orders { get; set; }
+        public virtual DbSet<SellOrder> SellOrders { get; set; }
+        public virtual DbSet<RentOrder> RentOrders { get; set; }
         public virtual DbSet<SellOrderDetail> SellOrderDetails { get; set; }
         public virtual DbSet<RentOrderDetail> RentOrderDetails { get; set; }
         public virtual DbSet<Customization> Customizations { get; set; }
@@ -179,9 +181,96 @@ namespace Capstone.HPTY.RepositoryLayer
                 .IsRequired()
                 .HasConversion<int>();
 
-            modelBuilder.Entity<Order>()
-                .Property(o => o.TotalPrice)
-                .HasColumnType("decimal(18,2)");
+
+
+            modelBuilder.Entity<Order>(entity =>
+            {
+                modelBuilder.Entity<Order>()
+                    .Property(o => o.TotalPrice)
+                    .HasColumnType("decimal(18,2)");
+
+                // Add new flags
+                entity.Property(o => o.HasSellItems)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+
+                entity.Property(o => o.HasRentItems)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+            });
+
+            // Configure SellOrder relationships
+            modelBuilder.Entity<SellOrder>(entity =>
+            {
+                entity.HasKey(e => e.OrderId);
+
+                entity.HasOne(e => e.Order)
+                    .WithOne(o => o.SellOrder)
+                    .HasForeignKey<SellOrder>(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.SubTotal)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+            });
+
+            // Configure RentOrder relationships
+            modelBuilder.Entity<RentOrder>(entity =>
+            {
+                entity.HasKey(e => e.OrderId);
+
+                entity.HasOne(e => e.Order)
+                    .WithOne(o => o.RentOrder)
+                    .HasForeignKey<RentOrder>(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.SubTotal)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+
+                entity.Property(e => e.HotpotDeposit)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+
+                // Configure rental properties
+                entity.Property(e => e.RentalStartDate)
+                    .IsRequired();
+
+                entity.Property(e => e.ExpectedReturnDate)
+                    .IsRequired();
+            });
+
+            // Update SellOrderDetail relationships
+            modelBuilder.Entity<SellOrderDetail>(entity =>
+            {
+                entity.HasOne(e => e.SellOrder)
+                    .WithMany(o => o.SellOrderDetails)
+                    .HasForeignKey(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.Quantity)
+                    .IsRequired();
+
+                entity.Property(e => e.UnitPrice)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+            });
+
+            // Update RentOrderDetail relationships
+            modelBuilder.Entity<RentOrderDetail>(entity =>
+            {
+                entity.HasOne(e => e.RentOrder)
+                    .WithMany(o => o.RentOrderDetails)
+                    .HasForeignKey(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.Quantity)
+                    .IsRequired();
+
+                entity.Property(e => e.RentalPrice)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+            });
 
             modelBuilder.Entity<ComboAllowedIngredientType>()
                 .HasKey(c => c.ComboAllowedIngredientTypeId);
@@ -872,7 +961,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sliced-beef.jpg",
                     MinStockLevel = 20,
                     Quantity = 100,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -885,7 +973,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/lamb-slices.jpg",
                     MinStockLevel = 15,
                     Quantity = 80,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -898,7 +985,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/pork-belly.jpg",
                     MinStockLevel = 15,
                     Quantity = 75,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 7,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -913,7 +999,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shrimp.jpg",
                     MinStockLevel = 20,
                     Quantity = 90,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -926,7 +1011,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/fish-balls.jpg",
                     MinStockLevel = 30,
                     Quantity = 120,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -939,7 +1023,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/squid.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 2,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -954,7 +1037,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/napa-cabbage.jpg",
                     MinStockLevel = 25,
                     Quantity = 100,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -967,7 +1049,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/spinach.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -980,7 +1061,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/corn.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 3,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -995,7 +1075,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/udon-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1008,7 +1087,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/glass-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 85,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1021,7 +1099,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/ramen-noodles.jpg",
                     MinStockLevel = 25,
                     Quantity = 90,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 4,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1036,7 +1113,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/firm-tofu.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1049,7 +1125,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/tofu-puffs.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 5,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1064,7 +1139,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shiitake.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1077,7 +1151,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/enoki.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
-                    MeasurementUnit = "g",
                     IngredientTypeId = 6,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1092,7 +1165,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sichuan-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1105,7 +1177,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/tomato-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1118,7 +1189,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/mushroom-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1131,7 +1201,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/bone-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 55,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 1,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1146,7 +1215,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/sesame-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1159,7 +1227,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/garlic-soy.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1172,7 +1239,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/chili-oil.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1185,7 +1251,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/shacha-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 35,
-                    MeasurementUnit = "ml",
                     IngredientTypeId = 8,
                     CreatedAt = DateTime.Now,
                     IsDelete = false
@@ -1291,7 +1356,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientPriceId = 11,
                     Price = 0.04m, // $4 per kg = $0.04 per g
-                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),   
+                    EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 9,
                     CreatedAt = DateTime.Now,
                     IsDelete = false

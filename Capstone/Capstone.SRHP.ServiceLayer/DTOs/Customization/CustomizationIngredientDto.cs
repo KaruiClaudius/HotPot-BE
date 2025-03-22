@@ -11,8 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
     {
         public int IngredientID { get; set; }
         public string Name { get; set; }
-        public decimal Quantity { get; set; }
-        public string MeasurementUnit { get; set; } = "g"; 
+        public int Quantity { get; set; }
         public decimal Price { get; set; }
     }
 }

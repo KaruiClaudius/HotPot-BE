@@ -25,18 +25,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string? ImageURL { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,3)")]
-        [Range(0, double.MaxValue)]
-        public decimal MinStockLevel { get; set; }
+        [Column(TypeName = "int")]
+        [Range(0, int.MaxValue)]
+        public int MinStockLevel { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,3)")]
-        [Range(0, double.MaxValue)]
-        public decimal Quantity { get; set; }
-
-        [Required]
-        [StringLength(20)]
-        public string MeasurementUnit { get; set; }
+        [Column(TypeName = "int")]
+        [Range(0, int.MaxValue)]
+        public int Quantity { get; set; }
 
         [Required]
         [ForeignKey("IngredientType")]

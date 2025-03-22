@@ -18,7 +18,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
     {
         private readonly IOrderService _orderService;
         private readonly IUserService _userService;
-        private readonly IAnalyticsService _analyticsService; // You'll need to create this service
+        private readonly IAnalyticsService _analyticsService; 
         private readonly ILogger<AdminDashboardController> _logger;
 
         public AdminDashboardController(
@@ -272,7 +272,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Address = order.Address,
                 Notes = order.Notes,
                 TotalPrice = order.TotalPrice,
-                HotpotDeposit = order.HotpotDeposit ?? 0,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
@@ -288,10 +287,25 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Payment = null
             };
 
-            // Map sell order details
-            if (order.SellOrderDetails != null)
+            // Add hotpot deposit from RentOrder if available
+            if (order.RentOrder != null)
             {
-                foreach (var detail in order.SellOrderDetails.Where(d => !d.IsDelete))
+                response.HotpotDeposit = order.RentOrder.HotpotDeposit;
+
+                // Add rental dates to the response
+                response.RentalStartDate = order.RentOrder.RentalStartDate;
+                response.ExpectedReturnDate = order.RentOrder.ExpectedReturnDate;
+                response.ActualReturnDate = order.RentOrder.ActualReturnDate;
+            }
+            else
+            {
+                response.HotpotDeposit = 0;
+            }
+
+            // Map sell order details
+            if (order.SellOrder?.SellOrderDetails != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
                     string itemType = "";
                     string itemName = "Unknown";
@@ -304,27 +318,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
-
-                        // Add volume/weight information for ingredients
-                        response.Items.Add(new OrderItemResponse
-                        {
-                            OrderDetailId = detail.SellOrderDetailId,
-                            Quantity = detail.Quantity,
-                            VolumeWeight = detail.VolumeWeight,
-                            Unit = detail.Unit ?? detail.Ingredient.MeasurementUnit,
-                            UnitPrice = detail.UnitPrice,
-                            TotalPrice = detail.VolumeWeight.HasValue ?
-                                detail.UnitPrice * detail.VolumeWeight.Value :
-                                detail.UnitPrice * (detail.Quantity ?? 1),
-                            ItemType = itemType,
-                            ItemName = itemName,
-                            ImageUrl = imageUrl,
-                            ItemId = itemId,
-                            IsSellable = true
-                        });
-
-                        // Skip the default add below for ingredients
-                        continue;
                     }
                     else if (detail.CustomizationId.HasValue && detail.Customization != null)
                     {
@@ -345,7 +338,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         OrderDetailId = detail.SellOrderDetailId,
                         Quantity = detail.Quantity,
                         UnitPrice = detail.UnitPrice,
-                        TotalPrice = detail.UnitPrice * (detail.Quantity ?? 1),
+                        TotalPrice = detail.UnitPrice * detail.Quantity,
                         ItemType = itemType,
                         ItemName = itemName,
                         ImageUrl = imageUrl,
@@ -356,9 +349,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
 
             // Map rent order details
-            if (order.RentOrderDetails != null)
+            if (order.RentOrder?.RentOrderDetails != null)
             {
-                foreach (var detail in order.RentOrderDetails.Where(d => !d.IsDelete))
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
                     string itemType = "";
                     string itemName = "Unknown";
@@ -390,10 +383,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         ItemName = itemName,
                         ImageUrl = imageUrl,
                         ItemId = itemId,
-                        IsSellable = false,
-                        RentalStartDate = detail.RentalStartDate,
-                        ExpectedReturnDate = detail.ExpectedReturnDate,
-                        ActualReturnDate = detail.ActualReturnDate
+                        IsSellable = false
                     });
                 }
             }

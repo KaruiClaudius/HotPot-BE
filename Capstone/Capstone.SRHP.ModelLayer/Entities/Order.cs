@@ -20,7 +20,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public string Address { get; set; }
 
         [StringLength(1000)]
-        public string? Notes { get; set; }  
+        public string? Notes { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -30,23 +30,25 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public OrderStatus Status { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal? HotpotDeposit { get; set; }
-
-        [Required]
         [ForeignKey("User")]
         public int UserId { get; set; }
 
         [ForeignKey("Discount")]
-        public int? DiscountId { get; set; }  
+        public int? DiscountId { get; set; }
+
+        public bool HasSellItems { get; set; }
+
+        public bool HasRentItems { get; set; }
 
         public virtual User? User { get; set; }
         public virtual ShippingOrder? ShippingOrder { get; set; }
         public virtual Feedback? Feedback { get; set; }
         public virtual Discount? Discount { get; set; }
         public virtual Payment? Payment { get; set; }
-        public virtual ICollection<SellOrderDetail> SellOrderDetails { get; set; } = new List<SellOrderDetail >();
-        public virtual ICollection<RentOrderDetail> RentOrderDetails { get; set; } = new List<RentOrderDetail>();
+
+        // Navigation properties to the specific order types
+        public virtual SellOrder? SellOrder { get; set; }
+        public virtual RentOrder? RentOrder { get; set; }
 
 
     }

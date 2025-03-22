@@ -9,27 +9,22 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 {
     public class UpdateIngredientRequest
     {
-        [StringLength(100)]
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
-        [StringLength(1000)]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
-        [StringLength(2000)]
-        public string? ImageURL { get; set; }
+        public string ImageURL { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public decimal? Quantity { get; set; }
+        [Range(0, int.MaxValue)]
+        public int? MinStockLevel { get; set; }
 
-        [StringLength(20)]
-        public string? MeasurementUnit { get; set; }
+        [Range(0, int.MaxValue)]
+        public int? Quantity { get; set; }
 
         [Range(0, double.MaxValue)]
-        public decimal? MinStockLevel { get; set; }
-
-        public int? IngredientTypeID { get; set; }
-
-        [Range(0.01, double.MaxValue)]
         public decimal? Price { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int? IngredientTypeID { get; set; }
     }
 }

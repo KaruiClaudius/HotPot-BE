@@ -23,30 +23,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public decimal RentalPrice { get; set; }
 
         [Required]
-        public DateTime RentalStartDate { get; set; }
-
-        [Required]
-        public DateTime ExpectedReturnDate { get; set; }
-
-        public DateTime? ActualReturnDate { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal? LateFee { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal? DamageFee { get; set; }
-
-        [StringLength(500)]
-        public string? RentalNotes { get; set; }
-
-        [StringLength(500)]
-        public string? ReturnCondition { get; set; }
-
+        [ForeignKey("RentOrder")]
         public int OrderId { get; set; }
+
         public int? UtensilId { get; set; }
         public int? HotpotInventoryId { get; set; }
 
-        public virtual Order? Order { get; set; } = null!;
+        public virtual RentOrder RentOrder { get; set; } = null!;
 
         [ForeignKey(nameof(UtensilId))]
         public virtual Utensil? Utensil { get; set; }

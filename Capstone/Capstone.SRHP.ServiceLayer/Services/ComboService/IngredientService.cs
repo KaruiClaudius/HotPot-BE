@@ -55,8 +55,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     query = query.Where(i =>
                         i.Name.ToLower().Contains(searchTerm) ||
                         i.Description != null && i.Description.ToLower().Contains(searchTerm) ||
-                        i.IngredientType.Name.ToLower().Contains(searchTerm) ||
-                        i.MeasurementUnit.ToLower().Contains(searchTerm));
+                        i.IngredientType.Name.ToLower().Contains(searchTerm));
                 }
 
                 // Apply type filter
@@ -192,11 +191,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             ? query.OrderBy(i => i.MinStockLevel)
                             : query.OrderByDescending(i => i.MinStockLevel);
                         break;
-                    case "measurementunit":
-                        orderedQuery = ascending
-                            ? query.OrderBy(i => i.MeasurementUnit)
-                            : query.OrderByDescending(i => i.MeasurementUnit);
-                        break;
                     case "createdat":
                         orderedQuery = ascending
                             ? query.OrderBy(i => i.CreatedAt)
@@ -235,8 +229,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             return await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientPrices)
-                .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
+                .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete)
+                ?? throw new NotFoundException($"Ingredient with ID {id} not found");
         }
+
 
 
         public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice)
@@ -254,21 +250,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (initialPrice < 0)
                 throw new ValidationException("Price cannot be negative");
 
-            // Validate measurement unit
-            if (string.IsNullOrWhiteSpace(entity.MeasurementUnit))
-                throw new ValidationException("Measurement unit cannot be empty");
-
-            // Standardize the measurement unit
-            entity.MeasurementUnit = StandardizeMeasurementUnit(entity.MeasurementUnit);
-
-
             // Check if ingredient type exists
             var ingredientType = await _unitOfWork.Repository<IngredientType>()
                 .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
 
             if (ingredientType == null)
                 throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeId} not found");
-
 
             // Check if ingredient exists (including soft-deleted)
             var existingIngredient = await _unitOfWork.Repository<Ingredient>()
@@ -288,7 +275,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     existingIngredient.ImageURL = entity.ImageURL;
                     existingIngredient.MinStockLevel = entity.MinStockLevel;
                     existingIngredient.Quantity = entity.Quantity;
-                    existingIngredient.MeasurementUnit = entity.MeasurementUnit;
                     existingIngredient.IngredientTypeId = entity.IngredientTypeId;
                     existingIngredient.SetUpdateDate();
 
@@ -325,6 +311,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             return entity;
         }
 
+
+
         public async Task UpdateIngredientAsync(int id, Ingredient entity)
         {
             var existingIngredient = await GetIngredientByIdAsync(id);
@@ -340,13 +328,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             if (entity.Quantity < 0)
                 throw new ValidationException("Quantity cannot be negative");
-
-            // Validate measurement unit
-            if (string.IsNullOrWhiteSpace(entity.MeasurementUnit))
-                throw new ValidationException("Measurement unit cannot be empty");
-
-            // Standardize the measurement unit
-            entity.MeasurementUnit = StandardizeMeasurementUnit(entity.MeasurementUnit);
 
             // Check if ingredient type exists
             var ingredientType = await _unitOfWork.Repository<IngredientType>()
@@ -397,24 +378,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task UpdateIngredientQuantityAsync(int id, decimal quantityChange, string unit = null)
+        public async Task UpdateIngredientQuantityAsync(int id, int quantityChange)
         {
             var ingredient = await GetIngredientByIdAsync(id);
             if (ingredient == null)
                 throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            // If unit is provided and different from the ingredient's unit, convert the quantity
-            if (!string.IsNullOrEmpty(unit) && unit != ingredient.MeasurementUnit)
-            {
-                try
-                {
-                    quantityChange = ConvertMeasurement(quantityChange, unit, ingredient.MeasurementUnit);
-                }
-                catch (Exception ex)
-                {
-                    throw new ValidationException($"Error converting units: {ex.Message}");
-                }
-            }
 
             // Check if the resulting quantity would be negative
             if (ingredient.Quantity + quantityChange < 0)

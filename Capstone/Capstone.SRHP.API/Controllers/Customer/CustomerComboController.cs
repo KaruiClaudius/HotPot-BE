@@ -178,15 +178,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     {
                         IngredientID = ci.IngredientId,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                        Quantity = ci.Quantity,
-                        MeasurementUnit = ci.MeasurementUnit // Added measurement unit
+                        Quantity = ci.Quantity
                     }).ToList() ?? new List<CustomerComboIngredientDto>(),
                     AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Where(ait => !ait.IsDelete).Select(ait => new CustomerAllowedIngredientTypeDto
                     {
                         IngredientTypeId = ait.IngredientTypeId,
                         IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                        MinQuantity = ait.MinQuantity, // Changed from MaxQuantity to MinQuantity
-                        MeasurementUnit = ait.MeasurementUnit // Added measurement unit
+                        MinQuantity = ait.MinQuantity
                     }).ToList() : null
                 };
             }

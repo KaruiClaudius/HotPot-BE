@@ -183,10 +183,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
         public async Task<Combo> CreateComboWithVideoAsync(
-            Combo combo,
-            TurtorialVideo video,
-            List<ComboIngredient> baseIngredients = null,
-            List<ComboAllowedIngredientType> allowedTypes = null)
+        Combo combo,
+        TurtorialVideo video,
+        List<ComboIngredient> baseIngredients = null,
+        List<ComboAllowedIngredientType> allowedTypes = null)
         {
             return await _unitOfWork.ExecuteInTransactionAsync<Combo>(async () =>
             {
@@ -272,36 +272,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         if (!ingredientExists)
                             throw new ValidationException($"Ingredient with ID {ingredient.IngredientId} not found");
 
-                        // Validate measurement unit
-                        if (string.IsNullOrWhiteSpace(ingredient.MeasurementUnit))
-                            throw new ValidationException("Measurement unit cannot be empty");
-
-                        // Get the ingredient to check its measurement unit
-                        var ingredientEntity = await _unitOfWork.Repository<Ingredient>()
-                            .FindAsync(i => i.IngredientId == ingredient.IngredientId && !i.IsDelete);
-
-                        // Standardize measurement unit
-                        ingredient.MeasurementUnit = StandardizeMeasurementUnit(ingredient.MeasurementUnit);
-
-                        // If units don't match, try to convert
-                        if (ingredientEntity != null && ingredient.MeasurementUnit != ingredientEntity.MeasurementUnit)
-                        {
-                            try
-                            {
-                                // Convert quantity to match the ingredient's unit
-                                ingredient.Quantity = ConvertMeasurement(
-                                    ingredient.Quantity,
-                                    ingredient.MeasurementUnit,
-                                    ingredientEntity.MeasurementUnit);
-
-                                // Update the unit to match
-                                ingredient.MeasurementUnit = ingredientEntity.MeasurementUnit;
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new ValidationException($"Error converting units: {ex.Message}");
-                            }
-                        }
+                        // Validate quantity is positive
+                        if (ingredient.Quantity <= 0)
+                            throw new ValidationException("Ingredient quantity must be greater than 0");
 
                         ingredient.ComboId = combo.ComboId;
                         _unitOfWork.Repository<ComboIngredient>().Insert(ingredient);
@@ -324,13 +297,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         if (allowedType.MinQuantity <= 0)
                             throw new ValidationException($"Min quantity for ingredient type must be greater than 0");
 
-                        // Validate measurement unit
-                        if (string.IsNullOrWhiteSpace(allowedType.MeasurementUnit))
-                            throw new ValidationException("Measurement unit cannot be empty");
-
-                        // Standardize measurement unit
-                        allowedType.MeasurementUnit = StandardizeMeasurementUnit(allowedType.MeasurementUnit);
-
                         allowedType.ComboId = combo.ComboId;
                         _unitOfWork.Repository<ComboAllowedIngredientType>().Insert(allowedType);
                     }
@@ -343,14 +309,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Return the complete combo with all relationships loaded
                 return await GetByIdAsync(combo.ComboId);
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Tạo Combo gặp trục trặc", ex);
-            }
-        });
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Tạo Combo gặp trục trặc", ex);
+                }
+            });
         }
 
         public async Task UpdateAsync(int id, Combo combo)
@@ -537,6 +503,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 .ToListAsync();
         }
 
+
         private async Task ValidateHotpotBroth(int brothId)
         {
             var broth = await _unitOfWork.Repository<Ingredient>()
@@ -626,50 +593,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             // Add hotpot broth price
             if (combo.HotpotBrothId > 0)
             {
-                var broth = await _unitOfWork.Repository<Ingredient>()
-                    .FindAsync(i => i.IngredientId == combo.HotpotBrothId && !i.IsDelete);
-
-                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothId);
-
-                if (broth != null)
-                {
-                    basePrice += ingredientPrice;
-                }
+                var brothPrice = await _ingredientService.GetCurrentPriceAsync(combo.HotpotBrothId);
+                basePrice += brothPrice;
             }
 
             // Add prices of all ingredients
             foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
             {
                 var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientId);
-                if (comboIngredient.Ingredient != null)
-                {
-                    // Get the ingredient's standard unit price
-                    var ingredient = comboIngredient.Ingredient;
-
-                    // If the units match, use the quantity directly
-                    if (comboIngredient.MeasurementUnit == ingredient.MeasurementUnit)
-                    {
-                        basePrice += ingredientPrice * comboIngredient.Quantity;
-                    }
-                    else
-                    {
-                        // Convert the quantity to the ingredient's unit for pricing
-                        try
-                        {
-                            var convertedQuantity = ConvertMeasurement(
-                                comboIngredient.Quantity,
-                                comboIngredient.MeasurementUnit,
-                                ingredient.MeasurementUnit);
-
-                            basePrice += ingredientPrice * convertedQuantity;
-                        }
-                        catch
-                        {
-                            // If conversion fails, use the original quantity as a fallback
-                            basePrice += ingredientPrice * comboIngredient.Quantity;
-                        }
-                    }
-                }
+                basePrice += ingredientPrice * comboIngredient.Quantity;
             }
 
             // Calculate per-person base price

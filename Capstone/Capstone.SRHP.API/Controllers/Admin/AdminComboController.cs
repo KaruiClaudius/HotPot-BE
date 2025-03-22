@@ -116,8 +116,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var comboIngredients = request.Ingredients.Select(i => new ComboIngredient
                 {
                     IngredientId = i.IngredientID,
-                    Quantity = i.Quantity,
-                    MeasurementUnit = i.MeasurementUnit // Include measurement unit
+                    Quantity = i.Quantity
                 }).ToList();
 
                 var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, comboIngredients);
@@ -134,6 +133,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return StatusCode(500, new { message = "An error occurred while creating the combo" });
             }
         }
+
 
         [HttpPost("customizable")]
         public async Task<ActionResult<ComboDto>> CreateCustomizable(CreateCustomizableComboRequest request)
@@ -165,8 +165,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var allowedTypes = request.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
                 {
                     IngredientTypeId = t.IngredientTypeId,
-                    MinQuantity = t.MinQuantity, 
-                    MeasurementUnit = t.MeasurementUnit 
+                    MinQuantity = t.MinQuantity
                 }).ToList();
 
                 var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, null, allowedTypes);
@@ -506,8 +505,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ComboIngredientId = ci.ComboIngredientId,
                     IngredientID = ci.IngredientId,
                     IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                    Quantity = ci.Quantity,
-                    MeasurementUnit = ci.MeasurementUnit // Include measurement unit
+                    Quantity = ci.Quantity
                 }).ToList() ?? new List<ComboIngredientDto>(),
                 CreatedAt = combo.CreatedAt,
                 UpdatedAt = (DateTime)combo.UpdatedAt
@@ -545,16 +543,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ComboIngredientId = ci.ComboIngredientId,
                     IngredientID = ci.IngredientId,
                     IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                    Quantity = ci.Quantity,
-                    MeasurementUnit = ci.MeasurementUnit // Include measurement unit
+                    Quantity = ci.Quantity
                 }).ToList() ?? new List<ComboIngredientDto>(),
                 AllowedIngredientTypes = combo.IsCustomizable ? combo.AllowedIngredientTypes?.Select(ait => new ComboAllowedIngredientTypeDto
                 {
                     Id = ait.ComboAllowedIngredientTypeId,
                     IngredientTypeId = ait.IngredientTypeId,
                     IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                    MinQuantity = ait.MinQuantity, // Changed from MaxQuantity to MinQuantity
-                    MeasurementUnit = ait.MeasurementUnit // Include measurement unit
+                    MinQuantity = ait.MinQuantity
                 }).ToList() : null,
                 CreatedAt = combo.CreatedAt,
                 UpdatedAt = (DateTime)combo.UpdatedAt

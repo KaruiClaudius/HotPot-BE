@@ -156,6 +156,44 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin creating new ingredient: {IngredientName}", request.Name);
 
+                // Validate request
+                if (string.IsNullOrWhiteSpace(request.Name))
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Ingredient name cannot be empty"
+                    });
+                }
+
+                if (request.MinStockLevel < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Minimum stock level cannot be negative"
+                    });
+                }
+
+                if (request.Quantity < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Quantity cannot be negative"
+                    });
+                }
+
+                if (request.Price < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Price cannot be negative"
+                    });
+                }
+
+                // Create ingredient entity
                 var ingredient = new Ingredient
                 {
                     Name = request.Name,
@@ -163,11 +201,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ImageURL = request.ImageURL,
                     MinStockLevel = request.MinStockLevel,
                     Quantity = request.Quantity,
-                    MeasurementUnit = request.MeasurementUnit, // New field
                     IngredientTypeId = request.IngredientTypeID
                 };
 
+                // Create ingredient with initial price
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
+
+                // Map to DTO
                 var ingredientDto = MapToIngredientDto(createdIngredient);
                 ingredientDto.Price = request.Price;
 
@@ -202,7 +242,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
 
-
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -212,6 +251,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin updating ingredient with ID: {IngredientId}", id);
 
+                // Get existing ingredient
                 var existingIngredient = await _ingredientService.GetIngredientByIdAsync(id);
                 if (existingIngredient == null)
                 {
@@ -222,7 +262,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Only update properties that are provided in the request
+                // Validate request
+                if (request.MinStockLevel.HasValue && request.MinStockLevel.Value < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Minimum stock level cannot be negative"
+                    });
+                }
+
+                if (request.Quantity.HasValue && request.Quantity.Value < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Quantity cannot be negative"
+                    });
+                }
+
+                if (request.Price.HasValue && request.Price.Value < 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Price cannot be negative"
+                    });
+                }
+
+                // Update properties that are provided in the request
                 if (!string.IsNullOrEmpty(request.Name))
                     existingIngredient.Name = request.Name;
 
@@ -238,24 +306,31 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.Quantity.HasValue)
                     existingIngredient.Quantity = request.Quantity.Value;
 
-                if (!string.IsNullOrEmpty(request.MeasurementUnit))
-                    existingIngredient.MeasurementUnit = request.MeasurementUnit;
-
                 if (request.IngredientTypeID.HasValue && request.IngredientTypeID > 0)
                     existingIngredient.IngredientTypeId = request.IngredientTypeID.Value;
 
+                // Update ingredient
                 await _ingredientService.UpdateIngredientAsync(id, existingIngredient);
 
                 // Add new price if it's provided and different from current price
                 if (request.Price.HasValue)
                 {
-                    var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-                    if (currentPrice != request.Price.Value)
+                    try
                     {
+                        var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
+                        if (currentPrice != request.Price.Value)
+                        {
+                            await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow);
+                        }
+                    }
+                    catch (NotFoundException)
+                    {
+                        // No current price found, add the new price
                         await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow);
                     }
                 }
 
+                // Get updated ingredient
                 var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
                 var ingredientDto = MapToIngredientDto(updatedIngredient);
 
@@ -311,6 +386,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 });
             }
         }
+
 
         [HttpDelete("{id}")]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
@@ -412,10 +488,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURL = ingredient.ImageURL ?? string.Empty,
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
-                MeasurementUnit = ingredient.MeasurementUnit, 
                 IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
-                Price = 0, 
+                Price = 0, // This will be set later from the current price
                 CreatedAt = ingredient.CreatedAt,
                 UpdatedAt = ingredient.UpdatedAt,
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel

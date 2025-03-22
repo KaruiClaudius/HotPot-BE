@@ -13,11 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public int IngredientID { get; set; }
 
         [Required]
-        [Range(0.001, double.MaxValue)]
-        public decimal Quantity { get; set; }
+        public int Quantity { get; set; }
 
-        [Required]
-        [StringLength(20)]
-        public string MeasurementUnit { get; set; }
     }
 }

@@ -323,7 +323,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     ImageURLs = x.Ingredient.ImageURL != null ? new[] { x.Ingredient.ImageURL } : new string[0],
                     IsAvailable = x.Ingredient.Quantity > 0,
                     ProductType = "Ingredient",
-                    MeasurementUnit = x.Ingredient.MeasurementUnit,
                     TypeId = x.Ingredient.IngredientTypeId,
                     TypeName = x.Ingredient.IngredientType.Name
                 });
@@ -741,8 +740,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 query = query.Where(i =>
                     i.Name.ToLower().Contains(searchTerm) ||
                     (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
-                    i.IngredientType.Name.ToLower().Contains(searchTerm) ||
-                    i.MeasurementUnit.ToLower().Contains(searchTerm));
+                    i.IngredientType.Name.ToLower().Contains(searchTerm));
             }
 
             // Apply type filter
@@ -792,11 +790,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         ? filteredIngredients.OrderBy(i => i.Ingredient.IngredientType.Name).ThenBy(i => i.Ingredient.Name)
                         : filteredIngredients.OrderByDescending(i => i.Ingredient.IngredientType.Name).ThenBy(i => i.Ingredient.Name);
                     break;
-                case "measurementunit":
-                    orderedIngredients = ascending
-                        ? filteredIngredients.OrderBy(i => i.Ingredient.MeasurementUnit).ThenBy(i => i.Ingredient.Name)
-                        : filteredIngredients.OrderByDescending(i => i.Ingredient.MeasurementUnit).ThenBy(i => i.Ingredient.Name);
-                    break;
+
                 default: // Default to Name
                     orderedIngredients = ascending
                         ? filteredIngredients.OrderBy(i => i.Ingredient.Name)
@@ -859,7 +853,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ImageURLs = ingredient.ImageURL != null ? new[] { ingredient.ImageURL } : new string[0],
                 IsAvailable = ingredient.Quantity > 0,
                 ProductType = "Ingredient",
-                MeasurementUnit = ingredient.MeasurementUnit,
                 TypeId = ingredient.IngredientTypeId,
                 TypeName = ingredient.IngredientType?.Name ?? "Unknown"
             };

@@ -13,16 +13,13 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int ComboIngredientId { get; set; }
-        [Required]
-        [Column(TypeName = "decimal(18,3)")]
-        [Range(0, double.MaxValue)]
-        public decimal Quantity { get; set; }
 
         [Required]
-        [StringLength(20)]
-        public string MeasurementUnit { get; set; }
+        [Range(1, int.MaxValue)]
+        public int Quantity { get; set; }
 
         public int ComboId { get; set; }
+
         public int IngredientId { get; set; }
 
         public virtual Combo Combo { get; set; } = null!;
