@@ -7,6 +7,8 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
@@ -286,5 +288,133 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 .GetAll(f => f.ApprovalStatus == status)
                 .CountAsync();
         }
+        public async Task<PagedResult<Feedback>> GetFilteredFeedbackAsync(FeedbackFilterRequest request)
+        {
+            // Start with base query
+            var query = _unitOfWork.Repository<Feedback>()
+                .AsQueryable()
+                .Include(f => f.User)
+                .Include(f => f.Order)
+                .Include(f => f.Manager)
+                .Include(f => f.ApprovedByUser)
+                .AsQueryable(); 
+
+            // Apply filters (only if provided)
+            if (request.ApprovalStatus.HasValue)
+            {
+                query = query.Where(f => f.ApprovalStatus == request.ApprovalStatus.Value);
+            }
+
+            if (request.UserId.HasValue)
+            {
+                query = query.Where(f => f.UserId == request.UserId.Value);
+            }
+
+            if (request.OrderId.HasValue)
+            {
+                query = query.Where(f => f.OrderId == request.OrderId.Value);
+            }
+
+            if (request.FromDate.HasValue)
+            {
+                query = query.Where(f => f.CreatedAt >= request.FromDate.Value);
+            }
+
+            if (request.ToDate.HasValue)
+            {
+                // Add one day to include the entire end date
+                var endDate = request.ToDate.Value.AddDays(1).AddTicks(-1);
+                query = query.Where(f => f.CreatedAt <= endDate);
+            }
+
+            if (request.HasResponse.HasValue)
+            {
+                if (request.HasResponse.Value)
+                {
+                    query = query.Where(f => !string.IsNullOrEmpty(f.Response));
+                }
+                else
+                {
+                    query = query.Where(f => string.IsNullOrEmpty(f.Response));
+                }
+            }
+
+            // Apply search (only if provided)
+            if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+            {
+                var searchTerm = request.SearchTerm.ToLower();
+                query = query.Where(f =>
+                    f.Title.ToLower().Contains(searchTerm) ||
+                    f.Comment.ToLower().Contains(searchTerm) ||
+                    (f.Response != null && f.Response.ToLower().Contains(searchTerm)) ||
+                    (f.User != null && f.User.Name.ToLower().Contains(searchTerm))
+                );
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply sorting
+            query = ApplySorting(query, request.SortBy, !request.Ascending);
+
+            // Apply pagination
+            var items = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            // Return paged result
+            return new PagedResult<Feedback>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+        }
+
+        private IQueryable<Feedback> ApplySorting(IQueryable<Feedback> query, string sortBy, bool sortDescending)
+        {
+            // Default to CreatedAt if sortBy is invalid
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                sortBy = "CreatedAt";
+            }
+
+            // Apply sorting based on property name
+            switch (sortBy.ToLower())
+            {
+                case "title":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.Title)
+                        : query.OrderBy(f => f.Title);
+                case "username":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.User.Name)
+                        : query.OrderBy(f => f.User.Name);
+                case "orderid":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.OrderId)
+                        : query.OrderBy(f => f.OrderId);
+                case "approvalstatus":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.ApprovalStatus)
+                        : query.OrderBy(f => f.ApprovalStatus);
+                case "responsedate":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.ResponseDate)
+                        : query.OrderBy(f => f.ResponseDate);
+                case "approvaldate":
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.ApprovalDate)
+                        : query.OrderBy(f => f.ApprovalDate);
+                case "createdat":
+                default:
+                    return sortDescending
+                        ? query.OrderByDescending(f => f.CreatedAt)
+                        : query.OrderBy(f => f.CreatedAt);
+            }
+        }
+
     }
 }

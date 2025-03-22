@@ -25,6 +25,42 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _feedbackHubContext = feedbackHubContext;
         }
 
+        [HttpGet("filter")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetFilteredFeedback([FromQuery] FeedbackFilterRequest request)
+        {
+            try
+            {
+                // Validate and fix request parameters
+                if (request.PageNumber < 1)
+                    request.PageNumber = 1;
+
+                if (request.PageSize < 1)
+                    request.PageSize = 10;
+                else if (request.PageSize > 100)
+                    request.PageSize = 100;
+
+                if (request.FromDate.HasValue && request.ToDate.HasValue && request.FromDate > request.ToDate)
+                {
+                    var temp = request.FromDate;
+                    request.FromDate = request.ToDate;
+                    request.ToDate = temp;
+                }
+
+                var pagedResult = await _feedbackService.GetFilteredFeedbackAsync(request);
+
+                return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(
+                    pagedResult,
+                    "Feedback retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<PagedResult<Feedback>>.ErrorResponse(ex.Message));
+            }
+        }
+
+
         [HttpGet("by-status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
