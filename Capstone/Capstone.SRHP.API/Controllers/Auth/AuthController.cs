@@ -67,17 +67,17 @@ namespace Capstone.HPTY.API.Controllers.Auth
         {
             try
             {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
-                {
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {
                         Status = "Error",
                         Message = "Chưa xác thực, vui lòng đăng nhập"
                     });
-                }
 
-                var user = await _userService.GetByIdAsync(id);
+                int userId = int.Parse(userIdClaim.Value);             
+
+                var user = await _userService.GetByIdAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiErrorResponse
@@ -165,18 +165,18 @@ namespace Capstone.HPTY.API.Controllers.Auth
         {
             try
             {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
-                {
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {
                         Status = "Error",
                         Message = "Chưa xác thực, vui lòng đăng nhập"
                     });
-                }
+
+                int userId = int.Parse(userIdClaim.Value);
 
                 // Get the current user to preserve existing data
-                var currentUser = await _userService.GetByIdAsync(id);
+                var currentUser = await _userService.GetByIdAsync(userId);
                 if (currentUser == null)
                 {
                     return NotFound(new ApiErrorResponse
@@ -189,7 +189,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 // Create a User entity with updated fields
                 var userToUpdate = new User
                 {
-                    UserId = id,
+                    UserId = userId,
                     Name = request.Name ?? currentUser.Name,
                     Address = request.Address ?? currentUser.Address,
                     ImageURL = request.ImageURL ?? currentUser.ImageURL,
@@ -204,10 +204,10 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 };
 
                 // Update the user
-                await _userService.UpdateAsync(id, userToUpdate);
+                await _userService.UpdateAsync(userId, userToUpdate);
 
                 // Get the updated user
-                var updatedUser = await _userService.GetByIdAsync(id);
+                var updatedUser = await _userService.GetByIdAsync(userId);
 
                 // Map to DTO
                 var userDto = new UserDto
@@ -286,11 +286,17 @@ namespace Capstone.HPTY.API.Controllers.Auth
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userId, out int id))
-            {
-                await _authService.LogoutAsync(id);
-            }
+            var userIdClaim = User.FindFirst("uid");
+            if (userIdClaim == null)
+                return Unauthorized(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Chưa xác thực, vui lòng đăng nhập"
+                });
+
+            int userId = int.Parse(userIdClaim.Value);           
+                await _authService.LogoutAsync(userId);
+           
 
             return Ok(new ApiResponse<object>
             {
@@ -310,18 +316,18 @@ namespace Capstone.HPTY.API.Controllers.Auth
             try
             {
                 // Get the current user's ID from the token
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
-                {
+                var userIdClaim = User.FindFirst("uid");
+                if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {
                         Status = "Error",
                         Message = "Chưa xác thực, vui lòng đăng nhập"
                     });
-                }
+
+                int userId = int.Parse(userIdClaim.Value);
 
                 // Verify current password
-                var user = await _userService.GetByIdAsync(id);
+                var user = await _userService.GetByIdAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiErrorResponse
@@ -342,7 +348,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 }
 
                 // Update the password
-                await _userService.UpdatePasswordAsync(id, request.NewPassword);
+                await _userService.UpdatePasswordAsync(userId, request.NewPassword);
 
                 return Ok(new ApiResponse<string>
                 {
