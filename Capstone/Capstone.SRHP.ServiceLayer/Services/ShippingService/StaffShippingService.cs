@@ -39,7 +39,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails);
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails);
 
                 var shippingOrders = await shippingOrdersQuery.ToListAsync();
                 return shippingOrders.Select(MapToShippingListDto).ToList();
@@ -64,19 +64,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                             .ThenInclude(od => od.Customization)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                             .ThenInclude(od => od.Combo)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrderDetails)
+                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
                             .ThenInclude(rd => rd.Utensil)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrderDetails)
+                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
                             .ThenInclude(rd => rd.HotpotInventory)
                                 .ThenInclude(hi => hi != null ? hi.Hotpot : null);
 
@@ -109,7 +109,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                     .OrderBy(so => so.DeliveryTime);
 
                 var pendingShippingOrders = await pendingShippingOrdersQuery.ToListAsync();
@@ -174,9 +174,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             };
 
             // Map sell order details to shipping items
-            if (shippingOrder.Order?.SellOrderDetails != null)
+            if (shippingOrder.Order?.SellOrder.SellOrderDetails != null)
             {
-                foreach (var detail in shippingOrder.Order.SellOrderDetails)
+                foreach (var detail in shippingOrder.Order.SellOrder.SellOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
@@ -202,16 +202,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
-                        Quantity = detail.Quantity ?? 0,
+                        Quantity = detail.Quantity,
                         IsRental = false
                     });
                 }
             }
 
             // Map rental order details to shipping items
-            if (shippingOrder.Order?.RentOrderDetails != null)
+            if (shippingOrder.Order?.RentOrder.RentOrderDetails != null)
             {
-                foreach (var rental in shippingOrder.Order.RentOrderDetails)
+                foreach (var rental in shippingOrder.Order.RentOrder.RentOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Rental";
@@ -234,8 +234,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         ItemType = itemType,
                         Quantity = rental.Quantity,
                         IsRental = true,
-                        RentalStartDate = rental.RentalStartDate,
-                        ExpectedReturnDate = rental.ExpectedReturnDate
+                        RentalStartDate = rental.RentOrder.RentalStartDate,
+                        ExpectedReturnDate = rental.RentOrder.ExpectedReturnDate
                     });
                 }
             }

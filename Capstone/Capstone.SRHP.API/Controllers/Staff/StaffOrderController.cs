@@ -310,7 +310,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 UserPhone = order.User?.PhoneNumber ?? "Unknown",
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                OrderDetails = order.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>()
+                OrderDetails = order.SellOrder.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>()
             };
         }
 
@@ -350,8 +350,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 ItemName = itemName,
                 ItemType = itemType,
                 ItemId = itemId,
-                VolumeWeight = detail.VolumeWeight,
-                Unit = detail.Unit
+             
             };
         }
     }

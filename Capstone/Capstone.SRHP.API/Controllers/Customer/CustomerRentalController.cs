@@ -90,7 +90,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                if (rentOrderDetail.Order.UserId != userId)
+                if (rentOrderDetail.RentOrder.Order.UserId != userId)
                 {
                     return Forbid();
                 }
@@ -120,7 +120,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                if (rentOrderDetail.Order.UserId != userId)
+                if (rentOrderDetail.RentOrder.Order.UserId != userId)
                 {
                     return Forbid();
                 }

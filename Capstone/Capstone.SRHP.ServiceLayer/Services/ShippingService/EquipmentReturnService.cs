@@ -78,7 +78,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
         {
             var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
                 .AsQueryable()
-                .Include(r => r.Order)
+                .Include(r => r.RentOrder)
+                    .ThenInclude(r=>r.Order)
                     .ThenInclude(o => o.User)
                 .Include(r => r.Utensil)
                 .Include(r => r.HotpotInventory)
@@ -103,10 +104,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
                 // Send notification to the customer
                 var rentOrderDetail = await GetRentOrderDetailAsync(request.RentOrderDetailId.Value);
-                if (rentOrderDetail.Order?.UserId != null)
+                if (rentOrderDetail.RentOrder.Order?.UserId != null)
                 {
                     await _notificationService.NotifyCustomerRentalReturnedAsync(
-                        rentOrderDetail.Order.UserId,
+                        rentOrderDetail.RentOrder.Order.UserId,
                         request.RentOrderDetailId.Value);
                 }
 
@@ -122,32 +123,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             var rentOrderDetail = await GetRentOrderDetailAsync(rentOrderDetailId);
 
             // Validate request
-            if (request.ReturnDate < rentOrderDetail.RentalStartDate)
+            if (request.ReturnDate < rentOrderDetail.RentOrder.RentalStartDate)
                 throw new ValidationException("Return date cannot be earlier than rental start date");
 
             // Update rent order detail
-            rentOrderDetail.ActualReturnDate = request.ReturnDate;
-            rentOrderDetail.ReturnCondition = request.ReturnCondition;
+            rentOrderDetail.RentOrder.ActualReturnDate = request.ReturnDate;
+            rentOrderDetail.RentOrder.ReturnCondition = request.ReturnCondition;
 
             // Calculate late fee if applicable
-            if (request.ReturnDate > rentOrderDetail.ExpectedReturnDate)
+            if (request.ReturnDate > rentOrderDetail.RentOrder.ExpectedReturnDate)
             {
-                var daysLate = (request.ReturnDate - rentOrderDetail.ExpectedReturnDate).Days;
-                rentOrderDetail.LateFee = daysLate * (rentOrderDetail.RentalPrice * 0.1m); // 10% of rental price per day
+                var daysLate = (request.ReturnDate - rentOrderDetail.RentOrder.ExpectedReturnDate).Days;
+                rentOrderDetail.RentOrder.LateFee = daysLate * (rentOrderDetail.RentalPrice * 0.1m); // 10% of rental price per day
             }
 
             // Set damage fee if applicable
             if (!string.IsNullOrEmpty(request.ReturnCondition) && request.DamageFee.HasValue)
             {
-                rentOrderDetail.DamageFee = request.DamageFee;
+                rentOrderDetail.RentOrder.DamageFee = request.DamageFee;
             }
 
             // Update notes
             if (!string.IsNullOrEmpty(request.Notes))
             {
-                rentOrderDetail.RentalNotes = string.IsNullOrEmpty(rentOrderDetail.RentalNotes)
+                rentOrderDetail.RentOrder.RentalNotes = string.IsNullOrEmpty(rentOrderDetail.RentOrder.RentalNotes)
                     ? request.Notes
-                    : $"{rentOrderDetail.RentalNotes}\n{request.Notes}";
+                    : $"{rentOrderDetail.RentOrder.RentalNotes}\n{request.Notes}";
             }
 
             rentOrderDetail.SetUpdateDate();
@@ -167,7 +168,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 .AsQueryable(r => r.OrderId == orderId && !r.IsDelete)
                 .ToListAsync();
 
-            if (allRentals.All(r => r.ActualReturnDate.HasValue))
+            if (allRentals.All(r => r.RentOrder.ActualReturnDate.HasValue))
             {
                 // All items returned, update order status if it's in Returning status
                 if (order.Status == OrderStatus.Returning)

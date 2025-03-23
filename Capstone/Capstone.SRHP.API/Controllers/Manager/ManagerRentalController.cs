@@ -162,11 +162,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the customer if the return date has changed
                 if (!string.IsNullOrEmpty(request.ExpectedReturnDate) &&
                     DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate) &&
-                    rentOrderDetail.ExpectedReturnDate != parsedDate &&
-                    rentOrderDetail.Order?.UserId != null)
+                    rentOrderDetail.RentOrder.ExpectedReturnDate != parsedDate &&
+                    rentOrderDetail.RentOrder.Order?.UserId != null)
                 {
                     await _notificationService.NotifyCustomerRentalExtendedAsync(
-                        rentOrderDetail.Order.UserId,
+                        rentOrderDetail.RentOrder.Order.UserId,
                         id,
                         parsedDate);
                 }

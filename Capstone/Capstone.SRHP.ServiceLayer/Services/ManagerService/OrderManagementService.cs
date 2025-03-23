@@ -117,8 +117,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 var orders = await _unitOfWork.Repository<Order>()
                     .GetAll(o => o.ShippingOrder == null && !o.IsDelete)
                     .Include(o => o.User)
-                    .Include(o => o.SellOrderDetails)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                     .ToListAsync();
 
                 return orders;
@@ -149,9 +149,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrderDetails)
+                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
                     .Include(so => so.Staff)
                     .ToListAsync();
 
@@ -202,15 +202,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .FirstOrDefaultAsync();
@@ -238,8 +238,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
-                    .Include(o => o.SellOrderDetails)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                     .ToListAsync();
 
                 return orders;
@@ -333,9 +333,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrderDetails)
+                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
                     .Include(so => so.Staff)
                     .ToListAsync();
 
@@ -413,15 +413,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so != null ? so.Staff : null)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .OrderByDescending(o => o.CreatedAt)
