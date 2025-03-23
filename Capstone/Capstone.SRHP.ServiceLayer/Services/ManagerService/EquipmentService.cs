@@ -141,10 +141,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 var hotPotSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
                     .Where(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
-                    .Include(od => od.Order)
+                    .Include(od => od.RentOrder)
+                        .ThenInclude(o => o.Order)
                         .ThenInclude(o => o.User)
-                    .Where(od => od.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(od => od.Order.UserId)
+                    .Where(od => od.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(od => od.RentOrder.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 
@@ -157,10 +158,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 var hotPotRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
                     .Where(rd => rd.HotpotInventoryId == conditionLog.HotPotInventoryId)
-                    .Include(rd => rd.Order)
+                    .Include(rd => rd.RentOrder)
+                        .ThenInclude(r=> r.Order)                     
                         .ThenInclude(o => o.User)
-                    .Where(rd => rd.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(rd => rd.Order.UserId)
+                    .Where(rd => rd.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(rd => rd.RentOrder.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 
@@ -176,10 +178,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 var utensilSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
                     .Where(od => od.UtensilId == conditionLog.UtensilId)
-                    .Include(od => od.Order)
+                    .Include(od => od.RentOrder)
+                        .ThenInclude(od => od.Order)
                         .ThenInclude(o => o.User)
-                    .Where(od => od.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(od => od.Order.UserId)
+                    .Where(od => od.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(od => od.RentOrder.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 
@@ -192,10 +195,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 var utensilRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
                     .Where(rd => rd.UtensilId == conditionLog.UtensilId)
-                    .Include(rd => rd.Order)
+                    .Include(rd => rd.RentOrder)
+                        .ThenInclude(rd => rd.Order)
                         .ThenInclude(o => o.User)
-                    .Where(rd => rd.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(rd => rd.Order.UserId)
+                    .Where(rd => rd.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
+                    .Select(rd => rd.RentOrder.Order.UserId)
                     .Distinct()
                     .ToListAsync();
 

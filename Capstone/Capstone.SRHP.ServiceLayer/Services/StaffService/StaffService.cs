@@ -263,7 +263,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .AsQueryable(a => a.StaffId == staffId)
                 .Include(a => a.Staff)
                 .Include(a => a.RentOrderDetail)
-                    .ThenInclude(r => r.Order)
+                    .ThenInclude(r => r.RentOrder)
+                    .ThenInclude(r=> r.Order)
                         .ThenInclude(o => o.User)
                 .Include(a => a.RentOrderDetail.Utensil)
                 .Include(a => a.RentOrderDetail.HotpotInventory)
@@ -280,14 +281,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 AssignedDate = a.AssignedDate,
                 CompletedDate = a.CompletedDate,
                 Notes = a.Notes,
-                CustomerName = a.RentOrderDetail?.Order?.User?.Name,
-                CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
-                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber,
+                CustomerName = a.RentOrderDetail?.RentOrder.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.RentOrder.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.RentOrder.Order?.User?.PhoneNumber,
                 EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
                                a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
                                "Unknown",
                 Quantity = a.RentOrderDetail?.Quantity ?? 0,
-                ExpectedReturnDate = a.RentOrderDetail?.ExpectedReturnDate ?? DateTime.Now
+                ExpectedReturnDate = a.RentOrderDetail?.RentOrder?.ExpectedReturnDate ?? DateTime.Now
             }).ToList();
 
             return assignmentDtos;
@@ -300,6 +301,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .AsQueryable(a => a.CompletedDate == null && !a.IsDelete)
                 .Include(a => a.Staff)
                 .Include(a => a.RentOrderDetail)
+                    .ThenInclude(r => r.RentOrder)
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
                 .Include(a => a.RentOrderDetail.Utensil)
@@ -326,14 +328,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 AssignedDate = a.AssignedDate,
                 CompletedDate = a.CompletedDate,
                 Notes = a.Notes,
-                CustomerName = a.RentOrderDetail?.Order?.User?.Name,
-                CustomerAddress = a.RentOrderDetail?.Order?.User?.Address,
-                CustomerPhone = a.RentOrderDetail?.Order?.User?.PhoneNumber,
+                CustomerName = a.RentOrderDetail?.RentOrder.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.RentOrder.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.RentOrder.Order?.User?.PhoneNumber,
                 EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
                                a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
                                "Unknown",
                 Quantity = a.RentOrderDetail?.Quantity ?? 0,
-                ExpectedReturnDate = a.RentOrderDetail?.ExpectedReturnDate ?? DateTime.Now
+                ExpectedReturnDate = a.RentOrderDetail?.RentOrder.ExpectedReturnDate ?? DateTime.Now
             }).ToList();
 
             return new PagedResult<StaffPickupAssignmentDto>

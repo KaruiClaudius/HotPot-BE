@@ -67,15 +67,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .OrderByDescending(o => o.CreatedAt);
@@ -122,15 +122,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .FirstOrDefaultAsync();
@@ -208,7 +208,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Notes = order.Notes ?? string.Empty,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status,
-                HotpotDeposit = order.HotpotDeposit,
+                HotpotDeposit = order.RentOrder.HotpotDeposit,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
                 HasShipping = order.ShippingOrder != null,
@@ -217,9 +217,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             };
 
             // Map sell order details to order items
-            if (order.SellOrderDetails != null && order.SellOrderDetails.Any())
+            if (order.SellOrder.SellOrderDetails != null && order.SellOrder.SellOrderDetails.Any())
             {
-                foreach (var detail in order.SellOrderDetails)
+                foreach (var detail in order.SellOrder.SellOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
@@ -246,9 +246,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         OrderDetailId = detail.SellOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
-                        Quantity = detail.Quantity ?? 0,
-                        VolumeWeight = detail.VolumeWeight,
-                        Unit = detail.Unit,
+                        Quantity = detail.Quantity,
                         Price = price,
                         IsRental = false
                     });
@@ -256,9 +254,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // Map rental order details to order items
-            if (order.RentOrderDetails != null && order.RentOrderDetails.Any())
+            if (order.RentOrder.RentOrderDetails != null && order.RentOrder.RentOrderDetails.Any())
             {
-                foreach (var rental in order.RentOrderDetails)
+                foreach (var rental in order.RentOrder.RentOrderDetails)
                 {
                     string itemName = "Unknown";
                     string itemType = "Rental";
@@ -282,13 +280,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         Quantity = rental.Quantity,
                         Price = rental.RentalPrice,
                         IsRental = true,
-                        RentalStartDate = rental.RentalStartDate,
-                        ExpectedReturnDate = rental.ExpectedReturnDate,
-                        ActualReturnDate = rental.ActualReturnDate,
-                        LateFee = rental.LateFee,
-                        DamageFee = rental.DamageFee,
-                        RentalNotes = rental.RentalNotes,
-                        ReturnCondition = rental.ReturnCondition
+                        RentalStartDate = rental.RentOrder.RentalStartDate,
+                        ExpectedReturnDate = rental.RentOrder.ExpectedReturnDate,
+                        ActualReturnDate = rental.RentOrder.ActualReturnDate,
+                        LateFee = rental.RentOrder.LateFee,
+                        DamageFee = rental.RentOrder.DamageFee,
+                        RentalNotes = rental.RentOrder.RentalNotes,
+                        ReturnCondition = rental.RentOrder.ReturnCondition
                     });
                 }
             }
