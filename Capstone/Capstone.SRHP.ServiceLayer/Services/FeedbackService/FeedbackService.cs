@@ -31,13 +31,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
         public async Task<Feedback> GetFeedbackByIdAsync(int feedbackId)
         {
-            return await _unitOfWork.Repository<Feedback>()
-                .AsQueryable(f => f.FeedbackId == feedbackId)
-                .Include(f => f.User)
-                .Include(f => f.Order)
-                .Include(f => f.Manager)
-                .Include(f => f.ApprovedByUser)
-                .FirstOrDefaultAsync();
+            var feedback = await _unitOfWork.Repository<Feedback>()
+                 .AsQueryable()
+                 .Include(f => f.User)
+                 .Include(f => f.Order)
+                 .Include(f => f.Manager)
+                 .Include(f => f.ApprovedByUser)
+                 .FirstOrDefaultAsync(f => f.FeedbackId == feedbackId && !f.IsDelete);
+
+            if (feedback == null)
+            {
+                throw new NotFoundException($"Feedback with ID {feedbackId} not found");
+            }
+
+            return feedback;
         }
 
         public async Task<IEnumerable<Feedback>> GetAllFeedbackAsync(int pageNumber = 1, int pageSize = 10)
@@ -297,7 +304,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 .Include(f => f.Order)
                 .Include(f => f.Manager)
                 .Include(f => f.ApprovedByUser)
-                .AsQueryable(); 
+                .AsQueryable();
 
             // Apply filters (only if provided)
             if (request.ApprovalStatus.HasValue)
@@ -415,6 +422,5 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                         : query.OrderBy(f => f.CreatedAt);
             }
         }
-
     }
 }

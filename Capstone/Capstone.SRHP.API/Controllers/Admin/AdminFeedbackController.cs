@@ -25,10 +25,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _feedbackHubContext = feedbackHubContext;
         }
 
-        [HttpGet("filter")]
+        [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetFilteredFeedback([FromQuery] FeedbackFilterRequest request)
+        public async Task<ActionResult<ApiResponse<PagedResult<FeedbackListDto>>>> GetFilteredFeedback([FromQuery] FeedbackFilterRequest request)
         {
             try
             {
@@ -50,13 +50,46 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var pagedResult = await _feedbackService.GetFilteredFeedbackAsync(request);
 
-                return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(
-                    pagedResult,
+                // Map to DTOs
+                var dtoPagedResult = new PagedResult<FeedbackListDto>
+                {
+                    Items = pagedResult.Items.Select(MapToFeedbackListDto).ToList(),
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
+                };
+
+                return Ok(ApiResponse<PagedResult<FeedbackListDto>>.SuccessResponse(
+                    dtoPagedResult,
                     "Feedback retrieved successfully"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<PagedResult<Feedback>>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<PagedResult<FeedbackListDto>>.ErrorResponse(ex.Message));
+            }
+        }
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<FeedbackDetailDto>>> GetFeedbackById(int id)
+        {
+            try
+            {
+                var feedback = await _feedbackService.GetFeedbackByIdAsync(id);
+                var feedbackDto = MapToFeedbackDetailDto(feedback);
+
+                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(
+                    feedbackDto,
+                    "Feedback retrieved successfully"));
+            }
+            catch (ModelLayer.Exceptions.NotFoundException ex)
+            {
+                return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
         }
 
@@ -196,5 +229,50 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
         }
+
+        #region Mapping Methods
+
+        private FeedbackListDto MapToFeedbackListDto(Feedback feedback)
+        {
+            return new FeedbackListDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                UserName = feedback.User?.Name ?? "Unknown",
+                OrderId = feedback.OrderId,
+                ApprovalStatus = feedback.ApprovalStatus,
+                HasResponse = !string.IsNullOrEmpty(feedback.Response),
+                CreatedAt = feedback.CreatedAt,
+                ResponseDate = feedback.ResponseDate,
+                ApprovalDate = feedback.ApprovalDate
+            };
+        }
+
+        private FeedbackDetailDto MapToFeedbackDetailDto(Feedback feedback)
+        {
+            return new FeedbackDetailDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                Comment = feedback.Comment,
+                ImageURLs = feedback.ImageURLs ?? Array.Empty<string>(),
+                Response = feedback.Response,
+                ResponseDate = feedback.ResponseDate,
+                ManagerId = feedback.ManagerId,
+                ManagerName = feedback.Manager?.Name,
+                OrderId = feedback.OrderId,
+                UserId = feedback.UserId,
+                UserName = feedback.User?.Name,
+                ApprovalStatus = feedback.ApprovalStatus,
+                ApprovalDate = feedback.ApprovalDate,
+                ApprovedByUserId = feedback.ApprovedByUserId,
+                ApprovedByUserName = feedback.ApprovedByUser?.Name,
+                RejectionReason = feedback.RejectionReason,
+                CreatedAt = feedback.CreatedAt,
+                UpdatedAt = feedback.UpdatedAt
+            };
+        }
+
+        #endregion
     }
 }
