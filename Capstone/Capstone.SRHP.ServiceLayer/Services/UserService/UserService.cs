@@ -212,6 +212,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 // Update user properties
                 existingUser.Name = entity.Name;
                 existingUser.PhoneNumber = entity.PhoneNumber;
+                existingUser.Email = entity.Email;
                 existingUser.Address = entity.Address;
                 existingUser.ImageURL = entity.ImageURL;
                 existingUser.WorkDays = entity.WorkDays;
