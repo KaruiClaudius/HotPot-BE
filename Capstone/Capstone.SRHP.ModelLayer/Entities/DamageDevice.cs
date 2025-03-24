@@ -27,9 +27,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public MaintenanceStatus Status { get; set; }
 
         [Required]
-        public MaintenanceScheduleType ScheduleType { get; set; }
-
-        [Required]
         [DataType(DataType.DateTime)]
         public DateTime LoggedDate { get; set; }
 

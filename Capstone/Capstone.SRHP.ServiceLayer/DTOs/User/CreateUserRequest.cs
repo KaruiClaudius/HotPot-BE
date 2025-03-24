@@ -18,7 +18,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.User
         [Required]
         [Phone]
         public string PhoneNumber { get; set; } = null!;
-        public string Address { get; set; } = null!;
         public string RoleName { get; set; } = null!;
     }
 }

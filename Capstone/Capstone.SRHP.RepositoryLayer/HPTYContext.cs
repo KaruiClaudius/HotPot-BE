@@ -410,10 +410,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired()
                     .HasConversion<int>();
 
-                entity.Property(e => e.ScheduleType)
-                    .IsRequired()
-                    .HasConversion<int>();
-
                 modelBuilder.Entity<DamageDevice>()
                      .HasOne(c => c.Utensil)
                      .WithMany(u => u.ConditionLogs)
@@ -425,11 +421,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 .WithOne(h => h.TurtorialVideo)
                 .HasForeignKey(h => h.TurtorialVideoId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
-            modelBuilder.Entity<HotPotInventory>()
-                .HasIndex(hi => hi.SeriesNumber)
-                .IsUnique();
 
             modelBuilder.Entity<ChatSession>(entity =>
             {

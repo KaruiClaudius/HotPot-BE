@@ -101,17 +101,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<DamageDevice>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType)
-        {
-            return await _unitOfWork.Repository<DamageDevice>()
-                .GetAll(c => c.ScheduleType == scheduleType)
-                .Include(c => c.HotPotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null)
-                .Include(c => c.Utensil)
-                    .ThenInclude(u => u != null ? u.UtensilType : null)
-                .OrderByDescending(c => c.LoggedDate)
-                .ToListAsync();
-        }
+        //public async Task<IEnumerable<DamageDevice>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType)
+        //{
+        //    return await _unitOfWork.Repository<DamageDevice>()
+        //        .GetAll(c => c.ScheduleType == scheduleType)
+        //        .Include(c => c.HotPotInventory)
+        //            .ThenInclude(h => h != null ? h.Hotpot : null)
+        //        .Include(c => c.Utensil)
+        //            .ThenInclude(u => u != null ? u.UtensilType : null)
+        //        .OrderByDescending(c => c.LoggedDate)
+        //        .ToListAsync();
+        //}
 
         public async Task<IEnumerable<DamageDevice>> GetConditionLogsByDateRangeAsync(DateTime startDate, DateTime endDate)
         {

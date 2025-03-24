@@ -170,7 +170,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     Name = request.ConditionName,
                     Description = request.ConditionDescription,
                     Status = request.Status,
-                    ScheduleType = request.ScheduleType,
                     LoggedDate = DateTime.UtcNow
                 };
 
@@ -239,7 +238,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     ConditionName = conditionLog.Name,
                     ConditionDescription = conditionLog.Description,
                     Status = conditionLog.Status,
-                    ScheduleType = conditionLog.ScheduleType,
                     LoggedDate = conditionLog.LoggedDate,
                     IsAvailable = request.SetAsAvailable || (request.Status == MaintenanceStatus.Completed)
                 };
@@ -361,7 +359,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     ConditionName = log.Name,
                     ConditionDescription = log.Description,
                     Status = log.Status,
-                    ScheduleType = log.ScheduleType,
                     LoggedDate = log.LoggedDate,
                     IsAvailable = log.Status == MaintenanceStatus.Completed
                 }).ToList();

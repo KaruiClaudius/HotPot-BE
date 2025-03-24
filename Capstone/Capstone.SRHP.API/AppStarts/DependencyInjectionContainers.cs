@@ -67,7 +67,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Business Services
             services.AddScoped<IComboService, ComboService>();
-            services.AddScoped<IConditionLogService, ConditionLogService>();
+            services.AddScoped<IDamageDeviceService, DamageDeviceService>();
             services.AddScoped<ICustomizationService, CustomizationService>();
             services.AddScoped<IDiscountService, DiscountService>();
             services.AddScoped<IHotpotService, HotpotService>();

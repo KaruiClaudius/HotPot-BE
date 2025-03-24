@@ -28,18 +28,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         }
 
         public async Task<PagedUnifiedProductResult> GetAllProductsAsync(
-            string productType = null,
-            string searchTerm = null,
-            int? typeId = null,
-            string material = null,
-            string size = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            bool? onlyAvailable = true,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "Name",
-            bool ascending = true)
+        string productType = null,
+        string searchTerm = null,
+        int? typeId = null,
+        string material = null,
+        string size = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        bool? onlyAvailable = true,
+        int? minQuantity = null,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string sortBy = "Name",
+        bool ascending = true)
         {
             try
             {
@@ -54,7 +55,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 {
                     return await GetProductsByTypeAsync(
                         "ingredient", searchTerm, 1, // Type ID 1 for broths
-                        material, size, minPrice, maxPrice, isAvailable,
+                        material, size, minPrice, maxPrice, isAvailable, minQuantity,
                         pageNumber, pageSize, sortBy, ascending);
                 }
 
@@ -63,13 +64,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 {
                     return await GetProductsByTypeAsync(
                         productType, searchTerm, typeId,
-                        material, size, minPrice, maxPrice, isAvailable,
+                        material, size, minPrice, maxPrice, isAvailable, minQuantity,
                         pageNumber, pageSize, sortBy, ascending);
                 }
 
                 // If no specific type is requested, combine results from all types
                 return await GetAllProductTypesAsync(
-                    searchTerm, typeId, material, size, minPrice, maxPrice, isAvailable,
+                    searchTerm, typeId, material, size, minPrice, maxPrice, isAvailable, minQuantity,
                     pageNumber, pageSize, sortBy, ascending);
             }
             catch (Exception ex)
@@ -145,37 +146,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             }
         }
 
+
         #region Helper Methods for Querying Products
 
         private async Task<PagedUnifiedProductResult> GetProductsByTypeAsync(
-            string productType,
-            string searchTerm,
-            int? typeId,
-            string material,
-            string size,
-            decimal? minPrice,
-            decimal? maxPrice,
-            bool onlyAvailable,
-            int pageNumber,
-            int pageSize,
-            string sortBy,
-            bool ascending)
+       string productType,
+       string searchTerm,
+       int? typeId,
+       string material,
+       string size,
+       decimal? minPrice,
+       decimal? maxPrice,
+       bool onlyAvailable,
+       int? minQuantity,
+       int pageNumber,
+       int pageSize,
+       string sortBy,
+       bool ascending)
         {
             switch (productType)
             {
                 case "hotpot":
                     return await GetHotpotsAsync(
-                        searchTerm, material, size, minPrice, maxPrice, onlyAvailable,
+                        searchTerm, material, size, minPrice, maxPrice, onlyAvailable, minQuantity,
                         pageNumber, pageSize, sortBy, ascending);
 
                 case "utensil":
                     return await GetUtensilsAsync(
-                        searchTerm, typeId, material, minPrice, maxPrice, onlyAvailable,
+                        searchTerm, typeId, material, minPrice, maxPrice, onlyAvailable, minQuantity,
                         pageNumber, pageSize, sortBy, ascending);
 
                 case "ingredient":
                     return await GetIngredientsAsync(
-                        searchTerm, typeId, minPrice, maxPrice, onlyAvailable,
+                        searchTerm, typeId, minPrice, maxPrice, onlyAvailable, minQuantity,
                         pageNumber, pageSize, sortBy, ascending);
 
                 default:
@@ -183,18 +186,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             }
         }
 
+
         private async Task<PagedUnifiedProductResult> GetAllProductTypesAsync(
-            string searchTerm,
-            int? typeId,
-            string material,
-            string size,
-            decimal? minPrice,
-            decimal? maxPrice,
-            bool onlyAvailable,
-            int pageNumber,
-            int pageSize,
-            string sortBy,
-            bool ascending)
+        string searchTerm,
+        int? typeId,
+        string material,
+        string size,
+        decimal? minPrice,
+        decimal? maxPrice,
+        bool onlyAvailable,
+        int? minQuantity,
+        int pageNumber,
+        int pageSize,
+        string sortBy,
+        bool ascending)
         {
             // Create a union query of all product types
             var currentDate = DateTime.UtcNow;
@@ -202,26 +207,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             // Hotpot query
             var hotpotQuery = _unitOfWork.Repository<Hotpot>()
                 .AsQueryable()
-                .Where(h => !h.IsDelete)
-                .Where(h => !onlyAvailable || (h.Status && h.Quantity > 0))
-                .Select(h => new UnifiedProductDto
-                {
-                    Id = h.HotpotId,
-                    Name = h.Name,
-                    Description = h.Description ?? string.Empty,
-                    Price = h.Price,
-                    ImageURLs = h.ImageURLs ?? new string[0],
-                    IsAvailable = h.Status && h.Quantity > 0,
-                    ProductType = "Hotpot",
-                    Material = h.Material,
-                    Size = h.Size
-                });
+                .Where(h => !h.IsDelete);
+
+            // Apply availability filter
+            if (onlyAvailable)
+            {
+                hotpotQuery = hotpotQuery.Where(h => h.Status && h.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                hotpotQuery = hotpotQuery.Where(h => h.Quantity >= minQuantity.Value);
+            }
+
+            var hotpotDtoQuery = hotpotQuery.Select(h => new UnifiedProductDto
+            {
+                Id = h.HotpotId,
+                Name = h.Name,
+                Description = h.Description ?? string.Empty,
+                Price = h.Price,
+                ImageURLs = h.ImageURLs ?? new string[0],
+                IsAvailable = h.Status && h.Quantity > 0,
+                ProductType = "Hotpot",
+                Material = h.Material,
+                Size = h.Size,
+                Quantity = h.Quantity
+            });
 
             // Apply hotpot-specific filters
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                hotpotQuery = hotpotQuery.Where(p =>
+                hotpotDtoQuery = hotpotDtoQuery.Where(p =>
                     p.Name.ToLower().Contains(searchTerm) ||
                     (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
                     (p.Material != null && p.Material.ToLower().Contains(searchTerm)) ||
@@ -231,49 +249,63 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (!string.IsNullOrWhiteSpace(material))
             {
                 material = material.ToLower();
-                hotpotQuery = hotpotQuery.Where(p => p.Material.ToLower().Contains(material));
+                hotpotDtoQuery = hotpotDtoQuery.Where(p => p.Material.ToLower().Contains(material));
             }
 
             if (!string.IsNullOrWhiteSpace(size))
             {
                 size = size.ToLower();
-                hotpotQuery = hotpotQuery.Where(p => p.Size.ToLower().Contains(size));
+                hotpotDtoQuery = hotpotDtoQuery.Where(p => p.Size.ToLower().Contains(size));
             }
 
             if (minPrice.HasValue)
             {
-                hotpotQuery = hotpotQuery.Where(p => p.Price >= minPrice.Value);
+                hotpotDtoQuery = hotpotDtoQuery.Where(p => p.Price >= minPrice.Value);
             }
 
             if (maxPrice.HasValue)
             {
-                hotpotQuery = hotpotQuery.Where(p => p.Price <= maxPrice.Value);
+                hotpotDtoQuery = hotpotDtoQuery.Where(p => p.Price <= maxPrice.Value);
             }
 
             // Utensil query
             var utensilQuery = _unitOfWork.Repository<Utensil>()
                 .AsQueryable()
-                .Where(u => !u.IsDelete)
-                .Where(u => !onlyAvailable || (u.Status && u.Quantity > 0))
-                .Select(u => new UnifiedProductDto
-                {
-                    Id = u.UtensilId,
-                    Name = u.Name,
-                    Description = u.Description ?? string.Empty,
-                    Price = u.Price,
-                    ImageURLs = u.ImageURL != null ? new[] { u.ImageURL } : new string[0],
-                    IsAvailable = u.Status && u.Quantity > 0,
-                    ProductType = "Utensil",
-                    Material = u.Material,
-                    TypeId = u.UtensilTypeId,
-                    TypeName = u.UtensilType.Name
-                });
+                .Include(u => u.UtensilType)
+                .Where(u => !u.IsDelete);
+
+            // Apply availability filter
+            if (onlyAvailable)
+            {
+                utensilQuery = utensilQuery.Where(u => u.Status && u.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                utensilQuery = utensilQuery.Where(u => u.Quantity >= minQuantity.Value);
+            }
+
+            var utensilDtoQuery = utensilQuery.Select(u => new UnifiedProductDto
+            {
+                Id = u.UtensilId,
+                Name = u.Name,
+                Description = u.Description ?? string.Empty,
+                Price = u.Price,
+                ImageURLs = u.ImageURL != null ? new[] { u.ImageURL } : new string[0],
+                IsAvailable = u.Status && u.Quantity > 0,
+                ProductType = "Utensil",
+                Material = u.Material,
+                TypeId = u.UtensilTypeId,
+                TypeName = u.UtensilType.Name,
+                Quantity = u.Quantity
+            });
 
             // Apply utensil-specific filters
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                utensilQuery = utensilQuery.Where(p =>
+                utensilDtoQuery = utensilDtoQuery.Where(p =>
                     p.Name.ToLower().Contains(searchTerm) ||
                     (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
                     (p.Material != null && p.Material.ToLower().Contains(searchTerm)) ||
@@ -282,82 +314,103 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
             if (typeId.HasValue)
             {
-                utensilQuery = utensilQuery.Where(p => p.TypeId == typeId.Value);
+                utensilDtoQuery = utensilDtoQuery.Where(p => p.TypeId == typeId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(material))
             {
                 material = material.ToLower();
-                utensilQuery = utensilQuery.Where(p => p.Material.ToLower().Contains(material));
+                utensilDtoQuery = utensilDtoQuery.Where(p => p.Material.ToLower().Contains(material));
             }
 
             if (minPrice.HasValue)
             {
-                utensilQuery = utensilQuery.Where(p => p.Price >= minPrice.Value);
+                utensilDtoQuery = utensilDtoQuery.Where(p => p.Price >= minPrice.Value);
             }
 
             if (maxPrice.HasValue)
             {
-                utensilQuery = utensilQuery.Where(p => p.Price <= maxPrice.Value);
+                utensilDtoQuery = utensilDtoQuery.Where(p => p.Price <= maxPrice.Value);
             }
 
-            // Ingredient query with latest prices
+            // Ingredient query
             var ingredientQuery = _unitOfWork.Repository<Ingredient>()
                 .AsQueryable()
-                .Where(i => !i.IsDelete)
-                .Where(i => !onlyAvailable || i.Quantity > 0)
-                .Select(i => new
-                {
-                    Ingredient = i,
-                    LatestPrice = i.IngredientPrices
+                .Include(i => i.IngredientType)
+                .Where(i => !i.IsDelete);
+
+            // Apply availability filter
+            if (onlyAvailable)
+            {
+                ingredientQuery = ingredientQuery.Where(i => i.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                ingredientQuery = ingredientQuery.Where(i => i.Quantity >= minQuantity.Value);
+            }
+
+            // We need to materialize the ingredients to work with the latest prices
+            var listIngredients = await ingredientQuery.ToListAsync();
+
+            // Process ingredients to get the latest price
+            var ingredientDtos = listIngredients.Select(i =>
+            {
+                var latestPrice = i.IngredientPrices != null && i.IngredientPrices.Any()
+                    ? i.IngredientPrices
                         .Where(p => !p.IsDelete && p.EffectiveDate <= currentDate)
                         .OrderByDescending(p => p.EffectiveDate)
-                        .FirstOrDefault()
-                })
-                .Select(x => new UnifiedProductDto
-                {
-                    Id = x.Ingredient.IngredientId,
-                    Name = x.Ingredient.Name,
-                    Description = x.Ingredient.Description ?? string.Empty,
-                    Price = x.LatestPrice != null ? x.LatestPrice.Price : 0,
-                    ImageURLs = x.Ingredient.ImageURL != null ? new[] { x.Ingredient.ImageURL } : new string[0],
-                    IsAvailable = x.Ingredient.Quantity > 0,
-                    ProductType = "Ingredient",
-                    TypeId = x.Ingredient.IngredientTypeId,
-                    TypeName = x.Ingredient.IngredientType.Name
-                });
+                        .FirstOrDefault()?.Price ?? 0
+                    : 0;
 
-            // Apply ingredient-specific filters
+
+                return new UnifiedProductDto
+                {
+                    Id = i.IngredientId,
+                    Name = i.Name,
+                    Description = i.Description ?? string.Empty,
+                    Price = latestPrice,
+                    ImageURLs = i.ImageURL != null ? new[] { i.ImageURL } : new string[0],
+                    IsAvailable = i.Quantity > 0,
+                    ProductType = "Ingredient",
+                    TypeId = i.IngredientTypeId,
+                    TypeName = i.IngredientType?.Name ?? "Unknown",
+                    Quantity = i.Quantity
+                };
+            }).ToList();
+
+            // Apply ingredient-specific filters in memory
+            var filteredIngredientDtos = ingredientDtos.AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                ingredientQuery = ingredientQuery.Where(p =>
+                filteredIngredientDtos = filteredIngredientDtos.Where(p =>
                     p.Name.ToLower().Contains(searchTerm) ||
                     (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
-                    (p.TypeName != null && p.TypeName.ToLower().Contains(searchTerm)) ||
-                    (p.MeasurementUnit != null && p.MeasurementUnit.ToLower().Contains(searchTerm)));
+                    (p.TypeName != null && p.TypeName.ToLower().Contains(searchTerm)));
             }
 
             if (typeId.HasValue)
             {
-                ingredientQuery = ingredientQuery.Where(p => p.TypeId == typeId.Value);
+                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.TypeId == typeId.Value);
             }
 
             if (minPrice.HasValue)
             {
-                ingredientQuery = ingredientQuery.Where(p => p.Price >= minPrice.Value);
+                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.Price >= minPrice.Value);
             }
 
             if (maxPrice.HasValue)
             {
-                ingredientQuery = ingredientQuery.Where(p => p.Price <= maxPrice.Value);
+                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.Price <= maxPrice.Value);
             }
 
             // Combine all queries
-            // Note: We need to materialize each query separately because
-            var hotpots = await hotpotQuery.ToListAsync();
-            var utensils = await utensilQuery.ToListAsync();
-            var ingredients = await ingredientQuery.ToListAsync();
+            var hotpots = await hotpotDtoQuery.ToListAsync();
+            var utensils = await utensilDtoQuery.ToListAsync();
+            var ingredients = filteredIngredientDtos.ToList();
 
             // Combine the results
             var allProducts = new List<UnifiedProductDto>();
@@ -389,6 +442,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         ? allProducts.OrderBy(p => p.ProductType).ThenBy(p => p.Name)
                         : allProducts.OrderByDescending(p => p.ProductType).ThenBy(p => p.Name);
                     break;
+                case "quantity":
+                    sortedProducts = ascending
+                        ? allProducts.OrderBy(p => p.Quantity).ThenBy(p => p.Name)
+                        : allProducts.OrderByDescending(p => p.Quantity).ThenBy(p => p.Name);
+                    break;
                 default: // Default to Name
                     sortedProducts = ascending
                         ? allProducts.OrderBy(p => p.Name)
@@ -410,22 +468,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 PageSize = pageSize
             };
         }
-
         #endregion
 
         #region Helper Methods for Hotpots
 
         private async Task<PagedUnifiedProductResult> GetHotpotsAsync(
-            string searchTerm,
-            string material,
-            string size,
-            decimal? minPrice,
-            decimal? maxPrice,
-            bool onlyAvailable,
-            int pageNumber,
-            int pageSize,
-            string sortBy,
-            bool ascending)
+       string searchTerm,
+       string material,
+       string size,
+       decimal? minPrice,
+       decimal? maxPrice,
+       bool onlyAvailable,
+       int? minQuantity,
+       int pageNumber,
+       int pageSize,
+       string sortBy,
+       bool ascending)
         {
             // Start with base query
             var query = _unitOfWork.Repository<Hotpot>()
@@ -436,6 +494,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (onlyAvailable)
             {
                 query = query.Where(h => h.Status && h.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                query = query.Where(h => h.Quantity >= minQuantity.Value);
             }
 
             // Apply search filter
@@ -497,6 +561,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         ? query.OrderBy(h => h.Size).ThenBy(h => h.Name)
                         : query.OrderByDescending(h => h.Size).ThenBy(h => h.Name);
                     break;
+                case "quantity":
+                    orderedQuery = ascending
+                        ? query.OrderBy(h => h.Quantity).ThenBy(h => h.Name)
+                        : query.OrderByDescending(h => h.Quantity).ThenBy(h => h.Name);
+                    break;
                 default: // Default to Name
                     orderedQuery = ascending
                         ? query.OrderBy(h => h.Name)
@@ -521,7 +590,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 IsAvailable = h.Status && h.Quantity > 0,
                 ProductType = "Hotpot",
                 Material = h.Material,
-                Size = h.Size
+                Size = h.Size,
+                Quantity = h.Quantity
             }).ToList();
 
             return new PagedUnifiedProductResult
@@ -532,6 +602,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 PageSize = pageSize
             };
         }
+
 
         private async Task<UnifiedProductDto> GetHotpotByIdAsync(int id)
         {
@@ -551,7 +622,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 IsAvailable = hotpot.Status && hotpot.Quantity > 0,
                 ProductType = "Hotpot",
                 Material = hotpot.Material,
-                Size = hotpot.Size
+                Size = hotpot.Size,
+                Quantity = hotpot.Quantity
             };
         }
 
@@ -560,16 +632,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         #region Helper Methods for Utensils
 
         private async Task<PagedUnifiedProductResult> GetUtensilsAsync(
-            string searchTerm,
-            int? typeId,
-            string material,
-            decimal? minPrice,
-            decimal? maxPrice,
-            bool onlyAvailable,
-            int pageNumber,
-            int pageSize,
-            string sortBy,
-            bool ascending)
+      string searchTerm,
+      int? typeId,
+      string material,
+      decimal? minPrice,
+      decimal? maxPrice,
+      bool onlyAvailable,
+      int? minQuantity,
+      int pageNumber,
+      int pageSize,
+      string sortBy,
+      bool ascending)
         {
             // Start with base query
             var query = _unitOfWork.Repository<Utensil>()
@@ -581,6 +654,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (onlyAvailable)
             {
                 query = query.Where(u => u.Status && u.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                query = query.Where(u => u.Quantity >= minQuantity.Value);
             }
 
             // Apply search filter
@@ -642,6 +721,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         ? query.OrderBy(u => u.UtensilType.Name).ThenBy(u => u.Name)
                         : query.OrderByDescending(u => u.UtensilType.Name).ThenBy(u => u.Name);
                     break;
+                case "quantity":
+                    orderedQuery = ascending
+                        ? query.OrderBy(u => u.Quantity).ThenBy(u => u.Name)
+                        : query.OrderByDescending(u => u.Quantity).ThenBy(u => u.Name);
+                    break;
                 default: // Default to Name
                     orderedQuery = ascending
                         ? query.OrderBy(u => u.Name)
@@ -667,7 +751,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ProductType = "Utensil",
                 Material = u.Material,
                 TypeId = u.UtensilTypeId,
-                TypeName = u.UtensilType?.Name ?? "Unknown"
+                TypeName = u.UtensilType?.Name ?? "Unknown",
+                Quantity = u.Quantity
             }).ToList();
 
             return new PagedUnifiedProductResult
@@ -699,7 +784,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ProductType = "Utensil",
                 Material = utensil.Material,
                 TypeId = utensil.UtensilTypeId,
-                TypeName = utensil.UtensilType?.Name ?? "Unknown"
+                TypeName = utensil.UtensilType?.Name ?? "Unknown",
+                Quantity = utensil.Quantity
             };
         }
 
@@ -708,15 +794,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         #region Helper Methods for Ingredients
 
         private async Task<PagedUnifiedProductResult> GetIngredientsAsync(
-            string searchTerm,
-            int? typeId,
-            decimal? minPrice,
-            decimal? maxPrice,
-            bool onlyAvailable,
-            int pageNumber,
-            int pageSize,
-            string sortBy,
-            bool ascending)
+        string searchTerm,
+        int? typeId,
+        decimal? minPrice,
+        decimal? maxPrice,
+        bool onlyAvailable,
+        int? minQuantity,
+        int pageNumber,
+        int pageSize,
+        string sortBy,
+        bool ascending)
         {
             var currentDate = DateTime.UtcNow;
 
@@ -731,6 +818,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (onlyAvailable)
             {
                 query = query.Where(i => i.Quantity > 0);
+            }
+
+            // Apply quantity filter
+            if (minQuantity.HasValue)
+            {
+                query = query.Where(i => i.Quantity >= minQuantity.Value);
             }
 
             // Apply search filter
@@ -790,7 +883,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         ? filteredIngredients.OrderBy(i => i.Ingredient.IngredientType.Name).ThenBy(i => i.Ingredient.Name)
                         : filteredIngredients.OrderByDescending(i => i.Ingredient.IngredientType.Name).ThenBy(i => i.Ingredient.Name);
                     break;
-
+                case "quantity":
+                    orderedIngredients = ascending
+                        ? filteredIngredients.OrderBy(i => i.Ingredient.Quantity).ThenBy(i => i.Ingredient.Name)
+                        : filteredIngredients.OrderByDescending(i => i.Ingredient.Quantity).ThenBy(i => i.Ingredient.Name);
+                    break;
                 default: // Default to Name
                     orderedIngredients = ascending
                         ? filteredIngredients.OrderBy(i => i.Ingredient.Name)
@@ -814,9 +911,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ImageURLs = i.Ingredient.ImageURL != null ? new string[] { i.Ingredient.ImageURL } : new string[0],
                 IsAvailable = i.Ingredient.Quantity > 0,
                 ProductType = "Ingredient",
-                MeasurementUnit = i.Ingredient.MeasurementUnit,
                 TypeId = i.Ingredient.IngredientTypeId,
-                TypeName = i.Ingredient.IngredientType?.Name ?? "Unknown"
+                TypeName = i.Ingredient.IngredientType?.Name ?? "Unknown",
+                Quantity = i.Ingredient.Quantity
             }).ToList();
 
             return new PagedUnifiedProductResult
@@ -854,10 +951,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 IsAvailable = ingredient.Quantity > 0,
                 ProductType = "Ingredient",
                 TypeId = ingredient.IngredientTypeId,
-                TypeName = ingredient.IngredientType?.Name ?? "Unknown"
+                TypeName = ingredient.IngredientType?.Name ?? "Unknown",
+                Quantity = ingredient.Quantity
             };
         }
-
-        #endregion
     }
+
+    #endregion
+
 }

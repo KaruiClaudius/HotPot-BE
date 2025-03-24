@@ -157,7 +157,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpGet("orders")]
         public async Task<ActionResult<PagedResult<OrderResponse>>> GetOrders(
             [FromQuery] string searchTerm = null,
-            [FromQuery] int? userId = null,
             [FromQuery] string status = null,
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
@@ -180,7 +179,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Use the existing GetOrdersAsync method with all filters
                 var pagedResult = await _orderService.GetOrdersAsync(
                     searchTerm: searchTerm,
-                    userId: userId,
                     status: status,
                     fromDate: fromDate,
                     toDate: toDate,

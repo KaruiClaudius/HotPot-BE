@@ -212,7 +212,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 Name = "Equipment Replacement",
                 Description = $"Equipment replaced. Reason: {request.RequestReason}. Notes: {completionNotes}",
                 Status = MaintenanceStatus.Completed,
-                ScheduleType = MaintenanceScheduleType.Unscheduled,
                 LoggedDate = DateTime.UtcNow
             };
 

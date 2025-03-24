@@ -21,21 +21,21 @@ namespace Capstone.HPTY.API.Controllers.Customer
             _logger = logger;
         }
 
-        // GET: api/customer/products
         [HttpGet]
         public async Task<ActionResult<PagedUnifiedProductResult>> GetProducts(
-            [FromQuery] string productType = null,
-            [FromQuery] string searchTerm = null,
-            [FromQuery] int? typeId = null,
-            [FromQuery] string material = null,
-            [FromQuery] string size = null,
-            [FromQuery] decimal? minPrice = null,
-            [FromQuery] decimal? maxPrice = null,
-            [FromQuery] bool? onlyAvailable = true,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string sortBy = "Name",
-            [FromQuery] bool ascending = true)
+               [FromQuery] string? productType = null,
+               [FromQuery] string? searchTerm = null,
+               [FromQuery] int? typeId = null,
+               [FromQuery] string? material = null,
+               [FromQuery] string? size = null,
+               [FromQuery] decimal? minPrice = null,
+               [FromQuery] decimal? maxPrice = null,
+               [FromQuery] bool? onlyAvailable = true,
+               [FromQuery] int? minQuantity = null,
+               [FromQuery] int pageNumber = 1,
+               [FromQuery] int pageSize = 10,
+               [FromQuery] string sortBy = "Name",
+               [FromQuery] bool ascending = true)
         {
             try
             {
@@ -48,7 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 var result = await _productService.GetAllProductsAsync(
                     productType, searchTerm, typeId, material, size,
-                    minPrice, maxPrice, onlyAvailable,
+                    minPrice, maxPrice, onlyAvailable, minQuantity,
                     pageNumber, pageSize, sortBy, ascending);
 
                 return Ok(result);

@@ -243,6 +243,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 var user = await _unitOfWork.Repository<User>()
                     .FindAsync(u => u.UserId == id);
 
+                if (user.Role.Name == "Admin")
+                    throw new ValidationException("Không thể xoá tài khoản Admin");
+
                 if (user == null)
                     throw new NotFoundException($"Không tìm thấy tài khoản");
 

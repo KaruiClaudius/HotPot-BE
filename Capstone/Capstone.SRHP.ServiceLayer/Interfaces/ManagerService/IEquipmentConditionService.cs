@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId);
         Task<IEnumerable<DamageDevice>> GetConditionLogsByEquipmentAsync(string equipmentType, int equipmentId);
         Task<IEnumerable<DamageDevice>> GetConditionLogsByStatusAsync(MaintenanceStatus status);
-        Task<IEnumerable<DamageDevice>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
+        //Task<IEnumerable<DamageDevice>> GetConditionLogsByScheduleTypeAsync(MaintenanceScheduleType scheduleType);
         Task<IEnumerable<DamageDevice>> GetConditionLogsByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<bool> UpdateConditionStatusAsync(int conditionLogId, MaintenanceStatus status);
         Task<IEnumerable<DamageDevice>> GetRecentConditionLogsAsync(int count = 10);

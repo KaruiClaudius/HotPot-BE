@@ -18,10 +18,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customer
 
         // Common properties
         public string Material { get; set; }
+        public int Quantity { get; set; } 
 
         // Type-specific properties
         public string Size { get; set; } // For Hotpot
-        public string MeasurementUnit { get; set; } // For Ingredient
         public int TypeId { get; set; } // For Ingredient and Utensil
         public string TypeName { get; set; } // For Ingredient and Utensil
     }

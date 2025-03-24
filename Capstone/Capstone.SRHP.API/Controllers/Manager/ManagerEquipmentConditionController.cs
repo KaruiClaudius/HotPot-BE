@@ -36,24 +36,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(damageDevice);
 
-                // For emergency or critical conditions, notify administrators immediately
-                if (result.ScheduleType == MaintenanceScheduleType.Emergency)
-                {
-                    string equipmentType = result.HotPotInventoryId.HasValue ? "HotPot" : "Utensil";
-                    string equipmentName = result.HotPotInventoryId.HasValue
-                        ? result.HotPotInventory?.Hotpot?.Name ?? "Unknown HotPot"
-                        : result.Utensil?.Name ?? "Unknown Utensil";
-
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveConditionAlert",
-                        result.ConditionLogId,
-                        equipmentType,
-                        equipmentName,
-                        result.Name,
-                        result.Description,
-                        result.ScheduleType.ToString(),
-                        DateTime.UtcNow);
-                }
-
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.ConditionLogId },
                     ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment condition logged successfully"));
             }
@@ -96,13 +78,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             return Ok(ApiResponse<IEnumerable<DamageDevice>>.SuccessResponse(conditionLogs, "Condition logs retrieved successfully"));
         }
 
-        [HttpGet("by-schedule-type/{scheduleType}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<DamageDevice>>>> GetConditionLogsByScheduleType(MaintenanceScheduleType scheduleType)
-        {
-            var conditionLogs = await _equipmentConditionService.GetConditionLogsByScheduleTypeAsync(scheduleType);
-            return Ok(ApiResponse<IEnumerable<DamageDevice>>.SuccessResponse(conditionLogs, "Condition logs retrieved successfully"));
-        }
 
         [HttpGet("by-date-range")]
         [ProducesResponseType(StatusCodes.Status200OK)]

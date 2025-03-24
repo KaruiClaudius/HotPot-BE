@@ -58,11 +58,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             conditionLog.LoggedDate = DateTime.UtcNow;
             conditionLog.Status = MaintenanceStatus.Pending;
 
-            // If ScheduleType isn't set, default to Emergency for failures
-            if (conditionLog.ScheduleType == 0)
-            {
-                conditionLog.ScheduleType = MaintenanceScheduleType.Emergency;
-            }
 
             _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
