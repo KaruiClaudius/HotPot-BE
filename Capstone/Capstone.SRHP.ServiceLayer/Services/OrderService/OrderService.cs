@@ -98,11 +98,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     searchTerm = searchTerm.ToLower();
                     query = query.Where(o =>
-                        (o.Address != null && o.Address.ToLower().Contains(searchTerm)) ||
-                        (o.Notes != null && o.Notes.ToLower().Contains(searchTerm)) ||
-                        (o.User != null && o.User.Name != null && o.User.Name.ToLower().Contains(searchTerm)) ||
-                        (o.User != null && o.User.Email != null && o.User.Email.ToLower().Contains(searchTerm)) ||
-                        (o.User != null && o.User.PhoneNumber != null && o.User.PhoneNumber.Contains(searchTerm)));
+                        o.Address != null && EF.Functions.Collate(o.Address.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        o.Notes != null && EF.Functions.Collate(o.Notes.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        o.User != null && o.User.Name != null && EF.Functions.Collate(o.User.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        o.User != null && o.User.Email != null && EF.Functions.Collate(o.User.Email.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        o.User != null && o.User.PhoneNumber != null && EF.Functions.Collate(o.User.PhoneNumber.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) 
+                    );
                 }
 
                 if (userId.HasValue)

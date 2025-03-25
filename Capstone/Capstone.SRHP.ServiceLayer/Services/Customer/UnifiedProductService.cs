@@ -203,7 +203,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         bool ascending)
         {
             // Create a union query of all product types
-            var currentDate = DateTime.UtcNow;
+            var currentDate =  DateTime.UtcNow.AddHours(7);
 
             // Hotpot query
             var hotpotQuery = _unitOfWork.Repository<Hotpot>()
@@ -356,16 +356,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
             // We need to materialize the ingredients to work with the latest prices
             var listIngredients = await ingredientQuery.ToListAsync();
+            foreach (var ingredient in listIngredients)
+            {
+                await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAll(p => p.IngredientId == ingredient.IngredientId &&
+                                 !p.IsDelete &&
+                                 p.EffectiveDate <= currentDate)
+                    .LoadAsync();
+            }
+
 
             // Process ingredients to get the latest price
             var ingredientDtos = listIngredients.Select(i =>
             {
                 var latestPrice = i.IngredientPrices != null && i.IngredientPrices.Any()
-                    ? i.IngredientPrices
-                        .Where(p => !p.IsDelete && p.EffectiveDate <= currentDate)
-                        .OrderByDescending(p => p.EffectiveDate)
-                        .FirstOrDefault()?.Price ?? 0
-                    : 0;
+                         ? i.IngredientPrices
+                             .OrderByDescending(p => p.EffectiveDate)
+                             .FirstOrDefault()?.Price ?? 0
+                         : 0;
 
 
                 return new UnifiedProductDto
@@ -808,7 +816,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         string sortBy,
         bool ascending)
         {
-            var currentDate = DateTime.UtcNow;
+            var currentDate =  DateTime.UtcNow.AddHours(7);
 
             // Start with base query that includes the latest price
             var query = _unitOfWork.Repository<Ingredient>()
@@ -816,7 +824,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= currentDate))
                 .Where(i => !i.IsDelete);
-
             // Apply availability filter
             if (onlyAvailable)
             {
@@ -930,7 +937,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
         private async Task<UnifiedProductDto> GetIngredientByIdAsync(int id)
         {
-            var currentDate = DateTime.UtcNow;
+            var currentDate =  DateTime.UtcNow.AddHours(7);
 
             var ingredient = await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)

@@ -28,7 +28,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         // GET: api/Hotpot
         // Handles: Getting all hotpots with filtering, searching, and pagination
         [HttpGet]
-        public async Task<ActionResult<PagedResult<HotpotDto>>> GetHotpots(
+        public async Task<ActionResult<HotpotPagedResult>> GetHotpots(
             [FromQuery] string searchTerm = null,
             [FromQuery] bool? isAvailable = null,
             [FromQuery] string material = null,

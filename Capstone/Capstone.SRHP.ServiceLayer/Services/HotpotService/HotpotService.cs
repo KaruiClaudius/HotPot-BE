@@ -48,10 +48,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
-                    query = query.Where(h =>
-                        h.Name.ToLower().Contains(searchTerm) ||
-                        (h.Description != null && h.Description.ToLower().Contains(searchTerm)) ||
-                        h.Material.ToLower().Contains(searchTerm));
+                    query = query.Where(i =>
+                        EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        EF.Functions.Collate(i.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) 
+                    );
                 }
 
                 if (isAvailable.HasValue)
@@ -195,6 +196,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 // Set quantity based on series numbers
                 if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
+                    // Validate serial numbers
+                    await ValidateSerialNumbers(0, seriesNumbers); // Pass 0 for new hotpot
+
                     entity.Quantity = seriesNumbers.Length;
                 }
                 else
@@ -217,14 +221,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 return createdHotpot;
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Error creating hotpot");
-            }
-        });
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error creating hotpot");
+                }
+            });
         }
 
         public async Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null)
@@ -254,6 +258,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 // If series numbers are provided, update inventory items and quantity
                 if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
+                    // Validate serial numbers
+                    await ValidateSerialNumbers(id, seriesNumbers);
+
                     // Get existing inventory items
                     var existingItems = await _unitOfWork.Repository<HotPotInventory>()
                         .FindAll(i => i.HotpotId == id && !i.IsDelete)
@@ -282,18 +289,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 entity.SetUpdateDate();
                 await _unitOfWork.Repository<Hotpot>().Update(entity, id);
                 await _unitOfWork.CommitAsync();
-
-
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
-            }
-        });
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating hotpot with ID {HotpotId}", id);
+                }
+            });
         }
+
 
         public async Task DeleteAsync(int id)
         {
@@ -436,6 +442,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             await _unitOfWork.CommitAsync();
             return inventoryItems;
+        }
+
+        private async Task ValidateSerialNumbers(int hotpotId, string[] seriesNumbers)
+        {
+            if (seriesNumbers == null || seriesNumbers.Length == 0)
+                return;
+
+            // Check for duplicates within the provided array
+            var duplicates = seriesNumbers
+                .GroupBy(s => s)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicates.Any())
+            {
+                throw new ValidationException($"Duplicate serial numbers found: {string.Join(", ", duplicates)}");
+            }
+
+            // Check if any of these serial numbers already exist for this hotpot
+            var existingSerialNumbers = await _unitOfWork.Repository<HotPotInventory>()
+                .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && seriesNumbers.Contains(i.SeriesNumber))
+                .Select(i => i.SeriesNumber)
+                .ToListAsync();
+
+            if (existingSerialNumbers.Any())
+            {
+                throw new ValidationException($"Serial numbers already exist for this hotpot: {string.Join(", ", existingSerialNumbers)}");
+            }
         }
 
         public Task<IEnumerable<Hotpot>> GetAllAsync()

@@ -25,24 +25,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
         public async Task<PagedResult<DamageDevice>> GetAllAsync(DamageDeviceFilterRequest request)
         {
-            // Start with base query
             var query = _unitOfWork.Repository<DamageDevice>()
                 .AsQueryable()
-                .Include(d => d.HotPotInventory)
                 .Include(d => d.Utensil)
-                .Include(d => d.ReplacementRequests)
+                .Include(d => d.HotPotInventory)
                 .Where(d => !d.IsDelete);
 
-            // Apply filters
+            // Apply device type filter
+            if (request.DeviceType == DeviceType.Hotpot)
+            {
+                query = query.Where(d => d.HotPotInventoryId != null);
+            }
+            else if (request.DeviceType == DeviceType.Utensil)
+            {
+                query = query.Where(d => d.UtensilId != null);
+            }
+
+            // Apply other filters
             if (!string.IsNullOrWhiteSpace(request.SearchTerm))
             {
                 var searchTerm = request.SearchTerm.ToLower();
                 query = query.Where(d =>
                     d.Name.ToLower().Contains(searchTerm) ||
                     (d.Description != null && d.Description.ToLower().Contains(searchTerm)) ||
-                    (d.HotPotInventory != null && d.HotPotInventory.SeriesNumber.ToLower().Contains(searchTerm)) ||
-                    (d.Utensil != null && d.Utensil.Name.ToLower().Contains(searchTerm))
-                );
+                    (d.Utensil != null && d.Utensil.Name.ToLower().Contains(searchTerm)) ||
+                    (d.HotPotInventory != null && d.HotPotInventory.SeriesNumber.ToLower().Contains(searchTerm)));
             }
 
             if (request.Status.HasValue)
@@ -62,24 +69,43 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             if (request.FromDate.HasValue)
             {
-                query = query.Where(d => d.LoggedDate >= request.FromDate.Value);
+                var fromDate = request.FromDate.Value.Date;
+                query = query.Where(d => d.LoggedDate >= fromDate);
             }
 
             if (request.ToDate.HasValue)
             {
-                // Add one day to include the entire end date
-                var endDate = request.ToDate.Value.AddDays(1).AddTicks(-1);
-                query = query.Where(d => d.LoggedDate <= endDate);
+                var toDate = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(d => d.LoggedDate <= toDate);
             }
 
-            // Get total count before pagination
+            // Apply sorting
+            IOrderedQueryable<DamageDevice> orderedQuery;
+            switch (request.SortBy?.ToLower())
+            {
+                case "name":
+                    orderedQuery = request.Ascending
+                        ? query.OrderBy(d => d.Name)
+                        : query.OrderByDescending(d => d.Name);
+                    break;
+                case "status":
+                    orderedQuery = request.Ascending
+                        ? query.OrderBy(d => d.Status)
+                        : query.OrderByDescending(d => d.Status);
+                    break;
+                case "loggeddate":
+                default:
+                    orderedQuery = request.Ascending
+                        ? query.OrderBy(d => d.LoggedDate)
+                        : query.OrderByDescending(d => d.LoggedDate);
+                    break;
+            }
+
+            // Get total count
             var totalCount = await query.CountAsync();
 
-            // Apply sorting
-            query = ApplySorting(query, request.SortBy, request.Ascending);
-
             // Apply pagination
-            var items = await query
+            var items = await orderedQuery
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .ToListAsync();

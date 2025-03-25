@@ -11,6 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
     {
         public string SearchTerm { get; set; }
         public MaintenanceStatus? Status { get; set; }
+        public DeviceType DeviceType { get; set; } = DeviceType.All;
         public int? HotPotInventoryId { get; set; }
         public int? UtensilId { get; set; }
         public DateTime? FromDate { get; set; }

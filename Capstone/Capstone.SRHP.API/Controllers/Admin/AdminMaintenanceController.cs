@@ -35,16 +35,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<DamageDeviceDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<DamageDeviceDto>>>> GetAllLogs(
-       [FromQuery] string searchTerm = null,
-       [FromQuery] MaintenanceStatus? status = null,
-       [FromQuery] int? hotPotInventoryId = null,
-       [FromQuery] int? utensilId = null,
-       [FromQuery] DateTime? fromDate = null,
-       [FromQuery] DateTime? toDate = null,
-       [FromQuery] string sortBy = "LoggedDate",
-       [FromQuery] bool ascending = false,
-       [FromQuery] int pageNumber = 1,
-       [FromQuery] int pageSize = 10)
+     [FromQuery] string searchTerm = null,
+     [FromQuery] MaintenanceStatus? status = null,
+     [FromQuery] DeviceType deviceType = DeviceType.All,
+     [FromQuery] int? hotPotInventoryId = null,
+     [FromQuery] int? utensilId = null,
+     [FromQuery] DateTime? fromDate = null,
+     [FromQuery] DateTime? toDate = null,
+     [FromQuery] string sortBy = "LoggedDate",
+     [FromQuery] bool ascending = false,
+     [FromQuery] int pageNumber = 1,
+     [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -63,6 +64,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     SearchTerm = searchTerm,
                     Status = status,
+                    DeviceType = deviceType,
                     HotPotInventoryId = hotPotInventoryId,
                     UtensilId = utensilId,
                     FromDate = fromDate,
@@ -103,17 +105,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<DamageDeviceDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<DamageDeviceDetailDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<DamageDeviceDto>>> GetDeviceById(int id)
+        public async Task<ActionResult<ApiResponse<DamageDeviceDetailDto>>> GetDeviceById(int id)
         {
             try
             {
                 _logger.LogInformation("Admin retrieving damage device with ID: {DeviceId}", id);
                 var device = await _damageDeviceService.GetByIdAsync(id);
 
-                var deviceDto = MapToDamageDeviceDto(device);
-                return Ok(new ApiResponse<DamageDeviceDto>
+                var deviceDto = MapToDetailDto(device);
+                return Ok(new ApiResponse<DamageDeviceDetailDto>
                 {
                     Success = true,
                     Message = "Damage device retrieved successfully",
@@ -304,14 +306,49 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                Status = device.Status,
+                StatusName = GetStatusName(device.Status),
                 LoggedDate = device.LoggedDate,
                 UtensilID = device.UtensilId,
                 HotPotInventoryId = device.HotPotInventoryId,
                 UtensilName = device.Utensil?.Name,
                 HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber,
+            };
+        }
+
+        private static DamageDeviceDetailDto MapToDetailDto(DamageDevice device)
+        {
+            if (device == null) return null;
+
+            // First create the base DTO properties
+            var detailDto = new DamageDeviceDetailDto
+            {
+                ConditionLogId = device.DamageDeviceId,
+                Name = device.Name,
+                Description = device.Description,
+                StatusName = GetStatusName(device.Status),
+                LoggedDate = device.LoggedDate,
+                UtensilID = device.UtensilId,
+                HotPotInventoryId = device.HotPotInventoryId,
+                UtensilName = device.Utensil?.Name,
+                HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber,
+
+                // Add the detail-specific properties
                 CreatedAt = device.CreatedAt,
                 UpdatedAt = device.UpdatedAt
+            };
+
+            return detailDto;
+        }
+
+        private static string GetStatusName(MaintenanceStatus status)
+        {
+            return status switch
+            {
+                MaintenanceStatus.Pending => "Pending",
+                MaintenanceStatus.InProgress => "In Progress",
+                MaintenanceStatus.Completed => "Completed",
+                MaintenanceStatus.Cancelled => "Cancelled",
+                _ => "Unknown"
             };
         }
     }

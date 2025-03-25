@@ -15,9 +15,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Auth
         [Required]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string NewPassword { get; set; }
-
-        [Required]
-        [Compare("NewPassword", ErrorMessage = "Passwords do not match")]
-        public string ConfirmPassword { get; set; }
     }
 }

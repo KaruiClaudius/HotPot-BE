@@ -12,13 +12,20 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
         public int ConditionLogId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public MaintenanceStatus Status { get; set; }
+        public string StatusName { get; set; }
         public DateTime LoggedDate { get; set; }
         public int? UtensilID { get; set; }
         public int? HotPotInventoryId { get; set; }
         public string UtensilName { get; set; }
         public string HotPotInventorySeriesNumber { get; set; }
+
+    }
+     
+    public class DamageDeviceDetailDto : DamageDeviceDto
+    {
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }
+
+    
 }

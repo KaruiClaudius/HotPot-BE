@@ -41,10 +41,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                query = query.Where(u =>
-                    u.Name.ToLower().Contains(searchTerm) ||
-                    u.Description.ToLower().Contains(searchTerm) ||
-                    u.Material.ToLower().Contains(searchTerm));
+                query = query.Where(i =>
+                    EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    EF.Functions.Collate(i.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                );
             }
 
             if (typeId.HasValue)

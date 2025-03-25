@@ -350,12 +350,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
             if (!string.IsNullOrWhiteSpace(request.SearchTerm))
             {
                 var searchTerm = request.SearchTerm.ToLower();
-                query = query.Where(f =>
-                    f.Title.ToLower().Contains(searchTerm) ||
-                    f.Comment.ToLower().Contains(searchTerm) ||
-                    (f.Response != null && f.Response.ToLower().Contains(searchTerm)) ||
-                    (f.User != null && f.User.Name.ToLower().Contains(searchTerm))
+                query = query.Where(i =>
+                    EF.Functions.Collate(i.Title.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    EF.Functions.Collate(i.Comment.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Response != null && EF.Functions.Collate(i.Response.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.User != null && EF.Functions.Collate(i.User.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
                 );
+
             }
 
             // Get total count before pagination

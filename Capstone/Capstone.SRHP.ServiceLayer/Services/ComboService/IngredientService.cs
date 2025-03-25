@@ -475,7 +475,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
             var latestPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefaultAsync();
 

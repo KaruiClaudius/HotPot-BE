@@ -55,9 +55,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
-                    query = query.Where(d =>
-                        d.Title.ToLower().Contains(searchTerm) ||
-                        (d.Description != null && d.Description.ToLower().Contains(searchTerm)));
+                    query = query.Where(i =>
+                        EF.Functions.Collate(i.Title.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                    );
                 }
 
                 // Apply discount percentage filters
