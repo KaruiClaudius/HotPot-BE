@@ -39,7 +39,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public int? AssignedStaffId { get; set; }
 
-        public int? ConditionLogId { get; set; }
+        public int? DamageDeviceId { get; set; }
 
         // Equipment type and ID
         [Required]
@@ -57,8 +57,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [InverseProperty("StaffReplacementRequests")]
         public virtual User? AssignedStaff { get; set; }
 
-        [ForeignKey("ConditionLogId")]
-        public virtual DamageDevice? ConditionLog { get; set; }
+        [ForeignKey("DamageDeviceId")]
+        public virtual DamageDevice? DamageDevice { get; set; }
 
         [ForeignKey("HotPotInventoryId")]
         public virtual HotPotInventory? HotPotInventory { get; set; }

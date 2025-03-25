@@ -121,7 +121,7 @@ namespace Capstone.HPTY.RepositoryLayer
             //{
             //    entity.Property(c => c.LoyatyPoint)
             //        .HasDefaultValue(0);
-            //});
+            //});     
 
             modelBuilder.Entity<StaffPickupAssignment>()
                 .HasOne(a => a.RentOrderDetail)
