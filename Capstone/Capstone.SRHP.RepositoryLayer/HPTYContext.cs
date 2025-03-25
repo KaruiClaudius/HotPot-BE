@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -33,7 +34,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Hotpot> Hotpots { get; set; }
         public virtual DbSet<HotPotInventory> HotPotInventorys { get; set; }
         public virtual DbSet<TurtorialVideo> TurtorialVideos { get; set; }
-        public virtual DbSet<DamageDevice> ConditionLogs { get; set; }
+        public virtual DbSet<DamageDevice> DamageDevices { get; set; }
         public virtual DbSet<Ingredient> Ingredients { get; set; }
         public virtual DbSet<IngredientType> IngredientTypes { get; set; }
         public virtual DbSet<IngredientPrice> IngredientPrices { get; set; }
@@ -396,7 +397,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
             modelBuilder.Entity<DamageDevice>(entity =>
             {
-                entity.HasKey(e => e.ConditionLogId);
+                entity.HasKey(e => e.DamageDeviceId);
 
                 entity.Property(e => e.Name)
                     .IsRequired()
@@ -530,11 +531,11 @@ namespace Capstone.HPTY.RepositoryLayer
 
 
             modelBuilder.Entity<UtensilType>().HasData(
-                new UtensilType { UtensilTypeId = 1, Name = "Chopsticks", CreatedAt = DateTime.Now, IsDelete = false },
-                new UtensilType { UtensilTypeId = 2, Name = "Ladles", CreatedAt = DateTime.Now, IsDelete = false },
-                new UtensilType { UtensilTypeId = 3, Name = "Strainers", CreatedAt = DateTime.Now, IsDelete = false },
-                new UtensilType { UtensilTypeId = 4, Name = "Bowls", CreatedAt = DateTime.Now, IsDelete = false },
-                new UtensilType { UtensilTypeId = 5, Name = "Plates", CreatedAt = DateTime.Now, IsDelete = false }
+                new UtensilType { UtensilTypeId = 1, Name = "Chopsticks", },
+                new UtensilType { UtensilTypeId = 2, Name = "Ladles", },
+                new UtensilType { UtensilTypeId = 3, Name = "Strainers", },
+                new UtensilType { UtensilTypeId = 4, Name = "Bowls", },
+                new UtensilType { UtensilTypeId = 5, Name = "Plates", }
             );
 
             // Seed TurtorialVideos
@@ -545,8 +546,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Name = "How to Use Traditional Hotpot",
                     Description = "A comprehensive guide to setting up and using a traditional hotpot.",
                     VideoURL = "https://www.youtube.com/watch?v=traditional-hotpot-guide",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new TurtorialVideo
                 {
@@ -554,8 +555,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Name = "Electric Hotpot Setup Guide",
                     Description = "Learn how to safely set up and use your electric hotpot.",
                     VideoURL = "https://www.youtube.com/watch?v=electric-hotpot-setup",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new TurtorialVideo
                 {
@@ -563,8 +564,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Name = "Portable Hotpot on the Go",
                     Description = "Tips and tricks for using your portable hotpot anywhere.",
                     VideoURL = "https://www.youtube.com/watch?v=portable-hotpot-guide",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new TurtorialVideo
                 {
@@ -572,8 +573,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Name = "Multi-compartment Hotpot Mastery",
                     Description = "How to effectively use all compartments in your multi-section hotpot.",
                     VideoURL = "https://www.youtube.com/watch?v=multi-compartment-guide",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new TurtorialVideo
                 {
@@ -581,8 +582,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Name = "Ceramic Hotpot Care Guide",
                     Description = "Learn how to properly care for and maintain your ceramic hotpot.",
                     VideoURL = "https://www.youtube.com/watch?v=ceramic-hotpot-care",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
             );
 
@@ -600,8 +601,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 89.99m,
                     Status = true,
                     Quantity = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Hotpot
                 {
@@ -615,8 +616,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 129.99m,
                     Status = true,
                     Quantity = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Hotpot
                 {
@@ -630,8 +631,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 69.99m,
                     Status = true,
                     Quantity = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Hotpot
                 {
@@ -645,8 +646,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 149.99m,
                     Status = true,
                     Quantity = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Hotpot
                 {
@@ -660,8 +661,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     BasePrice = 79.99m,
                     Status = true,
                     Quantity = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
             );
 
@@ -673,8 +674,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0001",
                     HotpotId = 1,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -682,8 +683,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0002",
                     Status = true,
                     HotpotId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -691,8 +692,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "EL-2023-0001",
                     HotpotId = 2,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -700,8 +701,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "EL-2023-0002",
                     HotpotId = 2,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -709,8 +710,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "PT-2023-0001",
                     HotpotId = 3,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -718,8 +719,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "MC-2023-0001",
                     HotpotId = 4,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -727,8 +728,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0001",
                     HotpotId = 5,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 new HotPotInventory
@@ -737,8 +738,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0003",
                     HotpotId = 1,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -746,8 +747,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0004",
                     HotpotId = 1,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -755,8 +756,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0005",
                     HotpotId = 1,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -764,8 +765,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "PT-2023-0002",
                     HotpotId = 3,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -773,8 +774,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "MC-2023-0002",
                     HotpotId = 4,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -782,8 +783,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0002",
                     HotpotId = 5,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
@@ -791,17 +792,17 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0003",
                     HotpotId = 5,
                     Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 15,
                     SeriesNumber = "CR-2023-0004",
                     HotpotId = 5,
-                    Status = true,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+                    Status = false,
+
+
                 }
 
 
@@ -821,8 +822,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = true,
                     Quantity = 100,
                     UtensilTypeId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Utensil
                 {
@@ -835,8 +836,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = true,
                     Quantity = 75,
                     UtensilTypeId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Utensil
                 {
@@ -849,8 +850,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = true,
                     Quantity = 80,
                     UtensilTypeId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Utensil
                 {
@@ -863,8 +864,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = true,
                     Quantity = 50,
                     UtensilTypeId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Utensil
                 {
@@ -877,8 +878,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = true,
                     Quantity = 60,
                     UtensilTypeId = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
             );
 
@@ -887,57 +888,57 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     IngredientTypeId = 1,
                     Name = "Broth",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 2,
                     Name = "Seafood",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 3,
                     Name = "Vegetables",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 4,
                     Name = "Noodles",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 5,
                     Name = "Tofu",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 6,
                     Name = "Mushrooms",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 7,
                     Name = "Meats",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 8,
                     Name = "Sauces",
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
             );
 
@@ -953,8 +954,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 100,
                     IngredientTypeId = 7,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -965,8 +966,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 80,
                     IngredientTypeId = 7,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -977,8 +978,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 75,
                     IngredientTypeId = 7,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Seafood - using grams (g)
@@ -991,8 +992,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 90,
                     IngredientTypeId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1003,8 +1004,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 30,
                     Quantity = 120,
                     IngredientTypeId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1015,8 +1016,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 60,
                     IngredientTypeId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Vegetables - using grams (g)
@@ -1029,8 +1030,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 25,
                     Quantity = 100,
                     IngredientTypeId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1041,8 +1042,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 80,
                     IngredientTypeId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1053,8 +1054,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 70,
                     IngredientTypeId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Noodles - using grams (g)
@@ -1067,8 +1068,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 80,
                     IngredientTypeId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1079,8 +1080,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 20,
                     Quantity = 85,
                     IngredientTypeId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1091,8 +1092,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 25,
                     Quantity = 90,
                     IngredientTypeId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Tofu - using grams (g)
@@ -1105,8 +1106,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 60,
                     IngredientTypeId = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1117,8 +1118,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 65,
                     IngredientTypeId = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Mushrooms - using grams (g)
@@ -1131,8 +1132,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 70,
                     IngredientTypeId = 6,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1143,8 +1144,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 15,
                     Quantity = 65,
                     IngredientTypeId = 6,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Broths - using milliliters (ml)
@@ -1157,8 +1158,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 50,
                     IngredientTypeId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1169,8 +1170,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 45,
                     IngredientTypeId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1181,8 +1182,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 40,
                     IngredientTypeId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1193,8 +1194,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 55,
                     IngredientTypeId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Sauces - using milliliters (ml)
@@ -1207,8 +1208,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 40,
                     IngredientTypeId = 8,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1219,8 +1220,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 45,
                     IngredientTypeId = 8,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1231,8 +1232,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 50,
                     IngredientTypeId = 8,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new Ingredient
                 {
@@ -1243,8 +1244,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     MinStockLevel = 10,
                     Quantity = 35,
                     IngredientTypeId = 8,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
             );
 
@@ -1255,8 +1256,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.13m, // $13 per kg = $0.13 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1264,8 +1265,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.14m, // $14 per kg = $0.14 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 1,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1273,8 +1274,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1282,8 +1283,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.16m, // $16 per kg = $0.16 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 2,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1291,8 +1292,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.12m, // $12 per kg = $0.12 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 3,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Seafood prices (per gram)
@@ -1302,8 +1303,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.17m, // $17 per kg = $0.17 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 4,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1311,8 +1312,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.10m, // $10 per kg = $0.10 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 5,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1320,8 +1321,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.15m, // $15 per kg = $0.15 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 6,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Vegetable prices (per gram)
@@ -1331,8 +1332,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 7,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1340,8 +1341,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 8,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1349,8 +1350,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.04m, // $4 per kg = $0.04 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 9,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Noodle prices (per gram)
@@ -1360,8 +1361,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 10,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1369,8 +1370,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.06m, // $6 per kg = $0.06 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 11,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1378,8 +1379,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.065m, // $6.50 per kg = $0.065 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 12,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Tofu prices (per gram)
@@ -1389,8 +1390,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.05m, // $5 per kg = $0.05 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 13,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1398,8 +1399,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.055m, // $5.50 per kg = $0.055 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 14,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Mushroom prices (per gram)
@@ -1409,8 +1410,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.08m, // $8 per kg = $0.08 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 15,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1418,8 +1419,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.07m, // $7 per kg = $0.07 per g
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 16,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Broth prices (per milliliter)
@@ -1429,8 +1430,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.009m, // $9 per liter = $0.009 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 17,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1438,8 +1439,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.008m, // $8 per liter = $0.008 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 18,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1447,8 +1448,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.0085m, // $8.50 per liter = $0.0085 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 19,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1456,8 +1457,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.0075m, // $7.50 per liter = $0.0075 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 20,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
 
                 // Sauce prices (per milliliter)
@@ -1467,8 +1468,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.005m, // $5 per liter = $0.005 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 21,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1476,8 +1477,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.004m, // $4 per liter = $0.004 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 22,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1485,8 +1486,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.0045m, // $4.50 per liter = $0.0045 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 23,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 },
                 new IngredientPrice
                 {
@@ -1494,9 +1495,48 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 0.006m, // $6 per liter = $0.006 per ml
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 24,
-                    CreatedAt = DateTime.Now,
-                    IsDelete = false
+
+
                 }
+            );
+
+            modelBuilder.Entity<DamageDevice>().HasData(
+                 new DamageDevice
+                 {
+                     DamageDeviceId = 1,
+                     Name = "Broken Handle",
+                     Description = "The handle of the hotpot is broken and needs to be replaced.",
+                     Status = MaintenanceStatus.Pending,
+                     LoggedDate = DateTime.UtcNow.AddHours(7),
+                     HotPotInventoryId = 15
+                 },
+                 new DamageDevice
+                 {
+                     DamageDeviceId = 2,
+                     Name = "Cracked Base",
+                     Description = "The base of the hotpot is cracked and needs to be replaced.",
+                     Status = MaintenanceStatus.InProgress,
+                     LoggedDate = DateTime.UtcNow.AddHours(7),
+                     HotPotInventoryId = 10
+                 },
+                 new DamageDevice
+                 {
+                     DamageDeviceId = 3,
+                     Name = "Damaged Lid",
+                     Description = "The lid of the hotpot is damaged and needs to be replaced.",
+                     Status = MaintenanceStatus.Completed,
+                     LoggedDate = DateTime.UtcNow.AddHours(7),
+                     HotPotInventoryId = 9
+                 },
+                 new DamageDevice
+                 {
+                     DamageDeviceId = 4,
+                     Name = "broken plates",
+                     Description = "The plates are broken and need to be replaced.",
+                     Status = MaintenanceStatus.Cancelled,
+                     LoggedDate = DateTime.UtcNow.AddHours(7),
+                     UtensilId = 5
+                 }
             );
         }
     }

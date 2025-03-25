@@ -48,12 +48,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     minPrice, maxPrice, minQuantity,
                     pageNumber, pageSize, sortBy, ascending);
 
-                var pagedResult = new PagedResult<HotpotDto>
+                var damageCount = await _hotpotService.CountDamageDevice();
+
+                var pagedResult = new HotpotPagedResult
                 {
                     Items = result.Items.Select(MapToHotpotDto).ToList(),
                     TotalCount = result.TotalCount,
                     PageNumber = result.PageNumber,
-                    PageSize = result.PageSize
+                    PageSize = result.PageSize,
+                    DamageDeviceCount = damageCount
                 };
 
                 return Ok(pagedResult);
@@ -243,8 +246,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = hotpot.BasePrice,
                 Status = hotpot.Status,
                 Quantity = hotpot.Quantity, // This now uses the calculated property
-                LastMaintainDate = hotpot.LastMaintainDate,
-                SeriesNumbers = hotpot.InventoryUnits?.Select(i => i.SeriesNumber).ToArray(),
                 CreatedAt = hotpot.CreatedAt,
                 UpdatedAt = hotpot.UpdatedAt
             };
@@ -268,8 +269,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = baseDto.BasePrice,
                 Status = baseDto.Status,
                 Quantity = baseDto.Quantity,
-                LastMaintainDate = baseDto.LastMaintainDate,
-                SeriesNumbers = baseDto.SeriesNumbers, // Add this to include series numbers in the detail DTO
                 CreatedAt = baseDto.CreatedAt,
                 UpdatedAt = baseDto.UpdatedAt,
                 InventoryItems = hotpot.InventoryUnits?
@@ -286,7 +285,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                             .OrderByDescending(cl => cl.CreatedAt) // Order by newest first
                             .Select(cl => new ConditionLogDto
                             {
-                                ConditionLogId = cl.ConditionLogId,
+                                ConditionLogId = cl.DamageDeviceId,
                                 Name = cl.Name,
                                 Description = cl.Description,
                                 CreatedAt = cl.CreatedAt,

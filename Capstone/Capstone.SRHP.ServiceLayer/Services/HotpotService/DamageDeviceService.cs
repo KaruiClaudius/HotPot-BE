@@ -101,7 +101,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 .Include(d => d.HotPotInventory)
                 .Include(d => d.Utensil)
                 .Include(d => d.ReplacementRequests)
-                .FirstOrDefaultAsync(d => d.ConditionLogId == id && !d.IsDelete);
+                .FirstOrDefaultAsync(d => d.DamageDeviceId == id && !d.IsDelete);
 
             if (damageDevice == null)
                 throw new NotFoundException($"Damage device with ID {id} not found");

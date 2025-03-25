@@ -68,7 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
                 throw new KeyNotFoundException($"Condition log with ID {conditionLogId} not found");
@@ -85,7 +85,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
         {
             return await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable(c => c.ConditionLogId == conditionLogId)
+                .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
                 .FirstOrDefaultAsync();
@@ -221,7 +221,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Then get the condition log with its replacement requests
                 var conditionLog = await _unitOfWork.Repository<DamageDevice>()
                     .AsQueryable()
-                    .Where(c => c.ConditionLogId == conditionLogId)
+                    .Where(c => c.DamageDeviceId == conditionLogId)
                     .Include(c => c.ReplacementRequests)
                     .FirstOrDefaultAsync();
 
@@ -276,7 +276,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
                 return false;

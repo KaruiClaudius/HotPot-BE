@@ -36,7 +36,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(damageDevice);
 
-                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.ConditionLogId },
+                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
                     ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment condition logged successfully"));
             }
             catch (Exception ex)
