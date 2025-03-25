@@ -14,7 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 {
     [Route("api/customer/feedback")]
     [ApiController]
-    [Authorize(Roles = "Khách hàng")]
+    [Authorize(Roles = "Customer")]
 
     public class CustomerFeedbackController : ControllerBase
     {

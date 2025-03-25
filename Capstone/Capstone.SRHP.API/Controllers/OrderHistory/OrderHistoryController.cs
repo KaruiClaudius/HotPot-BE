@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
     [Route("api/order-history")]
     [ApiController]
-    [Authorize(Roles = "Nhân viên,Quản trị viên")]
+    [Authorize(Roles = "Staff,Admin")]
 
     public class OrderHistoryController : ControllerBase
     {

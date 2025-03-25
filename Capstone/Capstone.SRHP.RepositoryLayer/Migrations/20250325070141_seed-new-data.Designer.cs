@@ -1800,28 +1800,28 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             RoleId = 1,
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4792),
                             IsDelete = false,
-                            Name = "Quản trị viên"
+                            Name = "Admin"
                         },
                         new
                         {
                             RoleId = 2,
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4804),
                             IsDelete = false,
-                            Name = "Quản lý"
+                            Name = "Manager"
                         },
                         new
                         {
                             RoleId = 3,
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4830),
                             IsDelete = false,
-                            Name = "Nhân viên"
+                            Name = "Staff"
                         },
                         new
                         {
                             RoleId = 4,
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4831),
                             IsDelete = false,
-                            Name = "Khách hàng"
+                            Name = "Customer"
                         });
                 });
 
@@ -2188,7 +2188,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4961),
                             Email = "Admin@gmail.com",
                             IsDelete = false,
-                            Name = "Quản trị viên",
+                            Name = "Admin",
                             Password = "$2a$12$ajXXygIQrPfTGsC2gxY..eZTsd5Zmpk1hRd1mffxAwZymfevpKQZO",
                             PhoneNumber = "987654321",
                             RoleId = 1
@@ -2199,7 +2199,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 545, DateTimeKind.Utc).AddTicks(5947),
                             Email = "Manager1@gmail.com",
                             IsDelete = false,
-                            Name = "Quản lý 1",
+                            Name = "Manager 1",
                             Password = "$2a$12$9pSjqW76fngZFylmOheo5.VStgRxBjqLgpqFKiv7RWAZFcpJUmRsC",
                             PhoneNumber = "999999999",
                             RoleId = 2
@@ -2210,7 +2210,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 37, 793, DateTimeKind.Utc).AddTicks(3587),
                             Email = "Manager2@gmail.com",
                             IsDelete = false,
-                            Name = "Quản lý 2",
+                            Name = "Manager 2",
                             Password = "$2a$12$cAT5WQ0E83Psl62ZlT9rX.yc1DRIxGGsiW1IZ9eUIDLtQsbhS3kRq",
                             PhoneNumber = "888888888",
                             RoleId = 2
@@ -2221,7 +2221,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 38, 27, DateTimeKind.Utc).AddTicks(2668),
                             Email = "Staff1@gmail.com",
                             IsDelete = false,
-                            Name = "Nhân viên 1",
+                            Name = "Staff 1",
                             Password = "$2a$12$uIieRFNXKPptLsce5vRtqutkJouH7ftb8STRGW1vEl5ASQp1.ssTO",
                             PhoneNumber = "777777777",
                             RoleId = 3
@@ -2232,7 +2232,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 38, 256, DateTimeKind.Utc).AddTicks(3732),
                             Email = "Staff2@gmail.com",
                             IsDelete = false,
-                            Name = "Nhân viên 2",
+                            Name = "Staff 2",
                             Password = "$2a$12$i1vPiFUXO29ANWRwd9omBu/uGz3kur7mJ0TZexsSKSv4bjEpiKME6",
                             PhoneNumber = "666666666",
                             RoleId = 3
@@ -2243,7 +2243,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 38, 482, DateTimeKind.Utc).AddTicks(6059),
                             Email = "Staff3@gmail.com",
                             IsDelete = false,
-                            Name = "Nhân viên 3",
+                            Name = "Staff 3",
                             Password = "$2a$12$FohlqzUddP37dF16ZZT9M.RuX.9MacPRJXPK5F6KG1GQrlEzMf3c6",
                             PhoneNumber = "555555555",
                             RoleId = 3
@@ -2254,7 +2254,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 38, 708, DateTimeKind.Utc).AddTicks(7105),
                             Email = "Staff4@gmail.com",
                             IsDelete = false,
-                            Name = "Nhân viên 4",
+                            Name = "Staff 4",
                             Password = "$2a$12$hKU9vTf8H8lPn75DR7V9BeJff6XiWlplfS2OJR1kBVhRwV9fcUJ3O",
                             PhoneNumber = "444444444",
                             RoleId = 3
@@ -2265,7 +2265,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 38, 935, DateTimeKind.Utc).AddTicks(1721),
                             Email = "Customer1@gmail.com",
                             IsDelete = false,
-                            Name = "Khách hàng 1",
+                            Name = "Customer 1",
                             Password = "$2a$12$YhV.IFBpCAJ/Ls2Eoa0pb.wutgg8N0AIoW7RJOShkaQSSJBRycYci",
                             PhoneNumber = "333333333",
                             RoleId = 4
@@ -2276,7 +2276,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             CreatedAt = new DateTime(2025, 3, 25, 14, 1, 39, 162, DateTimeKind.Utc).AddTicks(1933),
                             Email = "Customer2@gmail.com",
                             IsDelete = false,
-                            Name = "Khách hàng 2",
+                            Name = "Customer 2",
                             Password = "$2a$12$p2acFe6qlA98wV6PntRthObDeg8tX4bOWXO6GFsBkhKAm6umB.im.",
                             PhoneNumber = "222222222",
                             RoleId = 4
@@ -2288,7 +2288,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                             Email = "Customer3@gmail.com",
                             IsDelete = false,
                             LoyatyPoint = 200.0,
-                            Name = "Khách hàng 3",
+                            Name = "Customer 3",
                             Password = "$2a$12$LbnWx8uoanLuEdeq.wDYq.f1dOw6y64MWPOZb0FqC6Q63fUF/cQva",
                             PhoneNumber = "111111111",
                             RoleId = 4

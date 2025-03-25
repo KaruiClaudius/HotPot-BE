@@ -19,7 +19,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 {
     [Route("api/manager/schedule")]
     [ApiController]
-    [Authorize(Roles = "Quản lý")]
+    [Authorize(Roles = "Manager")]
     public class ManagerScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;

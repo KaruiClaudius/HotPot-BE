@@ -10,7 +10,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/staff/equipments")]
     [ApiController]
-    [Authorize(Roles = "Nhân viên")]
+    [Authorize(Roles = "Staff")]
 
     public class StaffEquipmentController : ControllerBase
     {

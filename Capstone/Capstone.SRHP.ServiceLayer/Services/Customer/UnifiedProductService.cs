@@ -11,6 +11,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Capstone.HPTY.ServiceLayer.Services.Customer
 {
@@ -239,11 +240,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                hotpotDtoQuery = hotpotDtoQuery.Where(p =>
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
-                    (p.Material != null && p.Material.ToLower().Contains(searchTerm)) ||
-                    (p.Size != null && p.Size.ToLower().Contains(searchTerm)));
+                hotpotDtoQuery = hotpotDtoQuery.Where(i =>
+                    EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Material != null && EF.Functions.Collate(i.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Size != null && EF.Functions.Collate(i.Size.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                    );
+
             }
 
             if (!string.IsNullOrWhiteSpace(material))

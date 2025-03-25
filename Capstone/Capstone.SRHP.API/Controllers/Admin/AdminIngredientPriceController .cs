@@ -9,7 +9,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/ingredient-price")]
-    [Authorize(Roles = "Quản trị viên")]
+    [Authorize(Roles = "Admin")]
     public class AdminIngredientPriceController : ControllerBase
     {
         private readonly IIngredientService _ingredientService;

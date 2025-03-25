@@ -7,7 +7,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 {
     [ApiController]
     [Route("api/customer/products")]
-    [Authorize(Roles = "Khách hàng")]
+    [Authorize(Roles = "Customer")]
     public class CustomerProductController : ControllerBase
     {
         private readonly IUnifiedProductService _productService;
