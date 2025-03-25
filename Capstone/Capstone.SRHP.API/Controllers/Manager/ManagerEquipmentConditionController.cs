@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/equipment-condition")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Quản lý")]
     public class ManagerEquipmentConditionsController : ControllerBase
     {
         private readonly IEquipmentConditionService _equipmentConditionService;

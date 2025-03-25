@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/dashboard")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Quản trị viên")]
     public class AdminDashboardController : ControllerBase
     {
         private readonly IOrderService _orderService;

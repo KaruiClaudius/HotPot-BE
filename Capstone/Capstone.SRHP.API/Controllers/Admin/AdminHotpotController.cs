@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/hotpots")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Quản trị viên")]
     public class AdminHotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
