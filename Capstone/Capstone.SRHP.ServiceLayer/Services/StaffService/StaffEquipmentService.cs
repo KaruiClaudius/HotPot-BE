@@ -233,7 +233,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 // Return response
                 return new EquipmentInspectionResponse
                 {
-                    ConditionLogId = conditionLog.ConditionLogId,
+                    ConditionLogId = conditionLog.DamageDeviceId,
                     EquipmentId = request.EquipmentId,
                     EquipmentType = request.EquipmentType,
                     ConditionName = conditionLog.Name,
@@ -353,7 +353,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 // Map condition logs to response DTOs
                 return conditionLogs.Select(log => new EquipmentInspectionResponse
                 {
-                    ConditionLogId = log.ConditionLogId,
+                    ConditionLogId = log.DamageDeviceId,
                     EquipmentId = equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase)
                         ? log.HotPotInventoryId.Value
                         : log.UtensilId.Value,

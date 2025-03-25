@@ -40,7 +40,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
             var token = new JwtSecurityToken(
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: DateTime.UtcNow.AddDays(1),
                 signingCredentials: credentials
             );
 

@@ -34,8 +34,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Feedback
         public string UserName { get; set; }
         public FeedbackApprovalStatus ApprovalStatus { get; set; }
         public DateTime? ApprovalDate { get; set; }
-        public int? ApprovedByUserId { get; set; }
-        public string ApprovedByUserName { get; set; }
         public string RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

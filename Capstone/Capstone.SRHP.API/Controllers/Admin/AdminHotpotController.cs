@@ -286,7 +286,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                             .OrderByDescending(cl => cl.CreatedAt) // Order by newest first
                             .Select(cl => new ConditionLogDto
                             {
-                                ConditionLogId = cl.ConditionLogId,
+                                ConditionLogId = cl.DamageDeviceId,
                                 Name = cl.Name,
                                 Description = cl.Description,
                                 CreatedAt = cl.CreatedAt,

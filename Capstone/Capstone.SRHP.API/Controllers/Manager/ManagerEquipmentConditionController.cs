@@ -45,7 +45,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         : result.Utensil?.Name ?? "Unknown Utensil";
 
                     await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveConditionAlert",
-                        result.ConditionLogId,
+                        result.DamageDeviceId,
                         equipmentType,
                         equipmentName,
                         result.Name,
@@ -54,7 +54,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         DateTime.UtcNow);
                 }
 
-                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.ConditionLogId },
+                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
                     ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment condition logged successfully"));
             }
             catch (Exception ex)
