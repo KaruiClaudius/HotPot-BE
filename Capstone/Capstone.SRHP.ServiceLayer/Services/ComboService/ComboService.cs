@@ -72,9 +72,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             {
                 searchTerm = searchTerm.ToLower();
                 query = query.Where(c =>
-                    c.Name.ToLower().Contains(searchTerm) ||
-                    (c.Description != null && c.Description.ToLower().Contains(searchTerm)) ||
-                    c.HotpotBroth.Name.ToLower().Contains(searchTerm));
+                    EF.Functions.Collate(c.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    c.Description != null && EF.Functions.Collate(c.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    EF.Functions.Collate(c.HotpotBroth.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm));
             }
 
             // Apply customizable filter if provided

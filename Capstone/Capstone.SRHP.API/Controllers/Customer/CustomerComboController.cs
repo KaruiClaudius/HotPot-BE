@@ -12,7 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
     {
         [ApiController]
         [Route("api/customer/combos")]
-        [Authorize(Roles = "Khách hàng")]
+        [Authorize(Roles = "Customer")]
         public class CustomerComboController : ControllerBase
         {
             private readonly IComboService _comboService;

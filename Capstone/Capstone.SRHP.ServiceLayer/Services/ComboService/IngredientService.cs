@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
@@ -52,10 +53,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
+
                     query = query.Where(i =>
-                        i.Name.ToLower().Contains(searchTerm) ||
-                        i.Description != null && i.Description.ToLower().Contains(searchTerm) ||
-                        i.IngredientType.Name.ToLower().Contains(searchTerm));
+                        EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        EF.Functions.Collate(i.IngredientType.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm));
                 }
 
                 // Apply type filter

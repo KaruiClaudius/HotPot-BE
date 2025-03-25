@@ -604,28 +604,28 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 keyColumn: "RoleId",
                 keyValue: 1,
                 columns: new[] { "CreatedAt", "Name" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4792), "Quản trị viên" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4792), "Admin" });
 
             migrationBuilder.UpdateData(
                 table: "Roles",
                 keyColumn: "RoleId",
                 keyValue: 2,
                 columns: new[] { "CreatedAt", "Name" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4804), "Quản lý" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4804), "Manager" });
 
             migrationBuilder.UpdateData(
                 table: "Roles",
                 keyColumn: "RoleId",
                 keyValue: 3,
                 columns: new[] { "CreatedAt", "Name" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4830), "Nhân viên" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4830), "Staff" });
 
             migrationBuilder.UpdateData(
                 table: "Roles",
                 keyColumn: "RoleId",
                 keyValue: 4,
                 columns: new[] { "CreatedAt", "Name" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4831), "Khách hàng" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4831), "Customer" });
 
             migrationBuilder.UpdateData(
                 table: "TurtorialVideos",
@@ -667,70 +667,70 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                 keyColumn: "UserId",
                 keyValue: 1,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4961), "Quản trị viên", "$2a$12$ajXXygIQrPfTGsC2gxY..eZTsd5Zmpk1hRd1mffxAwZymfevpKQZO" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 309, DateTimeKind.Utc).AddTicks(4961), "Admin", "$2a$12$ajXXygIQrPfTGsC2gxY..eZTsd5Zmpk1hRd1mffxAwZymfevpKQZO" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 2,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 545, DateTimeKind.Utc).AddTicks(5947), "Quản lý 1", "$2a$12$9pSjqW76fngZFylmOheo5.VStgRxBjqLgpqFKiv7RWAZFcpJUmRsC" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 545, DateTimeKind.Utc).AddTicks(5947), "Manager 1", "$2a$12$9pSjqW76fngZFylmOheo5.VStgRxBjqLgpqFKiv7RWAZFcpJUmRsC" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 3,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 793, DateTimeKind.Utc).AddTicks(3587), "Quản lý 2", "$2a$12$cAT5WQ0E83Psl62ZlT9rX.yc1DRIxGGsiW1IZ9eUIDLtQsbhS3kRq" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 37, 793, DateTimeKind.Utc).AddTicks(3587), "Manager 2", "$2a$12$cAT5WQ0E83Psl62ZlT9rX.yc1DRIxGGsiW1IZ9eUIDLtQsbhS3kRq" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 4,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 27, DateTimeKind.Utc).AddTicks(2668), "Nhân viên 1", "$2a$12$uIieRFNXKPptLsce5vRtqutkJouH7ftb8STRGW1vEl5ASQp1.ssTO" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 27, DateTimeKind.Utc).AddTicks(2668), "Staff 1", "$2a$12$uIieRFNXKPptLsce5vRtqutkJouH7ftb8STRGW1vEl5ASQp1.ssTO" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 5,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 256, DateTimeKind.Utc).AddTicks(3732), "Nhân viên 2", "$2a$12$i1vPiFUXO29ANWRwd9omBu/uGz3kur7mJ0TZexsSKSv4bjEpiKME6" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 256, DateTimeKind.Utc).AddTicks(3732), "Staff 2", "$2a$12$i1vPiFUXO29ANWRwd9omBu/uGz3kur7mJ0TZexsSKSv4bjEpiKME6" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 6,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 482, DateTimeKind.Utc).AddTicks(6059), "Nhân viên 3", "$2a$12$FohlqzUddP37dF16ZZT9M.RuX.9MacPRJXPK5F6KG1GQrlEzMf3c6" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 482, DateTimeKind.Utc).AddTicks(6059), "Staff 3", "$2a$12$FohlqzUddP37dF16ZZT9M.RuX.9MacPRJXPK5F6KG1GQrlEzMf3c6" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 7,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 708, DateTimeKind.Utc).AddTicks(7105), "Nhân viên 4", "$2a$12$hKU9vTf8H8lPn75DR7V9BeJff6XiWlplfS2OJR1kBVhRwV9fcUJ3O" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 708, DateTimeKind.Utc).AddTicks(7105), "Staff 4", "$2a$12$hKU9vTf8H8lPn75DR7V9BeJff6XiWlplfS2OJR1kBVhRwV9fcUJ3O" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 8,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 935, DateTimeKind.Utc).AddTicks(1721), "Khách hàng 1", "$2a$12$YhV.IFBpCAJ/Ls2Eoa0pb.wutgg8N0AIoW7RJOShkaQSSJBRycYci" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 38, 935, DateTimeKind.Utc).AddTicks(1721), "Customer 1", "$2a$12$YhV.IFBpCAJ/Ls2Eoa0pb.wutgg8N0AIoW7RJOShkaQSSJBRycYci" });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 9,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 39, 162, DateTimeKind.Utc).AddTicks(1933), "Khách hàng 2", "$2a$12$p2acFe6qlA98wV6PntRthObDeg8tX4bOWXO6GFsBkhKAm6umB.im." });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 39, 162, DateTimeKind.Utc).AddTicks(1933), "Customer 2", "$2a$12$p2acFe6qlA98wV6PntRthObDeg8tX4bOWXO6GFsBkhKAm6umB.im." });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "UserId",
                 keyValue: 10,
                 columns: new[] { "CreatedAt", "Name", "Password" },
-                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 39, 396, DateTimeKind.Utc).AddTicks(2574), "Khách hàng 3", "$2a$12$LbnWx8uoanLuEdeq.wDYq.f1dOw6y64MWPOZb0FqC6Q63fUF/cQva" });
+                values: new object[] { new DateTime(2025, 3, 25, 14, 1, 39, 396, DateTimeKind.Utc).AddTicks(2574), "Customer 3", "$2a$12$LbnWx8uoanLuEdeq.wDYq.f1dOw6y64MWPOZb0FqC6Q63fUF/cQva" });
 
             migrationBuilder.UpdateData(
                 table: "UtensilTypes",

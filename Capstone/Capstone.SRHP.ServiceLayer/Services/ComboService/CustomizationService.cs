@@ -68,11 +68,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
-                    query = query.Where(c =>
-                        c.Name.ToLower().Contains(searchTerm) ||
-                        (c.Note != null && c.Note.ToLower().Contains(searchTerm)) ||
-                        c.HotpotBroth.Name.ToLower().Contains(searchTerm) ||
-                        c.Combo.Name.ToLower().Contains(searchTerm));
+                    query = query.Where(i =>
+                        EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        i.Note != null && EF.Functions.Collate(i.Note.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        EF.Functions.Collate(i.HotpotBroth.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                        EF.Functions.Collate(i.Combo.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm));
                 }
 
                 if (userId.HasValue)

@@ -16,7 +16,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/feedback")]
     [ApiController]
-    [Authorize(Roles = "Quản lý")]
+    [Authorize(Roles = "Manager")]
     public class ManagerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _managerFeedbackService;

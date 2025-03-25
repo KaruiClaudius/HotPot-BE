@@ -66,7 +66,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 var customerRole = await _unitOfWork.Repository<Role>()
                     .FindAsync(r => r.Name == "Customer");
                 if (customerRole == null)
-                    throw new ValidationException("Role Khách hàng không tìm thấy");
+                    throw new ValidationException("Role Customer không tìm thấy");
 
                 User resultUser;
 
@@ -229,7 +229,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                             .FindAsync(r => r.Name == "Customer");
 
                         if (customerRole == null)
-                            throw new ValidationException("Role Khách hàng không tìm thấy");
+                            throw new ValidationException("Role Customer không tìm thấy");
 
                         // Create new user
                         user = new User

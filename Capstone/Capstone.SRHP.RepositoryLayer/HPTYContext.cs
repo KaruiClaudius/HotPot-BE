@@ -492,23 +492,23 @@ namespace Capstone.HPTY.RepositoryLayer
 
             // Seed Data
             modelBuilder.Entity<Role>().HasData(
-                new Role { RoleId = 1, Name = "Quản trị viên" },
-                new Role { RoleId = 2, Name = "Quản lý" },
-                new Role { RoleId = 3, Name = "Nhân viên" },
-                new Role { RoleId = 4, Name = "Khách hàng" }
+                new Role { RoleId = 1, Name = "Admin" },
+                new Role { RoleId = 2, Name = "Manager" },
+                new Role { RoleId = 3, Name = "Staff" },
+                new Role { RoleId = 4, Name = "Customer" }
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = 1, PhoneNumber = "987654321", Name = "Quản trị viên", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
-                new User { UserId = 2, PhoneNumber = "999999999", Name = "Quản lý 1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
-                new User { UserId = 3, PhoneNumber = "888888888", Name = "Quản lý 2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
-                new User { UserId = 4, PhoneNumber = "777777777", Name = "Nhân viên 1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 5, PhoneNumber = "666666666", Name = "Nhân viên 2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 6, PhoneNumber = "555555555", Name = "Nhân viên 3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 7, PhoneNumber = "444444444", Name = "Nhân viên 4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 8, PhoneNumber = "333333333", Name = "Khách hàng 1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
-                new User { UserId = 9, PhoneNumber = "222222222", Name = "Khách hàng 2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
-                new User { UserId = 10, PhoneNumber = "111111111", Name = "Khách hàng 3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4, LoyatyPoint = 200 }
+                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
+                new User { UserId = 2, PhoneNumber = "999999999", Name = "Manager 1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 3, PhoneNumber = "888888888", Name = "Manager 2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 4, PhoneNumber = "777777777", Name = "Staff 1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 5, PhoneNumber = "666666666", Name = "Staff 2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 6, PhoneNumber = "555555555", Name = "Staff 3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff 4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer 1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer 2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer 3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4, LoyatyPoint = 200 }
             );
 
 

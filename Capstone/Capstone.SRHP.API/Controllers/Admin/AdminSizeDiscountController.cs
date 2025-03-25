@@ -10,7 +10,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/size-discount")]
-    [Authorize(Roles = "Quản trị viên")]
+    [Authorize(Roles = "Admin")]
     public class AdminSizeDiscountController : ControllerBase
     {
         private readonly ISizeDiscountService _sizeDiscountService;

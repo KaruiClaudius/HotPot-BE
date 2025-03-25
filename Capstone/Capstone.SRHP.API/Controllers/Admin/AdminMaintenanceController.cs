@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/maintenance")]
-    [Authorize(Roles = "Quản trị viên")]
+    [Authorize(Roles = "Admin")]
     public class AdminMaintenanceController : ControllerBase
     {
         private readonly IDamageDeviceService _damageDeviceService;

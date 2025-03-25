@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/replacement")]
     [ApiController]
-    //[Authorize(Roles = "Quản lý")]
+    //[Authorize(Roles = "Manager")]
 
     public class ManagerReplacementController : ControllerBase
     {

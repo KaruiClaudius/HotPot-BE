@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/order-management")]
     [ApiController]
-    [Authorize(Roles = "Quản lý")]
+    [Authorize(Roles = "Manager")]
     public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;

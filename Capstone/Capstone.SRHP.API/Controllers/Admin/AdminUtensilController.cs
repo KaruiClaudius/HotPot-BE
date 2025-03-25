@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/utensils")]
-    [Authorize(Roles = "Quản trị viên")]
+    [Authorize(Roles = "Admin")]
     public class AdminUtensilController : ControllerBase
     {
         private readonly IUtensilService _utensilService;
