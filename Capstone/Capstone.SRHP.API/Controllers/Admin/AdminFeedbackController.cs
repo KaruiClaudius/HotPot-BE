@@ -265,8 +265,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 UserName = feedback.User?.Name,
                 ApprovalStatus = feedback.ApprovalStatus,
                 ApprovalDate = feedback.ApprovalDate,
-                ApprovedByUserId = feedback.ApprovedByUserId,
-                ApprovedByUserName = feedback.ApprovedByUser?.Name,
                 RejectionReason = feedback.RejectionReason,
                 CreatedAt = feedback.CreatedAt,
                 UpdatedAt = feedback.UpdatedAt
