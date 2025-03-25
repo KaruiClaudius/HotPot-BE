@@ -41,14 +41,21 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
             }
-        }      
+        }
 
         [HttpGet("unallocated")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<Order>>>> GetUnallocatedOrders()
+        public async Task<ActionResult<ApiResponse<PagedResult<Order>>>> GetUnallocatedOrders(
+             [FromQuery] OrderQueryParams queryParams = null)
         {
-            var orders = await _orderManagementService.GetUnallocatedOrders();
-            return Ok(ApiResponse<IEnumerable<Order>>.SuccessResponse(orders, "Unallocated orders retrieved successfully"));
+            // If no query params provided, create with defaults
+            queryParams ??= new OrderQueryParams { PageNumber = 1, PageSize = 10 };
+
+            var pagedOrders = await _orderManagementService.GetUnallocatedOrdersPaged(queryParams);
+
+            return Ok(ApiResponse<PagedResult<Order>>.SuccessResponse(
+                pagedOrders,
+                $"Unallocated orders retrieved successfully (Page {pagedOrders.PageNumber} of {pagedOrders.TotalPages})"));
         }
 
         [HttpGet("staff/{staffId}")]
@@ -107,10 +114,21 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<Order>>>> GetOrdersByStatus(OrderStatus status)
+        public async Task<ActionResult<ApiResponse<PagedResult<Order>>>> GetOrdersByStatus(
+            OrderStatus status,
+            [FromQuery] OrderQueryParams queryParams = null)
         {
-            var orders = await _orderManagementService.GetOrdersByStatus(status);
-            return Ok(ApiResponse<IEnumerable<Order>>.SuccessResponse(orders, $"Orders with status {status} retrieved successfully"));
+            // If no query params provided, create with defaults
+            queryParams ??= new OrderQueryParams { PageNumber = 1, PageSize = 10 };
+
+            // Set the status from the route parameter
+            queryParams.Status = status;
+
+            var pagedOrders = await _orderManagementService.GetOrdersByStatusPaged(queryParams);
+
+            return Ok(ApiResponse<PagedResult<Order>>.SuccessResponse(
+                pagedOrders,
+                $"Orders with status {status} retrieved successfully (Page {pagedOrders.PageNumber} of {pagedOrders.TotalPages})"));
         }
 
         // Delivery progress monitoring endpoints
@@ -141,10 +159,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("pending-deliveries")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ShippingOrder>>>> GetPendingDeliveries()
+        public async Task<ActionResult<ApiResponse<PagedResult<ShippingOrder>>>> GetPendingDeliveries(
+           [FromQuery] ShippingOrderQueryParams queryParams = null)
         {
-            var pendingDeliveries = await _orderManagementService.GetPendingDeliveries();
-            return Ok(ApiResponse<IEnumerable<ShippingOrder>>.SuccessResponse(pendingDeliveries, "Pending deliveries retrieved successfully"));
+            // If no query params provided, create with defaults
+            queryParams ??= new ShippingOrderQueryParams { PageNumber = 1, PageSize = 10 };
+
+            var pagedDeliveries = await _orderManagementService.GetPendingDeliveriesPaged(queryParams);
+
+            return Ok(ApiResponse<PagedResult<ShippingOrder>>.SuccessResponse(
+                pagedDeliveries,
+                $"Pending deliveries retrieved successfully (Page {pagedDeliveries.PageNumber} of {pagedDeliveries.TotalPages})"));
         }
 
         [HttpPut("delivery/time/{shippingOrderId}")]
