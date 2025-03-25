@@ -229,7 +229,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             await _unitOfWork.CommitAsync();
 
             // Update the request with the condition log ID
-            request.ConditionLogId = conditionLog.DamageDeviceId;
+            request.DamageDeviceId = conditionLog.DamageDeviceId;
             await _unitOfWork.CommitAsync();
 
             // Load related entities for notification
