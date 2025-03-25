@@ -21,57 +21,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<DamageDevice> LogEquipmentFailureAsync(DamageDevice damageDevice)
+        public async Task<DamageDevice> LogEquipmentFailureAsync(DamageDevice conditionLog)
         {
             // Validate foreign keys before attempting to save
-            if (damageDevice.HotPotInventoryId.HasValue)
+            if (conditionLog.HotPotInventoryId.HasValue)
             {
                 var hotPotExists = await _unitOfWork.Repository<HotPotInventory>()
                     .AsQueryable()
-                    .AnyAsync(h => h.HotPotInventoryId == damageDevice.HotPotInventoryId.Value);
+                    .AnyAsync(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value);
 
                 if (!hotPotExists)
                 {
-                    throw new InvalidOperationException($"Hot Pot with ID {damageDevice.HotPotInventoryId.Value} does not exist.");
+                    throw new InvalidOperationException($"Hot Pot with ID {conditionLog.HotPotInventoryId.Value} does not exist.");
                 }
             }
 
-            if (damageDevice.UtensilId.HasValue)
+            if (conditionLog.UtensilId.HasValue)
             {
                 var utensilExists = await _unitOfWork.Repository<Utensil>()
                     .AsQueryable()
-                    .AnyAsync(u => u.UtensilId == damageDevice.UtensilId.Value);
+                    .AnyAsync(u => u.UtensilId == conditionLog.UtensilId.Value);
 
                 if (!utensilExists)
                 {
-                    throw new InvalidOperationException($"Utensil with ID {damageDevice.UtensilId.Value} does not exist.");
+                    throw new InvalidOperationException($"Utensil with ID {conditionLog.UtensilId.Value} does not exist.");
                 }
             }
 
             // Ensure at least one equipment type is specified
-            if (!damageDevice.HotPotInventoryId.HasValue && !damageDevice.UtensilId.HasValue)
+            if (!conditionLog.HotPotInventoryId.HasValue && !conditionLog.UtensilId.HasValue)
             {
                 throw new InvalidOperationException("Either HotPotInventoryId or UtensilId must be specified.");
             }
 
             // Set default values
-            damageDevice.LoggedDate = DateTime.UtcNow;
-            damageDevice.Status = MaintenanceStatus.Pending;
+            conditionLog.LoggedDate = DateTime.UtcNow;
+            conditionLog.Status = MaintenanceStatus.Pending;
 
 
-            _unitOfWork.Repository<DamageDevice>().Insert(damageDevice);
+            _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 
-            return damageDevice;
+            return conditionLog;
         }
 
-        public async Task<DamageDevice> UpdateResolutionTimelineAsync(int damageDeviceId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
+        public async Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.DamageDeviceId == damageDeviceId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
-                throw new KeyNotFoundException($"Condition log with ID {damageDeviceId} not found");
+                throw new KeyNotFoundException($"Condition log with ID {conditionLogId} not found");
 
             conditionLog.Status = status;
             conditionLog.Description = message;
@@ -82,10 +82,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             return conditionLog;
         }
 
-        public async Task<DamageDevice> GetConditionLogByIdAsync(int damageDeviceId)
+        public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
         {
             return await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable(c => c.DamageDeviceId == damageDeviceId)
+                .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
                 .FirstOrDefaultAsync();
@@ -111,18 +111,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<int>> GetAffectedCustomerIdsAsync(int damageDeviceId)
+        public async Task<IEnumerable<int>> GetAffectedCustomerIdsAsync(int conditionLogId)
         {
-            var damageDevice = await GetConditionLogByIdAsync(damageDeviceId);
-            if (damageDevice == null)
+            var conditionLog = await GetConditionLogByIdAsync(conditionLogId);
+            if (conditionLog == null)
                 return new List<int>();
 
             var affectedCustomerIds = new HashSet<int>();
 
             // Check for customers who have submitted replacement requests for this condition log
-            if (damageDevice.ReplacementRequests != null && damageDevice.ReplacementRequests.Any())
+            if (conditionLog.ReplacementRequests != null && conditionLog.ReplacementRequests.Any())
             {
-                foreach (var request in damageDevice.ReplacementRequests)
+                foreach (var request in conditionLog.ReplacementRequests)
                 {
                     if (request.CustomerId > 0)
                         affectedCustomerIds.Add(request.CustomerId);
@@ -130,12 +130,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
 
             // Check for customers with active orders using the affected equipment
-            if (damageDevice.HotPotInventoryId.HasValue)
+            if (conditionLog.HotPotInventoryId.HasValue)
             {
                 // Get customers who have orders with this hot pot inventory in sell order details
                 var hotPotSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
-                    .Where(od => od.HotpotInventoryId == damageDevice.HotPotInventoryId)
+                    .Where(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
                     .Include(od => od.RentOrder)
                         .ThenInclude(o => o.Order)
                         .ThenInclude(o => o.User)
@@ -152,7 +152,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Get customers who have orders with this hot pot inventory in rent order details
                 var hotPotRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
-                    .Where(rd => rd.HotpotInventoryId == damageDevice.HotPotInventoryId)
+                    .Where(rd => rd.HotpotInventoryId == conditionLog.HotPotInventoryId)
                     .Include(rd => rd.RentOrder)
                         .ThenInclude(r=> r.Order)                     
                         .ThenInclude(o => o.User)
@@ -167,12 +167,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 }
             }
 
-            if (damageDevice.UtensilId.HasValue)
+            if (conditionLog.UtensilId.HasValue)
             {
                 // Get customers who have orders with this utensil in sell order details
                 var utensilSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
-                    .Where(od => od.UtensilId == damageDevice.UtensilId)
+                    .Where(od => od.UtensilId == conditionLog.UtensilId)
                     .Include(od => od.RentOrder)
                         .ThenInclude(od => od.Order)
                         .ThenInclude(o => o.User)
@@ -189,7 +189,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Get customers who have orders with this utensil in rent order details
                 var utensilRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
                     .AsQueryable()
-                    .Where(rd => rd.UtensilId == damageDevice.UtensilId)
+                    .Where(rd => rd.UtensilId == conditionLog.UtensilId)
                     .Include(rd => rd.RentOrder)
                         .ThenInclude(rd => rd.Order)
                         .ThenInclude(o => o.User)
@@ -240,7 +240,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         RequestReason = $"Maintenance for condition log #{conditionLogId}",
                         Status = ReplacementRequestStatus.InProgress,
                         RequestDate = DateTime.UtcNow,
-                        DamageDeviceId = conditionLogId,
+                        ConditionLogId = conditionLogId,
                         AssignedStaffId = staffId,
                         EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
                             EquipmentType.HotPot : EquipmentType.Utensil,

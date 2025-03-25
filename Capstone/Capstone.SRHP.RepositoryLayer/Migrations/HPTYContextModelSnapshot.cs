@@ -64,7 +64,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("ChatMessages", (string)null);
+                    b.ToTable("ChatMessages");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ChatSession", b =>
@@ -103,7 +103,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("ManagerId");
 
-                    b.ToTable("ChatSessions", (string)null);
+                    b.ToTable("ChatSessions");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Combo", b =>
@@ -206,7 +206,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("IngredientTypeId");
 
-                    b.ToTable("ComboAllowedIngredientTypes", (string)null);
+                    b.ToTable("ComboAllowedIngredientTypes");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ComboIngredient", b =>
@@ -241,7 +241,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("ComboId", "IngredientId");
 
-                    b.ToTable("ComboIngredients", (string)null);
+                    b.ToTable("ComboIngredients");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Customization", b =>
@@ -347,7 +347,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("CustomizationId", "IngredientId");
 
-                    b.ToTable("CustomizationIngredients", (string)null);
+                    b.ToTable("CustomizationIngredients");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.DamageDevice", b =>
@@ -488,7 +488,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("DiscountId");
 
-                    b.ToTable("Discounts", (string)null);
+                    b.ToTable("Discounts");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.HotPotInventory", b =>
@@ -720,7 +720,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("HotpotId");
 
-                    b.ToTable("Hotpots", (string)null);
+                    b.ToTable("Hotpots");
 
                     b.HasData(
                         new
@@ -848,7 +848,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("IngredientTypeId");
 
-                    b.ToTable("Ingredients", (string)null);
+                    b.ToTable("Ingredients");
 
                     b.HasData(
                         new
@@ -1171,7 +1171,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("IngredientId");
 
-                    b.ToTable("IngredientPrices", (string)null);
+                    b.ToTable("IngredientPrices");
 
                     b.HasData(
                         new
@@ -1434,7 +1434,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("IngredientTypeId");
 
-                    b.ToTable("IngredientTypes", (string)null);
+                    b.ToTable("IngredientTypes");
 
                     b.HasData(
                         new
@@ -1551,7 +1551,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Orders", (string)null);
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Payment", b =>
@@ -1598,7 +1598,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
@@ -1646,7 +1646,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("OrderId");
 
-                    b.ToTable("RentOrders", (string)null);
+                    b.ToTable("RentOrders");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrderDetail", b =>
@@ -1689,7 +1689,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UtensilId");
 
-                    b.ToTable("RentOrderDetails", (string)null);
+                    b.ToTable("RentOrderDetails");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ReplacementRequest", b =>
@@ -1762,7 +1762,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UtensilId");
 
-                    b.ToTable("ReplacementRequests", (string)null);
+                    b.ToTable("ReplacementRequests");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Role", b =>
@@ -1789,7 +1789,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
 
                     b.HasData(
                         new
@@ -1841,7 +1841,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("OrderId");
 
-                    b.ToTable("SellOrders", (string)null);
+                    b.ToTable("SellOrders");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrderDetail", b =>
@@ -1889,7 +1889,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("SellOrderDetails", (string)null);
+                    b.ToTable("SellOrderDetails");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ShippingOrder", b =>
@@ -1944,7 +1944,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("StaffId");
 
-                    b.ToTable("ShippingOrders", (string)null);
+                    b.ToTable("ShippingOrders");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SizeDiscount", b =>
@@ -1978,7 +1978,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("SizeDiscountId");
 
-                    b.ToTable("SizeDiscounts", (string)null);
+                    b.ToTable("SizeDiscounts");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.StaffPickupAssignment", b =>
@@ -2020,7 +2020,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("StaffId");
 
-                    b.ToTable("StaffPickupAssignments", (string)null);
+                    b.ToTable("StaffPickupAssignments");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.TurtorialVideo", b =>
@@ -2056,7 +2056,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("TurtorialVideoId");
 
-                    b.ToTable("TurtorialVideos", (string)null);
+                    b.ToTable("TurtorialVideos");
 
                     b.HasData(
                         new
@@ -2176,7 +2176,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
 
                     b.HasData(
                         new
@@ -2346,7 +2346,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UtensilTypeId");
 
-                    b.ToTable("Utensils", (string)null);
+                    b.ToTable("Utensils");
 
                     b.HasData(
                         new
@@ -2450,7 +2450,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("UtensilTypeId");
 
-                    b.ToTable("UtensilTypes", (string)null);
+                    b.ToTable("UtensilTypes");
 
                     b.HasData(
                         new
@@ -2518,7 +2518,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WorkShifts", (string)null);
+                    b.ToTable("WorkShifts");
                 });
 
             modelBuilder.Entity("Feedback", b =>
@@ -2592,7 +2592,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Feedback", (string)null);
+                    b.ToTable("Feedback");
                 });
 
             modelBuilder.Entity("UserWorkShift", b =>
@@ -2607,7 +2607,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("MangerWorkShiftsId");
 
-                    b.ToTable("UserWorkShift", (string)null);
+                    b.ToTable("UserWorkShift");
                 });
 
             modelBuilder.Entity("UserWorkShift1", b =>
@@ -2622,7 +2622,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("StaffWorkShiftsId");
 
-                    b.ToTable("UserWorkShift1", (string)null);
+                    b.ToTable("UserWorkShift1");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ChatMessage", b =>
