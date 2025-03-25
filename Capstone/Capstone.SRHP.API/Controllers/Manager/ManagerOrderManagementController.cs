@@ -115,7 +115,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<Order>>>> GetOrdersByStatus(
-            OrderStatus status,
+            OrderStatus? status= null,
             [FromQuery] OrderQueryParams queryParams = null)
         {
             // If no query params provided, create with defaults
