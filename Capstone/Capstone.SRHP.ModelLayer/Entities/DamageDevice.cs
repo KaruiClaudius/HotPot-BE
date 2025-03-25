@@ -14,7 +14,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int ConditionLogId { get; set; }
+        public int DamageDeviceId { get; set; }
 
         [Required]
         [StringLength(100)]

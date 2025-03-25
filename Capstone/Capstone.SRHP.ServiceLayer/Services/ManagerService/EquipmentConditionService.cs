@@ -57,7 +57,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
         {
             return await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable(c => c.ConditionLogId == conditionLogId)
+                .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(c => c.Utensil)
@@ -128,7 +128,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<bool> UpdateConditionStatusAsync(int conditionLogId, MaintenanceStatus status)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
                 return false;

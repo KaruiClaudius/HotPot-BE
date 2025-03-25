@@ -179,7 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 return CreatedAtAction(
                     nameof(GetLogById),
-                    new { id = createdLog.ConditionLogId },
+                    new { id = createdLog.DamageDeviceId },
                     new ApiResponse<ConditionLogDto>
                     {
                         Success = true,
@@ -483,7 +483,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new ConditionLogDto
             {
-                ConditionLogId = log.ConditionLogId,
+                ConditionLogId = log.DamageDeviceId,
                 Name = log.Name,
                 Description = log.Description,
                 Status = log.Status,

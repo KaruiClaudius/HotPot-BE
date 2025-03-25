@@ -120,7 +120,7 @@ namespace Capstone.HPTY.RepositoryLayer
             //{
             //    entity.Property(c => c.LoyatyPoint)
             //        .HasDefaultValue(0);
-            //});
+            //});     
 
             modelBuilder.Entity<StaffPickupAssignment>()
                 .HasOne(a => a.RentOrderDetail)
@@ -396,7 +396,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
             modelBuilder.Entity<DamageDevice>(entity =>
             {
-                entity.HasKey(e => e.ConditionLogId);
+                entity.HasKey(e => e.DamageDeviceId);
 
                 entity.Property(e => e.Name)
                     .IsRequired()
