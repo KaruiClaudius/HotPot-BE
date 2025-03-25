@@ -35,7 +35,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .GetAll()
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
-                .Include(r => r.DamageDevice)
+                .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
@@ -50,7 +50,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .GetAll(r => r.Status == status)
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
-                .Include(r => r.DamageDevice)
+                .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
@@ -66,7 +66,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .Where(r => r.ReplacementRequestId == requestId)
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
-                .Include(r => r.DamageDevice)
+                .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
@@ -212,7 +212,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 Name = "Equipment Replacement",
                 Description = $"Equipment replaced. Reason: {request.RequestReason}. Notes: {completionNotes}",
                 Status = MaintenanceStatus.Completed,
-                ScheduleType = MaintenanceScheduleType.Unscheduled,
                 LoggedDate = DateTime.UtcNow
             };
 
@@ -293,7 +292,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             return await _unitOfWork.Repository<ReplacementRequest>()
                 .GetAll(r => r.AssignedStaffId == staffId)
                 .Include(r => r.Customer)
-                .Include(r => r.DamageDevice)
+                .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)
@@ -398,7 +397,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             return await _unitOfWork.Repository<ReplacementRequest>()
                 .GetAll(r => r.CustomerId == customerId)
                 .Include(r => r.AssignedStaff)
-                .Include(r => r.DamageDevice)
+                .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .Include(r => r.Utensil)

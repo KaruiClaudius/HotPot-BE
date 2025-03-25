@@ -14,7 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 {
     [Route("api/staff/schedule")]
     [ApiController]
-    [Authorize(Roles = "Staff")]
+    [Authorize(Roles = "Nhân viên")]
 
     public class StaffScheduleController : ControllerBase
     {

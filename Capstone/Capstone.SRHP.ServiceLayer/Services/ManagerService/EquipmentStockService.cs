@@ -66,7 +66,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Name = isAvailable ? "Available" : "Unavailable",
                     Description = reason,
                     Status = isAvailable ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
-                    ScheduleType = isAvailable ? ModelLayer.Enum.MaintenanceScheduleType.Regular : ModelLayer.Enum.MaintenanceScheduleType.Unscheduled,
                     LoggedDate = DateTime.UtcNow,
                     HotPotInventoryId = inventoryId
                 };
@@ -156,7 +155,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Name = isAvailable ? "Available" : "Unavailable",
                     Description = reason,
                     Status = isAvailable ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
-                    ScheduleType = isAvailable ? ModelLayer.Enum.MaintenanceScheduleType.Regular : ModelLayer.Enum.MaintenanceScheduleType.Unscheduled,
                     LoggedDate = DateTime.UtcNow,
                     UtensilId = utensilId
                 };

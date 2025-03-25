@@ -31,7 +31,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [ProducesResponseType(typeof(ApiResponse<PagedResult<UserDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetUsers(
          [FromQuery] string searchTerm = null,
-         [FromQuery] int? roleId = null,
+         [FromQuery] string? rolename = null,
          [FromQuery] bool? isActive = null,
          [FromQuery] DateTime? createdAfter = null,
          [FromQuery] DateTime? createdBefore = null,
@@ -51,7 +51,20 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                _logger.LogInformation("Admin retrieving users with filters");
+                int? roleId = null;
+                if (rolename != null)
+                {
+                    var role = await _userService.GetByRoleNameAsync(rolename);
+                    if (role == null)
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Error",
+                            Message = $"Không thấy vai trò '{rolename}'"
+                        });
+
+                    roleId = role.RoleId;
+                    _logger.LogInformation("Admin retrieving users with filters");
+                }
 
                 var pagedUsers = await _userService.GetUsersAsync(
                     searchTerm: searchTerm,
@@ -130,7 +143,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Name = request.Name,
                     PhoneNumber = request.PhoneNumber,
                     RoleId = role.RoleId,
-                    Address = request.Address
+                    //Address = request.Address
                 };
 
                 var createdUser = await _userService.CreateAsync(userToCreate);

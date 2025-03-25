@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
     [Route("api/customer/order-history")]
     [ApiController]
-    [Authorize(Roles = "Customer")]
+    [Authorize(Roles = "Khách hàng")]
 
     public class CustomerOrderHistoryController : ControllerBase
     {

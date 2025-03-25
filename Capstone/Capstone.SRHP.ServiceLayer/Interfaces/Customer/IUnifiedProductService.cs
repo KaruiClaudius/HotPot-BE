@@ -10,7 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.Customer
     public interface IUnifiedProductService
     {
         Task<PagedUnifiedProductResult> GetAllProductsAsync(
-            string productType = null, // "Hotpot", "Utensil", "Ingredient", "Broth"
+            string productType = null,
             string searchTerm = null,
             int? typeId = null,
             string material = null,
@@ -18,6 +18,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.Customer
             decimal? minPrice = null,
             decimal? maxPrice = null,
             bool? onlyAvailable = true,
+            int? minQuantity = null,
             int pageNumber = 1,
             int pageSize = 10,
             string sortBy = "Name",

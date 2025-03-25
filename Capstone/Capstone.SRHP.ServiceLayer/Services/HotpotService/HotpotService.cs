@@ -339,6 +339,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
+        public async Task<int> CountDamageDevice()
+        {
+            try
+            {
+                return await _unitOfWork.Repository<HotPotInventory>().AsQueryable()
+                        .Where(h => !h.IsDelete && !h.Status).CountAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Không lấy được số nồi cần bảo trì");
+                throw;
+            }
+        }
+
         public async Task<bool> IsAvailableAsync(int id)
         {
             try

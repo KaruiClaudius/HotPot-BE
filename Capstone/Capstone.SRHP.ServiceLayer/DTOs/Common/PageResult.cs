@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Common
 {
@@ -13,7 +14,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Common
         public int PageNumber { get; set; }
         public int PageSize { get; set; }
         public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-        public bool HasPreviousPage => PageNumber > 1;
-        public bool HasNextPage => PageNumber < TotalPages;
+    }
+
+    public class HotpotPagedResult : PagedResult<HotpotDto>
+    {
+        public int DamageDeviceCount { get; set; }
     }
 }

@@ -9,7 +9,6 @@ namespace Capstone.HPTY.ModelLayer.Enum
     public enum MaintenanceScheduleType
     {
         Regular = 1,
-        Emergency = 2,
-        Unscheduled = 3,
+        Emergency = 2
     }
 }

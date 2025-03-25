@@ -19,7 +19,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 {
     [Route("api/customer/orders")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Khách hàng")]
     public class CustomerOrderController : ControllerBase
     {
         private readonly IOrderService _orderService;

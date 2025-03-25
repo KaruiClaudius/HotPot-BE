@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Capstone.HPTY.RepositoryLayer.Migrations
 {
     [DbContext(typeof(HPTYContext))]
-    [Migration("20250317161014_fix-review-2-revamp-roles-n-order-details")]
-    partial class fixreview2revamprolesnorderdetails
+    [Migration("20250325041134_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -197,13 +197,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<string>("MeasurementUnit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("MinQuantity")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<int>("MinQuantity")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -237,13 +232,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<string>("MeasurementUnit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -348,13 +338,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<string>("MeasurementUnit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -370,11 +355,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.DamageDevice", b =>
                 {
-                    b.Property<int>("ConditionLogId")
+                    b.Property<int>("DamageDeviceId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConditionLogId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DamageDeviceId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -397,9 +382,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("ScheduleType")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -409,13 +391,59 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int?>("UtensilId")
                         .HasColumnType("int");
 
-                    b.HasKey("ConditionLogId");
+                    b.HasKey("DamageDeviceId");
 
                     b.HasIndex("HotPotInventoryId");
 
                     b.HasIndex("UtensilId");
 
-                    b.ToTable("ConditionLogs");
+                    b.ToTable("DamageDevices");
+
+                    b.HasData(
+                        new
+                        {
+                            DamageDeviceId = 1,
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3894),
+                            Description = "The handle of the hotpot is broken and needs to be replaced.",
+                            HotPotInventoryId = 15,
+                            IsDelete = false,
+                            LoggedDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3897),
+                            Name = "Broken Handle",
+                            Status = 1
+                        },
+                        new
+                        {
+                            DamageDeviceId = 2,
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3898),
+                            Description = "The base of the hotpot is cracked and needs to be replaced.",
+                            HotPotInventoryId = 10,
+                            IsDelete = false,
+                            LoggedDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3899),
+                            Name = "Cracked Base",
+                            Status = 2
+                        },
+                        new
+                        {
+                            DamageDeviceId = 3,
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3900),
+                            Description = "The lid of the hotpot is damaged and needs to be replaced.",
+                            HotPotInventoryId = 9,
+                            IsDelete = false,
+                            LoggedDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3901),
+                            Name = "Damaged Lid",
+                            Status = 3
+                        },
+                        new
+                        {
+                            DamageDeviceId = 4,
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3902),
+                            Description = "The plates are broken and need to be replaced.",
+                            IsDelete = false,
+                            LoggedDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3903),
+                            Name = "broken plates",
+                            Status = 4,
+                            UtensilId = 5
+                        });
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Discount", b =>
@@ -498,16 +526,13 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.HasIndex("HotpotId");
 
-                    b.HasIndex("SeriesNumber")
-                        .IsUnique();
-
                     b.ToTable("HotPotInventorys");
 
                     b.HasData(
                         new
                         {
                             HotPotInventoryId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1750),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3500),
                             HotpotId = 1,
                             IsDelete = false,
                             SeriesNumber = "CP-2023-0001",
@@ -516,7 +541,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1752),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3503),
                             HotpotId = 1,
                             IsDelete = false,
                             SeriesNumber = "CP-2023-0002",
@@ -525,7 +550,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1754),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3504),
                             HotpotId = 2,
                             IsDelete = false,
                             SeriesNumber = "EL-2023-0001",
@@ -534,7 +559,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1755),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3505),
                             HotpotId = 2,
                             IsDelete = false,
                             SeriesNumber = "EL-2023-0002",
@@ -543,7 +568,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1756),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3505),
                             HotpotId = 3,
                             IsDelete = false,
                             SeriesNumber = "PT-2023-0001",
@@ -552,7 +577,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 6,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1769),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3513),
                             HotpotId = 4,
                             IsDelete = false,
                             SeriesNumber = "MC-2023-0001",
@@ -561,7 +586,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 7,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1771),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3518),
                             HotpotId = 5,
                             IsDelete = false,
                             SeriesNumber = "CR-2023-0001",
@@ -570,7 +595,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 8,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1772),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3519),
                             HotpotId = 1,
                             IsDelete = false,
                             SeriesNumber = "CP-2023-0003",
@@ -579,7 +604,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 9,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1774),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3520),
                             HotpotId = 1,
                             IsDelete = false,
                             SeriesNumber = "CP-2023-0004",
@@ -588,7 +613,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 10,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1775),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3520),
                             HotpotId = 1,
                             IsDelete = false,
                             SeriesNumber = "CP-2023-0005",
@@ -597,7 +622,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 11,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1911),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3521),
                             HotpotId = 3,
                             IsDelete = false,
                             SeriesNumber = "PT-2023-0002",
@@ -606,7 +631,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 12,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1913),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3522),
                             HotpotId = 4,
                             IsDelete = false,
                             SeriesNumber = "MC-2023-0002",
@@ -615,7 +640,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 13,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1914),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3523),
                             HotpotId = 5,
                             IsDelete = false,
                             SeriesNumber = "CR-2023-0002",
@@ -624,7 +649,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 14,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1916),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3524),
                             HotpotId = 5,
                             IsDelete = false,
                             SeriesNumber = "CR-2023-0003",
@@ -633,11 +658,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             HotPotInventoryId = 15,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1923),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3525),
                             HotpotId = 5,
                             IsDelete = false,
                             SeriesNumber = "CR-2023-0004",
-                            Status = true
+                            Status = false
                         });
                 });
 
@@ -705,7 +730,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         {
                             HotpotId = 1,
                             BasePrice = 89.99m,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1671),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3319),
                             Description = "Traditional copper hotpot with charcoal heating.",
                             ImageURL = "https://example.com/images/classic-copper-hotpot.jpg",
                             IsDelete = false,
@@ -721,7 +746,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         {
                             HotpotId = 2,
                             BasePrice = 129.99m,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1676),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3332),
                             Description = "Electric hotpot with temperature control and non-stick coating.",
                             ImageURL = "https://example.com/images/modern-electric-hotpot.jpg",
                             IsDelete = false,
@@ -737,7 +762,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         {
                             HotpotId = 3,
                             BasePrice = 69.99m,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1679),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3334),
                             Description = "Compact portable hotpot perfect for travel or small gatherings.",
                             ImageURL = "https://example.com/images/mini-portable-hotpot.jpg",
                             IsDelete = false,
@@ -753,7 +778,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         {
                             HotpotId = 4,
                             BasePrice = 149.99m,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1681),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3426),
                             Description = "Multi-compartment hotpot for different broths in one pot.",
                             ImageURL = "https://example.com/images/dual-section-hotpot.jpg",
                             IsDelete = false,
@@ -769,7 +794,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         {
                             HotpotId = 5,
                             BasePrice = 79.99m,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1683),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3428),
                             Description = "Authentic ceramic hotpot that retains heat exceptionally well.",
                             ImageURL = "https://example.com/images/traditional-ceramic-hotpot.jpg",
                             IsDelete = false,
@@ -808,21 +833,16 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
-                    b.Property<string>("MeasurementUnit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("MinStockLevel")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<int>("MinStockLevel")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -837,314 +857,290 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2121),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3677),
                             Description = "Thinly sliced premium beef perfect for hotpot.",
                             ImageURL = "https://example.com/images/sliced-beef.jpg",
                             IngredientTypeId = 7,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 20m,
+                            MinStockLevel = 20,
                             Name = "Sliced Beef",
-                            Quantity = 100m
+                            Quantity = 100
                         },
                         new
                         {
                             IngredientId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2124),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3683),
                             Description = "Tender sliced lamb meat, perfect for quick cooking.",
                             ImageURL = "https://example.com/images/lamb-slices.jpg",
                             IngredientTypeId = 7,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Lamb Slices",
-                            Quantity = 80m
+                            Quantity = 80
                         },
                         new
                         {
                             IngredientId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2126),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3684),
                             Description = "Thinly sliced pork belly with perfect fat-to-meat ratio.",
                             ImageURL = "https://example.com/images/pork-belly.jpg",
                             IngredientTypeId = 7,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Pork Belly",
-                            Quantity = 75m
+                            Quantity = 75
                         },
                         new
                         {
                             IngredientId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2129),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3686),
                             Description = "Fresh, peeled and deveined shrimp.",
                             ImageURL = "https://example.com/images/shrimp.jpg",
                             IngredientTypeId = 2,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 20m,
+                            MinStockLevel = 20,
                             Name = "Shrimp",
-                            Quantity = 90m
+                            Quantity = 90
                         },
                         new
                         {
                             IngredientId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2131),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3687),
                             Description = "Bouncy fish balls made from fresh fish paste.",
                             ImageURL = "https://example.com/images/fish-balls.jpg",
                             IngredientTypeId = 2,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 30m,
+                            MinStockLevel = 30,
                             Name = "Fish Balls",
-                            Quantity = 120m
+                            Quantity = 120
                         },
                         new
                         {
                             IngredientId = 6,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2133),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3688),
                             Description = "Fresh squid sliced into rings.",
                             ImageURL = "https://example.com/images/squid.jpg",
                             IngredientTypeId = 2,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Squid",
-                            Quantity = 60m
+                            Quantity = 60
                         },
                         new
                         {
                             IngredientId = 7,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2135),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3690),
                             Description = "Crisp, leafy vegetable perfect for hotpot.",
                             ImageURL = "https://example.com/images/napa-cabbage.jpg",
                             IngredientTypeId = 3,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 25m,
+                            MinStockLevel = 25,
                             Name = "Napa Cabbage",
-                            Quantity = 100m
+                            Quantity = 100
                         },
                         new
                         {
                             IngredientId = 8,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2138),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3692),
                             Description = "Fresh spinach leaves, washed and ready to cook.",
                             ImageURL = "https://example.com/images/spinach.jpg",
                             IngredientTypeId = 3,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 20m,
+                            MinStockLevel = 20,
                             Name = "Spinach",
-                            Quantity = 80m
+                            Quantity = 80
                         },
                         new
                         {
                             IngredientId = 9,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2139),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3693),
                             Description = "Sweet corn cut into bite-sized pieces.",
                             ImageURL = "https://example.com/images/corn.jpg",
                             IngredientTypeId = 3,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Corn",
-                            Quantity = 70m
+                            Quantity = 70
                         },
                         new
                         {
                             IngredientId = 10,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2141),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3694),
                             Description = "Thick, chewy Japanese wheat noodles.",
                             ImageURL = "https://example.com/images/udon-noodles.jpg",
                             IngredientTypeId = 4,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 20m,
+                            MinStockLevel = 20,
                             Name = "Udon Noodles",
-                            Quantity = 80m
+                            Quantity = 80
                         },
                         new
                         {
                             IngredientId = 11,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2143),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3695),
                             Description = "Transparent noodles made from mung bean starch.",
                             ImageURL = "https://example.com/images/glass-noodles.jpg",
                             IngredientTypeId = 4,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 20m,
+                            MinStockLevel = 20,
                             Name = "Glass Noodles",
-                            Quantity = 85m
+                            Quantity = 85
                         },
                         new
                         {
                             IngredientId = 12,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2145),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3696),
                             Description = "Curly wheat noodles perfect for hotpot.",
                             ImageURL = "https://example.com/images/ramen-noodles.jpg",
                             IngredientTypeId = 4,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 25m,
+                            MinStockLevel = 25,
                             Name = "Ramen Noodles",
-                            Quantity = 90m
+                            Quantity = 90
                         },
                         new
                         {
                             IngredientId = 13,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2147),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3697),
                             Description = "Firm tofu cubes that hold their shape in hotpot.",
                             ImageURL = "https://example.com/images/firm-tofu.jpg",
                             IngredientTypeId = 5,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Firm Tofu",
-                            Quantity = 60m
+                            Quantity = 60
                         },
                         new
                         {
                             IngredientId = 14,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2149),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3699),
                             Description = "Deep-fried tofu puffs that absorb broth flavors.",
                             ImageURL = "https://example.com/images/tofu-puffs.jpg",
                             IngredientTypeId = 5,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Tofu Puffs",
-                            Quantity = 65m
+                            Quantity = 65
                         },
                         new
                         {
                             IngredientId = 15,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2164),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3700),
                             Description = "Flavorful shiitake mushrooms, fresh or dried.",
                             ImageURL = "https://example.com/images/shiitake.jpg",
                             IngredientTypeId = 6,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Shiitake Mushrooms",
-                            Quantity = 70m
+                            Quantity = 70
                         },
                         new
                         {
                             IngredientId = 16,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2166),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3701),
                             Description = "Delicate, long-stemmed enoki mushrooms.",
                             ImageURL = "https://example.com/images/enoki.jpg",
                             IngredientTypeId = 6,
                             IsDelete = false,
-                            MeasurementUnit = "g",
-                            MinStockLevel = 15m,
+                            MinStockLevel = 15,
                             Name = "Enoki Mushrooms",
-                            Quantity = 65m
+                            Quantity = 65
                         },
                         new
                         {
                             IngredientId = 17,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2168),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3702),
                             Description = "Traditional spicy broth with Sichuan peppercorns and chili oil.",
                             ImageURL = "https://example.com/images/sichuan-broth.jpg",
                             IngredientTypeId = 1,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Spicy Sichuan Broth",
-                            Quantity = 50m
+                            Quantity = 50
                         },
                         new
                         {
                             IngredientId = 18,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2171),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3703),
                             Description = "Tangy tomato-based broth, slightly sweet and sour.",
                             ImageURL = "https://example.com/images/tomato-broth.jpg",
                             IngredientTypeId = 1,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Tomato Broth",
-                            Quantity = 45m
+                            Quantity = 45
                         },
                         new
                         {
                             IngredientId = 19,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2173),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3704),
                             Description = "Rich umami broth made from various mushrooms.",
                             ImageURL = "https://example.com/images/mushroom-broth.jpg",
                             IngredientTypeId = 1,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Mushroom Broth",
-                            Quantity = 40m
+                            Quantity = 40
                         },
                         new
                         {
                             IngredientId = 20,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2174),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3729),
                             Description = "Light, clear broth made from simmering bones for hours.",
                             ImageURL = "https://example.com/images/bone-broth.jpg",
                             IngredientTypeId = 1,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Clear Bone Broth",
-                            Quantity = 55m
+                            Quantity = 55
                         },
                         new
                         {
                             IngredientId = 21,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2176),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3732),
                             Description = "Creamy sauce made from ground sesame seeds.",
                             ImageURL = "https://example.com/images/sesame-sauce.jpg",
                             IngredientTypeId = 8,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Sesame Sauce",
-                            Quantity = 40m
+                            Quantity = 40
                         },
                         new
                         {
                             IngredientId = 22,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2178),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3733),
                             Description = "Soy sauce infused with fresh minced garlic.",
                             ImageURL = "https://example.com/images/garlic-soy.jpg",
                             IngredientTypeId = 8,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Garlic Soy Sauce",
-                            Quantity = 45m
+                            Quantity = 45
                         },
                         new
                         {
                             IngredientId = 23,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2180),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3734),
                             Description = "Spicy oil made from infusing oil with chili peppers.",
                             ImageURL = "https://example.com/images/chili-oil.jpg",
                             IngredientTypeId = 8,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Chili Oil",
-                            Quantity = 50m
+                            Quantity = 50
                         },
                         new
                         {
                             IngredientId = 24,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2182),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3735),
                             Description = "Umami-rich sauce made from soybean oil, garlic, shallots, and dried seafood.",
                             ImageURL = "https://example.com/images/shacha-sauce.jpg",
                             IngredientTypeId = 8,
                             IsDelete = false,
-                            MeasurementUnit = "ml",
-                            MinStockLevel = 10m,
+                            MinStockLevel = 10,
                             Name = "Shacha Sauce",
-                            Quantity = 35m
+                            Quantity = 35
                         });
                 });
 
@@ -1184,8 +1180,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 1,
-                            CreatedAt = new DateTime(2025, 2, 15, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2284),
-                            EffectiveDate = new DateTime(2025, 2, 15, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2276),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3795),
+                            EffectiveDate = new DateTime(2025, 2, 23, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3797),
                             IngredientId = 1,
                             IsDelete = false,
                             Price = 0.13m
@@ -1193,8 +1189,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2286),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2286),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3807),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3807),
                             IngredientId = 1,
                             IsDelete = false,
                             Price = 0.14m
@@ -1202,8 +1198,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 3,
-                            CreatedAt = new DateTime(2025, 2, 15, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2288),
-                            EffectiveDate = new DateTime(2025, 2, 15, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2287),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3809),
+                            EffectiveDate = new DateTime(2025, 2, 23, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3809),
                             IngredientId = 2,
                             IsDelete = false,
                             Price = 0.15m
@@ -1211,8 +1207,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2290),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2290),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3810),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3811),
                             IngredientId = 2,
                             IsDelete = false,
                             Price = 0.16m
@@ -1220,8 +1216,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2292),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2291),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3811),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3812),
                             IngredientId = 3,
                             IsDelete = false,
                             Price = 0.12m
@@ -1229,8 +1225,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 6,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2294),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2293),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3813),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3814),
                             IngredientId = 4,
                             IsDelete = false,
                             Price = 0.17m
@@ -1238,8 +1234,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 7,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2295),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2295),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3814),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3815),
                             IngredientId = 5,
                             IsDelete = false,
                             Price = 0.10m
@@ -1247,8 +1243,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 8,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2297),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2297),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3816),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3816),
                             IngredientId = 6,
                             IsDelete = false,
                             Price = 0.15m
@@ -1256,8 +1252,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 9,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2299),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2298),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3817),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3818),
                             IngredientId = 7,
                             IsDelete = false,
                             Price = 0.06m
@@ -1265,8 +1261,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 10,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2300),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2300),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3820),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3820),
                             IngredientId = 8,
                             IsDelete = false,
                             Price = 0.05m
@@ -1274,8 +1270,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 11,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2302),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2302),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3821),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3822),
                             IngredientId = 9,
                             IsDelete = false,
                             Price = 0.04m
@@ -1283,8 +1279,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 12,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2304),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2303),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3823),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3823),
                             IngredientId = 10,
                             IsDelete = false,
                             Price = 0.07m
@@ -1292,8 +1288,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 13,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2305),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2305),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3824),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3825),
                             IngredientId = 11,
                             IsDelete = false,
                             Price = 0.06m
@@ -1301,8 +1297,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 14,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2307),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2307),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3826),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3826),
                             IngredientId = 12,
                             IsDelete = false,
                             Price = 0.065m
@@ -1310,8 +1306,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 15,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2318),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2317),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3827),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3835),
                             IngredientId = 13,
                             IsDelete = false,
                             Price = 0.05m
@@ -1319,8 +1315,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 16,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2319),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2319),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3835),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3836),
                             IngredientId = 14,
                             IsDelete = false,
                             Price = 0.055m
@@ -1328,8 +1324,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 17,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2321),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2320),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3837),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3838),
                             IngredientId = 15,
                             IsDelete = false,
                             Price = 0.08m
@@ -1337,8 +1333,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 18,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2323),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2322),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3838),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3839),
                             IngredientId = 16,
                             IsDelete = false,
                             Price = 0.07m
@@ -1346,8 +1342,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 19,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2325),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2324),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3840),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3840),
                             IngredientId = 17,
                             IsDelete = false,
                             Price = 0.009m
@@ -1355,8 +1351,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 20,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2326),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2326),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3841),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3842),
                             IngredientId = 18,
                             IsDelete = false,
                             Price = 0.008m
@@ -1364,8 +1360,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 21,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2328),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2328),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3843),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3843),
                             IngredientId = 19,
                             IsDelete = false,
                             Price = 0.0085m
@@ -1373,8 +1369,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 22,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2330),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2329),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3844),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3848),
                             IngredientId = 20,
                             IsDelete = false,
                             Price = 0.0075m
@@ -1382,8 +1378,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 23,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2331),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2331),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3849),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3850),
                             IngredientId = 21,
                             IsDelete = false,
                             Price = 0.005m
@@ -1391,8 +1387,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 24,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2333),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2333),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3850),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3851),
                             IngredientId = 22,
                             IsDelete = false,
                             Price = 0.004m
@@ -1400,8 +1396,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 25,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2335),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2334),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3852),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3852),
                             IngredientId = 23,
                             IsDelete = false,
                             Price = 0.0045m
@@ -1409,8 +1405,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientPriceId = 26,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2336),
-                            EffectiveDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3853),
+                            EffectiveDate = new DateTime(2025, 3, 22, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3854),
                             IngredientId = 24,
                             IsDelete = false,
                             Price = 0.006m
@@ -1447,56 +1443,56 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             IngredientTypeId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2060),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3633),
                             IsDelete = false,
                             Name = "Broth"
                         },
                         new
                         {
                             IngredientTypeId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2062),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3635),
                             IsDelete = false,
                             Name = "Seafood"
                         },
                         new
                         {
                             IngredientTypeId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2063),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3636),
                             IsDelete = false,
                             Name = "Vegetables"
                         },
                         new
                         {
                             IngredientTypeId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2064),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3636),
                             IsDelete = false,
                             Name = "Noodles"
                         },
                         new
                         {
                             IngredientTypeId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2065),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3637),
                             IsDelete = false,
                             Name = "Tofu"
                         },
                         new
                         {
                             IngredientTypeId = 6,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2066),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3638),
                             IsDelete = false,
                             Name = "Mushrooms"
                         },
                         new
                         {
                             IngredientTypeId = 7,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2067),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3638),
                             IsDelete = false,
                             Name = "Meats"
                         },
                         new
                         {
                             IngredientTypeId = 8,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2068),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3639),
                             IsDelete = false,
                             Name = "Sauces"
                         });
@@ -1521,9 +1517,15 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int?>("DiscountId")
                         .HasColumnType("int");
 
-                    b.Property<decimal?>("HotpotDeposit")
-                        .IsRequired()
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<bool>("HasRentItems")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("HasSellItems")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
@@ -1602,13 +1604,10 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.ToTable("Payments");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrderDetail", b =>
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
                 {
-                    b.Property<int>("RentableOrderDetailId")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RentableOrderDetailId"));
 
                     b.Property<DateTime?>("ActualReturnDate")
                         .HasColumnType("datetime2");
@@ -1622,8 +1621,8 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<DateTime>("ExpectedReturnDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("HotpotInventoryId")
-                        .HasColumnType("int");
+                    b.Property<decimal>("HotpotDeposit")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
@@ -1631,18 +1630,9 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<decimal?>("LateFee")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
                     b.Property<string>("RentalNotes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal>("RentalPrice")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("RentalStartDate")
                         .HasColumnType("datetime2");
@@ -1651,13 +1641,50 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("OrderId");
+
+                    b.ToTable("RentOrders");
+                });
+
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrderDetail", b =>
+                {
+                    b.Property<int>("RentOrderDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RentOrderDetailId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("HotpotInventoryId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDelete")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RentalPrice")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("UtensilId")
                         .HasColumnType("int");
 
-                    b.HasKey("RentableOrderDetailId");
+                    b.HasKey("RentOrderDetailId");
 
                     b.HasIndex("HotpotInventoryId");
 
@@ -1771,31 +1798,53 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             RoleId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 9, 887, DateTimeKind.Utc).AddTicks(3591),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 605, DateTimeKind.Utc).AddTicks(453),
                             IsDelete = false,
                             Name = "Admin"
                         },
                         new
                         {
                             RoleId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 9, 887, DateTimeKind.Utc).AddTicks(3601),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 605, DateTimeKind.Utc).AddTicks(464),
                             IsDelete = false,
                             Name = "Manager"
                         },
                         new
                         {
                             RoleId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 9, 887, DateTimeKind.Utc).AddTicks(3602),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 605, DateTimeKind.Utc).AddTicks(465),
                             IsDelete = false,
                             Name = "Staff"
                         },
                         new
                         {
                             RoleId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 9, 887, DateTimeKind.Utc).AddTicks(3603),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 605, DateTimeKind.Utc).AddTicks(465),
                             IsDelete = false,
                             Name = "Customer"
                         });
+                });
+
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrder", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDelete")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("OrderId");
+
+                    b.ToTable("SellOrders");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrderDetail", b =>
@@ -1824,22 +1873,14 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("Quantity")
-                        .IsRequired()
+                    b.Property<int>("Quantity")
                         .HasColumnType("int");
-
-                    b.Property<string>("Unit")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("VolumeWeight")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("SellOrderDetailId");
 
@@ -1943,6 +1984,48 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.ToTable("SizeDiscounts");
                 });
 
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.StaffPickupAssignment", b =>
+                {
+                    b.Property<int>("AssignmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AssignmentId"));
+
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDelete")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("RentOrderDetailId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StaffId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AssignmentId");
+
+                    b.HasIndex("RentOrderDetailId");
+
+                    b.HasIndex("StaffId");
+
+                    b.ToTable("StaffPickupAssignments");
+                });
+
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.TurtorialVideo", b =>
                 {
                     b.Property<int>("TurtorialVideoId")
@@ -1982,7 +2065,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             TurtorialVideoId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1467),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3157),
                             Description = "A comprehensive guide to setting up and using a traditional hotpot.",
                             IsDelete = false,
                             Name = "How to Use Traditional Hotpot",
@@ -1991,7 +2074,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             TurtorialVideoId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1470),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3161),
                             Description = "Learn how to safely set up and use your electric hotpot.",
                             IsDelete = false,
                             Name = "Electric Hotpot Setup Guide",
@@ -2000,7 +2083,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             TurtorialVideoId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1471),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3162),
                             Description = "Tips and tricks for using your portable hotpot anywhere.",
                             IsDelete = false,
                             Name = "Portable Hotpot on the Go",
@@ -2009,7 +2092,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             TurtorialVideoId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1472),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3163),
                             Description = "How to effectively use all compartments in your multi-section hotpot.",
                             IsDelete = false,
                             Name = "Multi-compartment Hotpot Mastery",
@@ -2018,7 +2101,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             TurtorialVideoId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1474),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3164),
                             Description = "Learn how to properly care for and maintain your ceramic hotpot.",
                             IsDelete = false,
                             Name = "Ceramic Hotpot Care Guide",
@@ -2102,111 +2185,111 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UserId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 9, 887, DateTimeKind.Utc).AddTicks(3727),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 605, DateTimeKind.Utc).AddTicks(573),
                             Email = "Admin@gmail.com",
                             IsDelete = false,
                             Name = "Admin",
-                            Password = "$2a$12$JtxRh4BEGSO1tUhFUt7.5.21EY.Oh4i7Gi8mpcLg/tTPdBVAT7F6a",
+                            Password = "$2a$12$XC5yzcQzr.7nHZDp.81PTeaxtUEGFl712QoJHU/olJpvf16Q/j.r6",
                             PhoneNumber = "987654321",
                             RoleId = 1
                         },
                         new
                         {
                             UserId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 10, 115, DateTimeKind.Utc).AddTicks(1033),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 31, 833, DateTimeKind.Utc).AddTicks(6274),
                             Email = "Manager1@gmail.com",
                             IsDelete = false,
                             Name = "Manager1",
-                            Password = "$2a$12$1Kg4vj5c73rslgFUSI8LJuCLRIwXhnSDN027dYN5hA4cyKO.aqSfK",
+                            Password = "$2a$12$FoRV8I4MTkatKlA7QSPvmuIThhx454ARxV1fyW7QgcYuQis3nCR8a",
                             PhoneNumber = "999999999",
                             RoleId = 2
                         },
                         new
                         {
                             UserId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 10, 352, DateTimeKind.Utc).AddTicks(6276),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 32, 59, DateTimeKind.Utc).AddTicks(9314),
                             Email = "Manager2@gmail.com",
                             IsDelete = false,
                             Name = "Manager2",
-                            Password = "$2a$12$PSJEKTBKT/sRG.iaROMAsuMwnBFLjb9OTI9OYUbEAMIQ3UZnK76Cy",
+                            Password = "$2a$12$9uyK98F5wdd3a/vO7TZ33eU/6NdkpCVdd0DUCg5KdHgvzCsjH8n/.",
                             PhoneNumber = "888888888",
                             RoleId = 2
                         },
                         new
                         {
                             UserId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 10, 581, DateTimeKind.Utc).AddTicks(9226),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 32, 291, DateTimeKind.Utc).AddTicks(2790),
                             Email = "Staff1@gmail.com",
                             IsDelete = false,
                             Name = "Staff1",
-                            Password = "$2a$12$BlrbT1auc5nOF7G1Gu1Cqe9ToU.uvbYadJUD43okeWk5jwP2FnJdW",
+                            Password = "$2a$12$TCoEev3jbcFCLbhA0LNqy..imbYccjJaWQ.xtgFWr7zP7alj1nhpC",
                             PhoneNumber = "777777777",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 10, 808, DateTimeKind.Utc).AddTicks(2616),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 32, 520, DateTimeKind.Utc).AddTicks(862),
                             Email = "Staff2@gmail.com",
                             IsDelete = false,
                             Name = "Staff2",
-                            Password = "$2a$12$ClDzxZ1ReA78T7UDgTm0aeZz1KyRmiiPggiH2JD736MXr5QBnCKVi",
+                            Password = "$2a$12$waUVjFYxUAEQ/2D4IbJ/EOAyKW/2GXCvTmCOXaXnbbaVwm/D8BuSu",
                             PhoneNumber = "666666666",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 6,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 11, 34, DateTimeKind.Utc).AddTicks(3627),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 32, 746, DateTimeKind.Utc).AddTicks(6036),
                             Email = "Staff3@gmail.com",
                             IsDelete = false,
                             Name = "Staff3",
-                            Password = "$2a$12$AhDRUvOyaAjm309XCl/phu1lA6EKFBKXSNOH8P1E2S/018JUpivbW",
+                            Password = "$2a$12$mOPjmO6uPPyt.xuHhzQGZORTiy5RbBW.z52axDuxqXJO9QHrCW.ka",
                             PhoneNumber = "555555555",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 7,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 11, 260, DateTimeKind.Utc).AddTicks(7737),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 32, 974, DateTimeKind.Utc).AddTicks(341),
                             Email = "Staff4@gmail.com",
                             IsDelete = false,
                             Name = "Staff4",
-                            Password = "$2a$12$WsR2HgcBRBGJv/mnJfVqlOZ0hDlA/LZQJRHfFcEKE1i3k.wC3ZpQC",
+                            Password = "$2a$12$sVTtkK1fw.lRfYHj/K9hI.ScuM0UEHWBt6CokBAt4KVlqL6LtPDna",
                             PhoneNumber = "444444444",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 8,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 11, 487, DateTimeKind.Utc).AddTicks(3378),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 199, DateTimeKind.Utc).AddTicks(7638),
                             Email = "Customer1@gmail.com",
                             IsDelete = false,
                             Name = "Customer1",
-                            Password = "$2a$12$4UPs/27dzjkxxE9h.9yTz.Mj0v6zvtGYeoyM40jb./zyARV31IXp.",
+                            Password = "$2a$12$3tTIOh2dv3D7NeUHzlWkD.V6AfTDKctO5RWiNkMYoT9kuvsb7uL1u",
                             PhoneNumber = "333333333",
                             RoleId = 4
                         },
                         new
                         {
                             UserId = 9,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 11, 713, DateTimeKind.Utc).AddTicks(5624),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 425, DateTimeKind.Utc).AddTicks(4109),
                             Email = "Customer2@gmail.com",
                             IsDelete = false,
                             Name = "Customer2",
-                            Password = "$2a$12$3ih5UW1yI/P.nlvjBERGA.5kUcMwkZKqMtEXO9GP9mNFAeghaWSW6",
+                            Password = "$2a$12$J5.bCaMRVXuNR/2vGO9qe.jBuQ3ryB507gNOWYPbDK0yQ1jShOgSG",
                             PhoneNumber = "222222222",
                             RoleId = 4
                         },
                         new
                         {
                             UserId = 10,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 11, 940, DateTimeKind.Utc).AddTicks(4331),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 655, DateTimeKind.Utc).AddTicks(9900),
                             Email = "Customer3@gmail.com",
                             IsDelete = false,
                             LoyatyPoint = 200.0,
                             Name = "Customer3",
-                            Password = "$2a$12$mzrm1/jv2p7vazMZzIsx3.y2YU6cRP42DCnv5xhORfyUuP1fIVv5y",
+                            Password = "$2a$12$PVHZH90NtSV8uRwEQQohLu5X9G68AbtUE6Kl8LUV/3gIo2q35.eoC",
                             PhoneNumber = "111111111",
                             RoleId = 4
                         });
@@ -2272,11 +2355,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2009),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3583),
                             Description = "Set of 5 pairs of traditional bamboo chopsticks.",
                             ImageURL = "https://example.com/images/bamboo-chopsticks.jpg",
                             IsDelete = false,
-                            LastMaintainDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Utc).AddTicks(2001),
+                            LastMaintainDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3583),
                             Material = "Bamboo",
                             Name = "Bamboo Chopsticks Set",
                             Price = 12.99m,
@@ -2287,11 +2370,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2013),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3589),
                             Description = "Durable stainless steel ladle for serving hotpot broth.",
                             ImageURL = "https://example.com/images/steel-ladle.jpg",
                             IsDelete = false,
-                            LastMaintainDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Utc).AddTicks(2011),
+                            LastMaintainDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3590),
                             Material = "Stainless Steel",
                             Name = "Stainless Steel Hotpot Ladle",
                             Price = 9.99m,
@@ -2302,11 +2385,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2015),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3592),
                             Description = "Fine mesh strainer for retrieving food from the hotpot.",
                             ImageURL = "https://example.com/images/mesh-strainer.jpg",
                             IsDelete = false,
-                            LastMaintainDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Utc).AddTicks(2013),
+                            LastMaintainDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3592),
                             Material = "Stainless Steel",
                             Name = "Wire Mesh Strainer",
                             Price = 7.99m,
@@ -2317,11 +2400,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2017),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3593),
                             Description = "Set of 4 ceramic bowls for individual servings.",
                             ImageURL = "https://example.com/images/ceramic-bowls.jpg",
                             IsDelete = false,
-                            LastMaintainDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Utc).AddTicks(2016),
+                            LastMaintainDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3594),
                             Material = "Ceramic",
                             Name = "Ceramic Serving Bowl Set",
                             Price = 19.99m,
@@ -2332,11 +2415,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(2019),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3595),
                             Description = "Set of 6 durable melamine plates for hotpot dining.",
                             ImageURL = "https://example.com/images/melamine-plates.jpg",
                             IsDelete = false,
-                            LastMaintainDate = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Utc).AddTicks(2018),
+                            LastMaintainDate = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3595),
                             Material = "Melamine",
                             Name = "Melamine Plates",
                             Price = 24.99m,
@@ -2376,35 +2459,35 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         new
                         {
                             UtensilTypeId = 1,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1371),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3090),
                             IsDelete = false,
                             Name = "Chopsticks"
                         },
                         new
                         {
                             UtensilTypeId = 2,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1397),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3094),
                             IsDelete = false,
                             Name = "Ladles"
                         },
                         new
                         {
                             UtensilTypeId = 3,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1398),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3095),
                             IsDelete = false,
                             Name = "Strainers"
                         },
                         new
                         {
                             UtensilTypeId = 4,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1399),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3096),
                             IsDelete = false,
                             Name = "Bowls"
                         },
                         new
                         {
                             UtensilTypeId = 5,
-                            CreatedAt = new DateTime(2025, 3, 17, 23, 10, 12, 167, DateTimeKind.Local).AddTicks(1401),
+                            CreatedAt = new DateTime(2025, 3, 25, 11, 11, 33, 891, DateTimeKind.Utc).AddTicks(3097),
                             IsDelete = false,
                             Name = "Plates"
                         });
@@ -2794,13 +2877,24 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
+                {
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
+                        .WithOne("RentOrder")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.RentOrder", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrderDetail", b =>
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.HotPotInventory", "HotpotInventory")
                         .WithMany("RentOrderDetails")
                         .HasForeignKey("HotpotInventoryId");
 
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.RentOrder", "RentOrder")
                         .WithMany("RentOrderDetails")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2812,7 +2906,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.Navigation("HotpotInventory");
 
-                    b.Navigation("Order");
+                    b.Navigation("RentOrder");
 
                     b.Navigation("Utensil");
                 });
@@ -2852,6 +2946,17 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Navigation("Utensil");
                 });
 
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrder", b =>
+                {
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
+                        .WithOne("SellOrder")
+                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.SellOrder", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrderDetail", b =>
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Combo", "Combo")
@@ -2866,7 +2971,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .WithMany("SellOrderDetails")
                         .HasForeignKey("IngredientId");
 
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.SellOrder", "SellOrder")
                         .WithMany("SellOrderDetails")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2878,7 +2983,7 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.Navigation("Ingredient");
 
-                    b.Navigation("Order");
+                    b.Navigation("SellOrder");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.ShippingOrder", b =>
@@ -2896,6 +3001,25 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.StaffPickupAssignment", b =>
+                {
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.RentOrderDetail", "RentOrderDetail")
+                        .WithMany()
+                        .HasForeignKey("RentOrderDetailId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.User", "Staff")
+                        .WithMany()
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RentOrderDetail");
 
                     b.Navigation("Staff");
                 });
@@ -3056,16 +3180,26 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.Navigation("Payment");
 
-                    b.Navigation("RentOrderDetails");
+                    b.Navigation("RentOrder");
 
-                    b.Navigation("SellOrderDetails");
+                    b.Navigation("SellOrder");
 
                     b.Navigation("ShippingOrder");
+                });
+
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
+                {
+                    b.Navigation("RentOrderDetails");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SellOrder", b =>
+                {
+                    b.Navigation("SellOrderDetails");
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.SizeDiscount", b =>
