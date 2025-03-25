@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 {
-   public class EquipmentService : IEquipmentService
+    public class EquipmentService : IEquipmentService
     {
         private readonly IUnitOfWork _unitOfWork;
         private const int CUSTOMER_ROLE_ID = 4; // Customer role ID
@@ -68,7 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
                 throw new KeyNotFoundException($"Condition log with ID {conditionLogId} not found");
@@ -85,7 +85,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
         {
             return await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable(c => c.ConditionLogId == conditionLogId)
+                .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
                 .FirstOrDefaultAsync();
@@ -154,7 +154,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .AsQueryable()
                     .Where(rd => rd.HotpotInventoryId == conditionLog.HotPotInventoryId)
                     .Include(rd => rd.RentOrder)
-                        .ThenInclude(r=> r.Order)                     
+                        .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
                     .Where(rd => rd.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
                     .Select(rd => rd.RentOrder.Order.UserId)
@@ -221,7 +221,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Then get the condition log with its replacement requests
                 var conditionLog = await _unitOfWork.Repository<DamageDevice>()
                     .AsQueryable()
-                    .Where(c => c.ConditionLogId == conditionLogId)
+                    .Where(c => c.DamageDeviceId == conditionLogId)
                     .Include(c => c.ReplacementRequests)
                     .FirstOrDefaultAsync();
 
@@ -240,7 +240,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         RequestReason = $"Maintenance for condition log #{conditionLogId}",
                         Status = ReplacementRequestStatus.InProgress,
                         RequestDate = DateTime.UtcNow,
-                        ConditionLogId = conditionLogId,
+                        DamageDeviceId = conditionLogId,
                         AssignedStaffId = staffId,
                         EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
                             EquipmentType.HotPot : EquipmentType.Utensil,
@@ -276,7 +276,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         public async Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.ConditionLogId == conditionLogId);
+                .FindAsync(c => c.DamageDeviceId == conditionLogId);
 
             if (conditionLog == null)
                 return false;

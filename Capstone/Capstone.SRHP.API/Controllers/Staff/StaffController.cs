@@ -4,6 +4,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/staff")]
     [ApiController]
+    [Authorize(Roles = "Nhân viên")]
     public class StaffController : ControllerBase
     {
         private readonly IStaffService _staffService;

@@ -12,7 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/feedback")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Quản trị viên")]
 
     public class AdminFeedbackController : ControllerBase
     {

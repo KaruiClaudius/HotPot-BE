@@ -29,5 +29,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
         Task<decimal> CalculateDepositAsync(int id, int quantity);
         Task UpdateQuantityAsync(int hotpotId);
         Task<bool> IsAvailableAsync(int id);
+
+        Task<int> CountDamageDevice();
     }
 }

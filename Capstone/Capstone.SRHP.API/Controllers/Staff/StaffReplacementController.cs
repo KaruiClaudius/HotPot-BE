@@ -16,7 +16,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/staff/replacement")]
     [ApiController]
-    [Authorize(Roles = "Staff")]
+    [Authorize(Roles = "Nhân viên")]
     public class StaffReplacementController : ControllerBase
     {
         private readonly IReplacementRequestService _replacementService;

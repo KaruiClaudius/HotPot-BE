@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/maintenance")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Quản trị viên")]
     public class AdminMaintenanceController : ControllerBase
     {
         private readonly IDamageDeviceService _damageDeviceService;
@@ -164,7 +164,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 return CreatedAtAction(
                     nameof(GetDeviceById),
-                    new { id = createdDevice.ConditionLogId },
+                    new { id = createdDevice.DamageDeviceId },
                     new ApiResponse<DamageDeviceDto>
                     {
                         Success = true,
@@ -301,7 +301,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new DamageDeviceDto
             {
-                ConditionLogId = device.ConditionLogId,
+                ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
                 Status = device.Status,

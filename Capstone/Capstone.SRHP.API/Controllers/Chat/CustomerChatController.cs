@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.SignalR;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(Roles = "Customer")]
+[Authorize(Roles = "Khách hàng")]
 
 public class CustomerChatController : ControllerBase
 {

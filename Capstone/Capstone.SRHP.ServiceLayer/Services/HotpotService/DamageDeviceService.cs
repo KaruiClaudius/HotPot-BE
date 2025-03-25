@@ -101,7 +101,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 .Include(d => d.HotPotInventory)
                 .Include(d => d.Utensil)
                 .Include(d => d.ReplacementRequests)
-                .FirstOrDefaultAsync(d => d.ConditionLogId == id && !d.IsDelete);
+                .FirstOrDefaultAsync(d => d.DamageDeviceId == id && !d.IsDelete);
 
             if (damageDevice == null)
                 throw new NotFoundException($"Damage device with ID {id} not found");
@@ -197,7 +197,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             // Check if there are any active replacement requests
             var hasActiveRequests = await _unitOfWork.Repository<ReplacementRequest>()
-                .AnyAsync(r => r.ConditionLogId == id && !r.IsDelete && r.Status != ReplacementRequestStatus.Completed);
+                .AnyAsync(r => r.DamageDeviceId == id && !r.IsDelete && r.Status != ReplacementRequestStatus.Completed);
 
             if (hasActiveRequests)
                 throw new ValidationException("Cannot delete device with active replacement requests");

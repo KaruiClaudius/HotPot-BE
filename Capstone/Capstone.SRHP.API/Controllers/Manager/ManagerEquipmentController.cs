@@ -14,7 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/equipment")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Quản lý")]
 
     public class ManagerEquipmentController : ControllerBase
     {
@@ -52,13 +52,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify staff about the new equipment failure
                 await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveNewFailure",
-                    result.ConditionLogId,
+                    result.DamageDeviceId,
                     result.Name,
                     result.Description,
                     result.Status,
                     result.LoggedDate);
 
-                return CreatedAtAction(nameof(GetConditionLog), new { id = result.ConditionLogId },
+                return CreatedAtAction(nameof(GetConditionLog), new { id = result.DamageDeviceId },
                     ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment failure logged successfully"));
             }
             catch (Exception ex)
@@ -88,7 +88,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify staff about the updated timeline
                 await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveResolutionUpdate",
-                    result.ConditionLogId,
+                    result.DamageDeviceId,
                     result.Status.ToString(),
                     request.EstimatedResolutionTime,
                     request.Message);
@@ -98,7 +98,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 foreach (var customerId in affectedCustomerIds)
                 {
                     await _equipmentHubContext.Clients.User(customerId.ToString()).SendAsync("ReceiveEquipmentUpdate",
-                        result.ConditionLogId,
+                        result.DamageDeviceId,
                         equipmentName,
                         result.Status.ToString(),
                         request.EstimatedResolutionTime,

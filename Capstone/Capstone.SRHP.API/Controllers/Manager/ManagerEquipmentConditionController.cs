@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/equipment-condition")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Quản lý")]
     public class ManagerEquipmentConditionsController : ControllerBase
     {
         private readonly IEquipmentConditionService _equipmentConditionService;
@@ -36,7 +36,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(damageDevice);
 
-                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.ConditionLogId },
+                return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
                     ApiResponse<DamageDevice>.SuccessResponse(result, "Equipment condition logged successfully"));
             }
             catch (Exception ex)

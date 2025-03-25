@@ -51,19 +51,24 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                var role = await _userService.GetByRoleNameAsync(rolename);
-                if (role == null)
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = $"Không thấy vai trò '{rolename}'"
-                    });
+                int? roleId = null;
+                if (rolename != null)
+                {
+                    var role = await _userService.GetByRoleNameAsync(rolename);
+                    if (role == null)
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Error",
+                            Message = $"Không thấy vai trò '{rolename}'"
+                        });
 
-                _logger.LogInformation("Admin retrieving users with filters");
+                    roleId = role.RoleId;
+                    _logger.LogInformation("Admin retrieving users with filters");
+                }
 
                 var pagedUsers = await _userService.GetUsersAsync(
                     searchTerm: searchTerm,
-                    roleId: role.RoleId,
+                    roleId: roleId,
                     isActive: isActive,
                     createdAfter: createdAfter,
                     createdBefore: createdBefore,

@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 [ApiController]
 [Route("api/customer/Customizations")]
-[Authorize(Roles = "Customer")]
+[Authorize(Roles = "Khách hàng")]
 
 public class CustomerCustomizationController : ControllerBase
 {
