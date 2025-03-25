@@ -7,7 +7,9 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -227,29 +229,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
-        public async Task<IEnumerable<Order>> GetOrdersByStatus(OrderStatus status)
-        {
-            try
-            {
-                _logger.LogInformation("Getting orders with status {Status}", status);
+        //public async Task<IEnumerable<Order>> GetOrdersByStatus(OrderStatus status)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Getting orders with status {Status}", status);
 
-                var orders = await _unitOfWork.Repository<Order>()
-                    .GetAll(o => o.Status == status && !o.IsDelete)
-                    .Include(o => o.User)
-                    .Include(o => o.ShippingOrder)
-                        .ThenInclude(so => so.Staff)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                    .Include(o => o.RentOrder.RentOrderDetails)
-                    .ToListAsync();
+        //        var orders = await _unitOfWork.Repository<Order>()
+        //            .GetAll(o => o.Status == status && !o.IsDelete)
+        //            .Include(o => o.User)
+        //            .Include(o => o.ShippingOrder)
+        //                .ThenInclude(so => so.Staff)
+        //            .Include(o => o.SellOrder.SellOrderDetails)
+        //            .Include(o => o.RentOrder.RentOrderDetails)
+        //            .ToListAsync();
 
-                return orders;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting orders with status {Status}", status);
-                throw;
-            }
-        }
+        //        return orders;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error getting orders with status {Status}", status);
+        //        throw;
+        //    }
+        //}
 
         // Delivery progress monitoring
         public async Task<ShippingOrder> UpdateDeliveryStatus(int shippingOrderId, bool isDelivered, string notes = null)
@@ -322,69 +324,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
-        public async Task<IEnumerable<ShippingOrder>> GetPendingDeliveries()
-        {
-            try
-            {
-                _logger.LogInformation("Getting pending deliveries");
+        //public async Task<IEnumerable<ShippingOrder>> GetPendingDeliveries()
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Getting pending deliveries");
 
-                var pendingDeliveries = await _unitOfWork.Repository<ShippingOrder>()
-                    .GetAll(so => !so.IsDelivered && !so.IsDelete)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.User)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
-                    .Include(so => so.Staff)
-                    .ToListAsync();
+        //        var pendingDeliveries = await _unitOfWork.Repository<ShippingOrder>()
+        //            .GetAll(so => !so.IsDelivered && !so.IsDelete)
+        //            .Include(so => so.Order)
+        //                .ThenInclude(o => o.User)
+        //            .Include(so => so.Order)
+        //                .ThenInclude(o => o.SellOrder.SellOrderDetails)
+        //            .Include(so => so.Order)
+        //                .ThenInclude(o => o.RentOrder.RentOrderDetails)
+        //            .Include(so => so.Staff)
+        //            .ToListAsync();
 
-                return pendingDeliveries;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pending deliveries");
-                throw;
-            }
-        }
-
-        // New method to get all staff available for delivery
-        public async Task<IEnumerable<User>> GetAvailableStaffForDelivery()
-        {
-            try
-            {
-                _logger.LogInformation("Getting available staff for delivery");
-
-                // Get current day of week and convert to WorkDays enum value
-                var today = DateTime.Now.DayOfWeek;
-                var currentDay = today switch
-                {
-                    DayOfWeek.Sunday => WorkDays.Sunday,
-                    DayOfWeek.Monday => WorkDays.Monday,
-                    DayOfWeek.Tuesday => WorkDays.Tuesday,
-                    DayOfWeek.Wednesday => WorkDays.Wednesday,
-                    DayOfWeek.Thursday => WorkDays.Thursday,
-                    DayOfWeek.Friday => WorkDays.Friday,
-                    DayOfWeek.Saturday => WorkDays.Saturday,
-                    _ => WorkDays.None
-                };
-
-                // Get all staff users who are available today
-                var availableStaff = await _unitOfWork.Repository<User>()
-                    .GetAll(u => u.RoleId == STAFF_ROLE_ID &&
-                                 (u.WorkDays & currentDay) != 0 &&
-                                 !u.IsDelete)
-                    .ToListAsync();
-
-                return availableStaff;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting available staff for delivery");
-                throw;
-            }
-        }       
-        // New method to get orders with both sell and rent details
+        //        return pendingDeliveries;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error getting pending deliveries");
+        //        throw;
+        //    }
+        //}
+  
         public async Task<IEnumerable<Order>> GetOrdersWithAllDetails(DateTime startDate, DateTime endDate, OrderStatus? status = null)
         {
             try
@@ -498,5 +463,111 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw;
             }
         }
+        public async Task<PagedResult<Order>> GetUnallocatedOrdersPaged(OrderQueryParams queryParams)
+        {
+            try
+            {
+                _logger.LogInformation("Getting unallocated orders, page {Page}, size {Size}",
+                    queryParams.PageNumber, queryParams.PageSize);
+
+                // Explicitly declare as IQueryable<Order>
+                IQueryable<Order> query = _unitOfWork.Repository<Order>()
+                    .GetAll(o => o.ShippingOrder == null && !o.IsDelete)
+                    .Include(o => o.User)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                    .Include(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails);
+
+                // Apply filters (except status since we're filtering by ShippingOrder == null)
+                if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
+                {
+                    var searchTerm = queryParams.SearchTerm.ToLower();
+                    query = query.Where(o =>
+                        o.Address.ToLower().Contains(searchTerm) ||
+                        (o.Notes != null && o.Notes.ToLower().Contains(searchTerm)) ||
+                        (o.User != null && o.User.Name.ToLower().Contains(searchTerm))
+                    );
+                }
+
+                // Apply sorting
+                query = query.ApplySorting(queryParams);
+
+                // Get paged result
+                return await query.ToPagedResultAsync(queryParams);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting unallocated orders");
+                throw;
+            }
+        }
+        public async Task<PagedResult<ShippingOrder>> GetPendingDeliveriesPaged(ShippingOrderQueryParams queryParams)
+        {
+            try
+            {
+                _logger.LogInformation("Getting pending deliveries, page {Page}, size {Size}",
+                    queryParams.PageNumber, queryParams.PageSize);
+
+                // Explicitly declare as IQueryable<ShippingOrder>
+                IQueryable<ShippingOrder> query = _unitOfWork.Repository<ShippingOrder>()
+                    .GetAll(so => !so.IsDelivered && !so.IsDelete)
+                    .Include(so => so.Order)
+                        .ThenInclude(o => o.User)
+                    .Include(so => so.Order)
+                        .ThenInclude(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                    .Include(so => so.Order)
+                        .ThenInclude(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails);
+
+                // Apply filters
+                query = query.ApplyFilters(queryParams);
+
+                // Apply sorting
+                query = query.ApplySorting(queryParams);
+
+                // Get paged result
+                return await query.ToPagedResultAsync(queryParams);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending deliveries");
+                throw;
+            }
+        }
+        public async Task<PagedResult<Order>> GetOrdersByStatusPaged(OrderQueryParams queryParams)
+        {
+            try
+            {
+                _logger.LogInformation("Getting orders with status {Status}, page {Page}, size {Size}",
+                    queryParams.Status, queryParams.PageNumber, queryParams.PageSize);
+
+                IQueryable<Order> query = _unitOfWork.Repository<Order>()
+                    .GetAll(o => !o.IsDelete)
+                    .Include(o => o.User)
+                    .Include(o => o.ShippingOrder)
+                        .ThenInclude(so => so.Staff)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                    .Include(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails);
+
+                // Apply filters
+                query = query.ApplyFilters(queryParams);
+
+                // Apply sorting
+                query = query.ApplySorting(queryParams);
+
+                // Get paged result
+                return await query.ToPagedResultAsync(queryParams);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paged orders with status {Status}", queryParams.Status);
+                throw;
+            }
+        }
+
     }
 }
