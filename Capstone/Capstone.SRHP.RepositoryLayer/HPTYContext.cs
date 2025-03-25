@@ -492,177 +492,138 @@ namespace Capstone.HPTY.RepositoryLayer
 
             // Seed Data
             modelBuilder.Entity<Role>().HasData(
-                new Role { RoleId = 1, Name = "Admin" },
-                new Role { RoleId = 2, Name = "Manager" },
-                new Role { RoleId = 3, Name = "Staff" },
-                new Role { RoleId = 4, Name = "Customer" }
+                new Role { RoleId = 1, Name = "Quản trị viên" },
+                new Role { RoleId = 2, Name = "Quản lý" },
+                new Role { RoleId = 3, Name = "Nhân viên" },
+                new Role { RoleId = 4, Name = "Khách hàng" }
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
-                new User { UserId = 2, PhoneNumber = "999999999", Name = "Manager1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
-                new User { UserId = 3, PhoneNumber = "888888888", Name = "Manager2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
-                new User { UserId = 4, PhoneNumber = "777777777", Name = "Staff1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 5, PhoneNumber = "666666666", Name = "Staff2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 6, PhoneNumber = "555555555", Name = "Staff3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 7, PhoneNumber = "444444444", Name = "Staff4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
-                new User { UserId = 8, PhoneNumber = "333333333", Name = "Customer1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
-                new User { UserId = 9, PhoneNumber = "222222222", Name = "Customer2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
-                new User { UserId = 10, PhoneNumber = "111111111", Name = "Customer3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4, LoyatyPoint = 200 }
+                new User { UserId = 1, PhoneNumber = "987654321", Name = "Quản trị viên", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
+                new User { UserId = 2, PhoneNumber = "999999999", Name = "Quản lý 1", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 3, PhoneNumber = "888888888", Name = "Quản lý 2", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User { UserId = 4, PhoneNumber = "777777777", Name = "Nhân viên 1", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 5, PhoneNumber = "666666666", Name = "Nhân viên 2", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 6, PhoneNumber = "555555555", Name = "Nhân viên 3", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 7, PhoneNumber = "444444444", Name = "Nhân viên 4", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3 },
+                new User { UserId = 8, PhoneNumber = "333333333", Name = "Khách hàng 1", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 9, PhoneNumber = "222222222", Name = "Khách hàng 2", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
+                new User { UserId = 10, PhoneNumber = "111111111", Name = "Khách hàng 3", Email = "Customer3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4, LoyatyPoint = 200 }
             );
-
-            //modelBuilder.Entity<Staff>().HasData(
-            //    new Staff { StaffId = 1, UserId = 4 },
-            //    new Staff { StaffId = 2, UserId = 5 },
-            //    new Staff { StaffId = 3, UserId = 6 },
-            //    new Staff { StaffId = 4, UserId = 7 }
-            //);
-
-            //modelBuilder.Entity<Manager>().HasData(
-            //    new Manager { ManagerId = 1, UserId = 2 },
-            //    new Manager { ManagerId = 2, UserId = 3 }
-            //);
-
-            //modelBuilder.Entity<Customer>().HasData(
-            //    new Customer { CustomerId = 1, UserId = 8 },
-            //    new Customer { CustomerId = 2, UserId = 9 },
-            //    new Customer { CustomerId = 3, UserId = 10, LoyatyPoint = 200 }
-            //);
 
 
             modelBuilder.Entity<UtensilType>().HasData(
-                new UtensilType { UtensilTypeId = 1, Name = "Chopsticks", },
-                new UtensilType { UtensilTypeId = 2, Name = "Ladles", },
-                new UtensilType { UtensilTypeId = 3, Name = "Strainers", },
-                new UtensilType { UtensilTypeId = 4, Name = "Bowls", },
-                new UtensilType { UtensilTypeId = 5, Name = "Plates", }
+                new UtensilType { UtensilTypeId = 1, Name = "Đũa", },
+                new UtensilType { UtensilTypeId = 2, Name = "Muôi", },
+                new UtensilType { UtensilTypeId = 3, Name = "Vợt", },
+                new UtensilType { UtensilTypeId = 4, Name = "Bát", },
+                new UtensilType { UtensilTypeId = 5, Name = "Đĩa", }
             );
 
-            // Seed TurtorialVideos
             modelBuilder.Entity<TurtorialVideo>().HasData(
-                new TurtorialVideo
-                {
-                    TurtorialVideoId = 1,
-                    Name = "How to Use Traditional Hotpot",
-                    Description = "A comprehensive guide to setting up and using a traditional hotpot.",
-                    VideoURL = "https://www.youtube.com/watch?v=traditional-hotpot-guide",
-
-
-                },
-                new TurtorialVideo
-                {
-                    TurtorialVideoId = 2,
-                    Name = "Electric Hotpot Setup Guide",
-                    Description = "Learn how to safely set up and use your electric hotpot.",
-                    VideoURL = "https://www.youtube.com/watch?v=electric-hotpot-setup",
-
-
-                },
-                new TurtorialVideo
-                {
-                    TurtorialVideoId = 3,
-                    Name = "Portable Hotpot on the Go",
-                    Description = "Tips and tricks for using your portable hotpot anywhere.",
-                    VideoURL = "https://www.youtube.com/watch?v=portable-hotpot-guide",
-
-
-                },
-                new TurtorialVideo
-                {
-                    TurtorialVideoId = 4,
-                    Name = "Multi-compartment Hotpot Mastery",
-                    Description = "How to effectively use all compartments in your multi-section hotpot.",
-                    VideoURL = "https://www.youtube.com/watch?v=multi-compartment-guide",
-
-
-                },
-                new TurtorialVideo
-                {
-                    TurtorialVideoId = 5,
-                    Name = "Ceramic Hotpot Care Guide",
-                    Description = "Learn how to properly care for and maintain your ceramic hotpot.",
-                    VideoURL = "https://www.youtube.com/watch?v=ceramic-hotpot-care",
-
-
-                }
-            );
+     new TurtorialVideo
+     {
+         TurtorialVideoId = 1,
+         Name = "Cách Sử Dụng Nồi Lẩu Truyền Thống",
+         Description = "Hướng dẫn toàn diện về cách thiết lập và sử dụng nồi lẩu truyền thống.",
+         VideoURL = "https://www.youtube.com/watch?v=traditional-hotpot-guide",
+     },
+     new TurtorialVideo
+     {
+         TurtorialVideoId = 2,
+         Name = "Hướng Dẫn Thiết Lập Nồi Lẩu Điện",
+         Description = "Học cách thiết lập và sử dụng nồi lẩu điện an toàn.",
+         VideoURL = "https://www.youtube.com/watch?v=electric-hotpot-setup",
+     },
+     new TurtorialVideo
+     {
+         TurtorialVideoId = 3,
+         Name = "Nồi Lẩu Di Động Mọi Lúc Mọi Nơi",
+         Description = "Mẹo và thủ thuật để sử dụng nồi lẩu di động ở bất kỳ đâu.",
+         VideoURL = "https://www.youtube.com/watch?v=portable-hotpot-guide",
+     },
+     new TurtorialVideo
+     {
+         TurtorialVideoId = 4,
+         Name = "Làm Chủ Nồi Lẩu Đa Ngăn",
+         Description = "Cách sử dụng hiệu quả tất cả các ngăn trong nồi lẩu đa ngăn của bạn.",
+         VideoURL = "https://www.youtube.com/watch?v=multi-compartment-guide",
+     },
+     new TurtorialVideo
+     {
+         TurtorialVideoId = 5,
+         Name = "Hướng Dẫn Chăm Sóc Nồi Lẩu Gốm",
+         Description = "Học cách chăm sóc và bảo quản nồi lẩu gốm đúng cách.",
+         VideoURL = "https://www.youtube.com/watch?v=ceramic-hotpot-care",
+     }
+ );
 
             // Seed Hotpots
             modelBuilder.Entity<Hotpot>().HasData(
                 new Hotpot
                 {
                     HotpotId = 1,
-                    Name = "Classic Copper Hotpot",
-                    Material = "Copper",
-                    Size = "m",
-                    Description = "Traditional copper hotpot with charcoal heating.",
+                    Name = "Nồi Lẩu Đồng Cổ Điển",
+                    Material = "Đồng",
+                    Size = "M",
+                    Description = "Nồi lẩu đồng truyền thống với hệ thống đốt than.",
                     ImageURL = "https://example.com/images/classic-copper-hotpot.jpg",
-                    Price = 29.99m,
-                    BasePrice = 89.99m,
+                    Price = 730000m, // ~29.99 USD
+                    BasePrice = 2200000m, // ~89.99 USD
                     Status = true,
                     Quantity = 5,
-
-
                 },
                 new Hotpot
                 {
                     HotpotId = 2,
-                    Name = "Modern Electric Hotpot",
-                    Material = "Stainless Steel",
+                    Name = "Nồi Lẩu Điện Hiện Đại",
+                    Material = "Thép Không Gỉ",
                     Size = "L",
-                    Description = "Electric hotpot with temperature control and non-stick coating.",
+                    Description = "Nồi lẩu điện với điều khiển nhiệt độ và lớp phủ chống dính.",
                     ImageURL = "https://example.com/images/modern-electric-hotpot.jpg",
-                    Price = 59.99m,
-                    BasePrice = 129.99m,
+                    Price = 1460000m, // ~59.99 USD
+                    BasePrice = 3170000m, // ~129.99 USD
                     Status = true,
                     Quantity = 2,
-
-
                 },
                 new Hotpot
                 {
                     HotpotId = 3,
-                    Name = "Mini Portable Hotpot",
-                    Material = "Aluminum",
+                    Name = "Nồi Lẩu Mini Di Động",
+                    Material = "Nhôm",
                     Size = "S",
-                    Description = "Compact portable hotpot perfect for travel or small gatherings.",
+                    Description = "Nồi lẩu nhỏ gọn di động hoàn hảo cho du lịch hoặc các buổi tụ họp nhỏ.",
                     ImageURL = "https://example.com/images/mini-portable-hotpot.jpg",
-                    Price = 19.99m,
-                    BasePrice = 69.99m,
+                    Price = 490000m, // ~19.99 USD
+                    BasePrice = 1710000m, // ~69.99 USD
                     Status = true,
                     Quantity = 2,
-
-
                 },
                 new Hotpot
                 {
                     HotpotId = 4,
-                    Name = "Dual Section Hotpot",
-                    Material = "Stainless Steel",
+                    Name = "Nồi Lẩu Hai Ngăn",
+                    Material = "Thép Không Gỉ",
                     Size = "L",
-                    Description = "Multi-compartment hotpot for different broths in one pot.",
+                    Description = "Nồi lẩu đa ngăn cho phép nấu nhiều loại nước lẩu khác nhau trong một nồi.",
                     ImageURL = "https://example.com/images/dual-section-hotpot.jpg",
-                    Price = 69.99m,
-                    BasePrice = 149.99m,
+                    Price = 1710000m, // ~69.99 USD
+                    BasePrice = 3660000m, // ~149.99 USD
                     Status = true,
                     Quantity = 2,
-
-
                 },
                 new Hotpot
                 {
                     HotpotId = 5,
-                    Name = "Traditional Ceramic Hotpot",
-                    Material = "Ceramic",
+                    Name = "Nồi Lẩu Gốm Truyền Thống",
+                    Material = "Gốm",
                     Size = "M",
-                    Description = "Authentic ceramic hotpot that retains heat exceptionally well.",
+                    Description = "Nồi lẩu gốm truyền thống giữ nhiệt cực tốt.",
                     ImageURL = "https://example.com/images/traditional-ceramic-hotpot.jpg",
-                    Price = 39.99m,
-                    BasePrice = 79.99m,
+                    Price = 980000m, // ~39.99 USD
+                    BasePrice = 1950000m, // ~79.99 USD
                     Status = true,
                     Quantity = 4,
-
-
                 }
             );
 
@@ -674,8 +635,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0001",
                     HotpotId = 1,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -683,8 +642,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CP-2023-0002",
                     Status = true,
                     HotpotId = 1,
-
-
                 },
                 new HotPotInventory
                 {
@@ -692,8 +649,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "EL-2023-0001",
                     HotpotId = 2,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -701,8 +656,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "EL-2023-0002",
                     HotpotId = 2,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -710,8 +663,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "PT-2023-0001",
                     HotpotId = 3,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -719,8 +670,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "MC-2023-0001",
                     HotpotId = 4,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -728,36 +677,27 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0001",
                     HotpotId = 5,
                     Status = true,
-
-
                 },
-
                 new HotPotInventory
                 {
                     HotPotInventoryId = 8,
                     SeriesNumber = "CP-2023-0003",
                     HotpotId = 1,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 9,
                     SeriesNumber = "CP-2023-0004",
                     HotpotId = 1,
-                    Status = true,
-
-
+                    Status = false
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 10,
                     SeriesNumber = "CP-2023-0005",
                     HotpotId = 1,
-                    Status = true,
-
-
+                    Status = false
                 },
                 new HotPotInventory
                 {
@@ -765,8 +705,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "PT-2023-0002",
                     HotpotId = 3,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -774,8 +712,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "MC-2023-0002",
                     HotpotId = 4,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -783,8 +719,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0002",
                     HotpotId = 5,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -792,8 +726,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0003",
                     HotpotId = 5,
                     Status = true,
-
-
                 },
                 new HotPotInventory
                 {
@@ -801,12 +733,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     SeriesNumber = "CR-2023-0004",
                     HotpotId = 5,
                     Status = false,
-
-
                 }
-
-
-
             );
 
             // Seed Utensils
@@ -814,729 +741,603 @@ namespace Capstone.HPTY.RepositoryLayer
                 new Utensil
                 {
                     UtensilId = 1,
-                    Name = "Bamboo Chopsticks Set",
-                    Material = "Bamboo",
-                    Description = "Set of 5 pairs of traditional bamboo chopsticks.",
+                    Name = "Bộ Đũa Tre",
+                    Material = "Tre",
+                    Description = "Bộ 5 đôi đũa tre truyền thống.",
                     ImageURL = "https://example.com/images/bamboo-chopsticks.jpg",
-                    Price = 12.99m,
+                    Price = 320000m, // ~12.99 USD
                     Status = true,
                     Quantity = 100,
                     UtensilTypeId = 1,
-
-
                 },
                 new Utensil
                 {
                     UtensilId = 2,
-                    Name = "Stainless Steel Hotpot Ladle",
-                    Material = "Stainless Steel",
-                    Description = "Durable stainless steel ladle for serving hotpot broth.",
+                    Name = "Muỗng Lẩu Thép Không Gỉ",
+                    Material = "Thép Không Gỉ",
+                    Description = "Muỗng thép không gỉ bền chắc để múc nước lẩu.",
                     ImageURL = "https://example.com/images/steel-ladle.jpg",
-                    Price = 9.99m,
+                    Price = 245000m, // ~9.99 USD
                     Status = true,
                     Quantity = 75,
                     UtensilTypeId = 2,
-
-
                 },
                 new Utensil
                 {
                     UtensilId = 3,
-                    Name = "Wire Mesh Strainer",
-                    Material = "Stainless Steel",
-                    Description = "Fine mesh strainer for retrieving food from the hotpot.",
+                    Name = "Vợt Lưới Kim Loại",
+                    Material = "Thép Không Gỉ",
+                    Description = "Vợt lưới mịn để vớt thức ăn từ nồi lẩu.",
                     ImageURL = "https://example.com/images/mesh-strainer.jpg",
-                    Price = 7.99m,
+                    Price = 195000m, // ~7.99 USD
                     Status = true,
                     Quantity = 80,
                     UtensilTypeId = 3,
-
-
                 },
                 new Utensil
                 {
                     UtensilId = 4,
-                    Name = "Ceramic Serving Bowl Set",
-                    Material = "Ceramic",
-                    Description = "Set of 4 ceramic bowls for individual servings.",
+                    Name = "Bộ Bát Ăn Gốm",
+                    Material = "Gốm",
+                    Description = "Bộ 4 bát gốm cho phần ăn cá nhân.",
                     ImageURL = "https://example.com/images/ceramic-bowls.jpg",
-                    Price = 19.99m,
+                    Price = 490000m, // ~19.99 USD
                     Status = true,
                     Quantity = 50,
                     UtensilTypeId = 4,
-
-
                 },
-                new Utensil
-                {
-                    UtensilId = 5,
-                    Name = "Melamine Plates",
-                    Material = "Melamine",
-                    Description = "Set of 6 durable melamine plates for hotpot dining.",
-                    ImageURL = "https://example.com/images/melamine-plates.jpg",
-                    Price = 24.99m,
-                    Status = true,
-                    Quantity = 60,
-                    UtensilTypeId = 5,
-
-
-                }
-            );
+                  new Utensil
+                  {
+                      UtensilId = 5,
+                      Name = "Đĩa Melamine",
+                      Material = "Melamine",
+                      Description = "Bộ 6 đĩa melamine bền chắc cho bữa ăn lẩu.",
+                      ImageURL = "https://example.com/images/melamine-plates.jpg",
+                      Price = 610000m, // ~24.99 USD
+                      Status = true,
+                      Quantity = 60,
+                      UtensilTypeId = 5,
+                  }
+);
 
             modelBuilder.Entity<IngredientType>().HasData(
                 new IngredientType
                 {
                     IngredientTypeId = 1,
-                    Name = "Broth",
-
-
+                    Name = "Nước Lẩu",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 2,
-                    Name = "Seafood",
-
-
+                    Name = "Hải Sản",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 3,
-                    Name = "Vegetables",
-
-
+                    Name = "Rau Củ",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 4,
-                    Name = "Noodles",
-
-
+                    Name = "Mì",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 5,
-                    Name = "Tofu",
-
-
+                    Name = "Đậu Phụ",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 6,
-                    Name = "Mushrooms",
-
-
+                    Name = "Nấm",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 7,
-                    Name = "Meats",
-
-
+                    Name = "Thịt",
                 },
                 new IngredientType
                 {
                     IngredientTypeId = 8,
-                    Name = "Sauces",
-
-
+                    Name = "Nước Chấm",
                 }
             );
 
+
             // Seed Ingredients
             modelBuilder.Entity<Ingredient>().HasData(
-                // Meats - using grams (g)
+
                 new Ingredient
                 {
                     IngredientId = 1,
-                    Name = "Sliced Beef",
-                    Description = "Thinly sliced premium beef perfect for hotpot.",
+                    Name = "Thịt Bò Cắt Lát",
+                    Description = "Thịt bò cao cấp cắt lát mỏng hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/sliced-beef.jpg",
                     MinStockLevel = 20,
                     Quantity = 100,
                     IngredientTypeId = 7,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 2,
-                    Name = "Lamb Slices",
-                    Description = "Tender sliced lamb meat, perfect for quick cooking.",
+                    Name = "Thịt Cừu Cắt Lát",
+                    Description = "Thịt cừu mềm cắt lát, hoàn hảo cho nấu nhanh.",
                     ImageURL = "https://example.com/images/lamb-slices.jpg",
                     MinStockLevel = 15,
                     Quantity = 80,
                     IngredientTypeId = 7,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 3,
-                    Name = "Pork Belly",
-                    Description = "Thinly sliced pork belly with perfect fat-to-meat ratio.",
+                    Name = "Ba Chỉ Heo",
+                    Description = "Thịt ba chỉ heo cắt mỏng với tỷ lệ mỡ-thịt hoàn hảo.",
                     ImageURL = "https://example.com/images/pork-belly.jpg",
                     MinStockLevel = 15,
                     Quantity = 75,
                     IngredientTypeId = 7,
-
-
                 },
 
-                // Seafood - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 4,
-                    Name = "Shrimp",
-                    Description = "Fresh, peeled and deveined shrimp.",
+                    Name = "Tôm",
+                    Description = "Tôm tươi, đã bóc vỏ và làm sạch.",
                     ImageURL = "https://example.com/images/shrimp.jpg",
                     MinStockLevel = 20,
                     Quantity = 90,
                     IngredientTypeId = 2,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 5,
-                    Name = "Fish Balls",
-                    Description = "Bouncy fish balls made from fresh fish paste.",
+                    Name = "Cá Viên",
+                    Description = "Cá viên đàn hồi làm từ cá tươi xay.",
                     ImageURL = "https://example.com/images/fish-balls.jpg",
                     MinStockLevel = 30,
                     Quantity = 120,
                     IngredientTypeId = 2,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 6,
-                    Name = "Squid",
-                    Description = "Fresh squid sliced into rings.",
+                    Name = "Mực",
+                    Description = "Mực tươi cắt thành khoanh.",
                     ImageURL = "https://example.com/images/squid.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
                     IngredientTypeId = 2,
-
-
                 },
 
-                // Vegetables - using grams (g)
+
                 new Ingredient
                 {
                     IngredientId = 7,
-                    Name = "Napa Cabbage",
-                    Description = "Crisp, leafy vegetable perfect for hotpot.",
+                    Name = "Cải Thảo",
+                    Description = "Rau giòn, lá xanh hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/napa-cabbage.jpg",
                     MinStockLevel = 25,
                     Quantity = 100,
                     IngredientTypeId = 3,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 8,
-                    Name = "Spinach",
-                    Description = "Fresh spinach leaves, washed and ready to cook.",
+                    Name = "Rau Chân Vịt",
+                    Description = "Rau chân vịt tươi, đã rửa sạch và sẵn sàng để nấu.",
                     ImageURL = "https://example.com/images/spinach.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
                     IngredientTypeId = 3,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 9,
-                    Name = "Corn",
-                    Description = "Sweet corn cut into bite-sized pieces.",
+                    Name = "Bắp",
+                    Description = "Bắp ngọt cắt thành miếng vừa ăn.",
                     ImageURL = "https://example.com/images/corn.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
                     IngredientTypeId = 3,
-
-
                 },
 
-                // Noodles - using grams (g)
+
                 new Ingredient
                 {
                     IngredientId = 10,
-                    Name = "Udon Noodles",
-                    Description = "Thick, chewy Japanese wheat noodles.",
+                    Name = "Mì Udon",
+                    Description = "Mì lúa mì Nhật Bản dày và dai.",
                     ImageURL = "https://example.com/images/udon-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 80,
                     IngredientTypeId = 4,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 11,
-                    Name = "Glass Noodles",
-                    Description = "Transparent noodles made from mung bean starch.",
+                    Name = "Miến",
+                    Description = "Miến trong suốt làm từ tinh bột đậu xanh.",
                     ImageURL = "https://example.com/images/glass-noodles.jpg",
                     MinStockLevel = 20,
                     Quantity = 85,
                     IngredientTypeId = 4,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 12,
-                    Name = "Ramen Noodles",
-                    Description = "Curly wheat noodles perfect for hotpot.",
+                    Name = "Mì Ramen",
+                    Description = "Mì lúa mì xoăn hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/ramen-noodles.jpg",
                     MinStockLevel = 25,
                     Quantity = 90,
                     IngredientTypeId = 4,
-
-
                 },
 
-                // Tofu - using grams (g)
+
                 new Ingredient
                 {
                     IngredientId = 13,
-                    Name = "Firm Tofu",
-                    Description = "Firm tofu cubes that hold their shape in hotpot.",
+                    Name = "Đậu Phụ Cứng",
+                    Description = "Đậu phụ cứng cắt khối giữ nguyên hình dạng trong lẩu.",
                     ImageURL = "https://example.com/images/firm-tofu.jpg",
                     MinStockLevel = 15,
                     Quantity = 60,
                     IngredientTypeId = 5,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 14,
-                    Name = "Tofu Puffs",
-                    Description = "Deep-fried tofu puffs that absorb broth flavors.",
+                    Name = "Đậu Phụ Chiên",
+                    Description = "Đậu phụ chiên giòn hấp thụ hương vị nước lẩu.",
                     ImageURL = "https://example.com/images/tofu-puffs.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
                     IngredientTypeId = 5,
-
-
                 },
 
-                // Mushrooms - using grams (g)
                 new Ingredient
                 {
                     IngredientId = 15,
-                    Name = "Shiitake Mushrooms",
-                    Description = "Flavorful shiitake mushrooms, fresh or dried.",
+                    Name = "Nấm Hương",
+                    Description = "Nấm hương thơm ngon, tươi hoặc khô.",
                     ImageURL = "https://example.com/images/shiitake.jpg",
                     MinStockLevel = 15,
                     Quantity = 70,
                     IngredientTypeId = 6,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 16,
-                    Name = "Enoki Mushrooms",
-                    Description = "Delicate, long-stemmed enoki mushrooms.",
+                    Name = "Nấm Kim Châm",
+                    Description = "Nấm kim châm mỏng, thân dài.",
                     ImageURL = "https://example.com/images/enoki.jpg",
                     MinStockLevel = 15,
                     Quantity = 65,
                     IngredientTypeId = 6,
-
-
                 },
 
-                // Broths - using milliliters (ml)
+
                 new Ingredient
                 {
                     IngredientId = 17,
-                    Name = "Spicy Sichuan Broth",
-                    Description = "Traditional spicy broth with Sichuan peppercorns and chili oil.",
+                    Name = "Nước Lẩu Tứ Xuyên Cay",
+                    Description = "Nước lẩu cay truyền thống với hạt tiêu Tứ Xuyên và dầu ớt.",
                     ImageURL = "https://example.com/images/sichuan-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
                     IngredientTypeId = 1,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 18,
-                    Name = "Tomato Broth",
-                    Description = "Tangy tomato-based broth, slightly sweet and sour.",
+                    Name = "Nước Lẩu Cà Chua",
+                    Description = "Nước lẩu cà chua chua ngọt.",
                     ImageURL = "https://example.com/images/tomato-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
                     IngredientTypeId = 1,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 19,
-                    Name = "Mushroom Broth",
-                    Description = "Rich umami broth made from various mushrooms.",
+                    Name = "Nước Lẩu Nấm",
+                    Description = "Nước lẩu đậm đà làm từ nhiều loại nấm.",
                     ImageURL = "https://example.com/images/mushroom-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
                     IngredientTypeId = 1,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 20,
-                    Name = "Clear Bone Broth",
-                    Description = "Light, clear broth made from simmering bones for hours.",
+                    Name = "Nước Lẩu Xương Trong",
+                    Description = "Nước lẩu nhẹ, trong làm từ xương hầm nhiều giờ.",
                     ImageURL = "https://example.com/images/bone-broth.jpg",
                     MinStockLevel = 10,
                     Quantity = 55,
                     IngredientTypeId = 1,
-
-
                 },
 
-                // Sauces - using milliliters (ml)
+
                 new Ingredient
                 {
                     IngredientId = 21,
-                    Name = "Sesame Sauce",
-                    Description = "Creamy sauce made from ground sesame seeds.",
+                    Name = "Sốt Mè",
+                    Description = "Sốt kem làm từ hạt mè xay.",
                     ImageURL = "https://example.com/images/sesame-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 40,
                     IngredientTypeId = 8,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 22,
-                    Name = "Garlic Soy Sauce",
-                    Description = "Soy sauce infused with fresh minced garlic.",
+                    Name = "Nước Tương Tỏi",
+                    Description = "Nước tương pha với tỏi băm.",
                     ImageURL = "https://example.com/images/garlic-soy.jpg",
                     MinStockLevel = 10,
                     Quantity = 45,
                     IngredientTypeId = 8,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 23,
-                    Name = "Chili Oil",
-                    Description = "Spicy oil made from infusing oil with chili peppers.",
+                    Name = "Dầu Ớt",
+                    Description = "Dầu cay làm từ ớt ngâm dầu.",
                     ImageURL = "https://example.com/images/chili-oil.jpg",
                     MinStockLevel = 10,
                     Quantity = 50,
                     IngredientTypeId = 8,
-
-
                 },
                 new Ingredient
                 {
                     IngredientId = 24,
-                    Name = "Shacha Sauce",
-                    Description = "Umami-rich sauce made from soybean oil, garlic, shallots, and dried seafood.",
+                    Name = "Tương Sa Tế",
+                    Description = "Sốt đậm đà làm từ dầu đậu nành, tỏi, hành và hải sản khô.",
                     ImageURL = "https://example.com/images/shacha-sauce.jpg",
                     MinStockLevel = 10,
                     Quantity = 35,
                     IngredientTypeId = 8,
-
-
                 }
             );
 
+
             modelBuilder.Entity<IngredientPrice>().HasData(
+                // Meat prices (per pack)
                 new IngredientPrice
                 {
                     IngredientPriceId = 1,
-                    Price = 0.13m, // $13 per kg = $0.13 per g
+                    Price = 120000m, // 120,000 VND for 250g pack of sliced beef
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 1,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 2,
-                    Price = 0.14m, // $14 per kg = $0.14 per g
+                    Price = 135000m, // 135,000 VND for 250g pack of sliced beef (price increase)
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 1,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 3,
-                    Price = 0.15m, // $15 per kg = $0.15 per g
+                    Price = 150000m, // 150,000 VND for 250g pack of lamb slices
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                     IngredientId = 2,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 4,
-                    Price = 0.16m, // $16 per kg = $0.16 per g
+                    Price = 165000m, // 165,000 VND for 250g pack of lamb slices (price increase)
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 2,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 5,
-                    Price = 0.12m, // $12 per kg = $0.12 per g
+                    Price = 95000m, // 95,000 VND for 250g pack of pork belly
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 3,
-
-
                 },
 
-                // Seafood prices (per gram)
+                // Seafood prices (per pack)
                 new IngredientPrice
                 {
                     IngredientPriceId = 6,
-                    Price = 0.17m, // $17 per kg = $0.17 per g
+                    Price = 110000m, // 110,000 VND for 200g pack of shrimp
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 4,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 7,
-                    Price = 0.10m, // $10 per kg = $0.10 per g
+                    Price = 75000m, // 75,000 VND for 300g pack of fish balls
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 5,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 8,
-                    Price = 0.15m, // $15 per kg = $0.15 per g
+                    Price = 90000m, // 90,000 VND for 200g pack of squid
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 6,
-
-
                 },
-
-                // Vegetable prices (per gram)
+                // Vegetable prices (per pack) 
                 new IngredientPrice
                 {
                     IngredientPriceId = 9,
-                    Price = 0.06m, // $6 per kg = $0.06 per g
+                    Price = 25000m, // 25,000 VND for 400g pack of napa cabbage
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 7,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 10,
-                    Price = 0.05m, // $5 per kg = $0.05 per g
+                    Price = 20000m, // 20,000 VND for 300g pack of spinach
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 8,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 11,
-                    Price = 0.04m, // $4 per kg = $0.04 per g
+                    Price = 18000m, // 18,000 VND for 250g pack of corn
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 9,
-
-
                 },
 
-                // Noodle prices (per gram)
+                // Noodle prices (per pack)
                 new IngredientPrice
                 {
                     IngredientPriceId = 12,
-                    Price = 0.07m, // $7 per kg = $0.07 per g
+                    Price = 35000m, // 35,000 VND for 300g pack of udon noodles
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 10,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 13,
-                    Price = 0.06m, // $6 per kg = $0.06 per g
+                    Price = 30000m, // 30,000 VND for 200g pack of glass noodles
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 11,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 14,
-                    Price = 0.065m, // $6.50 per kg = $0.065 per g
+                    Price = 32000m, // 32,000 VND for 250g pack of ramen noodles
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 12,
-
-
                 },
 
-                // Tofu prices (per gram)
+                // Tofu prices (per pack)
                 new IngredientPrice
                 {
                     IngredientPriceId = 15,
-                    Price = 0.05m, // $5 per kg = $0.05 per g
+                    Price = 22000m, // 22,000 VND for 300g pack of firm tofu
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 13,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 16,
-                    Price = 0.055m, // $5.50 per kg = $0.055 per g
+                    Price = 25000m, // 25,000 VND for 250g pack of tofu puffs
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 14,
-
-
                 },
 
-                // Mushroom prices (per gram)
+                // Mushroom prices (per pack)
                 new IngredientPrice
                 {
                     IngredientPriceId = 17,
-                    Price = 0.08m, // $8 per kg = $0.08 per g
+                    Price = 45000m, // 45,000 VND for 200g pack of shiitake mushrooms
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 15,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 18,
-                    Price = 0.07m, // $7 per kg = $0.07 per g
+                    Price = 35000m, // 35,000 VND for 150g pack of enoki mushrooms
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 16,
-
-
                 },
 
-                // Broth prices (per milliliter)
+                // Broth prices (per container)
                 new IngredientPrice
                 {
                     IngredientPriceId = 19,
-                    Price = 0.009m, // $9 per liter = $0.009 per ml
+                    Price = 65000m, // 65,000 VND for 500ml container of Sichuan broth
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 17,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 20,
-                    Price = 0.008m, // $8 per liter = $0.008 per ml
+                    Price = 55000m, // 55,000 VND for 500ml container of tomato broth
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 18,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 21,
-                    Price = 0.0085m, // $8.50 per liter = $0.0085 per ml
+                    Price = 60000m, // 60,000 VND for 500ml container of mushroom broth
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 19,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 22,
-                    Price = 0.0075m, // $7.50 per liter = $0.0075 per ml
+                    Price = 50000m, // 50,000 VND for 500ml container of bone broth
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 20,
-
-
                 },
 
-                // Sauce prices (per milliliter)
+                // Sauce prices (per bottle)
                 new IngredientPrice
                 {
                     IngredientPriceId = 23,
-                    Price = 0.005m, // $5 per liter = $0.005 per ml
+                    Price = 40000m, // 40,000 VND for 200ml bottle of sesame sauce
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 21,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 24,
-                    Price = 0.004m, // $4 per liter = $0.004 per ml
+                    Price = 35000m, // 35,000 VND for 250ml bottle of garlic soy sauce
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 22,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 25,
-                    Price = 0.0045m, // $4.50 per liter = $0.0045 per ml
+                    Price = 38000m, // 38,000 VND for 150ml bottle of chili oil
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 23,
-
-
                 },
                 new IngredientPrice
                 {
                     IngredientPriceId = 26,
-                    Price = 0.006m, // $6 per liter = $0.006 per ml
+                    Price = 42000m, // 42,000 VND for 200ml bottle of shacha sauce
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 24,
-
-
                 }
             );
 
             modelBuilder.Entity<DamageDevice>().HasData(
-                 new DamageDevice
-                 {
-                     DamageDeviceId = 1,
-                     Name = "Broken Handle",
-                     Description = "The handle of the hotpot is broken and needs to be replaced.",
-                     Status = MaintenanceStatus.Pending,
-                     LoggedDate = DateTime.UtcNow.AddHours(7),
-                     HotPotInventoryId = 15
-                 },
-                 new DamageDevice
-                 {
-                     DamageDeviceId = 2,
-                     Name = "Cracked Base",
-                     Description = "The base of the hotpot is cracked and needs to be replaced.",
-                     Status = MaintenanceStatus.InProgress,
-                     LoggedDate = DateTime.UtcNow.AddHours(7),
-                     HotPotInventoryId = 10
-                 },
-                 new DamageDevice
-                 {
-                     DamageDeviceId = 3,
-                     Name = "Damaged Lid",
-                     Description = "The lid of the hotpot is damaged and needs to be replaced.",
-                     Status = MaintenanceStatus.Completed,
-                     LoggedDate = DateTime.UtcNow.AddHours(7),
-                     HotPotInventoryId = 9
-                 },
-                 new DamageDevice
-                 {
-                     DamageDeviceId = 4,
-                     Name = "broken plates",
-                     Description = "The plates are broken and need to be replaced.",
-                     Status = MaintenanceStatus.Cancelled,
-                     LoggedDate = DateTime.UtcNow.AddHours(7),
-                     UtensilId = 5
-                 }
+                new DamageDevice
+                {
+                    DamageDeviceId = 1,
+                    Name = "Tay Cầm Bị Gãy",
+                    Description = "Tay cầm của nồi lẩu bị gãy và cần được thay thế.",
+                    Status = MaintenanceStatus.Pending,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    HotPotInventoryId = 15
+                },
+                new DamageDevice
+                {
+                    DamageDeviceId = 2,
+                    Name = "Đế Nồi Bị Nứt",
+                    Description = "Đế của nồi lẩu bị nứt và cần được thay thế.",
+                    Status = MaintenanceStatus.InProgress,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    HotPotInventoryId = 10
+                },
+                new DamageDevice
+                {
+                    DamageDeviceId = 3,
+                    Name = "Nắp Nồi Hư Hỏng",
+                    Description = "Nắp của nồi lẩu bị hư hỏng và cần được thay thế.",
+                    Status = MaintenanceStatus.Completed,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    HotPotInventoryId = 9
+                },
+                new DamageDevice
+                {
+                    DamageDeviceId = 4,
+                    Name = "Đĩa Bị Vỡ",
+                    Description = "Đĩa bị vỡ và cần được thay thế.",
+                    Status = MaintenanceStatus.Cancelled,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    UtensilId = 5
+                }
             );
         }
     }
