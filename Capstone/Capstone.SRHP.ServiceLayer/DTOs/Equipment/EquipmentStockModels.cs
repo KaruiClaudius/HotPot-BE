@@ -52,24 +52,24 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
 
     public class EquipmentUnavailableResponse
     {
-        public List<HotPotInventory> UnavailableHotPots { get; set; }
-        public List<ModelLayer.Entities.Utensil> UnavailableUtensils { get; set; }
+        public List<HotPotInventoryDto> UnavailableHotPots { get; set; }
+        public List<UtensilDto> UnavailableUtensils { get; set; }
         public int TotalUnavailableCount { get; set; }
     }
 
     public class EquipmentAvailableResponse
     {
-        public List<HotPotInventory> AvailableHotPots { get; set; }
-        public List<ModelLayer.Entities.Utensil> AvailableUtensils { get; set; }
+        public List<HotPotInventoryDto> AvailableHotPots { get; set; }
+        public List<UtensilDto> AvailableUtensils { get; set; }
         public int TotalAvailableCount { get; set; }
     }
 
     public class EquipmentDashboardResponse
     {
         public List<EquipmentStatusDto> StatusSummary { get; set; }
-        public List<ModelLayer.Entities.Utensil> LowStockUtensils { get; set; }
-        public List<HotPotInventory> UnavailableHotPots { get; set; }
-        public List<ModelLayer.Entities.Utensil> UnavailableUtensils { get; set; }
+        public List<UtensilDto> LowStockUtensils { get; set; }
+        public List<HotPotInventoryDto> UnavailableHotPots { get; set; }
+        public List<UtensilDto> UnavailableUtensils { get; set; }
         public int TotalEquipmentCount { get; set; }
         public int TotalAvailableCount { get; set; }
         public int TotalUnavailableCount { get; set; }

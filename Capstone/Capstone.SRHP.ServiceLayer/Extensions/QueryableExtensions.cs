@@ -27,6 +27,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 TotalCount = totalCount,
                 PageNumber = paginationParams.PageNumber,
                 PageSize = paginationParams.PageSize
+
             };
         }
 
