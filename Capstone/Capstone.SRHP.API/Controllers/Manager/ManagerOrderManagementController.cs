@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/order-management")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
     public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
@@ -26,26 +26,26 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrder>>> AllocateOrderToStaff([FromBody] AllocateOrderRequest request)
+        public async Task<ActionResult<ApiResponse<ShippingOrderAllocationDTO>>> AllocateOrderToStaff([FromBody] AllocateOrderRequest request)
         {
             try
             {
                 var result = await _orderManagementService.AllocateOrderToStaff(request.OrderId, request.StaffId);
-                return Ok(ApiResponse<ShippingOrder>.SuccessResponse(result, "Order allocated successfully"));
+                return Ok(ApiResponse<ShippingOrderAllocationDTO>.SuccessResponse(result, "Order allocated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
             }
         }
 
         [HttpGet("unallocated")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Order>>>> GetUnallocatedOrders(
+        public async Task<ActionResult<ApiResponse<PagedResult<UnallocatedOrderDTO>>>> GetUnallocatedOrders(
              [FromQuery] OrderQueryParams queryParams = null)
         {
             // If no query params provided, create with defaults
@@ -53,7 +53,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
             var pagedOrders = await _orderManagementService.GetUnallocatedOrdersPaged(queryParams);
 
-            return Ok(ApiResponse<PagedResult<Order>>.SuccessResponse(
+            return Ok(ApiResponse<PagedResult<UnallocatedOrderDTO>>.SuccessResponse(
                 pagedOrders,
                 $"Unallocated orders retrieved successfully (Page {pagedOrders.PageNumber} of {pagedOrders.TotalPages})"));
         }
@@ -61,16 +61,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("staff/{staffId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ShippingOrder>>>> GetOrdersByStaff(int staffId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffShippingOrderDTO>>>> GetOrdersByStaff(int staffId)
         {
             try
             {
                 var orders = await _orderManagementService.GetOrdersByStaff(staffId);
-                return Ok(ApiResponse<IEnumerable<ShippingOrder>>.SuccessResponse(orders, $"Orders for staff {staffId} retrieved successfully"));
+                return Ok(ApiResponse<IEnumerable<StaffShippingOrderDTO>>.SuccessResponse(orders, $"Orders for staff {staffId} retrieved successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<IEnumerable<ShippingOrder>>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<IEnumerable<StaffShippingOrderDTO>>.ErrorResponse(ex.Message));
             }
         }
 
@@ -79,12 +79,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Order>>> UpdateOrderStatus(int orderId, [FromBody] ManagerOrderStatusUpdateRequest request)
+        public async Task<ActionResult<ApiResponse<OrderStatusUpdateDTO>>> UpdateOrderStatus(int orderId, [FromBody] ManagerOrderStatusUpdateRequest request)
         {
             try
             {
                 var order = await _orderManagementService.UpdateOrderStatus(orderId, request.Status);
-                return Ok(ApiResponse<Order>.SuccessResponse(order, "Order status updated successfully"));
+                return Ok(ApiResponse<OrderStatusUpdateDTO>.SuccessResponse(order, "Order status updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -99,12 +99,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("details/{orderId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<Order>>> GetOrderWithDetails(int orderId)
+        public async Task<ActionResult<ApiResponse<OrderDetailDTO>>> GetOrderWithDetails(int orderId)
         {
             try
             {
                 var order = await _orderManagementService.GetOrderWithDetails(orderId);
-                return Ok(ApiResponse<Order>.SuccessResponse(order, "Order details retrieved successfully"));
+                return Ok(ApiResponse<OrderDetailDTO>.SuccessResponse(order, "Order details retrieved successfully"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -114,7 +114,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Order>>>> GetOrdersByStatus(
+        public async Task<ActionResult<ApiResponse<PagedResult<OrderWithDetailsDTO>>>> GetOrdersByStatus(
             OrderStatus? status= null,
             [FromQuery] OrderQueryParams queryParams = null)
         {
@@ -126,7 +126,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
             var pagedOrders = await _orderManagementService.GetOrdersByStatusPaged(queryParams);
 
-            return Ok(ApiResponse<PagedResult<Order>>.SuccessResponse(
+            return Ok(ApiResponse<PagedResult<OrderWithDetailsDTO>>.SuccessResponse(
                 pagedOrders,
                 $"Orders with status {status} retrieved successfully (Page {pagedOrders.PageNumber} of {pagedOrders.TotalPages})"));
         }
@@ -136,7 +136,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrder>>> UpdateDeliveryStatus(int shippingOrderId, [FromBody] UpdateDeliveryStatusRequest request)
+        public async Task<ActionResult<ApiResponse<DeliveryStatusUpdateDTO>>> UpdateDeliveryStatus(int shippingOrderId, [FromBody] UpdateDeliveryStatusRequest request)
         {
             try
             {
@@ -145,21 +145,21 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     request.IsDelivered,
                     request.Notes);
 
-                return Ok(ApiResponse<ShippingOrder>.SuccessResponse(shippingOrder, "Delivery status updated successfully"));
+                return Ok(ApiResponse<DeliveryStatusUpdateDTO>.SuccessResponse(shippingOrder, "Delivery status updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<DeliveryStatusUpdateDTO>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<DeliveryStatusUpdateDTO>.ErrorResponse(ex.Message));
             }
         }
 
         [HttpGet("pending-deliveries")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ShippingOrder>>>> GetPendingDeliveries(
+        public async Task<ActionResult<ApiResponse<PagedResult<PendingDeliveryDTO>>>> GetPendingDeliveries(
            [FromQuery] ShippingOrderQueryParams queryParams = null)
         {
             // If no query params provided, create with defaults
@@ -167,7 +167,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
             var pagedDeliveries = await _orderManagementService.GetPendingDeliveriesPaged(queryParams);
 
-            return Ok(ApiResponse<PagedResult<ShippingOrder>>.SuccessResponse(
+            return Ok(ApiResponse<PagedResult<PendingDeliveryDTO>>.SuccessResponse(
                 pagedDeliveries,
                 $"Pending deliveries retrieved successfully (Page {pagedDeliveries.PageNumber} of {pagedDeliveries.TotalPages})"));
         }
@@ -176,7 +176,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrder>>> UpdateDeliveryTime(int shippingOrderId, [FromBody] UpdateDeliveryTimeRequest request)
+        public async Task<ActionResult<ApiResponse<DeliveryTimeUpdateDTO>>> UpdateDeliveryTime(int shippingOrderId, [FromBody] UpdateDeliveryTimeRequest request)
         {
             try
             {
@@ -184,17 +184,31 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     shippingOrderId,
                     request.DeliveryTime);
 
-                return Ok(ApiResponse<ShippingOrder>.SuccessResponse(shippingOrder, "Delivery time updated successfully"));
+                return Ok(ApiResponse<DeliveryTimeUpdateDTO>.SuccessResponse(shippingOrder, "Delivery time updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<DeliveryTimeUpdateDTO>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ShippingOrder>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<DeliveryTimeUpdateDTO>.ErrorResponse(ex.Message));
             }
         }
-             
+
+        [HttpGet("counts")]
+        public async Task<ActionResult<OrderCountsDTO>> GetOrderCounts()
+        {
+            try
+            {
+                var counts = await _orderManagementService.GetOrderCountsByStatus();
+                return Ok(counts);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<OrderCountsDTO>.ErrorResponse(ex.Message));
+            }
+        }
+
     }
 }
