@@ -265,7 +265,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         throw new NotFoundException($"HotPot with ID {equipmentId} not found");
                     }
 
-                    hotpot.Status = isAvailable;
+                    // Convert boolean to appropriate HotpotStatus enum value
+                    hotpot.Status = isAvailable ? HotpotStatus.Available : HotpotStatus.Damaged;
                     await _unitOfWork.CommitAsync();
 
                     return true;
