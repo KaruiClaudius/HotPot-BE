@@ -276,7 +276,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     if (item.HotpotID.HasValue)
                     {
                         var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                        if (hotpot != null && hotpot.Status)
+                        if (hotpot != null)
                         {
                             // Calculate hotpot deposit (70% of hotpot price)
                             hotpotDeposit += (decimal)(hotpot.Price * 0.7m * item.Quantity);

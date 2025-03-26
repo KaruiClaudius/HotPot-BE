@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
 {
-    public class ConditionLogDto
+    public class DamageDeviceDto
     {
-        public int ConditionLogId { get; set; }
+        public int DamageDeviceId { get; set; }
         public string Name { get; set; }
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }

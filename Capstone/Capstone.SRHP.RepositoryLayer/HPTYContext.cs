@@ -570,7 +570,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/classic-copper-hotpot.jpg",
                     Price = 730000m, // ~29.99 USD
                     BasePrice = 2200000m, // ~89.99 USD
-                    Status = true,
                     Quantity = 5,
                 },
                 new Hotpot
@@ -583,7 +582,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/modern-electric-hotpot.jpg",
                     Price = 1460000m, // ~59.99 USD
                     BasePrice = 3170000m, // ~129.99 USD
-                    Status = true,
                     Quantity = 2,
                 },
                 new Hotpot
@@ -596,7 +594,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/mini-portable-hotpot.jpg",
                     Price = 490000m, // ~19.99 USD
                     BasePrice = 1710000m, // ~69.99 USD
-                    Status = true,
                     Quantity = 2,
                 },
                 new Hotpot
@@ -609,7 +606,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/dual-section-hotpot.jpg",
                     Price = 1710000m, // ~69.99 USD
                     BasePrice = 3660000m, // ~149.99 USD
-                    Status = true,
                     Quantity = 2,
                 },
                 new Hotpot
@@ -622,7 +618,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     ImageURL = "https://example.com/images/traditional-ceramic-hotpot.jpg",
                     Price = 980000m, // ~39.99 USD
                     BasePrice = 1950000m, // ~79.99 USD
-                    Status = true,
                     Quantity = 4,
                 }
             );
@@ -634,13 +629,13 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotPotInventoryId = 1,
                     SeriesNumber = "CP-2023-0001",
                     HotpotId = 1,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 2,
                     SeriesNumber = "CP-2023-0002",
-                    Status = true,
+                    Status = HotpotStatus.Available,
                     HotpotId = 1,
                 },
                 new HotPotInventory
@@ -648,91 +643,91 @@ namespace Capstone.HPTY.RepositoryLayer
                     HotPotInventoryId = 3,
                     SeriesNumber = "EL-2023-0001",
                     HotpotId = 2,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 4,
                     SeriesNumber = "EL-2023-0002",
                     HotpotId = 2,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 5,
                     SeriesNumber = "PT-2023-0001",
                     HotpotId = 3,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 6,
                     SeriesNumber = "MC-2023-0001",
                     HotpotId = 4,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 7,
                     SeriesNumber = "CR-2023-0001",
                     HotpotId = 5,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 8,
                     SeriesNumber = "CP-2023-0003",
                     HotpotId = 1,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 9,
                     SeriesNumber = "CP-2023-0004",
                     HotpotId = 1,
-                    Status = false
+                    Status = HotpotStatus.Damaged,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 10,
                     SeriesNumber = "CP-2023-0005",
                     HotpotId = 1,
-                    Status = false
+                    Status = HotpotStatus.Damaged
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 11,
                     SeriesNumber = "PT-2023-0002",
                     HotpotId = 3,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 12,
                     SeriesNumber = "MC-2023-0002",
                     HotpotId = 4,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 13,
                     SeriesNumber = "CR-2023-0002",
                     HotpotId = 5,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 14,
                     SeriesNumber = "CR-2023-0003",
                     HotpotId = 5,
-                    Status = true,
+                    Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 15,
                     SeriesNumber = "CR-2023-0004",
                     HotpotId = 5,
-                    Status = false,
+                    Status = HotpotStatus.Damaged,
                 }
             );
 

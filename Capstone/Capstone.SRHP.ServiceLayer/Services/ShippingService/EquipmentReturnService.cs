@@ -197,7 +197,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 if (hotpotInventory != null)
                 {
                     // Set hotpot inventory to maintenance status
-                    hotpotInventory.Status = false; // Maintenance mode
+                    hotpotInventory.Status = HotpotStatus.Damaged; // Maintenance mode
                     hotpotInventory.SetUpdateDate();
                     await _unitOfWork.Repository<HotPotInventory>().UpdateDetached(hotpotInventory);
 

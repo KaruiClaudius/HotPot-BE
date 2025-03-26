@@ -213,7 +213,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             // Apply availability filter
             if (onlyAvailable)
             {
-                hotpotQuery = hotpotQuery.Where(h => h.Status && h.Quantity > 0);
+                hotpotQuery = hotpotQuery.Where(h => h.Quantity > 0);
             }
 
             // Apply quantity filter
@@ -229,7 +229,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Description = h.Description ?? string.Empty,
                 Price = h.Price,
                 ImageURLs = h.ImageURLs ?? new string[0],
-                IsAvailable = h.Status && h.Quantity > 0,
+                IsAvailable = h.Quantity > 0,
                 ProductType = "Hotpot",
                 Material = h.Material,
                 Size = h.Size,
@@ -504,7 +504,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             // Apply availability filter
             if (onlyAvailable)
             {
-                query = query.Where(h => h.Status && h.Quantity > 0);
+                query = query.Where(h => h.Quantity > 0);
             }
 
             // Apply quantity filter
@@ -598,7 +598,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Description = h.Description ?? string.Empty,
                 Price = h.Price,
                 ImageURLs = h.ImageURLs ?? new string[0],
-                IsAvailable = h.Status && h.Quantity > 0,
+                IsAvailable = h.Quantity > 0,
                 ProductType = "Hotpot",
                 Material = h.Material,
                 Size = h.Size,
@@ -630,7 +630,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Description = hotpot.Description ?? string.Empty,
                 Price = hotpot.Price,
                 ImageURLs = hotpot.ImageURLs ?? new string[0],
-                IsAvailable = hotpot.Status && hotpot.Quantity > 0,
+                IsAvailable = hotpot.Quantity > 0,
                 ProductType = "Hotpot",
                 Material = hotpot.Material,
                 Size = hotpot.Size,

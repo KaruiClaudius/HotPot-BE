@@ -59,11 +59,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 {
                     if (isAvailable.Value)
                     {
-                        query = query.Where(h => h.Status && h.Quantity > 0);
+                        query = query.Where(h => h.Quantity > 0);
                     }
                     else
                     {
-                        query = query.Where(h => !h.Status || h.Quantity <= 0);
+                        query = query.Where(h => h.Quantity <= 0);
                     }
                 }
 
@@ -350,7 +350,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             try
             {
                 return await _unitOfWork.Repository<HotPotInventory>().AsQueryable()
-                        .Where(h => !h.IsDelete && !h.Status).CountAsync();
+                        .Where(h => !h.IsDelete && h.Status == HotpotStatus.Damaged).CountAsync();
             }
             catch (Exception ex)
             {
@@ -363,8 +363,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
         {
             try
             {
-                var hotpot = await GetByIdAsync(id);
-                return hotpot != null && hotpot.Status && hotpot.Quantity > 0;
+                var hotpot = await _unitOfWork.Repository<Hotpot>()
+                    .FindAsync(h => h.HotpotId == id && !h.IsDelete);
+
+                if (hotpot == null)
+                    return false;
+
+                // Load inventory items
+                var inventoryItems = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAll(i => i.HotpotId == id && !i.IsDelete)
+                    .ToListAsync();
+
+                hotpot.InventoryUnits = inventoryItems;
+
+                // Check if the hotpot exists and is active
+                if (hotpot == null || hotpot.IsDelete)
+                {
+                    return false;
+                }
+
+                // Check if there are any inventory units
+                if (hotpot.InventoryUnits == null || !hotpot.InventoryUnits.Any())
+                {
+                    return false;
+                }
+
+                // Count available inventory units (not deleted and with Available status)
+                var availableUnits = hotpot.InventoryUnits
+                    .Count(unit => !unit.IsDelete && unit.Status == HotpotStatus.Available);
+
+                // Return true if there's at least one available unit
+                return availableUnits > 0;
             }
             catch (Exception ex)
             {
@@ -373,12 +402,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
+
         public async Task UpdateQuantityAsync(int hotpotId)
         {
             try
             {
+
                 var inventoryItems = await _unitOfWork.Repository<HotPotInventory>()
-                    .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && i.Status)
+                    .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && i.Status == HotpotStatus.Available)
                     .ToListAsync();
 
                 var hotpot = await _unitOfWork.Repository<Hotpot>().FindAsync(h => h.HotpotId == hotpotId);
@@ -433,7 +464,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 {
                     SeriesNumber = seriesNumber,
                     HotpotId = hotpotId,
-                    Status = true // Default to active
+                    Status = HotpotStatus.Available // Default to active
                 };
 
                 _unitOfWork.Repository<HotPotInventory>().Insert(inventoryItem);

@@ -72,9 +72,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public decimal BasePrice { get; set; }
 
         [Required]
-        public bool Status { get; set; }
-
-        [Required]
         [Range(0, int.MaxValue)]
         public int Quantity { get; set; }
 

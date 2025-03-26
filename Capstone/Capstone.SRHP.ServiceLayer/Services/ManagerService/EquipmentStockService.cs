@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         {
             _unitOfWork = unitOfWork;
         }
+
 
         #region HotPot Inventory Methods
 
@@ -38,7 +41,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = inventory.Status,
+                Status = EnumExtensions.GetDisplayName(inventory.Status),
                 HotpotId = inventory.HotpotId,
                 HotpotName = inventory.Hotpot?.Name,
                 CreatedAt = inventory.CreatedAt,
@@ -65,7 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = inventory.Status,
+                Status = EnumExtensions.GetDisplayName(inventory.Status),
                 HotpotName = inventory.Hotpot?.Name
             });
         }
@@ -81,12 +84,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = inventory.Status,
+                Status = EnumExtensions.GetDisplayName(inventory.Status),
                 HotpotName = inventory.Hotpot?.Name
             });
         }
 
-        public async Task<HotPotInventoryDetailDto> UpdateHotPotInventoryAsync(int inventoryId, bool isAvailable, string reason)
+        public async Task<HotPotInventoryDetailDto> UpdateHotPotInventoryAsync(int inventoryId, HotpotStatus isAvailable, string reason)
         {
             var inventory = await _unitOfWork.Repository<HotPotInventory>()
                 .FindAsync(h => h.HotPotInventoryId == inventoryId);
@@ -102,9 +105,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 var conditionLog = new DamageDevice
                 {
-                    Name = isAvailable ? "Available" : "Unavailable",
+                    Name = isAvailable == HotpotStatus.Available ? "Available" : "Unavailable",
                     Description = reason,
-                    Status = isAvailable ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
+                    Status = isAvailable == HotpotStatus.Available ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
                     LoggedDate = DateTime.UtcNow,
                     HotPotInventoryId = inventoryId
                 };
@@ -127,7 +130,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = inventory.Status,
+                Status = EnumExtensions.GetDisplayName(inventory.Status), 
                 HotpotId = inventory.HotpotId,
                 HotpotName = inventory.Hotpot?.Name,
                 CreatedAt = inventory.CreatedAt,
@@ -369,11 +372,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 EquipmentType = "HotPot",
                 TotalCount = hotpotInventories.Count,
-                AvailableCount = hotpotInventories.Count(h => h.Status),
-                UnavailableCount = hotpotInventories.Count(h => !h.Status),
+                AvailableCount = hotpotInventories.Count(h => h.Status == HotpotStatus.Available),
+                UnavailableCount = hotpotInventories.Count(h => h.Status == HotpotStatus.Damaged && h.Status == HotpotStatus.Rented),
                 LowStockCount = 0, // Not applicable for HotPots
                 AvailabilityPercentage = hotpotInventories.Count > 0
-                    ? (double)hotpotInventories.Count(h => h.Status) / hotpotInventories.Count * 100
+                    ? (double)hotpotInventories.Count(h => h.Status == HotpotStatus.Available) / hotpotInventories.Count * 100
                     : 0
             };
             result.Add(hotpotSummary);

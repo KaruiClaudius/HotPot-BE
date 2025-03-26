@@ -5,15 +5,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
 {
     public class UpdateEquipmentStatusRequest
     {
-        [Required]
-        public bool Status { get; set; }
+        public HotpotStatus? HotpotStatus { get; set; }
 
-        [StringLength(1000)]
+        public bool? IsAvailable { get; set; }
+
         public string Reason { get; set; }
     }
 

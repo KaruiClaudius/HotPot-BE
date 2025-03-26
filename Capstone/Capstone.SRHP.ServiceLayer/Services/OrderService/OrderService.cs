@@ -349,13 +349,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     else if (item.HotpotID.HasValue)
                     {
                         var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                        if (hotpot == null || !hotpot.Status)
+                        if (hotpot == null)
                             throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
 
                         // Get available hotpot inventory items
                         var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
                             .AsQueryable()
-                            .Where(h => h.HotpotId == item.HotpotID && h.Status && !h.IsDelete)
+                            .Where(h => h.HotpotId == item.HotpotID && h.Status == HotpotStatus.Available  && !h.IsDelete)
                             .Take((int)item.Quantity)
                             .ToListAsync();
 
@@ -375,7 +375,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         foreach (var hotpotInventory in availableHotpots)
                         {
                             hotpotInventory.Hotpot.Quantity -= 1;
-                            hotpotInventory.Status = false;
+                            hotpotInventory.Status = HotpotStatus.Rented;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
 
                             // Create rent order detail with reference to specific hotpot inventory
@@ -715,7 +715,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                                 if (hotpotInventory != null)
                                 {
-                                    hotpotInventory.Status = true; // Set to available
+                                    hotpotInventory.Status = HotpotStatus.Available; // Set to available
                                     await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                     await _unitOfWork.CommitAsync();
                                 }
@@ -748,7 +748,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             if (hotpotInventory != null)
                             {
                                 // Update hotpot status to Available after maintenance
-                                hotpotInventory.Status = true; // Set to available
+                                hotpotInventory.Status = HotpotStatus.Available; // Set to available
                                                                // Update last maintain date on the hotpot itself
                                 if (hotpotInventory.Hotpot != null)
                                 {
@@ -773,7 +773,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                             if (hotpotInventory != null)
                             {
-                                hotpotInventory.Status = false; // Set to in use
+                                hotpotInventory.Status = HotpotStatus.Rented; // Set to in use
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }
@@ -792,7 +792,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                             if (hotpotInventory != null)
                             {
-                                hotpotInventory.Status = false; // Set to maintenance
+                                hotpotInventory.Status = HotpotStatus.Rented; // Set to maintenance
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }
@@ -863,7 +863,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                             if (hotpotInventory != null)
                             {
-                                hotpotInventory.Status = true; // Set to available
+                                hotpotInventory.Status = HotpotStatus.Available; // Set to available
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }

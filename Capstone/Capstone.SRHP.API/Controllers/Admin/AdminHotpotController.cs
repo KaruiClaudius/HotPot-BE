@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
@@ -104,7 +105,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ImageURLs = request.ImageURLs,
                     Price = request.Price,
                     BasePrice = request.BasePrice,
-                    Status = request.Status,
                     LastMaintainDate = DateTime.UtcNow
                 };
 
@@ -156,8 +156,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.BasePrice > 0)
                     existingHotpot.BasePrice = request.BasePrice;
 
-                if (request.Status.HasValue)
-                    existingHotpot.Status = request.Status.Value;
 
                 // Don't set Quantity or InventoryID - let the service handle it
 
@@ -244,7 +242,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURLs = hotpot.ImageURLs,
                 Price = hotpot.Price,
                 BasePrice = hotpot.BasePrice,
-                Status = hotpot.Status,
                 Quantity = hotpot.Quantity, // This now uses the calculated property
                 CreatedAt = hotpot.CreatedAt,
                 UpdatedAt = hotpot.UpdatedAt
@@ -267,7 +264,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURLs = baseDto.ImageURLs,
                 Price = baseDto.Price,
                 BasePrice = baseDto.BasePrice,
-                Status = baseDto.Status,
                 Quantity = baseDto.Quantity,
                 CreatedAt = baseDto.CreatedAt,
                 UpdatedAt = baseDto.UpdatedAt,
@@ -277,21 +273,33 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         HotPotInventoryId = i.HotPotInventoryId,
                         SeriesNumber = i.SeriesNumber,
-                        Status = i.Status,
+                        Status = GetStatusName(i.Status),
                         CreatedAt = i.CreatedAt,
                         UpdatedAt = i.UpdatedAt,
                         ConditionLogs = i.ConditionLogs?
                             .Where(cl => !cl.IsDelete)
                             .OrderByDescending(cl => cl.CreatedAt) // Order by newest first
-                            .Select(cl => new ConditionLogDto
+                            .Select(cl => new DamageDeviceDto
                             {
-                                ConditionLogId = cl.DamageDeviceId,
+                                DamageDeviceId = cl.DamageDeviceId,
                                 Name = cl.Name,
                                 Description = cl.Description,
                                 CreatedAt = cl.CreatedAt,
                                 UpdatedAt = cl.UpdatedAt
-                            }).ToList() ?? new List<ConditionLogDto>()
+                            }).ToList() ?? new List<DamageDeviceDto>()
                     }).ToList() ?? new List<InventoryItemDto>()
+            };
+        }
+
+        private static string GetStatusName(HotpotStatus status)
+        {
+            return status switch
+            {
+                HotpotStatus.Available => "Available",
+                HotpotStatus.Rented => "Rented",
+                HotpotStatus.Damaged => "Damaged",
+                HotpotStatus.Disposed => "Disposed",
+                _ => "Unknown"
             };
         }
     }

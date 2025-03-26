@@ -77,7 +77,7 @@ namespace Capstone.HPTY.API.SideServices
 
                 // Check for unavailable equipment
                 var hotpotInventory = await equipmentStockService.GetAllHotPotInventoryAsync();
-                var unavailableHotpots = hotpotInventory.Where(h => !h.Status).ToList();
+                var unavailableHotpots = hotpotInventory.Where(h => h.Status == "Unavailable").ToList();
 
                 foreach (var hotpot in unavailableHotpots)
                 {
