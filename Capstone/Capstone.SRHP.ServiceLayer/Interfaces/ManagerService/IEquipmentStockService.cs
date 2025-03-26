@@ -14,7 +14,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<HotPotInventory> GetHotPotInventoryByIdAsync(int inventoryId);
         Task<IEnumerable<HotPotInventory>> GetAllHotPotInventoryAsync();
         Task<IEnumerable<HotPotInventory>> GetHotPotInventoryByHotpotIdAsync(int hotpotId);
-        Task<HotPotInventory> UpdateHotPotInventoryAsync(int inventoryId, bool isAvailable, string reason);
 
         // Utensil Methods
         Task<ModelLayer.Entities.Utensil> GetUtensilByIdAsync(int utensilId);

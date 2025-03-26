@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -20,7 +21,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public int HotpotId { get; set; }
 
-        public bool Status { get; set; }
+        public HotpotStatus Status { get; set; }
 
         public virtual Hotpot? Hotpot { get; set; }
         public virtual ICollection<RentOrderDetail>? RentOrderDetails { get; set; }

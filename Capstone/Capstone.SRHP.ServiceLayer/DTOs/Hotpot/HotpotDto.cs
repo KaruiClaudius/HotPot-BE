@@ -17,7 +17,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         public string[] ImageURLs { get; set; }
         public decimal Price { get; set; }
         public decimal BasePrice { get; set; }
-        public bool Status { get; set; }
         public int Quantity { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -33,7 +32,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         public string[]? ImageURLs { get; set; }
         public decimal Price { get; set; }
         public decimal BasePrice { get; set; }
-        public bool Status { get; set; }
         public int Quantity { get; set; }
         public DateTime LastMaintainDate { get; set; }
         public bool IsAvailable { get; set; }
