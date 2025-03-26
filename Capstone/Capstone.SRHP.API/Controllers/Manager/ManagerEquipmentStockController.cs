@@ -65,14 +65,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                var result = await _equipmentStockService.UpdateHotPotInventoryAsync(id, request.Status, request.Reason);
+                if (!request.HotpotStatus.HasValue)
+                    return BadRequest(ApiResponse<HotPotInventoryDetailDto>.ErrorResponse("HotpotStatus is required"));
+
+                var result = await _equipmentStockService.UpdateHotPotInventoryAsync(id, request.HotpotStatus.Value, request.Reason);
 
                 // Notify administrators about the status change
                 await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
                     "HotPot",
                     id,
                     result.HotpotName ?? $"HotPot #{result.SeriesNumber}",
-                    request.Status,
+                    result.Status, // Use the string status from the result
                     request.Reason,
                     DateTime.UtcNow);
 
@@ -173,14 +176,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                var result = await _equipmentStockService.UpdateUtensilStatusAsync(id, request.Status, request.Reason);
+                if (!request.IsAvailable.HasValue)
+                    return BadRequest(ApiResponse<UtensilDetailDto>.ErrorResponse("IsAvailable is required"));
+
+                var result = await _equipmentStockService.UpdateUtensilStatusAsync(id, request.IsAvailable.Value, request.Reason);
 
                 // Notify administrators about the status change
                 await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
                     "Utensil",
                     id,
                     result.Name,
-                    request.Status,
+                    result.Status, // This is a bool
                     request.Reason,
                     DateTime.UtcNow);
 
@@ -265,11 +271,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 // Get all hotpot inventory
                 var hotpotInventory = await _equipmentStockService.GetAllHotPotInventoryAsync();
-                var unavailableHotpots = hotpotInventory.Where(h => !h.Status).ToList();
+                var unavailableHotpots = hotpotInventory.Where(h => h.Status != "Available").ToList();
 
                 // Get all utensils
                 var utensils = await _equipmentStockService.GetAllUtensilsAsync();
-                var unavailableUtensils = utensils.Where(u => !u.Status || u.Quantity == 0).ToList();
+                var unavailableUtensils = utensils.Where(u => u.Status == false || u.Quantity == 0).ToList();
 
                 var response = new EquipmentUnavailableResponse
                 {
@@ -294,11 +300,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 // Get all hotpot inventory
                 var hotpotInventory = await _equipmentStockService.GetAllHotPotInventoryAsync();
-                var availableHotpots = hotpotInventory.Where(h => h.Status).ToList();
+                var availableHotpots = hotpotInventory.Where(h => h.Status == "Available").ToList();
 
                 // Get all utensils
                 var utensils = await _equipmentStockService.GetAllUtensilsAsync();
-                var availableUtensils = utensils.Where(u => u.Status && u.Quantity > 0).ToList();
+                var availableUtensils = utensils.Where(u => u.Status == true && u.Quantity > 0).ToList();
 
                 var response = new EquipmentAvailableResponse
                 {
@@ -329,11 +335,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Get all hotpot inventory
                 var hotpotInventory = await _equipmentStockService.GetAllHotPotInventoryAsync();
-                var unavailableHotpots = hotpotInventory.Where(h => !h.Status).ToList();
+                var unavailableHotpots = hotpotInventory.Where(h => h.Status != "Available").ToList();
 
                 // Get all utensils
                 var utensils = await _equipmentStockService.GetAllUtensilsAsync();
-                var unavailableUtensils = utensils.Where(u => !u.Status || u.Quantity == 0).ToList();
+                var unavailableUtensils = utensils.Where(u => u.Status == false || u.Quantity == 0).ToList();
 
                 var response = new EquipmentDashboardResponse
                 {
@@ -342,7 +348,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     UnavailableHotPots = unavailableHotpots,
                     UnavailableUtensils = unavailableUtensils,
                     TotalEquipmentCount = hotpotInventory.Count() + utensils.Count(),
-                    TotalAvailableCount = hotpotInventory.Count(h => h.Status) + utensils.Count(u => u.Status && u.Quantity > 0),
+                    TotalAvailableCount = hotpotInventory.Count(h => h.Status == "Available") + utensils.Count(u => u.Status == true && u.Quantity > 0),
                     TotalUnavailableCount = unavailableHotpots.Count + unavailableUtensils.Count,
                     TotalLowStockCount = lowStockUtensils.Count()
                 };
