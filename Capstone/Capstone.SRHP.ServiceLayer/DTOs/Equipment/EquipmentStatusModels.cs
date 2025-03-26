@@ -20,7 +20,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
     {
         public int HotPotInventoryId { get; set; }
         public string SeriesNumber { get; set; }
-        public bool Status { get; set; }
+        public string Status { get; set; }
         public string HotpotName { get; set; }
     }
 

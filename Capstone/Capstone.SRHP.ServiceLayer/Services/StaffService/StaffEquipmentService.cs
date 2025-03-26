@@ -52,7 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         EquipmentType = "HotPot",
                         SeriesNumber = hotpot.SeriesNumber,
                         Name = hotpot.Hotpot?.Name ?? "Unknown",
-                        IsAvailable = hotpot.Status,
+                        IsAvailable = hotpot.Status == HotpotStatus.Available,
                         LastInspectionDate = lastInspection?.LoggedDate,
                         LastInspectionStatus = lastInspection?.Status
                     });
@@ -116,7 +116,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         EquipmentType = "HotPot",
                         SeriesNumber = hotpot.SeriesNumber,
                         Name = hotpot.Hotpot?.Name ?? "Unknown",
-                        IsAvailable = hotpot.Status,
+                        IsAvailable = hotpot.Status == HotpotStatus.Available,
                         LastInspectionDate = lastInspection?.LoggedDate,
                         LastInspectionStatus = lastInspection?.Status
                     };
@@ -189,12 +189,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Update availability status if requested
                     if (request.SetAsAvailable)
                     {
-                        hotpot.Status = true;
+                        hotpot.Status = HotpotStatus.Available;
                     }
                     else if (request.Status != MaintenanceStatus.Completed)
                     {
                         // If maintenance is needed, set as unavailable
-                        hotpot.Status = false;
+                        hotpot.Status = HotpotStatus.Damaged;
                     }
                 }
                 else if (request.EquipmentType.Equals("Utensil", StringComparison.OrdinalIgnoreCase))

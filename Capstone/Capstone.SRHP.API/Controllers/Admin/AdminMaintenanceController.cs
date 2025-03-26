@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
@@ -375,7 +376,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = GetStatusName(device.Status),
+                StatusName = EnumExtensions.GetDisplayName(device.Status),
                 LoggedDate = device.LoggedDate,
             };
         }
@@ -389,14 +390,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = device.Status switch
-                {
-                    MaintenanceStatus.Pending => "Pending",
-                    MaintenanceStatus.InProgress => "In Progress",
-                    MaintenanceStatus.Completed => "Completed",
-                    MaintenanceStatus.Cancelled => "Cancelled",
-                    _ => "Unknown"
-                },
+                StatusName = EnumExtensions.GetDisplayName(device.Status),
                 LoggedDate = device.LoggedDate,
                 HotPotInventoryId = device.HotPotInventoryId,
                 HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber
@@ -412,14 +406,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = device.Status switch
-                {
-                    MaintenanceStatus.Pending => "Pending",
-                    MaintenanceStatus.InProgress => "In Progress",
-                    MaintenanceStatus.Completed => "Completed",
-                    MaintenanceStatus.Cancelled => "Cancelled",
-                    _ => "Unknown"
-                },
+                StatusName = EnumExtensions.GetDisplayName(device.Status),
                 LoggedDate = device.LoggedDate,
                 UtensilID = device.UtensilId,
                 UtensilName = device.Utensil?.Name
@@ -437,7 +424,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = GetStatusName(device.Status),
+                StatusName = EnumExtensions.GetDisplayName(device.Status),
                 LoggedDate = device.LoggedDate,
                 UtensilID = device.UtensilId,
                 HotPotInventoryId = device.HotPotInventoryId,
@@ -450,18 +437,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             };
 
             return detailDto;
-        }
-
-        private static string GetStatusName(MaintenanceStatus status)
-        {
-            return status switch
-            {
-                MaintenanceStatus.Pending => "Pending",
-                MaintenanceStatus.InProgress => "In Progress",
-                MaintenanceStatus.Completed => "Completed",
-                MaintenanceStatus.Cancelled => "Cancelled",
-                _ => "Unknown"
-            };
         }
     }
 }
