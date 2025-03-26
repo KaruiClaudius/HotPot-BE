@@ -3,8 +3,6 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -12,7 +10,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/equipment-stock")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
 
     public class ManagerEquipmentStockController : ControllerBase
     {
@@ -32,37 +30,37 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("hotpot")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotPotInventory>>>> GetAllHotPotInventory()
+        public async Task<ActionResult<ApiResponse<IEnumerable<HotPotInventoryDto>>>> GetAllHotPotInventory()
         {
             var inventory = await _equipmentStockService.GetAllHotPotInventoryAsync();
-            return Ok(ApiResponse<IEnumerable<HotPotInventory>>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<HotPotInventoryDto>>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
         }
 
         [HttpGet("hotpot/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<HotPotInventory>>> GetHotPotInventoryById(int id)
+        public async Task<ActionResult<ApiResponse<HotPotInventoryDetailDto>>> GetHotPotInventoryById(int id)
         {
             var inventory = await _equipmentStockService.GetHotPotInventoryByIdAsync(id);
             if (inventory == null)
-                return NotFound(ApiResponse<HotPotInventory>.ErrorResponse($"HotPot inventory with ID {id} not found"));
+                return NotFound(ApiResponse<HotPotInventoryDetailDto>.ErrorResponse($"HotPot inventory with ID {id} not found"));
 
-            return Ok(ApiResponse<HotPotInventory>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
+            return Ok(ApiResponse<HotPotInventoryDetailDto>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
         }
 
         [HttpGet("hotpot/type/{hotpotId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<HotPotInventory>>>> GetHotPotInventoryByHotpotId(int hotpotId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<HotPotInventoryDto>>>> GetHotPotInventoryByHotpotId(int hotpotId)
         {
             var inventory = await _equipmentStockService.GetHotPotInventoryByHotpotIdAsync(hotpotId);
-            return Ok(ApiResponse<IEnumerable<HotPotInventory>>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<HotPotInventoryDto>>.SuccessResponse(inventory, "HotPot inventory retrieved successfully"));
         }
 
         [HttpPut("hotpot/{id}/status")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<HotPotInventory>>> UpdateHotPotInventoryStatus(int id, [FromBody] UpdateEquipmentStatusRequest request)
+        public async Task<ActionResult<ApiResponse<HotPotInventoryDetailDto>>> UpdateHotPotInventoryStatus(int id, [FromBody] UpdateEquipmentStatusRequest request)
         {
             try
             {
@@ -72,12 +70,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
                     "HotPot",
                     id,
-                    result.Hotpot?.Name ?? $"HotPot #{result.SeriesNumber}",
+                    result.HotpotName ?? $"HotPot #{result.SeriesNumber}",
                     request.Status,
                     request.Reason,
                     DateTime.UtcNow);
 
-                return Ok(ApiResponse<HotPotInventory>.SuccessResponse(result, "HotPot inventory status updated successfully"));
+                return Ok(ApiResponse<HotPotInventoryDetailDto>.SuccessResponse(result, "HotPot inventory status updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -95,37 +93,37 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("utensil")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<Utensil>>>> GetAllUtensils()
+        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetAllUtensils()
         {
             var utensils = await _equipmentStockService.GetAllUtensilsAsync();
-            return Ok(ApiResponse<IEnumerable<Utensil>>.SuccessResponse(utensils, "Utensils retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<UtensilDto>>.SuccessResponse(utensils, "Utensils retrieved successfully"));
         }
 
         [HttpGet("utensil/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<Utensil>>> GetUtensilById(int id)
+        public async Task<ActionResult<ApiResponse<UtensilDetailDto>>> GetUtensilById(int id)
         {
             var utensil = await _equipmentStockService.GetUtensilByIdAsync(id);
             if (utensil == null)
-                return NotFound(ApiResponse<Utensil>.ErrorResponse($"Utensil with ID {id} not found"));
+                return NotFound(ApiResponse<UtensilDetailDto>.ErrorResponse($"Utensil with ID {id} not found"));
 
-            return Ok(ApiResponse<Utensil>.SuccessResponse(utensil, "Utensil retrieved successfully"));
+            return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(utensil, "Utensil retrieved successfully"));
         }
 
         [HttpGet("utensil/type/{typeId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<Utensil>>>> GetUtensilsByType(int typeId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetUtensilsByType(int typeId)
         {
             var utensils = await _equipmentStockService.GetUtensilsByTypeAsync(typeId);
-            return Ok(ApiResponse<IEnumerable<Utensil>>.SuccessResponse(utensils, "Utensils retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<UtensilDto>>.SuccessResponse(utensils, "Utensils retrieved successfully"));
         }
 
         [HttpPut("utensil/{id}/quantity")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Utensil>>> UpdateUtensilQuantity(int id, [FromBody] UpdateUtensilQuantityRequest request)
+        public async Task<ActionResult<ApiResponse<UtensilDetailDto>>> UpdateUtensilQuantity(int id, [FromBody] UpdateUtensilQuantityRequest request)
         {
             try
             {
@@ -154,15 +152,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         DateTime.UtcNow);
                 }
 
-                return Ok(ApiResponse<Utensil>.SuccessResponse(result, "Utensil quantity updated successfully"));
+                return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil quantity updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<Utensil>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<UtensilDetailDto>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<Utensil>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<UtensilDetailDto>.ErrorResponse(ex.Message));
             }
         }
 
@@ -170,7 +168,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Utensil>>> UpdateUtensilStatus(int id, [FromBody] UpdateEquipmentStatusRequest request)
+        public async Task<ActionResult<ApiResponse<UtensilDetailDto>>> UpdateUtensilStatus(int id, [FromBody] UpdateEquipmentStatusRequest request)
         {
             try
             {
@@ -185,15 +183,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     request.Reason,
                     DateTime.UtcNow);
 
-                return Ok(ApiResponse<Utensil>.SuccessResponse(result, "Utensil status updated successfully"));
+                return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil status updated successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<Utensil>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<UtensilDetailDto>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<Utensil>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<UtensilDetailDto>.ErrorResponse(ex.Message));
             }
         }
 
@@ -203,10 +201,10 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet("low-stock")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<Utensil>>>> GetLowStockUtensils([FromQuery] int threshold = DEFAULT_LOW_STOCK_THRESHOLD)
+        public async Task<ActionResult<ApiResponse<IEnumerable<UtensilDto>>>> GetLowStockUtensils([FromQuery] int threshold = DEFAULT_LOW_STOCK_THRESHOLD)
         {
             var utensils = await _equipmentStockService.GetLowStockUtensilsAsync(threshold);
-            return Ok(ApiResponse<IEnumerable<Utensil>>.SuccessResponse(utensils, "Low stock utensils retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<UtensilDto>>.SuccessResponse(utensils, "Low stock utensils retrieved successfully"));
         }
 
         [HttpGet("status-summary")]
