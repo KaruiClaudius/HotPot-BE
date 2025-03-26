@@ -23,31 +23,70 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         #region HotPot Inventory Methods
 
-        public async Task<HotPotInventory> GetHotPotInventoryByIdAsync(int inventoryId)
+        public async Task<HotPotInventoryDetailDto> GetHotPotInventoryByIdAsync(int inventoryId)
         {
-            return await _unitOfWork.Repository<HotPotInventory>()
+            var inventory = await _unitOfWork.Repository<HotPotInventory>()
                 .AsQueryable(h => h.HotPotInventoryId == inventoryId)
                 .Include(h => h.Hotpot)
+                .Include(h => h.ConditionLogs)
                 .FirstOrDefaultAsync();
+
+            if (inventory == null)
+                return null;
+
+            return new HotPotInventoryDetailDto
+            {
+                HotPotInventoryId = inventory.HotPotInventoryId,
+                SeriesNumber = inventory.SeriesNumber,
+                Status = inventory.Status,
+                HotpotId = inventory.HotpotId,
+                HotpotName = inventory.Hotpot?.Name,
+                CreatedAt = inventory.CreatedAt,
+                UpdatedAt = inventory.UpdatedAt,
+                ConditionLogs = inventory.ConditionLogs?.Select(c => new DamageDeviceDto
+                {
+                    DamageDeviceId = c.DamageDeviceId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Status = c.Status.ToString(),
+                    LoggedDate = c.LoggedDate
+                }).ToList()
+            };
         }
 
-        public async Task<IEnumerable<HotPotInventory>> GetAllHotPotInventoryAsync()
+        public async Task<IEnumerable<HotPotInventoryDto>> GetAllHotPotInventoryAsync()
         {
-            return await _unitOfWork.Repository<HotPotInventory>()
+            var inventories = await _unitOfWork.Repository<HotPotInventory>()
                 .GetAll()
                 .Include(h => h.Hotpot)
                 .ToListAsync();
+
+            return inventories.Select(inventory => new HotPotInventoryDto
+            {
+                HotPotInventoryId = inventory.HotPotInventoryId,
+                SeriesNumber = inventory.SeriesNumber,
+                Status = inventory.Status,
+                HotpotName = inventory.Hotpot?.Name
+            });
         }
 
-        public async Task<IEnumerable<HotPotInventory>> GetHotPotInventoryByHotpotIdAsync(int hotpotId)
+        public async Task<IEnumerable<HotPotInventoryDto>> GetHotPotInventoryByHotpotIdAsync(int hotpotId)
         {
-            return await _unitOfWork.Repository<HotPotInventory>()
+            var inventories = await _unitOfWork.Repository<HotPotInventory>()
                 .GetAll(h => h.HotpotId == hotpotId)
                 .Include(h => h.Hotpot)
                 .ToListAsync();
+
+            return inventories.Select(inventory => new HotPotInventoryDto
+            {
+                HotPotInventoryId = inventory.HotPotInventoryId,
+                SeriesNumber = inventory.SeriesNumber,
+                Status = inventory.Status,
+                HotpotName = inventory.Hotpot?.Name
+            });
         }
 
-        public async Task<HotPotInventory> UpdateHotPotInventoryAsync(int inventoryId, bool isAvailable, string reason)
+        public async Task<HotPotInventoryDetailDto> UpdateHotPotInventoryAsync(int inventoryId, bool isAvailable, string reason)
         {
             var inventory = await _unitOfWork.Repository<HotPotInventory>()
                 .FindAsync(h => h.HotPotInventoryId == inventoryId);
@@ -79,40 +118,111 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             inventory.Hotpot = await _unitOfWork.Repository<Hotpot>()
                 .FindAsync(h => h.HotpotId == inventory.HotpotId);
 
-            return inventory;
+            // Load condition logs
+            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
+                .GetAll(d => d.HotPotInventoryId == inventoryId)
+                .ToListAsync();
+
+            return new HotPotInventoryDetailDto
+            {
+                HotPotInventoryId = inventory.HotPotInventoryId,
+                SeriesNumber = inventory.SeriesNumber,
+                Status = inventory.Status,
+                HotpotId = inventory.HotpotId,
+                HotpotName = inventory.Hotpot?.Name,
+                CreatedAt = inventory.CreatedAt,
+                UpdatedAt = inventory.UpdatedAt,
+                ConditionLogs = conditionLogs.Select(c => new DamageDeviceDto
+                {
+                    DamageDeviceId = c.DamageDeviceId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Status = c.Status.ToString(),
+                    LoggedDate = c.LoggedDate
+                }).ToList()
+            };
         }
 
         #endregion
 
         #region Utensil Methods
 
-        public async Task<ModelLayer.Entities.Utensil> GetUtensilByIdAsync(int utensilId)
+        public async Task<UtensilDetailDto> GetUtensilByIdAsync(int utensilId)
         {
-            return await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensil = await _unitOfWork.Repository<Utensil>()
                 .AsQueryable(u => u.UtensilId == utensilId)
                 .Include(u => u.UtensilType)
+                .Include(u => u.ConditionLogs)
                 .FirstOrDefaultAsync();
+
+            if (utensil == null)
+                return null;
+
+            return new UtensilDetailDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Description = utensil.Description,
+                ImageURL = utensil.ImageURL,
+                Price = utensil.Price,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                LastMaintainDate = utensil.LastMaintainDate,
+                UtensilTypeId = utensil.UtensilTypeId,
+                UtensilTypeName = utensil.UtensilType?.Name,
+                CreatedAt = utensil.CreatedAt,
+                UpdatedAt = utensil.UpdatedAt,
+                ConditionLogs = utensil.ConditionLogs?.Select(c => new DamageDeviceDto
+                {
+                    DamageDeviceId = c.DamageDeviceId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Status = c.Status.ToString(),
+                    LoggedDate = c.LoggedDate
+                }).ToList()
+            };
         }
 
-        public async Task<IEnumerable<ModelLayer.Entities.Utensil>> GetAllUtensilsAsync()
+        public async Task<IEnumerable<UtensilDto>> GetAllUtensilsAsync()
         {
-            return await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensils = await _unitOfWork.Repository<Utensil>()
                 .GetAll()
                 .Include(u => u.UtensilType)
                 .ToListAsync();
+
+            return utensils.Select(utensil => new UtensilDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                UtensilTypeName = utensil.UtensilType?.Name
+            });
         }
 
-        public async Task<IEnumerable<ModelLayer.Entities.Utensil>> GetUtensilsByTypeAsync(int typeId)
+        public async Task<IEnumerable<UtensilDto>> GetUtensilsByTypeAsync(int typeId)
         {
-            return await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensils = await _unitOfWork.Repository<Utensil>()
                 .GetAll(u => u.UtensilTypeId == typeId)
                 .Include(u => u.UtensilType)
                 .ToListAsync();
+
+            return utensils.Select(utensil => new UtensilDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                UtensilTypeName = utensil.UtensilType?.Name
+            });
         }
 
-        public async Task<ModelLayer.Entities.Utensil> UpdateUtensilQuantityAsync(int utensilId, int quantity)
+        public async Task<UtensilDetailDto> UpdateUtensilQuantityAsync(int utensilId, int quantity)
         {
-            var utensil = await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensil = await _unitOfWork.Repository<Utensil>()
                 .FindAsync(u => u.UtensilId == utensilId);
 
             if (utensil == null)
@@ -133,12 +243,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
 
-            return utensil;
+            // Load condition logs
+            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
+                .GetAll(d => d.UtensilId == utensilId)
+                .ToListAsync();
+
+            return new UtensilDetailDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Description = utensil.Description,
+                ImageURL = utensil.ImageURL,
+                Price = utensil.Price,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                LastMaintainDate = utensil.LastMaintainDate,
+                UtensilTypeId = utensil.UtensilTypeId,
+                UtensilTypeName = utensil.UtensilType?.Name,
+                CreatedAt = utensil.CreatedAt,
+                UpdatedAt = utensil.UpdatedAt,
+                ConditionLogs = conditionLogs.Select(c => new DamageDeviceDto
+                {
+                    DamageDeviceId = c.DamageDeviceId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Status = c.Status.ToString(),
+                    LoggedDate = c.LoggedDate
+                }).ToList()
+            };
         }
 
-        public async Task<ModelLayer.Entities.Utensil> UpdateUtensilStatusAsync(int utensilId, bool isAvailable, string reason)
+        public async Task<UtensilDetailDto> UpdateUtensilStatusAsync(int utensilId, bool isAvailable, string reason)
         {
-            var utensil = await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensil = await _unitOfWork.Repository<Utensil>()
                 .FindAsync(u => u.UtensilId == utensilId);
 
             if (utensil == null)
@@ -168,19 +306,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
 
-            return utensil;
+            // Load condition logs
+            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
+                .GetAll(d => d.UtensilId == utensilId)
+                .ToListAsync();
+
+            return new UtensilDetailDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Description = utensil.Description,
+                ImageURL = utensil.ImageURL,
+                Price = utensil.Price,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                LastMaintainDate = utensil.LastMaintainDate,
+                UtensilTypeId = utensil.UtensilTypeId,
+                UtensilTypeName = utensil.UtensilType?.Name,
+                CreatedAt = utensil.CreatedAt,
+                UpdatedAt = utensil.UpdatedAt,
+                ConditionLogs = conditionLogs.Select(c => new DamageDeviceDto
+                {
+                    DamageDeviceId = c.DamageDeviceId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Status = c.Status.ToString(),
+                    LoggedDate = c.LoggedDate
+                }).ToList()
+            };
         }
 
         #endregion
 
         #region Stock Status Methods
 
-        public async Task<IEnumerable<ModelLayer.Entities.Utensil>> GetLowStockUtensilsAsync(int threshold = DEFAULT_LOW_STOCK_THRESHOLD)
+        public async Task<IEnumerable<UtensilDto>> GetLowStockUtensilsAsync(int threshold = DEFAULT_LOW_STOCK_THRESHOLD)
         {
-            return await _unitOfWork.Repository<ModelLayer.Entities.Utensil>()
+            var utensils = await _unitOfWork.Repository<Utensil>()
                 .GetAll(u => u.Quantity <= threshold && u.Quantity > 0)
                 .Include(u => u.UtensilType)
                 .ToListAsync();
+
+            return utensils.Select(utensil => new UtensilDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                UtensilTypeName = utensil.UtensilType?.Name
+            });
         }
 
         public async Task<IEnumerable<EquipmentStatusDto>> GetEquipmentStatusSummaryAsync()

@@ -82,7 +82,7 @@ namespace Capstone.HPTY.API.SideServices
                 foreach (var hotpot in unavailableHotpots)
                 {
                     _logger.LogWarning("Unavailable hotpot detected: {hotpotName}, Series: {series}",
-                        hotpot.Hotpot?.Name ?? "Unknown", hotpot.SeriesNumber);
+                        hotpot.HotpotName ?? "Unknown", hotpot.SeriesNumber);
                 }
 
                 var utensils = await equipmentStockService.GetAllUtensilsAsync();
