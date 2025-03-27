@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
@@ -18,6 +19,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 
         [Required]
         [StringLength(2000)]
+        [JsonPropertyName("videoURL")]
         public string VideoURL { get; set; }
     }
 }
