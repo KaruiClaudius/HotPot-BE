@@ -171,6 +171,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
+        public async Task<HotPotInventory> GetByInvetoryIdAsync(int inventoryId)
+        {
+            try
+            {
+                var inventoryItem = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAsync(h => h.HotPotInventoryId == inventoryId && !h.IsDelete);
+
+                if (inventoryItem == null)
+                    return null;
+
+                // Load inventory items
+                var logItems = await _unitOfWork.Repository<DamageDevice>()
+                    .FindAll(i => i.HotPotInventoryId == inventoryId && !i.IsDelete)
+                    .ToListAsync();
+
+                inventoryItem.ConditionLogs = logItems;
+
+                return inventoryItem;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving inventory item with ID {inventoryId}", inventoryId);
+                throw;
+            }
+        }
+
         public async Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>

@@ -376,7 +376,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = EnumExtensions.GetDisplayName(device.Status),
+                StatusName = device.Status.GetDisplayName(),
                 LoggedDate = device.LoggedDate,
             };
         }
@@ -390,7 +390,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = EnumExtensions.GetDisplayName(device.Status),
+                StatusName = device.Status.GetDisplayName(),
                 LoggedDate = device.LoggedDate,
                 HotPotInventoryId = device.HotPotInventoryId,
                 HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber
@@ -406,7 +406,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = EnumExtensions.GetDisplayName(device.Status),
+                StatusName = device.Status.GetDisplayName(),
                 LoggedDate = device.LoggedDate,
                 UtensilID = device.UtensilId,
                 UtensilName = device.Utensil?.Name
@@ -424,7 +424,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ConditionLogId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = EnumExtensions.GetDisplayName(device.Status),
+                StatusName = device.Status.GetDisplayName(),
                 LoggedDate = device.LoggedDate,
                 UtensilID = device.UtensilId,
                 HotPotInventoryId = device.HotPotInventoryId,

@@ -13,10 +13,12 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         public int HotPotInventoryId { get; set; }
         public string SeriesNumber { get; set; }
         public string Status { get; set; }
+    }
+
+    public class InventoryItemDetailDto : InventoryItemDto
+    {
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public List<DamageDeviceDto> ConditionLogs { get; set; } = new List<DamageDeviceDto>();
     }
-
-
 }

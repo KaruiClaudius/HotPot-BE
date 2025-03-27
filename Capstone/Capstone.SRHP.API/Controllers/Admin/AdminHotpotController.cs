@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
@@ -78,16 +79,69 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var hotpot = await _hotpotService.GetByIdAsync(id);
                 if (hotpot == null)
-                    return NotFound(new { message = $"Hotpot with ID {id} not found" });
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = $"Hotpot with ID {id} not found"
+                    });
+                }
 
                 var hotpotDto = MapToHotpotDetailDto(hotpot);
 
-                return Ok(hotpotDto);
+                return Ok(new ApiResponse<HotpotDetailDto>
+                {
+                    Success = true,
+                    Message = "Hotpot retrieved successfully",
+                    Data = hotpotDto
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving hotpot with ID {HotpotId}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve hotpot"
+                });
+            }
+        }
+
+        [HttpGet("inventory/{inventoryId}")]
+        [ProducesResponseType(typeof(ApiResponse<InventoryItemDetailDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<InventoryItemDetailDto>>> GetInventoryMaintenanceLogs(int inventoryId)
+        {
+            try
+            {
+                var inventoryItem = await _hotpotService.GetByInvetoryIdAsync(inventoryId);
+
+                if (inventoryItem == null || inventoryItem.IsDelete)
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Error",
+                        Message = $"Inventory item with ID {inventoryId} not found"
+                    });
+                }
+
+                var inventoryDetailDto = MapToInventoryItemDetailDto(inventoryItem);
+
+                return Ok(new ApiResponse<InventoryItemDetailDto>
+                {
+                    Success = true,
+                    Message = "Maintenance logs retrieved successfully",
+                    Data = inventoryDetailDto
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving maintenance logs for inventory item with ID {InventoryId}", inventoryId);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve maintenance logs"
+                });
             }
         }
 
@@ -243,8 +297,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = hotpot.Price,
                 BasePrice = hotpot.BasePrice,
                 Quantity = hotpot.Quantity, // This now uses the calculated property
-                CreatedAt = hotpot.CreatedAt,
-                UpdatedAt = hotpot.UpdatedAt
             };
         }
 
@@ -252,54 +304,71 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             if (hotpot == null) return null;
 
-            var baseDto = MapToHotpotDto(hotpot);
-
-            return new HotpotDetailDto
+            var dto = new HotpotDetailDto
             {
-                HotpotId = baseDto.HotpotId,
-                Name = baseDto.Name,
-                Material = baseDto.Material,
-                Size = baseDto.Size,
-                Description = baseDto.Description,
-                ImageURLs = baseDto.ImageURLs,
-                Price = baseDto.Price,
-                BasePrice = baseDto.BasePrice,
-                Quantity = baseDto.Quantity,
-                CreatedAt = baseDto.CreatedAt,
-                UpdatedAt = baseDto.UpdatedAt,
-                InventoryItems = hotpot.InventoryUnits?
+                HotpotId = hotpot.HotpotId,
+                Name = hotpot.Name,
+                Material = hotpot.Material,
+                Size = hotpot.Size,
+                Description = hotpot.Description,
+                ImageURLs = hotpot.ImageURLs,
+                Price = hotpot.Price,
+                BasePrice = hotpot.BasePrice,
+                Quantity = hotpot.Quantity,
+                LastMaintainDate = hotpot.LastMaintainDate,
+                CreatedAt = hotpot.CreatedAt,
+                UpdatedAt = hotpot.UpdatedAt
+            };
+
+            // Add inventory items without maintenance logs
+            if (hotpot.InventoryUnits != null)
+            {
+                dto.InventoryItems = hotpot.InventoryUnits
                     .Where(i => !i.IsDelete)
                     .Select(i => new InventoryItemDto
                     {
                         HotPotInventoryId = i.HotPotInventoryId,
                         SeriesNumber = i.SeriesNumber,
-                        Status = GetStatusName(i.Status),
-                        CreatedAt = i.CreatedAt,
-                        UpdatedAt = i.UpdatedAt,
-                        ConditionLogs = i.ConditionLogs?
-                            .Where(cl => !cl.IsDelete)
-                            .OrderByDescending(cl => cl.CreatedAt) // Order by newest first
-                            .Select(cl => new DamageDeviceDto
-                            {
-                                DamageDeviceId = cl.DamageDeviceId,
-                                Name = cl.Name,
-                                Description = cl.Description,
-                                CreatedAt = cl.CreatedAt,
-                                UpdatedAt = cl.UpdatedAt
-                            }).ToList() ?? new List<DamageDeviceDto>()
-                    }).ToList() ?? new List<InventoryItemDto>()
-            };
+                        Status = i.Status.GetDisplayName(),
+                    })
+                    .ToList();
+            }
+
+            return dto;
         }
 
-        private static string GetStatusName(HotpotStatus status)
+        private InventoryItemDetailDto MapToInventoryItemDetailDto(HotPotInventory inventoryItem)
         {
-            return status switch
+            if (inventoryItem == null) return null;
+
+            var dto = new InventoryItemDetailDto
             {
-                HotpotStatus.Available => "Available",
-                HotpotStatus.Rented => "Rented",
-                HotpotStatus.Damaged => "Damaged",
-                _ => "Unknown"
+                HotPotInventoryId = inventoryItem.HotPotInventoryId,
+                SeriesNumber = inventoryItem.SeriesNumber,
+                Status = inventoryItem.Status.GetDisplayName(), 
+                CreatedAt = inventoryItem.CreatedAt,
+                UpdatedAt = inventoryItem.UpdatedAt
             };
+
+            // Add maintenance logs
+            if (inventoryItem.ConditionLogs != null)
+            {
+                dto.ConditionLogs = inventoryItem.ConditionLogs
+                    .Where(cl => !cl.IsDelete)
+                    .OrderByDescending(cl => cl.LoggedDate)
+                    .Select(cl => new DamageDeviceDto
+                    {
+                        DamageDeviceId = cl.DamageDeviceId,
+                        Name = cl.Name,
+                        Description = cl.Description,
+                        StatusName = cl.Status.GetDisplayName(), 
+                        CreatedAt = cl.CreatedAt,
+                        UpdatedAt = cl.UpdatedAt
+                    })
+                    .ToList();
+            }
+
+            return dto;
         }
     }
 }
