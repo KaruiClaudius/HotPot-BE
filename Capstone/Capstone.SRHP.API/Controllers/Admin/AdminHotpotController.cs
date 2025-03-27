@@ -298,7 +298,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 HotpotStatus.Available => "Available",
                 HotpotStatus.Rented => "Rented",
                 HotpotStatus.Damaged => "Damaged",
-                HotpotStatus.Disposed => "Disposed",
                 _ => "Unknown"
             };
         }
