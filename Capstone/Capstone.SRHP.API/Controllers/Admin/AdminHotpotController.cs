@@ -243,8 +243,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = hotpot.Price,
                 BasePrice = hotpot.BasePrice,
                 Quantity = hotpot.Quantity, // This now uses the calculated property
-                CreatedAt = hotpot.CreatedAt,
-                UpdatedAt = hotpot.UpdatedAt
             };
         }
 
@@ -265,8 +263,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Price = baseDto.Price,
                 BasePrice = baseDto.BasePrice,
                 Quantity = baseDto.Quantity,
-                CreatedAt = baseDto.CreatedAt,
-                UpdatedAt = baseDto.UpdatedAt,
+                LastMaintainDate = hotpot.LastMaintainDate,
+                CreatedAt = hotpot.CreatedAt,
+                UpdatedAt = hotpot.UpdatedAt,
                 InventoryItems = hotpot.InventoryUnits?
                     .Where(i => !i.IsDelete)
                     .Select(i => new InventoryItemDto
