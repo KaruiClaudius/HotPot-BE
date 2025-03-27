@@ -41,7 +41,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = EnumExtensions.GetDisplayName(inventory.Status),
+                Status = inventory.Status.GetDisplayName(),
                 HotpotId = inventory.HotpotId,
                 HotpotName = inventory.Hotpot?.Name,
                 CreatedAt = inventory.CreatedAt,
@@ -68,7 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = EnumExtensions.GetDisplayName(inventory.Status),
+                Status = inventory.Status.GetDisplayName(),
                 HotpotName = inventory.Hotpot?.Name
             });
         }
@@ -84,7 +84,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = EnumExtensions.GetDisplayName(inventory.Status),
+                Status = inventory.Status.GetDisplayName(),
                 HotpotName = inventory.Hotpot?.Name
             });
         }
@@ -130,7 +130,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = EnumExtensions.GetDisplayName(inventory.Status), 
+                Status = inventory.Status.GetDisplayName(), 
                 HotpotId = inventory.HotpotId,
                 HotpotName = inventory.Hotpot?.Name,
                 CreatedAt = inventory.CreatedAt,

@@ -24,6 +24,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
                 int pageSize = 10,
                 string sortBy = "Name",
                 bool ascending = true);
+        Task<HotPotInventory> GetByInvetoryIdAsync(int inventoryId);
         Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null);
         Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null);
         Task<decimal> CalculateDepositAsync(int id, int quantity);
