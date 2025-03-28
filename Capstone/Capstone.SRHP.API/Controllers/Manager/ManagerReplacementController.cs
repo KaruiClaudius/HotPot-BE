@@ -1,26 +1,34 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/replacement")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
-
+    [Authorize(Roles = "Manager")]
     public class ManagerReplacementController : ControllerBase
     {
         private readonly IReplacementRequestService _replacementService;
+        private readonly IHubContext<EquipmentHub> _equipmentHubContext;
 
-        public ManagerReplacementController(IReplacementRequestService replacementService)
+        public ManagerReplacementController(
+            IReplacementRequestService replacementService,
+            IHubContext<EquipmentHub> equipmentHubContext)
         {
             _replacementService = replacementService;
+            _equipmentHubContext = equipmentHubContext;
         }
+
+        #region Replacement Request Management
 
         [HttpGet("all")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -78,6 +86,22 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 var dto = MapToDetailDto(request);
 
+                // Notify staff about the review decision
+                await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveReplacementReview",
+                    id,
+                    reviewDto.IsApproved,
+                    reviewDto.ReviewNotes);
+
+                // Notify the customer if applicable
+                if (dto.CustomerId != 0)
+                {
+                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementUpdate",
+                        id,
+                        dto.EquipmentName,
+                        reviewDto.IsApproved ? "approved" : "rejected",
+                        reviewDto.ReviewNotes);
+                }
+
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
                     dto, $"Replacement request {(reviewDto.IsApproved ? "approved" : "rejected")} successfully"));
             }
@@ -95,12 +119,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+        #endregion
+
+        #region Staff Allocation and Resolution Timeline
+
         [HttpPut("{id}/assign-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> AssignStaffToReplacement(
-            int id, [FromBody] AssignStaffDto assignDto)
+            int id, [FromBody] AssignStaffRequest assignDto)
         {
             try
             {
@@ -108,6 +136,31 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     id, assignDto.StaffId);
 
                 var dto = MapToDetailDto(request);
+
+                // Notify staff about the assignment
+                await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveAssignmentUpdate",
+                    id,
+                    assignDto.StaffId,
+                    dto.EquipmentName,
+                    dto.Status.ToString(),
+                    DateTime.UtcNow);
+
+                // Notify the specific staff member who was assigned
+                await _equipmentHubContext.Clients.User(assignDto.StaffId.ToString()).SendAsync("ReceiveNewAssignment",
+                    id,
+                    dto.EquipmentName,
+                    dto.RequestReason,
+                    dto.Status.ToString());
+
+                // Notify the customer if applicable
+                if (dto.CustomerId!=0)
+                {
+                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementUpdate",
+                        id,
+                        dto.EquipmentName,
+                        "in progress",
+                        "A staff member has been assigned to handle your replacement request.");
+                }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
                     dto, "Staff assigned to replacement request successfully"));
@@ -126,36 +179,36 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpPut("{id}/mark-complete")]
+        [HttpPost("notify-customer")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> MarkReplacementAsCompleted(
-            int id, [FromBody] CompleteReplacementDto completeDto)
+        public async Task<ActionResult<ApiResponse<bool>>> NotifyCustomerDirectly([FromBody] NotifyCustomerRequest request)
         {
             try
             {
-                var request = await _replacementService.MarkReplacementAsCompletedAsync(
-                    id, completeDto.CompletionNotes);
+                // Validate the request
+                if (request.CustomerId <= 0)
+                {
+                    return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid customer ID"));
+                }
 
-                var dto = MapToDetailDto(request);
+                // Send a direct notification to the customer
+                await _equipmentHubContext.Clients.User(request.CustomerId.ToString()).SendAsync("ReceiveDirectNotification",
+                    request.ConditionLogId,
+                    request.Message,
+                    request.EstimatedResolutionTime);
 
-                return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
-                    dto, "Replacement request marked as completed successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Customer notified successfully"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
             }
         }
+
+        #endregion
+
+        #region Dashboard and Reporting
 
         [HttpGet("dashboard")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -186,6 +239,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
             return Ok(ApiResponse<ReplacementDashboardDto>.SuccessResponse(
                 dashboard, "Replacement dashboard data retrieved successfully"));
         }
+
+        #endregion
 
         #region Helper Methods
 
@@ -219,6 +274,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         private ReplacementRequestDetailDto MapToDetailDto(ReplacementRequest request)
         {
+            string equipmentName = "";
+
+            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+            {
+                equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
+            }
+            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
+            {
+                equipmentName = request.Utensil.Name;
+            }
+
             return new ReplacementRequestDetailDto
             {
                 ReplacementRequestId = request.ReplacementRequestId,
@@ -230,6 +296,9 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 ReviewNotes = request.ReviewNotes,
                 CompletionDate = request.CompletionDate,
                 EquipmentType = request.EquipmentType,
+
+                // Set the EquipmentName property
+                EquipmentName = equipmentName,
 
                 CustomerId = request.CustomerId,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
@@ -252,4 +321,3 @@ namespace Capstone.HPTY.API.Controllers.Manager
         #endregion
     }
 }
-

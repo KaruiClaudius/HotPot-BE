@@ -373,7 +373,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 EquipmentType = "HotPot",
                 TotalCount = hotpotInventories.Count,
                 AvailableCount = hotpotInventories.Count(h => h.Status == HotpotStatus.Available),
-                UnavailableCount = hotpotInventories.Count(h => h.Status == HotpotStatus.Damaged && h.Status == HotpotStatus.Rented),
+                UnavailableCount = hotpotInventories.Count(h => h.Status == HotpotStatus.Damaged || h.Status == HotpotStatus.Rented),
                 LowStockCount = 0, // Not applicable for HotPots
                 AvailabilityPercentage = hotpotInventories.Count > 0
                     ? (double)hotpotInventories.Count(h => h.Status == HotpotStatus.Available) / hotpotInventories.Count * 100
@@ -382,7 +382,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             result.Add(hotpotSummary);
 
             // Get Utensil summary
-            var utensils = await _unitOfWork.Repository<ModelLayer.Entities.Utensil>().GetAll().ToListAsync();
+            var utensils = await _unitOfWork.Repository<Utensil>().GetAll().ToListAsync();
             var utensilSummary = new EquipmentStatusDto
             {
                 EquipmentType = "Utensil",

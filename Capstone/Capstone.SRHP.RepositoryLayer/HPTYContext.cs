@@ -127,7 +127,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasOne(a => a.RentOrderDetail)
                 .WithMany()
                 .HasForeignKey(a => a.RentOrderDetailId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict);        
 
             modelBuilder.Entity<StaffPickupAssignment>()
                 .HasOne(a => a.Staff)
