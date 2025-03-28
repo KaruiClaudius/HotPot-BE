@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
@@ -18,20 +19,26 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public bool IsCustomizable { get; set; }
         public int HotpotBrothID { get; set; }
         public string HotpotBrothName { get; set; }
-        public int? AppliedDiscountID { get; set; }
-        public decimal AppliedDiscountPercentage { get; set; }
         public string[] ImageURLs { get; set; }
-        public int TurtorialVideoID { get; set; }
-        public string TutorialVideoName { get; set; }
-        public string TutorialVideoUrl { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<ComboIngredientDto> Ingredients { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ComboAllowedIngredientTypeDto> AllowedIngredientTypes { get; set; }
+
     }
 
     public class ComboDetailDto : ComboDto
     {
+        public int? AppliedDiscountID { get; set; }
+        public decimal AppliedDiscountPercentage { get; set; }
+        public int TurtorialVideoID { get; set; }
+        public string TutorialVideoName { get; set; }
+        public string TutorialVideoUrl { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
         public TutorialVideoDto TutorialVideo { get; set; }
-        public List<ComboAllowedIngredientTypeDto> AllowedIngredientTypes { get; set; }
+
     }
 }

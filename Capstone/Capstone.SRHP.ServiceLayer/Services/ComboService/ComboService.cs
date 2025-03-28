@@ -194,7 +194,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (string.IsNullOrWhiteSpace(combo.Name))
                     throw new ValidationException("Combo name cannot be empty");
 
-                if (combo.Size <= 0)
+                if (combo.Size <= 0 && !combo.IsCustomizable)
                     throw new ValidationException("Combo size must be greater than 0");
 
                 // Validate video properties if provided
@@ -202,6 +202,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     if (string.IsNullOrWhiteSpace(video.Name))
                         throw new ValidationException("Video name cannot be empty");
+
+                    Console.WriteLine($"Video URL being validated: '{video.VideoURL}'");
 
                     if (string.IsNullOrWhiteSpace(video.VideoURL))
                         throw new ValidationException("Video URL cannot be empty");
