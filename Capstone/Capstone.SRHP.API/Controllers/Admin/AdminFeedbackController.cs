@@ -1,19 +1,23 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/feedback")]
     [ApiController]
     [Authorize(Roles = "Admin")]
-
     public class AdminFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _feedbackService;
@@ -49,25 +53,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 var pagedResult = await _feedbackService.GetFilteredFeedbackAsync(request);
-
-                // Map to DTOs
-                var dtoPagedResult = new PagedResult<FeedbackListDto>
-                {
-                    Items = pagedResult.Items.Select(MapToFeedbackListDto).ToList(),
-                    TotalCount = pagedResult.TotalCount,
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize
-                };
-
                 return Ok(ApiResponse<PagedResult<FeedbackListDto>>.SuccessResponse(
-                    dtoPagedResult,
-                    "Feedback retrieved successfully"));
+                    pagedResult, "Feedback retrieved successfully"));
             }
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<PagedResult<FeedbackListDto>>.ErrorResponse(ex.Message));
             }
         }
+
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,14 +70,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                var feedback = await _feedbackService.GetFeedbackByIdAsync(id);
-                var feedbackDto = MapToFeedbackDetailDto(feedback);
+                // Use the GetFeedbackDetailByIdAsync method which returns FeedbackDetailDto
+                var feedback = await _feedbackService.GetFeedbackDetailByIdAsync(id);
+                if (feedback == null)
+                {
+                    return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse($"Feedback with ID {id} not found"));
+                }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(
-                    feedbackDto,
-                    "Feedback retrieved successfully"));
+                    feedback, "Feedback retrieved successfully"));
             }
-            catch (ModelLayer.Exceptions.NotFoundException ex)
+            catch (NotFoundException ex)
             {
                 return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
@@ -93,36 +90,26 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-
         [HttpGet("by-status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<PagedResult<Feedback>>>> GetFeedbackByStatus(
-     [FromRoute] FeedbackApprovalStatus status,
-     [FromQuery] int pageNumber = 1,
-     [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetFeedbackByStatus(
+            [FromRoute] FeedbackApprovalStatus status,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                var feedback = await _feedbackService.GetFeedbackByStatusAsync(status, pageNumber, pageSize);
-                var totalCount = await _feedbackService.GetFeedbackCountByStatusAsync(status);
-
-                var pagedResult = new PagedResult<Feedback>
-                {
-                    Items = feedback,
-                    TotalCount = totalCount,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
+                var pagedResult = await _feedbackService.GetFeedbackByStatusAsync(status, pageNumber, pageSize);
 
                 string statusName = status.ToString().ToLower();
-                return Ok(ApiResponse<PagedResult<Feedback>>.SuccessResponse(
+                return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
                     pagedResult,
                     $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} feedback retrieved successfully"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<PagedResult<Feedback>>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<PagedResult<ManagerFeedbackListDto>>.ErrorResponse(ex.Message));
             }
         }
 
@@ -130,25 +117,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Feedback>>> ApproveFeedback(int id, [FromBody] ApproveFeedbackRequest request)
+        public async Task<ActionResult<ApiResponse<FeedbackDetailDto>>> ApproveFeedback(int id, [FromBody] ApproveFeedbackRequest request)
         {
             try
             {
                 var feedback = await _feedbackService.ApproveFeedbackAsync(id, request.AdminUserId);
 
                 // Get admin name for notification
-                string adminName = "Admin";
-                if (feedback.ApprovedByUser != null)
-                {
-                    adminName = feedback.ApprovedByUser.Name;
-                }
+                string adminName = feedback.ApprovedByUserName ?? "Admin";
 
                 // Notify managers about the newly approved feedback via SignalR
                 await _feedbackHubContext.Clients.Group("Managers").SendAsync("ReceiveApprovedFeedback",
                     feedback.FeedbackId,
                     feedback.Title,
                     feedback.UserId,
-                    feedback.User?.Name ?? "Customer",
+                    feedback.UserName ?? "Customer",
                     feedback.ApprovalDate);
 
                 // Notify the customer that their feedback was approved
@@ -157,15 +140,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     adminName,
                     feedback.ApprovalDate);
 
-                return Ok(ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback approved successfully"));
+                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback approved successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<Feedback>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<Feedback>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
         }
 
@@ -173,18 +156,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<Feedback>>> RejectFeedback(int id, [FromBody] RejectFeedbackRequest request)
+        public async Task<ActionResult<ApiResponse<FeedbackDetailDto>>> RejectFeedback(int id, [FromBody] RejectFeedbackRequest request)
         {
             try
             {
                 var feedback = await _feedbackService.RejectFeedbackAsync(id, request.AdminUserId, request.RejectionReason);
 
                 // Get admin name for notification
-                string adminName = "Admin";
-                if (feedback.ApprovedByUser != null)
-                {
-                    adminName = feedback.ApprovedByUser.Name;
-                }
+                string adminName = feedback.ApprovedByUserName ?? "Admin";
 
                 // Notify the customer that their feedback was rejected
                 await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("FeedbackRejected",
@@ -193,15 +172,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     feedback.RejectionReason,
                     feedback.ApprovalDate);
 
-                return Ok(ApiResponse<Feedback>.SuccessResponse(feedback, "Feedback rejected successfully"));
+                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback rejected successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ApiResponse<Feedback>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<Feedback>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
         }
 
@@ -209,68 +188,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
-            var totalCount = await _feedbackService.GetTotalFeedbackCountAsync();
-            var pendingCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Pending));
-            var unrespondedCount = await _feedbackService.GetUnrespondedFeedbackCountAsync();
-
-            // Calculate approved and rejected counts
-            var approvedCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Approved));
-            var rejectedCount = (await _feedbackService.GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Rejected));
-
-            var stats = new FeedbackStats
-            {
-                TotalFeedbackCount = totalCount,
-                PendingFeedbackCount = pendingCount,
-                ApprovedFeedbackCount = approvedCount,
-                RejectedFeedbackCount = rejectedCount,
-                UnrespondedFeedbackCount = unrespondedCount,
-                ResponseRate = approvedCount > 0 ? (double)(approvedCount - unrespondedCount) / approvedCount * 100 : 0
-            };
-
+            var stats = await _feedbackService.GetFeedbackStatsAsync();
             return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
         }
-
-        #region Mapping Methods
-
-        private FeedbackListDto MapToFeedbackListDto(Feedback feedback)
-        {
-            return new FeedbackListDto
-            {
-                FeedbackId = feedback.FeedbackId,
-                Title = feedback.Title,
-                UserName = feedback.User?.Name ?? "Unknown",
-                OrderId = feedback.OrderId,
-                ApprovalStatus = feedback.ApprovalStatus,
-                HasResponse = !string.IsNullOrEmpty(feedback.Response),
-                CreatedAt = feedback.CreatedAt,
-                ResponseDate = feedback.ResponseDate,
-                ApprovalDate = feedback.ApprovalDate
-            };
-        }
-
-        private FeedbackDetailDto MapToFeedbackDetailDto(Feedback feedback)
-        {
-            return new FeedbackDetailDto
-            {
-                FeedbackId = feedback.FeedbackId,
-                Title = feedback.Title,
-                Comment = feedback.Comment,
-                ImageURLs = feedback.ImageURLs ?? Array.Empty<string>(),
-                Response = feedback.Response,
-                ResponseDate = feedback.ResponseDate,
-                ManagerId = feedback.ManagerId,
-                ManagerName = feedback.Manager?.Name,
-                OrderId = feedback.OrderId,
-                UserId = feedback.UserId,
-                UserName = feedback.User?.Name,
-                ApprovalStatus = feedback.ApprovalStatus,
-                ApprovalDate = feedback.ApprovalDate,
-                RejectionReason = feedback.RejectionReason,
-                CreatedAt = feedback.CreatedAt,
-                UpdatedAt = feedback.UpdatedAt
-            };
-        }
-
-        #endregion
     }
 }

@@ -1,20 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
-using Capstone.HPTY.ServiceLayer.Interfaces;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using static Capstone.HPTY.ModelLayer.Exceptions.ValidationException;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 {
@@ -22,67 +18,44 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
     {
         private readonly IUnitOfWork _unitOfWork;
         private const int MANAGER_ROLE_ID = 2; // Manager role ID
-
+        private const int ADMIN_ROLE_ID = 1;   // Admin role ID
 
         public FeedbackService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<Feedback> GetFeedbackByIdAsync(int feedbackId)
+        #region Common Methods
+
+        public async Task<ManagerFeedbackDetailDto> GetFeedbackByIdAsync(int feedbackId)
         {
             var feedback = await _unitOfWork.Repository<Feedback>()
-                 .AsQueryable()
-                 .Include(f => f.User)
-                 .Include(f => f.Order)
-                 .Include(f => f.Manager)
-                 .Include(f => f.ApprovedByUser)
-                 .FirstOrDefaultAsync(f => f.FeedbackId == feedbackId && !f.IsDelete);
+                .GetAll(f => f.FeedbackId == feedbackId)
+                .Include(f => f.User)
+                .Include(f => f.Order)
+                .Include(f => f.Manager)
+                .FirstOrDefaultAsync();
 
             if (feedback == null)
-            {
-                throw new NotFoundException($"Feedback with ID {feedbackId} not found");
-            }
+                return null;
 
-            return feedback;
+            return MapToFeedbackDetailDto(feedback);
         }
 
-        public async Task<IEnumerable<Feedback>> GetAllFeedbackAsync(int pageNumber = 1, int pageSize = 10)
+        public async Task<FeedbackDetailDto> GetFeedbackDetailByIdAsync(int feedbackId)
         {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll()
+            var feedback = await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.FeedbackId == feedbackId)
                 .Include(f => f.User)
                 .Include(f => f.Order)
                 .Include(f => f.Manager)
                 .Include(f => f.ApprovedByUser)
-                .OrderByDescending(f => f.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
+                .FirstOrDefaultAsync();
 
-        public async Task<IEnumerable<Feedback>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10)
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.UserId == userId)
-                .Include(f => f.Order)
-                .Include(f => f.Manager)
-                .Include(f => f.ApprovedByUser)
-                .OrderByDescending(f => f.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
+            if (feedback == null)
+                return null;
 
-        public async Task<IEnumerable<Feedback>> GetFeedbackByOrderIdAsync(int orderId)
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.OrderId == orderId)
-                .Include(f => f.User)
-                .Include(f => f.Manager)
-                .Include(f => f.ApprovedByUser)
-                .OrderByDescending(f => f.CreatedAt)
-                .ToListAsync();
+            return MapToAdminFeedbackDetailDto(feedback);
         }
 
         public async Task<int> GetTotalFeedbackCountAsync()
@@ -92,7 +65,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 .CountAsync();
         }
 
-        public async Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request)
+        public async Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status)
+        {
+            return await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.ApprovalStatus == status)
+                .CountAsync();
+        }
+
+        public async Task<int> GetUnrespondedFeedbackCountAsync()
+        {
+            return await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.Response == null && f.ApprovalStatus == FeedbackApprovalStatus.Approved)
+                .CountAsync();
+        }
+
+        #endregion
+
+        #region Customer Methods
+
+        public async Task<ManagerFeedbackDetailDto> CreateFeedbackAsync(CreateFeedbackRequest request)
         {
             // First, verify that the OrderId exists
             var orderExists = await _unitOfWork.Repository<Order>().GetById(request.OrderId) != null;
@@ -116,128 +107,125 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 ImageURLs = request.ImageURLs,
                 OrderId = request.OrderId,
                 UserId = request.UserId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ApprovalStatus = FeedbackApprovalStatus.Pending // Default to pending
             };
 
             // Save the feedback
             _unitOfWork.Repository<Feedback>().Insert(feedback);
             await _unitOfWork.CommitAsync();
 
-            // Load related entities for the response
-            feedback = await GetFeedbackByIdAsync(feedback.FeedbackId);
-
-            return feedback;
+            // Load related entities and return as DTO
+            return await GetFeedbackByIdAsync(feedback.FeedbackId);
         }
 
-        public async Task<Feedback> ApproveFeedbackAsync(int feedbackId, int adminUserId)
+        public async Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByUserIdAsync(
+            int userId, int pageNumber = 1, int pageSize = 10)
         {
-            // Verify feedback exists
-            var feedback = await _unitOfWork.Repository<Feedback>()
-                .FindAsync(f => f.FeedbackId == feedbackId);
-
-            if (feedback == null)
-                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
-
-            // Verify user exists and has admin role
-            var user = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == adminUserId);
-
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {adminUserId} not found");
-
-            // Update the feedback approval status
-            feedback.ApprovalStatus = FeedbackApprovalStatus.Approved;
-            feedback.ApprovalDate = DateTime.UtcNow;
-            feedback.ApprovedByUserId = adminUserId;
-            feedback.UpdatedAt = DateTime.UtcNow;
-
-            await _unitOfWork.CommitAsync();
-
-            // Load the admin user for the response
-            feedback.ApprovedByUser = user;
-
-            return feedback;
-        }
-
-        public async Task<Feedback> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason)
-        {
-            // Verify feedback exists
-            var feedback = await _unitOfWork.Repository<Feedback>()
-                .FindAsync(f => f.FeedbackId == feedbackId);
-
-            if (feedback == null)
-                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
-
-            // Verify user exists and has admin role
-            var user = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == adminUserId);
-
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {adminUserId} not found");
-
-            // Update the feedback approval status
-            feedback.ApprovalStatus = FeedbackApprovalStatus.Rejected;
-            feedback.ApprovalDate = DateTime.UtcNow;
-            feedback.ApprovedByUserId = adminUserId;
-            feedback.RejectionReason = rejectionReason;
-            feedback.UpdatedAt = DateTime.UtcNow;
-
-            await _unitOfWork.CommitAsync();
-
-            // Load the admin user for the response
-            feedback.ApprovedByUser = user;
-
-            return feedback;
-        }
-
-        public async Task<IEnumerable<Feedback>> GetPendingFeedbackAsync(int pageNumber = 1, int pageSize = 10)
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.ApprovalStatus == FeedbackApprovalStatus.Pending)
-                .Include(f => f.User)
+            // Apply the filter first, then order
+            var query = _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.UserId == userId && f.ApprovalStatus == FeedbackApprovalStatus.Approved)
                 .Include(f => f.Order)
-                .OrderByDescending(f => f.CreatedAt)
+                .Include(f => f.Manager)
+                .Include(f => f.ApprovedByUser)
+                .OrderByDescending(f => f.CreatedAt);
+
+            var totalCount = await query.CountAsync();
+
+            var feedbacks = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            var dtos = feedbacks.Select(MapToFeedbackListDto).ToList();
+
+            return new PagedResult<ManagerFeedbackListDto>
+            {
+                Items = dtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
-        public async Task<IEnumerable<Feedback>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10)
+
+        public async Task<IEnumerable<ManagerFeedbackListDto>> GetFeedbackByOrderIdAsync(int orderId)
         {
-            return await _unitOfWork.Repository<Feedback>()
+            var feedbacks = await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.OrderId == orderId)
+                .Include(f => f.User)
+                .Include(f => f.Manager)
+                .Include(f => f.ApprovedByUser)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+
+            // Filter to only show approved feedback
+            feedbacks = feedbacks.Where(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved).ToList();
+
+            return feedbacks.Select(MapToFeedbackListDto).ToList();
+        }
+
+        #endregion
+
+        #region Manager Methods
+
+        public async Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByStatusAsync(
+            FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10)
+        {
+            var query = _unitOfWork.Repository<Feedback>()
                 .GetAll(f => f.ApprovalStatus == status)
                 .Include(f => f.User)
                 .Include(f => f.Order)
                 .Include(f => f.Manager)
                 .Include(f => f.ApprovedByUser)
-                .OrderByDescending(f => f.CreatedAt)
+                .OrderByDescending(f => f.CreatedAt);
+
+            var totalCount = await query.CountAsync();
+
+            var feedbacks = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            var dtos = feedbacks.Select(MapToFeedbackListDto).ToList();
+
+            return new PagedResult<ManagerFeedbackListDto>
+            {
+                Items = dtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-
-
-        // Update existing methods to respect approval status
-        public async Task<IEnumerable<Feedback>> GetUnrespondedFeedbackAsync(int pageNumber = 1, int pageSize = 10)
+        public async Task<PagedResult<ManagerFeedbackListDto>> GetUnrespondedFeedbackAsync(
+            int pageNumber = 1, int pageSize = 10)
         {
-            return await _unitOfWork.Repository<Feedback>()
+            var query = _unitOfWork.Repository<Feedback>()
                 .GetAll(f => f.Response == null && f.ApprovalStatus == FeedbackApprovalStatus.Approved)
                 .Include(f => f.User)
                 .Include(f => f.Order)
-                .OrderByDescending(f => f.CreatedAt)
+                .OrderByDescending(f => f.CreatedAt);
+
+            var totalCount = await query.CountAsync();
+
+            var feedbacks = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            var dtos = feedbacks.Select(MapToFeedbackListDto).ToList();
+
+            return new PagedResult<ManagerFeedbackListDto>
+            {
+                Items = dtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-        public async Task<int> GetUnrespondedFeedbackCountAsync()
-        {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.Response == null && f.ApprovalStatus == FeedbackApprovalStatus.Approved)
-                .CountAsync();
-        }
-
-        public async Task<Feedback> RespondToFeedbackAsync(int feedbackId, int managerId, string response)
+        public async Task<ManagerFeedbackDetailDto> RespondToFeedbackAsync(
+           int feedbackId, int managerId, string response)
         {
             try
             {
@@ -246,18 +234,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                     .FindAsync(f => f.FeedbackId == feedbackId);
 
                 if (feedback == null)
-                    throw new NotFoundException($"Feedback with ID {feedbackId} not found");
+                    throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
 
                 // Verify manager exists (user with manager role)
                 var manager = await _unitOfWork.Repository<User>()
                     .FindAsync(u => u.UserId == managerId && u.RoleId == MANAGER_ROLE_ID && !u.IsDelete);
 
                 if (manager == null)
-                    throw new NotFoundException($"Manager with ID {managerId} not found");
+                    throw new KeyNotFoundException($"Manager with ID {managerId} not found");
 
                 // Check if feedback is approved
                 if (feedback.ApprovalStatus != FeedbackApprovalStatus.Approved)
-                    throw new ValidationException($"Cannot respond to feedback with ID {feedbackId} because it has not been approved");
+                    throw new InvalidOperationException($"Cannot respond to feedback with ID {feedbackId} because it has not been approved");
 
                 // Update the feedback with the response
                 feedback.Response = response;
@@ -267,44 +255,51 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
                 await _unitOfWork.CommitAsync();
 
-                // Load the manager for the response
-                feedback.Manager = manager;
+                // Load related entities for the response
+                var updatedFeedback = await _unitOfWork.Repository<Feedback>()
+                    .GetAll(f => f.FeedbackId == feedbackId)
+                    .Include(f => f.User)
+                    .Include(f => f.Order)
+                    .Include(f => f.Manager)
+                    .FirstOrDefaultAsync();
 
-                return feedback;
+                return MapToFeedbackDetailDto(updatedFeedback);
             }
-            catch (NotFoundException)
+            catch (Exception)
             {
-                // Re-throw NotFoundException to be handled by the caller
+                // Re-throw to be handled by the controller
                 throw;
             }
-            catch (ValidationException)
-            {
-                // Re-throw ValidationException to be handled by the caller
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // Log the exception and throw a more specific exception
-                // _logger.LogError(ex, "Error responding to feedback {FeedbackId} by manager {ManagerId}", feedbackId, managerId);
-                throw new ServiceException($"An error occurred while responding to feedback: {ex.Message}", ex);
-            }
         }
-        public async Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status)
+
+        public async Task<ManagerFeedbackStats> GetManagerFeedbackStatsAsync()
         {
-            return await _unitOfWork.Repository<Feedback>()
-                .GetAll(f => f.ApprovalStatus == status)
-                .CountAsync();
+            var approvedCount = await GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Approved);
+            var unrespondedCount = await GetUnrespondedFeedbackCountAsync();
+
+            return new ManagerFeedbackStats
+            {
+                TotalFeedbackCount = approvedCount,
+                UnrespondedFeedbackCount = unrespondedCount,
+                RespondedFeedbackCount = approvedCount - unrespondedCount,
+                ResponseRate = approvedCount > 0 ? (double)(approvedCount - unrespondedCount) / approvedCount * 100 : 0
+            };
         }
-        public async Task<PagedResult<Feedback>> GetFilteredFeedbackAsync(FeedbackFilterRequest request)
+
+        #endregion
+
+        #region Admin Methods
+
+        public async Task<PagedResult<FeedbackListDto>> GetFilteredFeedbackAsync(FeedbackFilterRequest request)
         {
-            // Start with base query
-            var query = _unitOfWork.Repository<Feedback>()
-                .AsQueryable()
-                .Include(f => f.User)
-                .Include(f => f.Order)
-                .Include(f => f.Manager)
-                .Include(f => f.ApprovedByUser)
-                .AsQueryable();
+            // Start with base query - use AsQueryable() to ensure we have a standard IQueryable
+            var query = _unitOfWork.Repository<Feedback>().GetAll().AsQueryable();
+
+            // Apply includes
+            query = query.Include(f => f.User)
+                        .Include(f => f.Order)
+                        .Include(f => f.Manager)
+                        .Include(f => f.ApprovedByUser);
 
             // Apply filters (only if provided)
             if (request.ApprovalStatus.HasValue)
@@ -351,12 +346,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
             {
                 var searchTerm = request.SearchTerm.ToLower();
                 query = query.Where(i =>
-                    EF.Functions.Collate(i.Title.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                    EF.Functions.Collate(i.Comment.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                    i.Response != null && EF.Functions.Collate(i.Response.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                    i.User != null && EF.Functions.Collate(i.User.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                    i.Title.ToLower().Contains(searchTerm) ||
+                    i.Comment.ToLower().Contains(searchTerm) ||
+                    (i.Response != null && i.Response.ToLower().Contains(searchTerm)) ||
+                    (i.User != null && i.User.Name.ToLower().Contains(searchTerm))
                 );
-
             }
 
             // Get total count before pagination
@@ -371,15 +365,126 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 .Take(request.PageSize)
                 .ToListAsync();
 
+            // Map to DTOs
+            var dtoItems = items.Select(MapToAdminFeedbackListDto).ToList();
+
             // Return paged result
-            return new PagedResult<Feedback>
+            return new PagedResult<FeedbackListDto>
             {
-                Items = items,
+                Items = dtoItems,
                 TotalCount = totalCount,
                 PageNumber = request.PageNumber,
                 PageSize = request.PageSize
             };
         }
+
+        public async Task<FeedbackDetailDto> ApproveFeedbackAsync(int feedbackId, int adminUserId)
+        {
+            // Verify feedback exists
+            var feedback = await _unitOfWork.Repository<Feedback>()
+                .FindAsync(f => f.FeedbackId == feedbackId);
+
+            if (feedback == null)
+                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
+
+            // Verify user exists and has admin role
+            var admin = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == adminUserId && u.RoleId == ADMIN_ROLE_ID);
+
+            if (admin == null)
+                throw new KeyNotFoundException($"Admin with ID {adminUserId} not found");
+
+            // Update the feedback approval status
+            feedback.ApprovalStatus = FeedbackApprovalStatus.Approved;
+            feedback.ApprovalDate = DateTime.UtcNow;
+            feedback.ApprovedByUserId = adminUserId;
+            feedback.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.CommitAsync();
+
+            // Load the complete feedback with related entities
+            var updatedFeedback = await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.FeedbackId == feedbackId)
+                .Include(f => f.User)
+                .Include(f => f.Order)
+                .Include(f => f.Manager)
+                .Include(f => f.ApprovedByUser)
+                .FirstOrDefaultAsync();
+
+            return MapToAdminFeedbackDetailDto(updatedFeedback);
+        }
+
+        public async Task<FeedbackDetailDto> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason)
+        {
+            // Verify feedback exists
+            var feedback = await _unitOfWork.Repository<Feedback>()
+                .FindAsync(f => f.FeedbackId == feedbackId);
+
+            if (feedback == null)
+                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found");
+
+            // Verify user exists and has admin role
+            var admin = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == adminUserId && u.RoleId == ADMIN_ROLE_ID);
+
+            if (admin == null)
+                throw new KeyNotFoundException($"Admin with ID {adminUserId} not found");
+
+            // Update the feedback approval status
+            feedback.ApprovalStatus = FeedbackApprovalStatus.Rejected;
+            feedback.ApprovalDate = DateTime.UtcNow;
+            feedback.ApprovedByUserId = adminUserId;
+            feedback.RejectionReason = rejectionReason;
+            feedback.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.CommitAsync();
+
+            // Load the complete feedback with related entities
+            var updatedFeedback = await _unitOfWork.Repository<Feedback>()
+                .GetAll(f => f.FeedbackId == feedbackId)
+                .Include(f => f.User)
+                .Include(f => f.Order)
+                .Include(f => f.Manager)
+                .Include(f => f.ApprovedByUser)
+                .FirstOrDefaultAsync();
+
+            return MapToAdminFeedbackDetailDto(updatedFeedback);
+        }
+
+        public async Task<FeedbackStats> GetFeedbackStatsAsync()
+        {
+            // Get counts for different feedback statuses
+            var totalCount = await GetTotalFeedbackCountAsync();
+            var pendingCount = await GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Pending);
+            var approvedCount = await GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Approved);
+            var rejectedCount = await GetFeedbackCountByStatusAsync(FeedbackApprovalStatus.Rejected);
+
+            // Get counts for responded and unresponded feedback
+            var unrespondedCount = await GetUnrespondedFeedbackCountAsync();
+            var respondedCount = approvedCount - unrespondedCount;
+
+            // Calculate response rate (percentage of approved feedback that has received a response)
+            double responseRate = 0;
+            if (approvedCount > 0)
+            {
+                responseRate = (double)respondedCount / approvedCount * 100;
+            }
+
+            return new FeedbackStats
+            {
+                TotalFeedbackCount = totalCount,
+                PendingFeedbackCount = pendingCount,
+                ApprovedFeedbackCount = approvedCount,
+                RejectedFeedbackCount = rejectedCount,
+                UnrespondedFeedbackCount = unrespondedCount,
+                RespondedFeedbackCount = respondedCount,
+                ResponseRate = responseRate
+            };
+        }
+
+        #endregion
+
+        #region Helper Methods
 
         private IQueryable<Feedback> ApplySorting(IQueryable<Feedback> query, string sortBy, bool sortDescending)
         {
@@ -423,5 +528,101 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                         : query.OrderBy(f => f.CreatedAt);
             }
         }
+
+        private ManagerFeedbackListDto MapToFeedbackListDto(Feedback feedback)
+        {
+            return new ManagerFeedbackListDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                Comment = feedback.Comment,
+                CreatedAt = feedback.CreatedAt,
+                ApprovalStatus = feedback.ApprovalStatus,
+                HasResponse = !string.IsNullOrEmpty(feedback.Response),
+                ResponseDate = feedback.ResponseDate,
+                User = feedback.User != null ? new UserInfoDto
+                {
+                    UserId = feedback.User.UserId,
+                    Name = feedback.User.Name,
+                    Email = feedback.User.Email
+                } : null,
+                Order = feedback.Order != null ? new OrderInfoDto
+                {
+                    OrderId = feedback.Order.OrderId,                 
+                } : null
+            };
+        }
+
+        private ManagerFeedbackDetailDto MapToFeedbackDetailDto(Feedback feedback)
+        {
+            return new ManagerFeedbackDetailDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                Comment = feedback.Comment,
+                ImageURLs = feedback.ImageURLs,
+                CreatedAt = feedback.CreatedAt,
+                ApprovalStatus = feedback.ApprovalStatus,
+                Response = feedback.Response,
+                ResponseDate = feedback.ResponseDate,
+                User = feedback.User != null ? new UserInfoDto
+                {
+                    UserId = feedback.User.UserId,
+                    Name = feedback.User.Name,
+                    Email = feedback.User.Email
+                } : null,
+                Manager = feedback.Manager != null ? new UserInfoDto
+                {
+                    UserId = feedback.Manager.UserId,
+                    Name = feedback.Manager.Name,
+                    Email = feedback.Manager.Email
+                } : null,
+                Order = feedback.Order != null ? new OrderInfoDto
+                {
+                    OrderId = feedback.Order.OrderId,           
+                } : null
+            };
+        }
+
+        private FeedbackListDto MapToAdminFeedbackListDto(Feedback feedback)
+        {
+            return new FeedbackListDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                UserName = feedback.User?.Name ?? "Unknown",
+                OrderId = feedback.OrderId,
+                ApprovalStatus = feedback.ApprovalStatus,
+                HasResponse = !string.IsNullOrEmpty(feedback.Response),
+                CreatedAt = feedback.CreatedAt,
+                ResponseDate = feedback.ResponseDate,
+                ApprovalDate = feedback.ApprovalDate
+            };
+        }
+
+        private FeedbackDetailDto MapToAdminFeedbackDetailDto(Feedback feedback)
+        {
+            return new FeedbackDetailDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                Title = feedback.Title,
+                Comment = feedback.Comment,
+                ImageURLs = feedback.ImageURLs ?? Array.Empty<string>(),
+                Response = feedback.Response,
+                ResponseDate = feedback.ResponseDate,
+                ManagerId = feedback.ManagerId,
+                ManagerName = feedback.Manager?.Name,
+                OrderId = feedback.OrderId,
+                UserId = feedback.UserId,
+                UserName = feedback.User?.Name,
+                ApprovalStatus = feedback.ApprovalStatus,
+                ApprovalDate = feedback.ApprovalDate,
+                RejectionReason = feedback.RejectionReason,
+                CreatedAt = feedback.CreatedAt,
+                UpdatedAt = feedback.UpdatedAt
+            };
+        }
+
+        #endregion
     }
 }

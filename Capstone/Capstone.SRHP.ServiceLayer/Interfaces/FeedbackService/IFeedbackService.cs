@@ -1,34 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService
 {
     public interface IFeedbackService
     {
-        Task<PagedResult<Feedback>> GetFilteredFeedbackAsync(FeedbackFilterRequest request);
-        Task<Feedback> GetFeedbackByIdAsync(int feedbackId);
-        Task<IEnumerable<Feedback>> GetAllFeedbackAsync(int pageNumber = 1, int pageSize = 10);
-        Task<IEnumerable<Feedback>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10);
-        Task<IEnumerable<Feedback>> GetFeedbackByOrderIdAsync(int orderId);
-        Task<IEnumerable<Feedback>> GetUnrespondedFeedbackAsync(int pageNumber = 1, int pageSize = 10);
-        Task<Feedback> RespondToFeedbackAsync(int feedbackId, int managerId, string response);
-        Task<int> GetTotalFeedbackCountAsync();
-        Task<int> GetUnrespondedFeedbackCountAsync();
-        Task<Feedback> CreateFeedbackAsync(CreateFeedbackRequest request);
+        // Customer methods
+        Task<ManagerFeedbackDetailDto> CreateFeedbackAsync(CreateFeedbackRequest request);
+        Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10);
+        Task<IEnumerable<ManagerFeedbackListDto>> GetFeedbackByOrderIdAsync(int orderId);
 
-        // Approval methods
-        Task<Feedback> ApproveFeedbackAsync(int feedbackId, int adminUserId);
-        Task<Feedback> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason);
-        Task<IEnumerable<Feedback>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10);
+        // Manager methods
+        Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10);
+        Task<PagedResult<ManagerFeedbackListDto>> GetUnrespondedFeedbackAsync(int pageNumber = 1, int pageSize = 10);
+        Task<ManagerFeedbackDetailDto> RespondToFeedbackAsync(int feedbackId, int managerId, string response);
+        Task<ManagerFeedbackStats> GetManagerFeedbackStatsAsync();
+
+        // Admin methods
+        Task<PagedResult<FeedbackListDto>> GetFilteredFeedbackAsync(FeedbackFilterRequest request);
+        Task<FeedbackDetailDto> GetFeedbackDetailByIdAsync(int feedbackId);
+        Task<FeedbackDetailDto> ApproveFeedbackAsync(int feedbackId, int adminUserId);
+        Task<FeedbackDetailDto> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason);
+        Task<FeedbackStats> GetFeedbackStatsAsync();
+
+        // Common methods
+        Task<ManagerFeedbackDetailDto> GetFeedbackByIdAsync(int feedbackId);
         Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status);
-
+        Task<int> GetUnrespondedFeedbackCountAsync();
+        Task<int> GetTotalFeedbackCountAsync();
     }
 }
