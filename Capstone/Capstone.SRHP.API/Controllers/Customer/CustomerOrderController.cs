@@ -181,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var userId = int.Parse(User.FindFirstValue("uid"));
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
@@ -238,7 +238,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var userId = int.Parse(User.FindFirstValue("uid"));
                 var order = await _orderService.GetByIdAsync(id);
 
                 // Verify the order belongs to the current user or user is admin
