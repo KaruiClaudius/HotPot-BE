@@ -272,12 +272,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                if (!utensilId.HasValue && !hotpotInventoryId.HasValue)
-                    throw new ValidationException("Either utensilId or hotpotInventoryId must be provided");
-
                 IQueryable<RentOrderDetail> query = _unitOfWork.Repository<RentOrderDetail>().AsQueryable();
 
-                if (utensilId.HasValue)
+                // If both parameters are null, get all non-deleted records
+                if (!utensilId.HasValue && !hotpotInventoryId.HasValue)
+                {
+                    query = query.Where(r => !r.IsDelete);
+                }
+                else if (utensilId.HasValue)
                 {
                     query = query.Where(r => r.UtensilId == utensilId.Value && !r.IsDelete);
                 }
@@ -288,7 +290,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 var rentOrderDetails = await query
                     .Include(r => r.RentOrder)
-                        .ThenInclude(r=>r.Order)
+                        .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
                     .Include(r => r.Utensil)
                     .Include(r => r.HotpotInventory)
@@ -309,10 +311,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Status = DetermineRentalStatus(r)
                 });
             }
-            catch (ValidationException)
-            {
-                throw;
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving rental history for equipment");
@@ -320,24 +318,38 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByUserAsync(int userId)
+        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByUserAsync(int? userId = null)
         {
             try
             {
-                // Check if user exists
-                var user = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == userId && !u.IsDelete);
-                if (user == null)
-                    throw new NotFoundException($"User with ID {userId} not found");
+                // If userId has a value, check if user exists
+                if (userId.HasValue)
+                {
+                    var user = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == userId.Value && !u.IsDelete);
+                    if (user == null)
+                        throw new NotFoundException($"User with ID {userId.Value} not found");
+                }
 
-                // Get all orders for this user
-                var orderIds = await _unitOfWork.Repository<Order>()
-                    .AsQueryable(o => o.UserId == userId && !o.IsDelete)
-                    .Select(o => o.OrderId)
-                    .ToListAsync();
+                IQueryable<RentOrderDetail> query = _unitOfWork.Repository<RentOrderDetail>().AsQueryable();
 
-                // Get all rent order details for these orders
-                var rentOrderDetails = await _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable(r => orderIds.Contains(r.OrderId) && !r.IsDelete)
+                if (userId.HasValue)
+                {
+                    // Get all orders for this user
+                    var orderIds = await _unitOfWork.Repository<Order>()
+                        .AsQueryable(o => o.UserId == userId.Value && !o.IsDelete)
+                        .Select(o => o.OrderId)
+                        .ToListAsync();
+
+                    // Filter rent order details for these orders
+                    query = query.Where(r => orderIds.Contains(r.OrderId) && !r.IsDelete);
+                }
+                else
+                {
+                    // Get all non-deleted rent order details
+                    query = query.Where(r => !r.IsDelete);
+                }
+
+                var rentOrderDetails = await query
                     .Include(r => r.RentOrder)
                         .ThenInclude(o => o.Order)
                         .ThenInclude(o => o.User)

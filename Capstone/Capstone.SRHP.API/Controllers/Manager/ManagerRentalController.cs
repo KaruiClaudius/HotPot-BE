@@ -97,8 +97,22 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllRentalHistory()
+        {
+            try
+            {
+                var rentalHistory = await _rentOrderService.GetRentalHistoryByUserAsync();
+                return Ok(rentalHistory);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
         [HttpGet("equipment/{utensilId}")]
-        public async Task<IActionResult> GetRentalHistoryByUtensil(int utensilId)
+        public async Task<IActionResult> GetRentalHistoryByUtensil(int? utensilId = null)
         {
             try
             {
@@ -116,7 +130,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpGet("hotpot/{hotpotInventoryId}")]
-        public async Task<IActionResult> GetRentalHistoryByHotpot(int hotpotInventoryId)
+        public async Task<IActionResult> GetRentalHistoryByHotpot(int? hotpotInventoryId = null)
         {
             try
             {
@@ -134,7 +148,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetRentalHistoryByUser(int userId)
+        public async Task<IActionResult> GetRentalHistoryByUser(int? userId = null)
         {
             try
             {
