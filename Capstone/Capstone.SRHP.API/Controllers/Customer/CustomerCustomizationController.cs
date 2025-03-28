@@ -44,8 +44,9 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+
+            var userIdClaim = User.FindFirstValue("uid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
@@ -84,8 +85,8 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            var userIdClaim = User.FindFirstValue("uid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
@@ -146,8 +147,8 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            var userIdClaim = User.FindFirstValue("uid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
@@ -187,8 +188,8 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            var userIdClaim = User.FindFirstValue("uid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
@@ -236,8 +237,8 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            var userIdClaim = User.FindFirstValue("uid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
