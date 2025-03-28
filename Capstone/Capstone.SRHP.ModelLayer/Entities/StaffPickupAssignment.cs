@@ -31,6 +31,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey(nameof(RentOrderDetailId))]
         public virtual RentOrderDetail RentOrderDetail { get; set; }
 
+
         [ForeignKey(nameof(StaffId))]
         public virtual User Staff { get; set; }
     }

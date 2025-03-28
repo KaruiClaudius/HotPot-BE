@@ -71,7 +71,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 foreach (var staff in staffUsers)
                 {
                     // Check if staff is scheduled to work today
-                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
+                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay );
 
                     // Check if staff has too many active assignments
                     if (isAvailable)
@@ -81,6 +81,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                         // Define a threshold for maximum assignments (e.g., 5)
                         isAvailable = activeAssignments < 5;
+                    }
+
+                    // Check if staff currently has an active order in progress
+                    if (isAvailable)
+                    {
+                        var currentlyActiveOrder = await _unitOfWork.Repository<StaffPickupAssignment>()
+                            .AnyAsync(a => a.StaffId == staff.UserId &&
+                                          a.CompletedDate == null &&
+                                          a.AssignedDate != null);
+
+                        // Staff is not available if they're currently working on an order
+                        isAvailable = !currentlyActiveOrder;
                     }
 
                     staffDtos.Add(new StaffAvailableDto
@@ -275,7 +287,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
             {
                 AssignmentId = a.AssignmentId,
-                RentOrderDetailId = a.RentOrderDetailId,
+                RentOrderDetailId = a.RentOrderDetail.RentOrderDetailId,
                 StaffId = a.StaffId,
                 StaffName = a.Staff?.Name,
                 AssignedDate = a.AssignedDate,
@@ -322,7 +334,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
             {
                 AssignmentId = a.AssignmentId,
-                RentOrderDetailId = a.RentOrderDetailId,
+                RentOrderDetailId = a.RentOrderDetail.RentOrderDetailId,
                 StaffId = a.StaffId,
                 StaffName = a.Staff?.Name,
                 AssignedDate = a.AssignedDate,

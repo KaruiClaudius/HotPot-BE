@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,280 +16,277 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
     public class EquipmentService : IEquipmentService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private const int CUSTOMER_ROLE_ID = 4; // Customer role ID
-        private const int STAFF_ROLE_ID = 3;    // Staff role ID
         public EquipmentService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<DamageDevice> LogEquipmentFailureAsync(DamageDevice conditionLog)
+        public async Task<ConditionLogDto> LogEquipmentFailureAsync(EquipmentFailureDto failureDto)
         {
             // Validate foreign keys before attempting to save
-            if (conditionLog.HotPotInventoryId.HasValue)
-            {
-                var hotPotExists = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable()
-                    .AnyAsync(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value);
+            string equipmentName = null;
 
-                if (!hotPotExists)
+            if (failureDto.HotPotInventoryId.HasValue)
+            {
+                var hotPot = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .FirstOrDefaultAsync(h => h.HotPotInventoryId == failureDto.HotPotInventoryId.Value);
+
+                if (hotPot == null)
                 {
-                    throw new InvalidOperationException($"Hot Pot with ID {conditionLog.HotPotInventoryId.Value} does not exist.");
+                    throw new InvalidOperationException($"Hot Pot with ID {failureDto.HotPotInventoryId.Value} does not exist.");
                 }
+
+                equipmentName = hotPot.Hotpot.Name;
             }
 
-            if (conditionLog.UtensilId.HasValue)
+            if (failureDto.UtensilID.HasValue)
             {
-                var utensilExists = await _unitOfWork.Repository<Utensil>()
+                var utensil = await _unitOfWork.Repository<Utensil>()
                     .AsQueryable()
-                    .AnyAsync(u => u.UtensilId == conditionLog.UtensilId.Value);
+                    .FirstOrDefaultAsync(u => u.UtensilId == failureDto.UtensilID.Value);
 
-                if (!utensilExists)
+                if (utensil == null)
                 {
-                    throw new InvalidOperationException($"Utensil with ID {conditionLog.UtensilId.Value} does not exist.");
+                    throw new InvalidOperationException($"Utensil with ID {failureDto.UtensilID.Value} does not exist.");
                 }
+
+                equipmentName = utensil.Name;
             }
 
             // Ensure at least one equipment type is specified
-            if (!conditionLog.HotPotInventoryId.HasValue && !conditionLog.UtensilId.HasValue)
+            if (!failureDto.HotPotInventoryId.HasValue && !failureDto.UtensilID.HasValue)
             {
                 throw new InvalidOperationException("Either HotPotInventoryId or UtensilId must be specified.");
             }
 
-            // Set default values
-            conditionLog.LoggedDate = DateTime.UtcNow;
-            conditionLog.Status = MaintenanceStatus.Pending;
-
+            // Create entity from DTO
+            var conditionLog = new DamageDevice
+            {
+                Name = failureDto.Name ?? equipmentName, // Use equipment name if name is not provided
+                Description = failureDto.Description,
+                HotPotInventoryId = failureDto.HotPotInventoryId,
+                UtensilId = failureDto.UtensilID,
+                LoggedDate = DateTime.UtcNow,
+                Status = MaintenanceStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
 
             _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 
-            return conditionLog;
-        }
+            // Create a DTO with the equipment name we already fetched
+            var dto = new ConditionLogDto
+            {
+                DamageDeviceId = conditionLog.DamageDeviceId,
+                Name = conditionLog.Name,
+                Description = conditionLog.Description,
+                Status = conditionLog.Status,
+                LoggedDate = conditionLog.LoggedDate,
+                UpdatedAt = conditionLog.UpdatedAt,
+                EquipmentName = equipmentName,
+                EquipmentType = failureDto.HotPotInventoryId.HasValue ? EquipmentType.HotPot : EquipmentType.Utensil,
+                EquipmentId = failureDto.HotPotInventoryId ?? failureDto.UtensilID
+            };
 
-        public async Task<DamageDevice> UpdateResolutionTimelineAsync(int conditionLogId, MaintenanceStatus status, DateTime estimatedResolutionTime, string message)
+            return dto;
+        }
+     
+
+        public async Task<ConditionLogDetailDto> GetConditionLogByIdAsync(int conditionLogId)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.DamageDeviceId == conditionLogId);
-
-            if (conditionLog == null)
-                throw new KeyNotFoundException($"Condition log with ID {conditionLogId} not found");
-
-            conditionLog.Status = status;
-            conditionLog.Description = message;
-            conditionLog.UpdatedAt = DateTime.UtcNow;
-
-            await _unitOfWork.CommitAsync();
-
-            return conditionLog;
-        }
-
-        public async Task<DamageDevice> GetConditionLogByIdAsync(int conditionLogId)
-        {
-            return await _unitOfWork.Repository<DamageDevice>()
                 .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
+                .Include(c => c.ReplacementRequests)
+                    .ThenInclude(r => r.AssignedStaff)
                 .FirstOrDefaultAsync();
+
+            if (conditionLog == null)
+                return null;
+
+            return MapToConditionLogDetailDto(conditionLog);
         }
 
-        public async Task<IEnumerable<DamageDevice>> GetActiveConditionLogsAsync()
+        public async Task<IEnumerable<ConditionLogDto>> GetActiveConditionLogsAsync()
         {
-            return await _unitOfWork.Repository<DamageDevice>()
+            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
                 .GetAll(c => c.Status != MaintenanceStatus.Completed)
                 .Include(c => c.HotPotInventory)
                 .Include(c => c.Utensil)
                 .OrderByDescending(c => c.LoggedDate)
                 .ToListAsync();
-        }
 
-        public async Task<IEnumerable<DamageDevice>> GetConditionLogsByStatusAsync(MaintenanceStatus status)
-        {
-            return await _unitOfWork.Repository<DamageDevice>()
-                .GetAll(c => c.Status == status)
-                .Include(c => c.HotPotInventory)
-                .Include(c => c.Utensil)
-                .OrderByDescending(c => c.LoggedDate)
-                .ToListAsync();
-        }
+            return conditionLogs.Select(MapToConditionLogDto);
+        }            
 
-        public async Task<IEnumerable<int>> GetAffectedCustomerIdsAsync(int conditionLogId)
+        private ConditionLogDto MapToConditionLogDto(DamageDevice conditionLog)
         {
-            var conditionLog = await GetConditionLogByIdAsync(conditionLogId);
             if (conditionLog == null)
-                return new List<int>();
-
-            var affectedCustomerIds = new HashSet<int>();
-
-            // Check for customers who have submitted replacement requests for this condition log
-            if (conditionLog.ReplacementRequests != null && conditionLog.ReplacementRequests.Any())
             {
-                foreach (var request in conditionLog.ReplacementRequests)
-                {
-                    if (request.CustomerId > 0)
-                        affectedCustomerIds.Add(request.CustomerId);
-                }
+                return null;
             }
 
-            // Check for customers with active orders using the affected equipment
+            var dto = new ConditionLogDto
+            {
+                DamageDeviceId = conditionLog.DamageDeviceId,
+                Name = conditionLog.Name,
+                Description = conditionLog.Description,
+                Status = conditionLog.Status,
+                LoggedDate = conditionLog.LoggedDate,
+                UpdatedAt = conditionLog.UpdatedAt
+            };
+
+            // Determine equipment type and details
             if (conditionLog.HotPotInventoryId.HasValue)
             {
-                // Get customers who have orders with this hot pot inventory in sell order details
-                var hotPotSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable()
-                    .Where(od => od.HotpotInventoryId == conditionLog.HotPotInventoryId)
-                    .Include(od => od.RentOrder)
-                        .ThenInclude(o => o.Order)
-                        .ThenInclude(o => o.User)
-                    .Where(od => od.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(od => od.RentOrder.Order.UserId)
-                    .Distinct()
-                    .ToListAsync();
+                dto.EquipmentType = EquipmentType.HotPot;
+                dto.EquipmentId = conditionLog.HotPotInventoryId.Value;
 
-                foreach (var customerId in hotPotSellCustomers)
+                // Safely access HotPotInventory name
+                if (conditionLog.HotPotInventory != null)
                 {
-                    affectedCustomerIds.Add(customerId);
-                }
-
-                // Get customers who have orders with this hot pot inventory in rent order details
-                var hotPotRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable()
-                    .Where(rd => rd.HotpotInventoryId == conditionLog.HotPotInventoryId)
-                    .Include(rd => rd.RentOrder)
-                        .ThenInclude(r => r.Order)
-                        .ThenInclude(o => o.User)
-                    .Where(rd => rd.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(rd => rd.RentOrder.Order.UserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                foreach (var customerId in hotPotRentCustomers)
-                {
-                    affectedCustomerIds.Add(customerId);
-                }
-            }
-
-            if (conditionLog.UtensilId.HasValue)
-            {
-                // Get customers who have orders with this utensil in sell order details
-                var utensilSellCustomers = await _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable()
-                    .Where(od => od.UtensilId == conditionLog.UtensilId)
-                    .Include(od => od.RentOrder)
-                        .ThenInclude(od => od.Order)
-                        .ThenInclude(o => o.User)
-                    .Where(od => od.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(od => od.RentOrder.Order.UserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                foreach (var customerId in utensilSellCustomers)
-                {
-                    affectedCustomerIds.Add(customerId);
-                }
-
-                // Get customers who have orders with this utensil in rent order details
-                var utensilRentCustomers = await _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable()
-                    .Where(rd => rd.UtensilId == conditionLog.UtensilId)
-                    .Include(rd => rd.RentOrder)
-                        .ThenInclude(rd => rd.Order)
-                        .ThenInclude(o => o.User)
-                    .Where(rd => rd.RentOrder.Order.User.RoleId == CUSTOMER_ROLE_ID)
-                    .Select(rd => rd.RentOrder.Order.UserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                foreach (var customerId in utensilRentCustomers)
-                {
-                    affectedCustomerIds.Add(customerId);
-                }
-            }
-
-            return affectedCustomerIds;
-        }
-
-        public async Task<bool> AssignStaffToResolutionAsync(int conditionLogId, int staffId)
-        {
-            try
-            {
-                // First check if the staff exists (user with staff role)
-                var staff = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
-
-                if (staff == null)
-                    return false;
-
-                // Then get the condition log with its replacement requests
-                var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                    .AsQueryable()
-                    .Where(c => c.DamageDeviceId == conditionLogId)
-                    .Include(c => c.ReplacementRequests)
-                    .FirstOrDefaultAsync();
-
-                if (conditionLog == null)
-                    return false;
-
-                // Update the condition log status
-                conditionLog.Status = MaintenanceStatus.InProgress;
-                conditionLog.SetUpdateDate();
-
-                // Create a replacement request if none exists to track the staff assignment
-                if (conditionLog.ReplacementRequests == null || !conditionLog.ReplacementRequests.Any())
-                {
-                    var replacementRequest = new ReplacementRequest
-                    {
-                        RequestReason = $"Maintenance for condition log #{conditionLogId}",
-                        Status = ReplacementRequestStatus.InProgress,
-                        RequestDate = DateTime.UtcNow,
-                        DamageDeviceId = conditionLogId,
-                        AssignedStaffId = staffId,
-                        EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
-                            EquipmentType.HotPot : EquipmentType.Utensil,
-                        HotPotInventoryId = conditionLog.HotPotInventoryId,
-                        UtensilId = conditionLog.UtensilId,
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.Repository<ReplacementRequest>().InsertAsync(replacementRequest);
+                    dto.EquipmentName = conditionLog.HotPotInventory.Hotpot.Name;
                 }
                 else
                 {
-                    // Update existing replacement requests to assign the staff
-                    foreach (var request in conditionLog.ReplacementRequests)
-                    {
-                        request.AssignedStaffId = staffId;
-                        request.Status = ReplacementRequestStatus.InProgress;
-                        request.ReviewDate = DateTime.UtcNow;
-                        request.ReviewNotes = $"Assigned to staff #{staffId} for resolution";
-                        request.SetUpdateDate();
-                    }
-                }
+                    // If HotPotInventory is null, fetch it from the database
+                    var hotPot = _unitOfWork.Repository<HotPotInventory>()
+                        .AsQueryable()
+                        .FirstOrDefault(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value);
 
-                await _unitOfWork.CommitAsync();
-                return true;
+                    dto.EquipmentName = hotPot?.Hotpot.Name ?? "Unknown Hot Pot";
+                }
             }
-            catch (Exception ex)
+            else if (conditionLog.UtensilId.HasValue)
             {
-                return false;
+                dto.EquipmentType = EquipmentType.Utensil;
+                dto.EquipmentId = conditionLog.UtensilId.Value;
+
+                // Safely access Utensil name
+                if (conditionLog.Utensil != null)
+                {
+                    dto.EquipmentName = conditionLog.Utensil.Name;
+                }
+                else
+                {
+                    // If Utensil is null, fetch it from the database
+                    var utensil = _unitOfWork.Repository<Utensil>()
+                        .AsQueryable()
+                        .FirstOrDefault(u => u.UtensilId == conditionLog.UtensilId.Value);
+
+                    dto.EquipmentName = utensil?.Name ?? "Unknown Utensil";
+                }
             }
+            else
+            {
+                // Handle the case where neither HotPotInventoryId nor UtensilId is set
+                dto.EquipmentName = "Unknown Equipment";
+            }
+
+            return dto;
         }
 
-        public async Task<bool> MarkAsResolvedAsync(int conditionLogId, string resolutionNotes)
+        private ConditionLogDetailDto MapToConditionLogDetailDto(DamageDevice conditionLog)
+        {
+            // Start with the base DTO properties
+            var dto = new ConditionLogDetailDto
+            {
+                DamageDeviceId = conditionLog.DamageDeviceId,
+                Name = conditionLog.Name,
+                Description = conditionLog.Description,
+                Status = conditionLog.Status,
+                LoggedDate = conditionLog.LoggedDate,
+                UpdatedAt = conditionLog.UpdatedAt,
+                ReplacementRequests = new List<ReplacementRequestDto>()
+            };
+
+            // Determine equipment type and details
+            if (conditionLog.HotPotInventoryId.HasValue)
+            {
+                dto.EquipmentType = EquipmentType.HotPot;
+                dto.EquipmentId = conditionLog.HotPotInventoryId.Value;
+                dto.EquipmentName = conditionLog.HotPotInventory.Hotpot.Name ?? "Unknown Hot Pot";
+            }
+            else if (conditionLog.UtensilId.HasValue)
+            {
+                dto.EquipmentType = EquipmentType.Utensil;
+                dto.EquipmentId = conditionLog.UtensilId.Value;
+                dto.EquipmentName = conditionLog.Utensil.Name ?? "Unknown Utensil";
+            }
+
+            // Map replacement requests if any
+            if (conditionLog.ReplacementRequests != null)
+            {
+                foreach (var request in conditionLog.ReplacementRequests)
+                {
+                    dto.ReplacementRequests.Add(new ReplacementRequestDto
+                    {
+                        ReplacementRequestId = request.ReplacementRequestId,
+                        RequestReason = request.RequestReason,
+                        AdditionalNotes = request.AdditionalNotes,
+                        Status = request.Status,
+                        RequestDate = request.RequestDate,
+                        ReviewDate = request.ReviewDate,
+                        ReviewNotes = request.ReviewNotes,
+                        AssignedStaffId = request.AssignedStaffId
+                    });
+
+                    // If there's an assigned staff, get their name
+                    if (request.AssignedStaffId.HasValue && request.AssignedStaff != null)
+                    {
+                        dto.AssignedStaffId = request.AssignedStaffId;
+                        dto.AssignedStaffName = $"{request.AssignedStaff.Name}";
+                    }
+                }
+            }
+
+            return dto;
+        }
+
+        public async Task<ConditionLogDto> VerifyEquipmentFailureAsync(int conditionLogId, bool isVerified, string verificationNotes, int staffId)
         {
             var conditionLog = await _unitOfWork.Repository<DamageDevice>()
-                .FindAsync(c => c.DamageDeviceId == conditionLogId);
+                .AsQueryable()
+                .Where(c => c.DamageDeviceId == conditionLogId)
+                .Include(c => c.HotPotInventory)
+                .Include(c => c.Utensil)
+                .FirstOrDefaultAsync();
 
             if (conditionLog == null)
-                return false;
+                return null;
 
-            conditionLog.Status = MaintenanceStatus.Completed;
-            conditionLog.Description = resolutionNotes;
-            conditionLog.UpdatedAt = DateTime.UtcNow;
+            // Update the condition log status based on verification
+            conditionLog.Status = isVerified ? MaintenanceStatus.Completed : MaintenanceStatus.Cancelled;
+            conditionLog.Description += $"\n\nVerification Notes ({DateTime.UtcNow:g}): {verificationNotes}";
+            conditionLog.SetUpdateDate();
+
+            // If verified, create a replacement request if none exists
+            if (isVerified && (conditionLog.ReplacementRequests == null || !conditionLog.ReplacementRequests.Any()))
+            {
+                var replacementRequest = new ReplacementRequest
+                {
+                    RequestReason = $"Verified equipment failure: {conditionLog.Name}",
+                    AdditionalNotes = verificationNotes,
+                    Status = ReplacementRequestStatus.Pending,
+                    RequestDate = DateTime.UtcNow,
+                    DamageDeviceId = conditionLogId,
+                    AssignedStaffId = staffId,
+                    EquipmentType = conditionLog.HotPotInventoryId.HasValue ?
+                        EquipmentType.HotPot : EquipmentType.Utensil,
+                    HotPotInventoryId = conditionLog.HotPotInventoryId,
+                    UtensilId = conditionLog.UtensilId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Repository<ReplacementRequest>().InsertAsync(replacementRequest);
+            }
 
             await _unitOfWork.CommitAsync();
 
-            return true;
+            // Map to DTO and return
+            return MapToConditionLogDto(conditionLog);
         }
     }
 }

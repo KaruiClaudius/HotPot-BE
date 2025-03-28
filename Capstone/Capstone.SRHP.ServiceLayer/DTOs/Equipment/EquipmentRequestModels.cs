@@ -8,30 +8,11 @@ using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
 {
-    public class UpdateResolutionTimelineRequest
-    {
-        [Required]
-        public MaintenanceStatus Status { get; set; }
-
-        [Required]
-        public DateTime EstimatedResolutionTime { get; set; }
-
-        [Required]
-        [StringLength(1000)]
-        public string Message { get; set; }
-    }
 
     public class AssignStaffRequest
     {
         [Required]
         public int StaffId { get; set; }
-    }
-
-    public class ResolveEquipmentRequest
-    {
-        [Required]
-        [StringLength(1000)]
-        public string ResolutionNotes { get; set; }
     }
 
     public class NotifyCustomerRequest
@@ -59,12 +40,52 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         [StringLength(1000)]
         public string? Description { get; set; }
 
-        // We'll set Status to Pending in the service
-        // We'll set ScheduleType based on the context (likely Emergency for failures)
-
-        // Equipment identifiers - only one should be provided
         public int? UtensilID { get; set; }
         public int? HotPotInventoryId { get; set; }
     }
 
+    public class ConditionLogDto
+    {
+        public int DamageDeviceId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public MaintenanceStatus Status { get; set; }
+        public DateTime LoggedDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        // Equipment information
+        public EquipmentType EquipmentType { get; set; }
+        public int? EquipmentId { get; set; }
+        public string EquipmentName { get; set; }
+    }
+    public class ConditionLogDetailDto : ConditionLogDto
+    {
+        // Additional details for detailed view
+        public int? AssignedStaffId { get; set; }
+        public string AssignedStaffName { get; set; }
+        public List<ReplacementRequestDto> ReplacementRequests { get; set; }
+        public List<int> AffectedCustomerIds { get; set; }
+    }
+
+    public class ReplacementRequestDto
+    {
+        public int ReplacementRequestId { get; set; }
+        public string RequestReason { get; set; }
+        public string AdditionalNotes { get; set; }
+        public ReplacementRequestStatus Status { get; set; }
+        public DateTime RequestDate { get; set; }
+        public DateTime? ReviewDate { get; set; }
+        public string ReviewNotes { get; set; }
+        public int? AssignedStaffId { get; set; }
+    }
+
+    public class VerifyEquipmentDto
+    {
+        [Required]
+        public bool IsVerified { get; set; }
+
+        [Required]
+        [StringLength(1000, MinimumLength = 5)]
+        public string VerificationNotes { get; set; }
+    }
 }

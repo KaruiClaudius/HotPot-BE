@@ -34,12 +34,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string? ReviewNotes { get; set; }
     }
 
-    public class AssignStaffDto
-    {
-        [Required]
-        public int StaffId { get; set; }
-    }
-
     public class UpdateReplacementStatusDto
     {
         [Required]
@@ -81,8 +75,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string ReviewNotes { get; set; }
         public DateTime? CompletionDate { get; set; }
         public EquipmentType EquipmentType { get; set; }
+        public string EquipmentName { get; set; }
 
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
