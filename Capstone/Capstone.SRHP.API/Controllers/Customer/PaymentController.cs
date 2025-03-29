@@ -27,7 +27,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
         [HttpGet("get-orders")]
-        [Authorize(Roles = "Admin,Staff")]
         public async Task<IActionResult> GetOrders()
         {
             var response = await _paymentService.GetOrders();
@@ -41,14 +40,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
         [HttpGet("get-order-user/{userId}")]
-        [Authorize]
         public async Task<IActionResult> GetOrderByUser(int userId)
         {
             // Check if the user is requesting their own data or is an admin
-            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            var isAdmin = User.IsInRole("Admin");
+            var currentUserId = int.Parse(User.FindFirstValue("uid"));
+            var isCustomer = User.IsInRole("Customer");
 
-            if (currentUserId != userId && !isAdmin)
+            if (currentUserId != userId && !isCustomer)
             {
                 return Forbid();
             }
@@ -68,10 +66,10 @@ namespace Capstone.HPTY.API.Controllers.Customer
         public async Task<IActionResult> CreatePaymentLink([FromBody] CreatePaymentLinkRequest body, [FromQuery] string phone, [FromQuery] int postId, [FromQuery] int transactionId)
         {
             // Verify the user is creating a payment for themselves
-            var currentUserPhone = User.FindFirstValue(ClaimTypes.MobilePhone);
-            var isAdmin = User.IsInRole("Admin");
+            var currentUserPhone = User.FindFirstValue("phone");
+            var isCustomer = User.IsInRole("Customer");
 
-            if (currentUserPhone != phone && !isAdmin)
+            if (currentUserPhone != phone && !isCustomer)
             {
                 return Forbid();
             }
@@ -97,7 +95,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var result = response.data as PaymentOrderResult;
                 if (result?.Transaction != null)
                 {
-                    var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                    var currentUserId = int.Parse(User.FindFirstValue("uid"));
                     var isAdmin = User.IsInRole("Admin");
 
                     if (result.Transaction.UserId != currentUserId && !isAdmin)
@@ -138,7 +136,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         var transaction = transactionProperty.GetValue(responseData) as Payment;
                         if (transaction != null)
                         {
-                            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                            var currentUserId = int.Parse(User.FindFirstValue("uid"));
                             var isAdmin = User.IsInRole("Admin");
 
                             if (transaction.UserId != currentUserId && !isAdmin)
