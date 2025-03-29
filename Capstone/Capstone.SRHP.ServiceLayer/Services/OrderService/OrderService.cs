@@ -675,11 +675,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             DateTime? rentalStartDate = null;
             DateTime? expectedReturnDate = null;
 
-            var user = await _unitOfWork.Repository<User>().GetById(userId);
-            if (request.Address == null)
-            {
-                request.Address = user.Address;
-            }
 
             foreach (var item in request.Items)
             {

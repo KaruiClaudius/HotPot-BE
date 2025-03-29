@@ -30,13 +30,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
         public CustomerOrderController(
             IOrderService orderService,
             IHotpotService hotpotService,
-            ILogger<CustomerOrderController> logger,
-            IUserService userService)
+            IUserService userService,
+            ILogger<CustomerOrderController> logger)
         {
             _orderService = orderService;
             _hotpotService = hotpotService;
-            _logger = logger;
             _userService = userService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -164,6 +164,16 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
 
                 var userId = int.Parse(userIdClaim);
+                var user = await _userService.GetByIdAsync(userId);
+                if(request.Address == null)
+                {
+                    if (user.Address == null)
+                    {
+                        return BadRequest(new { message = "User address is Missing" });
+                    }
+                    request.Address = user.Address;
+                }
+
                 var order = await _orderService.CreateAsync(request, userId);
                 var orderResponse = MapOrderToResponse(order);
                 return CreatedAtAction(nameof(GetOrderById), new { id = order.OrderId }, orderResponse);
