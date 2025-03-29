@@ -24,16 +24,19 @@ namespace Capstone.HPTY.API.Controllers.Customer
     {
         private readonly IOrderService _orderService;
         private readonly IHotpotService _hotpotService;
+        private readonly IUserService _userService;
         private readonly ILogger<CustomerOrderController> _logger;
 
         public CustomerOrderController(
             IOrderService orderService,
             IHotpotService hotpotService,
-            ILogger<CustomerOrderController> logger)
+            ILogger<CustomerOrderController> logger,
+            IUserService userService)
         {
             _orderService = orderService;
             _hotpotService = hotpotService;
             _logger = logger;
+            _userService = userService;
         }
 
         /// <summary>
