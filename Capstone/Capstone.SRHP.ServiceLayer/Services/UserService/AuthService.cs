@@ -5,6 +5,7 @@ using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,14 +20,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly EmailService _emailService;
         private readonly IJwtService _jwtService;
         private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUnitOfWork unitOfWork, IJwtService jwtService, ILogger<AuthService> logger)
+        public AuthService(IUnitOfWork unitOfWork, IJwtService jwtService, ILogger<AuthService> logger, EmailService emailService)
         {
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _logger = logger;
+            _emailService = emailService;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -231,13 +234,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         if (customerRole == null)
                             throw new ValidationException("Role Customer không tìm thấy");
 
+                        // Generate a random password
+                        string randomPassword = GenerateRandomPassword();
+
                         // Create new user
                         user = new User
                         {
                             Email = payload.Email,
                             Name = payload.Name,
-                            // Generate a random password since the user won't use it
-                            Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                            // Store the hashed password
+                            Password = BCrypt.Net.BCrypt.HashPassword(randomPassword),
                             RoleId = customerRole.RoleId,
                             LoyatyPoint = 0, // Initialize loyalty points for new customers
                             CreatedAt = DateTime.UtcNow,
@@ -246,20 +252,59 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                         _unitOfWork.Repository<User>().Insert(user);
                         await _unitOfWork.CommitAsync();
+
+                        // Send the password email
+                        await _emailService.SendPasswordEmailAsync(user.Email, user.Name, randomPassword);
                     }
                 }
 
                 // Generate JWT token and return auth response
                 return await GenerateAuthResponseAsync(user);
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Đăng nhập Google gặp trục trặc: " + ex.Message);
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Đăng nhập Google gặp trục trặc: " + ex.Message);
+                }
+            });
+        }
+
+        private string GenerateRandomPassword()
+        {
+            // Generate a secure random password with at least one uppercase, one lowercase, one digit, and one special character
+            const string uppercaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string lowercaseChars = "abcdefghijklmnopqrstuvwxyz";
+            const string digitChars = "0123456789";
+            const string specialChars = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+            const string allChars = uppercaseChars + lowercaseChars + digitChars + specialChars;
+
+            var random = new Random();
+            var password = new char[12]; // 12 characters long
+
+            // Ensure at least one of each type
+            password[0] = uppercaseChars[random.Next(uppercaseChars.Length)];
+            password[1] = lowercaseChars[random.Next(lowercaseChars.Length)];
+            password[2] = digitChars[random.Next(digitChars.Length)];
+            password[3] = specialChars[random.Next(specialChars.Length)];
+
+            // Fill the rest with random characters
+            for (int i = 4; i < password.Length; i++)
+            {
+                password[i] = allChars[random.Next(allChars.Length)];
             }
-        });
+
+            // Shuffle the password characters
+            for (int i = 0; i < password.Length; i++)
+            {
+                int swapIndex = random.Next(password.Length);
+                char temp = password[i];
+                password[i] = password[swapIndex];
+                password[swapIndex] = temp;
+            }
+
+            return new string(password);
         }
     }
 }

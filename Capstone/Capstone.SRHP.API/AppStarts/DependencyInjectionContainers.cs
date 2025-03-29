@@ -19,6 +19,7 @@ using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
 using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
+using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
@@ -26,7 +27,9 @@ using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Services.ShippingService;
 using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Net.payOS;
 
 namespace Capstone.HPTY.API.AppStarts
@@ -119,6 +122,9 @@ namespace Capstone.HPTY.API.AppStarts
             // Rent Order Services
             services.AddScoped<IRentOrderService, RentOrderService>();
             services.AddScoped<IEquipmentReturnService, EquipmentReturnService>();
+
+            // Email Service
+            services.AddTransient<IEmailSender, EmailService>();
 
             // External Services
             services.AddHttpClient();

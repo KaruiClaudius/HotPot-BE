@@ -1,8 +1,10 @@
 using System.Reflection;
 using Capstone.HPTY.API.AppStarts;
 using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Configuration;
 
 var root = Directory.GetCurrentDirectory();
 var dotenvPath = Path.Combine(root, ".env");
@@ -32,6 +34,9 @@ builder.Services.ConfigureAuthService(builder.Configuration);
 
 // Add SignalR
 builder.Services.AddSignalR();
+
+// Add Email
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
 // Add Mapster
 TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
