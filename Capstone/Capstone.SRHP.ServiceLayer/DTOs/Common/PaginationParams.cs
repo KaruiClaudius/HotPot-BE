@@ -44,4 +44,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Common
         public DateTime? FromDate { get; set; }
         public DateTime? ToDate { get; set; }
     }
+
+    public class EquipmentConditionFilterDto : PaginationParams
+    {
+        public string? EquipmentType { get; set; }
+        public int? EquipmentId { get; set; }
+        public MaintenanceStatus? Status { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? SortBy { get; set; } = "LoggedDate";
+        public bool SortDescending { get; set; } = true;
+    }
 }

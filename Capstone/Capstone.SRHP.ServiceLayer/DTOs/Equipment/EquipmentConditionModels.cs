@@ -37,4 +37,58 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         [Required]
         public MaintenanceScheduleType ScheduleType { get; set; }
     }
+
+    public class EquipmentConditionDto
+    {
+        public int DamageDeviceId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public MaintenanceStatus Status { get; set; }
+        public DateTime LoggedDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        // Equipment information
+        public string EquipmentType { get; set; } // "HotPot" or "Utensil"
+        public int EquipmentId { get; set; }
+        public string EquipmentName { get; set; }
+    }
+
+    public class EquipmentConditionDetailDto : EquipmentConditionDto
+    {
+        public DateTime? UpdatedAt { get; set; }
+        public string EquipmentSerialNumber { get; set; }
+        public string EquipmentTypeName { get; set; } // For utensils, this would be the utensil type name
+        public string EquipmentMaterial { get; set; } // For utensils
+
+        // Additional maintenance information
+        public string MaintenanceNotes { get; set; }
+    }
+
+    public class EquipmentConditionListItemDto
+    {
+        public int DamageDeviceId { get; set; }
+        public string Name { get; set; }
+        public MaintenanceStatus Status { get; set; }
+        public DateTime LoggedDate { get; set; }
+        public string EquipmentType { get; set; }
+        public string EquipmentName { get; set; }
+    }
+
+    public class CreateEquipmentConditionRequest
+    {
+        [Required]
+        [StringLength(100, MinimumLength = 3)]
+        public string Name { get; set; }
+
+        [StringLength(1000)]
+        public string Description { get; set; }
+
+        [Required]
+        public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Pending;
+
+        // Only one of these should be provided
+        public int? HotPotInventoryId { get; set; }
+        public int? UtensilId { get; set; }
+    }
+
 }
