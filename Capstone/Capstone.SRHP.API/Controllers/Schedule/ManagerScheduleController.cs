@@ -40,7 +40,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Get the current manager's work schedule
         /// </summary>
         [HttpGet("my-schedule")]
-        public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetMySchedule()
+        public async Task<ActionResult<IEnumerable<ManagerWorkShiftDto>>> GetMySchedule()
         {
             try
             {
@@ -57,7 +57,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     return NotFound($"Manager record not found for user ID {userId}");
 
                 var shifts = await _scheduleService.GetManagerWorkShiftsAsync(userId);
-                var shiftDtos = shifts.Adapt<List<WorkShiftDto>>();
+                var shiftDtos = shifts.Adapt<List<ManagerWorkShiftDto>>();
 
                 return Ok(shiftDtos);
             }
@@ -87,7 +87,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     staffSchedules.Add(new StaffScheduleDto
                     {
                         Staff = staff.Adapt<StaffDto>(),
-                        WorkShifts = shifts.Adapt<List<WorkShiftDto>>()
+                        WorkShifts = shifts.Adapt<List<StaffWorkShiftDto>>()
                     });
                 }
 
@@ -118,7 +118,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 var staffSchedule = new StaffScheduleDto
                 {
                     Staff = staff.Adapt<StaffDto>(),
-                    WorkShifts = shifts.Adapt<List<WorkShiftDto>>()
+                    WorkShifts = shifts.Adapt<List<StaffWorkShiftDto>>()
                 };
 
                 return Ok(staffSchedule);
@@ -137,11 +137,21 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         {
             try
             {
+                // Validate the day parameter
+                if (day == WorkDays.None)
+                {
+                    return Ok(Array.Empty<StaffDto>());
+                }
+
                 // Get all staff members
                 var allStaff = await _staffService.GetAllStaffAsync();
 
                 // Filter staff members who work on the specified day
-                var staffOnDay = allStaff.Where(s => (s.WorkDays & day) != 0).ToList();
+                // Safely handle null WorkDays values
+                var staffOnDay = allStaff.Where(s =>
+                    s.WorkDays.HasValue && // Check if WorkDays has a value
+                    (s.WorkDays.Value & day) != 0 // Use .Value to safely access the value
+                ).ToList();
 
                 var staffDtos = staffOnDay.Adapt<List<StaffDto>>();
 
@@ -151,29 +161,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Get work shifts for a specific day
-        /// </summary>
-        [HttpGet("shifts-by-day")]
-        public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetShiftsByDay([FromQuery] WorkDays day)
-        {
-            try
-            {
-                // Get all work shifts
-                var allShifts = await _scheduleService.GetAllWorkShiftsAsync();
-
-                // Filter shifts that occur on the specified day
-                var shiftsOnDay = allShifts.Where(s => (s.DaysOfWeek & day) != 0).ToList();
-                var shiftDtos = shiftsOnDay.Adapt<List<WorkShiftDto>>();
-
-                return Ok(shiftDtos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
+        }       
     }
 }
