@@ -10,9 +10,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
 {
     public class CreateOrderRequest
     {
-        [Required]
         [StringLength(500)]
-        public string Address { get; set; }
+        public string? Address { get; set; }
 
         [StringLength(1000)]
         public string? Notes { get; set; }
@@ -22,7 +21,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
 
         public int? DiscountId { get; set; }
 
-        [Required]
         public PaymentType PaymentType { get; set; }
     }
 }
