@@ -125,6 +125,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Email Service
             services.AddTransient<IEmailSender, EmailService>();
+            services.AddScoped<EmailService>();
 
             // External Services
             services.AddHttpClient();
