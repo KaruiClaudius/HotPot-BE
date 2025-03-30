@@ -48,7 +48,7 @@ public class CustomerCustomizationController : ControllerBase
         {
             // Get user ID from claims
 
-            var userIdClaim = User.FindFirstValue("uid");
+            var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
@@ -88,7 +88,7 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirstValue("uid");
+            var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
@@ -150,7 +150,7 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirstValue("uid");
+            var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
@@ -195,7 +195,7 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirstValue("uid");
+            var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });
@@ -244,7 +244,7 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             // Get user ID from claims
-            var userIdClaim = User.FindFirstValue("uid");
+            var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "User ID not found in token" });

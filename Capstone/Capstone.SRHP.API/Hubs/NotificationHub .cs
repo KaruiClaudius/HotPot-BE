@@ -56,7 +56,7 @@ namespace Capstone.HPTY.API.Hubs
             }
 
             // Add user to their user-specific group
-            var userId = Context.User.FindFirst("uid")?.Value;
+            var userId = Context.User.FindFirst("id")?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
@@ -83,7 +83,7 @@ namespace Capstone.HPTY.API.Hubs
             }
 
             // Remove user from their user-specific group
-            var userId = Context.User.FindFirst("uid")?.Value;
+            var userId = Context.User.FindFirst("id")?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"User_{userId}");

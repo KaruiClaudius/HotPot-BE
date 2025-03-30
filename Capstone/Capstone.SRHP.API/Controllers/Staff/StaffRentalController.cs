@@ -40,7 +40,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             try
             {
                 // Get current staff ID from claims
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
@@ -117,7 +117,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             try
             {
                 // Get current staff ID from claims
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 

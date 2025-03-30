@@ -43,7 +43,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         public async Task<IActionResult> GetOrderByUser(int userId)
         {
             // Check if the user is requesting their own data or is an admin
-            var currentUserId = int.Parse(User.FindFirstValue("uid"));
+            var currentUserId = int.Parse(User.FindFirstValue("id"));
             var isCustomer = User.IsInRole("Customer");
 
             if (currentUserId != userId && !isCustomer)
@@ -95,7 +95,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var result = response.data as PaymentOrderResult;
                 if (result?.Transaction != null)
                 {
-                    var currentUserId = int.Parse(User.FindFirstValue("uid"));
+                    var currentUserId = int.Parse(User.FindFirstValue("id"));
                     var isAdmin = User.IsInRole("Admin");
 
                     if (result.Transaction.UserId != currentUserId && !isAdmin)
@@ -136,7 +136,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         var transaction = transactionProperty.GetValue(responseData) as Payment;
                         if (transaction != null)
                         {
-                            var currentUserId = int.Parse(User.FindFirstValue("uid"));
+                            var currentUserId = int.Parse(User.FindFirstValue("id"));
                             var isAdmin = User.IsInRole("Admin");
 
                             if (transaction.UserId != currentUserId && !isAdmin)

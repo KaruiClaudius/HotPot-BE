@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
@@ -592,7 +593,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 Title = feedback.Title,
                 UserName = feedback.User?.Name ?? "Unknown",
                 OrderId = feedback.OrderId,
-                ApprovalStatus = feedback.ApprovalStatus,
+                ApprovalStatus = feedback.ApprovalStatus.GetDisplayName(),
                 HasResponse = !string.IsNullOrEmpty(feedback.Response),
                 CreatedAt = feedback.CreatedAt,
                 ResponseDate = feedback.ResponseDate,
@@ -615,7 +616,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 OrderId = feedback.OrderId,
                 UserId = feedback.UserId,
                 UserName = feedback.User?.Name,
-                ApprovalStatus = feedback.ApprovalStatus,
+                ApprovalStatus = feedback.ApprovalStatus.GetDisplayName(),
                 ApprovalDate = feedback.ApprovalDate,
                 RejectionReason = feedback.RejectionReason,
                 CreatedAt = feedback.CreatedAt,
