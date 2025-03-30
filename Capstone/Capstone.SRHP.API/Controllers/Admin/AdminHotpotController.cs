@@ -9,6 +9,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
 
 namespace Capstone.HPTY.API.Controllers.Admin
@@ -198,11 +199,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (!string.IsNullOrEmpty(request.Size))
                     existingHotpot.Size = request.Size;
 
-                // Description can be null
-                existingHotpot.Description = request.Description;
+                if (!string.IsNullOrEmpty(request.Description))
+                    existingHotpot.Description = request.Description;
 
-                // ImageURLs can be null
-                existingHotpot.ImageURLs = request.ImageURLs;
+                if (request.ImageURLs != null && request.ImageURLs.Any())
+                    existingHotpot.ImageURLs = request.ImageURLs;
 
                 if (request.Price > 0)
                     existingHotpot.Price = request.Price;
@@ -210,8 +211,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.BasePrice > 0)
                     existingHotpot.BasePrice = request.BasePrice;
 
-
-                // Don't set Quantity or InventoryID - let the service handle it
 
                 await _hotpotService.UpdateAsync(id, existingHotpot, request.SeriesNumbers);
 

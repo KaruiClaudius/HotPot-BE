@@ -284,26 +284,113 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 // If series numbers are provided, update inventory items and quantity
                 if (seriesNumbers != null && seriesNumbers.Length > 0)
                 {
-                    // Validate serial numbers
-                    await ValidateSerialNumbers(id, seriesNumbers);
-
                     // Get existing inventory items
                     var existingItems = await _unitOfWork.Repository<HotPotInventory>()
                         .FindAll(i => i.HotpotId == id && !i.IsDelete)
                         .ToListAsync();
 
-                    // Soft delete all existing items
-                    foreach (var item in existingItems)
+                    var existingSerialNumbers = existingItems.Select(i => i.SeriesNumber).ToList();
+
+                    // Check if any items are currently rented
+                    var rentedItems = existingItems.Where(i => i.Status == HotpotStatus.Rented).ToList();
+                    var rentedSerialNumbers = rentedItems.Select(i => i.SeriesNumber).ToList();
+
+                    // Check if any rented items are being removed
+                    var removedRentedItems = rentedSerialNumbers
+                        .Where(sn => !seriesNumbers.Contains(sn))
+                        .ToList();
+
+                    if (removedRentedItems.Any())
                     {
-                        item.SoftDelete();
+                        throw new ValidationException(
+                            $"Cannot remove hotpot inventory items that are currently rented: {string.Join(", ", removedRentedItems)}");
                     }
-                    await _unitOfWork.CommitAsync();
+
+                    // Identify new serial numbers (ones that don't exist in the current inventory)
+                    var newSerialNumbers = seriesNumbers
+                        .Where(sn => !existingSerialNumbers.Contains(sn))
+                        .ToArray();
+
+                    // Validate the new serial numbers using the existing method
+                    if (newSerialNumbers.Length > 0)
+                    {
+                        // First check for duplicates within the new serial numbers
+                        var duplicates = newSerialNumbers
+                            .GroupBy(s => s)
+                            .Where(g => g.Count() > 1)
+                            .Select(g => g.Key)
+                            .ToList();
+
+                        if (duplicates.Any())
+                        {
+                            throw new ValidationException($"Duplicate new serial numbers found: {string.Join(", ", duplicates)}");
+                        }
+
+                        // Then check if any of these new serial numbers already exist in the system
+                        var existingInSystem = await _unitOfWork.Repository<HotPotInventory>()
+                            .FindAll(i => newSerialNumbers.Contains(i.SeriesNumber) && !i.IsDelete)
+                            .Select(i => i.SeriesNumber)
+                            .ToListAsync();
+
+                        if (existingInSystem.Any())
+                        {
+                            throw new ValidationException($"Serial numbers already exist in the system: {string.Join(", ", existingInSystem)}");
+                        }
+                    }
+
+                    // Identify serial numbers to remove
+                    var serialNumbersToRemove = existingSerialNumbers
+                        .Where(sn => !seriesNumbers.Contains(sn))
+                        .ToList();
 
                     // Add new inventory items
-                    await AddInventoryItemsInternalAsync(id, seriesNumbers);
+                    foreach (var serialNumber in newSerialNumbers)
+                    {
+                        var inventoryItem = new HotPotInventory
+                        {
+                            SeriesNumber = serialNumber,
+                            HotpotId = id,
+                            Status = HotpotStatus.Available
+                        };
+
+                        await _unitOfWork.Repository<HotPotInventory>().InsertAsync(inventoryItem);
+                    }
+
+                    // Remove items that are no longer in the list
+                    foreach (var item in existingItems.Where(i => serialNumbersToRemove.Contains(i.SeriesNumber)))
+                    {
+                        item.SoftDelete();
+                        await _unitOfWork.Repository<HotPotInventory>().Update(item, item.HotPotInventoryId);
+                    }
 
                     // Update quantity to match the number of series numbers
                     entity.Quantity = seriesNumbers.Length;
+                }
+                else if (seriesNumbers != null && seriesNumbers.Length == 0)
+                {
+                    // If an empty array is provided, remove all non-rented items
+                    var existingItems = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAll(i => i.HotpotId == id && !i.IsDelete)
+                        .ToListAsync();
+
+                    // Check if any items are currently rented
+                    var rentedItems = existingItems.Where(i => i.Status == HotpotStatus.Rented).ToList();
+
+                    if (rentedItems.Any())
+                    {
+                        throw new ValidationException(
+                            $"Cannot remove all hotpot inventory items because some are currently rented: {string.Join(", ", rentedItems.Select(i => i.SeriesNumber))}");
+                    }
+
+                    // Remove all items
+                    foreach (var item in existingItems)
+                    {
+                        item.SoftDelete();
+                        await _unitOfWork.Repository<HotPotInventory>().Update(item, item.HotPotInventoryId);
+                    }
+
+                    // Set quantity to 0
+                    entity.Quantity = 0;
                 }
                 else
                 {
@@ -325,7 +412,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 }
             });
         }
-
 
         public async Task DeleteAsync(int id)
         {

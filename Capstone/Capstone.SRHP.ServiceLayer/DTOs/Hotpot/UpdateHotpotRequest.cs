@@ -11,20 +11,20 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
     {
 
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
 
         [StringLength(50)]
-        public string Material { get; set; }
+        public string? Material { get; set; }
 
 
         [StringLength(10)]
-        public string Size { get; set; }
+        public string? Size { get; set; }
 
         [StringLength(1000)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
-        public string[] ImageURLs { get; set; }
+        public string[]? ImageURLs { get; set; }
 
  
         [Range(0, double.MaxValue)]
@@ -43,6 +43,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Hotpot
         //public int InventoryID { get; set; }
 
         // Optional array of series numbers for inventory items
-        public string[] SeriesNumbers { get; set; }
+        public string[]? SeriesNumbers { get; set; }
     }
 }
