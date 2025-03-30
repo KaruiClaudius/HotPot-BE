@@ -33,7 +33,20 @@ builder.Services.InstallService(builder.Configuration);
 builder.Services.ConfigureAuthService(builder.Configuration);
 
 // Add SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options => {
+    options.EnableDetailedErrors = true;
+})
+.AddJsonProtocol(options => {
+    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+});
+
+// Add logging
+//builder.Logging.AddConsole();
+//builder.Logging.AddDebug();
+//builder.Logging.SetMinimumLevel(LogLevel.Debug);
+//builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
+//builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
+
 
 // Add Email
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));

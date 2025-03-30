@@ -6,24 +6,69 @@ namespace Capstone.HPTY.API.Hubs
     {
         private static Dictionary<int, string> _userConnections = new Dictionary<int, string>();
 
-        public async Task RegisterConnection(int userId, string userType, int userTypeId)
+        public async Task RegisterConnection()
         {
-            // Store the connection ID with the user ID
-            _userConnections[userId] = Context.ConnectionId;
-
-            // Add to the appropriate group based on user type
-            if (userType.ToLower() == "manager")
+            try
             {
-                await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"Manager_{userTypeId}");
-            }
-            else if (userType.ToLower() == "staff")
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, "Staff");
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"Staff_{userTypeId}");
-            }
+                // Extract userId from JWT claims
+                var userIdClaim = Context.User.FindFirst("uid");
 
-            await Clients.Caller.SendAsync("ConnectionRegistered", userId);
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    await Clients.Caller.SendAsync("ChatError", "User ID not found or invalid");
+                    return;
+                }
+
+                // Store the connection ID with the user ID
+                _userConnections[userId] = Context.ConnectionId;
+
+                // Get the user's role from the Context
+                var userRole = Context.User.FindFirst("role")?.Value ?? "Customer";
+
+                // Extract userTypeId if available (you might need to add this claim to your JWT token)
+                var userTypeIdClaim = Context.User.FindFirst("userTypeId");
+                int userTypeId = 0;
+                if (userTypeIdClaim != null)
+                {
+                    int.TryParse(userTypeIdClaim.Value, out userTypeId);
+                }
+
+                // Add to the appropriate group based on role
+                if (userRole.ToLower() == "manager")
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
+                    if (userTypeId > 0)
+                    {
+                        await Groups.AddToGroupAsync(Context.ConnectionId, $"Manager_{userTypeId}");
+                    }
+                }
+                else if (userRole.ToLower() == "staff")
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, "Staff");
+                    if (userTypeId > 0)
+                    {
+                        await Groups.AddToGroupAsync(Context.ConnectionId, $"Staff_{userTypeId}");
+                    }
+                }
+                else
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, "Customers");
+                }
+
+                await Clients.Caller.SendAsync("ConnectionRegistered", userId);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.Error.WriteLine($"Error in RegisterConnection: {ex.Message}");
+                Console.Error.WriteLine(ex.StackTrace);
+
+                // Send a more detailed error to the client
+                await Clients.Caller.SendAsync("ChatError", $"Registration error: {ex.Message}");
+
+                // Rethrow to let SignalR handle it
+                throw;
+            }
         }
 
         public async Task NotifyScheduleUpdate(int userId, DateTime shiftDate)
