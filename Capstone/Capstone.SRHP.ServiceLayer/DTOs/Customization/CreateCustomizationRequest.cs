@@ -26,8 +26,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         [Required]
         public int BrothId { get; set; }
 
-        public string[]? ImageURLs { get; set; }
-
         [Required]
         public List<CustomizationIngredientDto> Ingredients { get; set; }
     }

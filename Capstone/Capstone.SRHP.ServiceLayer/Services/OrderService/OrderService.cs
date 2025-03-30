@@ -973,6 +973,368 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Reload order with all related entities
             return await GetByIdAsync(order.OrderId);
         }
+
+        public async Task<Order> RemoveItemFromCartAsync(int userId, int orderDetailId, bool isSellItem)
+        {
+            try
+            {
+                // Find the user's pending order
+                var pendingOrder = await _unitOfWork.Repository<Order>()
+                    .IncludeNested(query =>
+                        query.Include(o => o.SellOrder)
+                             .ThenInclude(so => so.SellOrderDetails)
+                             .Include(o => o.RentOrder)
+                             .ThenInclude(ro => ro.RentOrderDetails))
+                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
+
+                if (pendingOrder == null)
+                    throw new NotFoundException("No pending order found");
+
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    decimal priceReduction = 0;
+
+                    if (isSellItem)
+                    {
+                        // Find the sell order detail
+                        var detail = pendingOrder.SellOrder?.SellOrderDetails
+                            .FirstOrDefault(d => d.SellOrderDetailId == orderDetailId && !d.IsDelete);
+
+                        if (detail == null)
+                            throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
+
+                        // Calculate price reduction
+                        priceReduction = detail.UnitPrice * detail.Quantity;
+
+                        // Soft delete the detail
+                        detail.SoftDelete();
+                        await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
+
+                        // Update sell order subtotal
+                        pendingOrder.SellOrder.SubTotal -= priceReduction;
+                        await _unitOfWork.Repository<SellOrder>().Update(pendingOrder.SellOrder, pendingOrder.SellOrder.OrderId);
+
+                        // Check if there are any remaining sell items
+                        var remainingSellItems = await _unitOfWork.Repository<SellOrderDetail>()
+                            .AnyAsync(d => d.OrderId == pendingOrder.OrderId && !d.IsDelete);
+
+                        pendingOrder.HasSellItems = remainingSellItems;
+                    }
+                    else
+                    {
+                        // Find the rent order detail
+                        var detail = pendingOrder.RentOrder?.RentOrderDetails
+                            .FirstOrDefault(d => d.RentOrderDetailId == orderDetailId && !d.IsDelete);
+
+                        if (detail == null)
+                            throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
+
+                        // Calculate price reduction
+                        priceReduction = detail.RentalPrice * detail.Quantity;
+
+                        // Soft delete the detail
+                        detail.SoftDelete();
+                        await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
+
+                        // Update rent order subtotal and deposit
+                        pendingOrder.RentOrder.SubTotal -= priceReduction;
+
+                        // Recalculate hotpot deposit if needed
+                        if (detail.HotpotInventoryId.HasValue)
+                        {
+                            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                .IncludeNested(q => q.Include(h => h.Hotpot))
+                                .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
+
+                            if (hotpotInventory != null)
+                            {
+                                pendingOrder.RentOrder.HotpotDeposit -= hotpotInventory.Hotpot.Price * 0.7m;
+                            }
+                        }
+
+                        await _unitOfWork.Repository<RentOrder>().Update(pendingOrder.RentOrder, pendingOrder.RentOrder.OrderId);
+
+                        // Check if there are any remaining rent items
+                        var remainingRentItems = await _unitOfWork.Repository<RentOrderDetail>()
+                            .AnyAsync(d => d.OrderId == pendingOrder.OrderId && !d.IsDelete);
+
+                        pendingOrder.HasRentItems = remainingRentItems;
+                    }
+
+                    // Recalculate total price
+                    decimal newTotal = 0;
+
+                    if (pendingOrder.HasSellItems)
+                    {
+                        newTotal += pendingOrder.SellOrder.SubTotal;
+                    }
+
+                    if (pendingOrder.HasRentItems)
+                    {
+                        newTotal += pendingOrder.RentOrder.SubTotal;
+                    }
+
+                    // Apply discount if any
+                    if (pendingOrder.DiscountId.HasValue)
+                    {
+                        var discount = await _discountService.GetByIdAsync(pendingOrder.DiscountId.Value);
+                        if (discount != null && await _discountService.IsDiscountValidAsync(pendingOrder.DiscountId.Value))
+                        {
+                            newTotal = newTotal * (1 - (discount.DiscountPercentage / 100m));
+                        }
+                    }
+
+                    pendingOrder.TotalPrice = newTotal;
+                    await _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
+
+                    // If there are no items left, delete the order using the existing DeleteAsync method
+                    if (!pendingOrder.HasSellItems && !pendingOrder.HasRentItems)
+                    {
+                        // We need to commit our changes first to ensure the order is properly updated
+                        await _unitOfWork.CommitAsync();
+
+                        // Now call the existing DeleteAsync method to handle inventory returns and payment cancellation
+                        await DeleteAsync(pendingOrder.OrderId);
+                        return null;
+                    }
+
+                    await _unitOfWork.CommitAsync();
+
+                    // Update payment records if needed
+                    var payment = await _unitOfWork.Repository<Payment>()
+                        .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
+
+                    if (payment != null)
+                    {
+                        payment.Price = newTotal;
+                        await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+                        await _unitOfWork.CommitAsync();
+                    }
+
+                    // Reload order with all related entities
+                    return await GetByIdAsync(pendingOrder.OrderId);
+                });
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing item from cart");
+                throw;
+            }
+        }
+
+        public async Task<Order> UpdateCartItemsQuantityAsync(int userId, CartItemUpdate[] itemUpdates)
+        {
+            if (itemUpdates == null || !itemUpdates.Any())
+                throw new ValidationException("No items to update");
+
+            // Validate all quantities are positive
+            foreach (var update in itemUpdates)
+            {
+                if (update.NewQuantity <= 0)
+                    throw new ValidationException("Quantity must be greater than zero");
+            }
+
+            try
+            {
+                // Find the user's pending order
+                var pendingOrder = await _unitOfWork.Repository<Order>()
+                    .IncludeNested(query =>
+                        query.Include(o => o.SellOrder)
+                             .ThenInclude(so => so.SellOrderDetails)
+                             .Include(o => o.RentOrder)
+                             .ThenInclude(ro => ro.RentOrderDetails))
+                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
+
+                if (pendingOrder == null)
+                    throw new NotFoundException("No pending order found");
+
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    decimal totalPriceDifference = 0;
+                    decimal sellSubTotalDifference = 0;
+                    decimal rentSubTotalDifference = 0;
+
+                    // First, validate all updates to ensure we can complete the transaction
+                    foreach (var update in itemUpdates)
+                    {
+                        if (update.IsSellItem)
+                        {
+                            // Find the sell order detail
+                            var detail = pendingOrder.SellOrder?.SellOrderDetails
+                                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+                            if (detail == null)
+                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+
+                            // Check inventory if it's an ingredient
+                            if (detail.IngredientId.HasValue)
+                            {
+                                var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
+
+                                // Calculate how many more we need
+                                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                if (quantityDifference > 0 && ingredient.Quantity < quantityDifference)
+                                    throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
+                            }
+                        }
+                        else
+                        {
+                            // Find the rent order detail
+                            var detail = pendingOrder.RentOrder?.RentOrderDetails
+                                .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+                            if (detail == null)
+                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+
+                            // For utensils, check inventory
+                            if (detail.UtensilId.HasValue)
+                            {
+                                var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+
+                                // Calculate how many more we need
+                                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                if (quantityDifference > 0 && utensil.Quantity < quantityDifference)
+                                    throw new ValidationException($"Only {utensil.Quantity} of {utensil.Name} is available");
+                            }
+                            else if (detail.HotpotInventoryId.HasValue)
+                            {
+                                // Hotpot inventory items are individual units, so we can't change quantity
+                                throw new ValidationException("Cannot change quantity for individual hotpot inventory items");
+                            }
+                        }
+                    }
+
+                    // Now process all updates
+                    foreach (var update in itemUpdates)
+                    {
+                        if (update.IsSellItem)
+                        {
+                            // Find the sell order detail
+                            var detail = pendingOrder.SellOrder?.SellOrderDetails
+                                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+                            // Update inventory if it's an ingredient
+                            if (detail.IngredientId.HasValue)
+                            {
+                                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                if (quantityDifference != 0)
+                                {
+                                    await _ingredientService.UpdateIngredientQuantityAsync(
+                                        detail.IngredientId.Value, -quantityDifference);
+                                }
+                            }
+
+                            // Calculate price difference
+                            decimal priceDifference = detail.UnitPrice * (update.NewQuantity - detail.Quantity);
+                            sellSubTotalDifference += priceDifference;
+                            totalPriceDifference += priceDifference;
+
+                            // Update quantity
+                            detail.Quantity = update.NewQuantity;
+                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
+                        }
+                        else
+                        {
+                            // Find the rent order detail
+                            var detail = pendingOrder.RentOrder?.RentOrderDetails
+                                .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+                            // For utensils, update inventory
+                            if (detail.UtensilId.HasValue)
+                            {
+                                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                if (quantityDifference != 0)
+                                {
+                                    await _utensilService.UpdateUtensilQuantityAsync(
+                                        detail.UtensilId.Value, -quantityDifference);
+                                }
+
+                                // Calculate price difference
+                                decimal priceDifference = detail.RentalPrice * (update.NewQuantity - detail.Quantity);
+                                rentSubTotalDifference += priceDifference;
+                                totalPriceDifference += priceDifference;
+
+                                // Update quantity
+                                detail.Quantity = update.NewQuantity;
+                                await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
+                            }
+                        }
+                    }
+
+                    // Update subtotals
+                    if (pendingOrder.HasSellItems && sellSubTotalDifference != 0)
+                    {
+                        pendingOrder.SellOrder.SubTotal += sellSubTotalDifference;
+                        await _unitOfWork.Repository<SellOrder>().Update(pendingOrder.SellOrder, pendingOrder.SellOrder.OrderId);
+                    }
+
+                    if (pendingOrder.HasRentItems && rentSubTotalDifference != 0)
+                    {
+                        pendingOrder.RentOrder.SubTotal += rentSubTotalDifference;
+                        await _unitOfWork.Repository<RentOrder>().Update(pendingOrder.RentOrder, pendingOrder.RentOrder.OrderId);
+                    }
+
+                    // Recalculate total price
+                    decimal newTotal = 0;
+
+                    if (pendingOrder.HasSellItems)
+                    {
+                        newTotal += pendingOrder.SellOrder.SubTotal;
+                    }
+
+                    if (pendingOrder.HasRentItems)
+                    {
+                        newTotal += pendingOrder.RentOrder.SubTotal;
+                    }
+
+                    // Apply discount if any
+                    if (pendingOrder.DiscountId.HasValue)
+                    {
+                        var discount = await _discountService.GetByIdAsync(pendingOrder.DiscountId.Value);
+                        if (discount != null && await _discountService.IsDiscountValidAsync(pendingOrder.DiscountId.Value))
+                        {
+                            newTotal = newTotal * (1 - (discount.DiscountPercentage / 100m));
+                        }
+                    }
+
+                    pendingOrder.TotalPrice = newTotal;
+                    await _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
+                    await _unitOfWork.CommitAsync();
+
+                    // Update payment records if needed
+                    var payment = await _unitOfWork.Repository<Payment>()
+                        .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
+
+                    if (payment != null)
+                    {
+                        payment.Price = newTotal;
+                        await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+                        await _unitOfWork.CommitAsync();
+                    }
+
+                    // Reload order with all related entities
+                    return await GetByIdAsync(pendingOrder.OrderId);
+                });
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating cart items quantity");
+                throw;
+            }
+        }
+
         public async Task<Order> UpdateAsync(int id, UpdateOrderRequest request)
         {
             try

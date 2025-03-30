@@ -165,7 +165,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 var userId = int.Parse(userIdClaim);
                 var user = await _userService.GetByIdAsync(userId);
-                if(request.Address == null)
+                if (request.Address == null)
                 {
                     if (user.Address == null)
                     {
@@ -186,6 +186,89 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 _logger.LogError(ex, "Error creating order");
                 return StatusCode(500, new { message = "An error occurred while creating the order" });
+            }
+        }
+
+        /// <summary>
+        /// Update quantities of multiple items in the cart
+        /// </summary>
+        [HttpPut("cart/items")]
+        public async Task<ActionResult<OrderResponse>> UpdateCartItems([FromBody] UpdateCartItemsRequest request)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirstValue("uid");
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new { message = "Invalid user identification" });
+                }
+
+                if (request.Items == null || !request.Items.Any())
+                {
+                    return BadRequest(new { message = "No items to update" });
+                }
+
+                var updatedCart = await _orderService.UpdateCartItemsQuantityAsync(userId, request.Items);
+
+                if (updatedCart == null)
+                {
+                    return Ok(new { message = "Cart is now empty" });
+                }
+
+                var cartResponse = MapOrderToResponse(updatedCart);
+                return Ok(cartResponse);
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating cart items");
+                return StatusCode(500, new { message = "An error occurred while updating the cart" });
+            }
+        }
+
+        /// <summary>
+        /// Remove an item from the cart
+        /// </summary>
+        [HttpDelete("cart/items")]
+        public async Task<ActionResult<OrderResponse>> RemoveCartItem([FromBody] RemoveCartItemRequest request)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirstValue("uid");
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new { message = "Invalid user identification" });
+                }
+
+                var updatedCart = await _orderService.RemoveItemFromCartAsync(userId, request.OrderDetailId, request.IsSellItem);
+
+                if (updatedCart == null)
+                {
+                    return Ok(new { message = "Cart is now empty" });
+                }
+
+                var cartResponse = MapOrderToResponse(updatedCart);
+                return Ok(cartResponse);
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing item from cart");
+                return StatusCode(500, new { message = "An error occurred while removing the item from the cart" });
             }
         }
 
@@ -276,39 +359,39 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpPost("calculate-deposit")]
-        public async Task<ActionResult> CalculateDeposit([FromBody] List<OrderItemRequest> items)
-        {
-            try
-            {
-                // Calculate hotpot deposit manually
-                decimal hotpotDeposit = 0;
+        //[HttpPost("calculate-deposit")]
+        //public async Task<ActionResult> CalculateDeposit([FromBody] List<OrderItemRequest> items)
+        //{
+        //    try
+        //    {
+        //        // Calculate hotpot deposit manually
+        //        decimal hotpotDeposit = 0;
 
-                foreach (var item in items)
-                {
-                    if (item.HotpotID.HasValue)
-                    {
-                        var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                        if (hotpot != null)
-                        {
-                            // Calculate hotpot deposit (70% of hotpot price)
-                            hotpotDeposit += (decimal)(hotpot.Price * 0.7m * item.Quantity);
-                        }
-                    }
-                }
+        //        foreach (var item in items)
+        //        {
+        //            if (item.HotpotID.HasValue)
+        //            {
+        //                var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
+        //                if (hotpot != null)
+        //                {
+        //                    // Calculate hotpot deposit (70% of hotpot price)
+        //                    hotpotDeposit += (decimal)(hotpot.Price * 0.7m * item.Quantity);
+        //                }
+        //            }
+        //        }
 
-                return Ok(new
-                {
-                    hotpotDeposit,
-                    totalDeposit = hotpotDeposit
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calculating deposit");
-                return StatusCode(500, new { message = "An error occurred while calculating the deposit" });
-            }
-        }
+        //        return Ok(new
+        //        {
+        //            hotpotDeposit,
+        //            totalDeposit = hotpotDeposit
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error calculating deposit");
+        //        return StatusCode(500, new { message = "An error occurred while calculating the deposit" });
+        //    }
+        //}
 
 
         // Helper methods
