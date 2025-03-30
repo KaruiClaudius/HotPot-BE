@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 {
-    public class CreateCustomizationIngredientsRequest
+    public class CustomizationIngredientsRequest
     {
         public int IngredientID { get; set; }
         public int Quantity { get; set; }

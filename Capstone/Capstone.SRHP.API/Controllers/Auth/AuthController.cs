@@ -67,7 +67,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
         {
             try
             {
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {
@@ -165,7 +165,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
         {
             try
             {
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {
@@ -286,7 +286,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Logout()
         {
-            var userIdClaim = User.FindFirst("uid");
+            var userIdClaim = User.FindFirst("id");
             if (userIdClaim == null)
                 return Unauthorized(new ApiErrorResponse
                 {
@@ -316,7 +316,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
             try
             {
                 // Get the current user's ID from the token
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized(new ApiErrorResponse
                     {

@@ -33,7 +33,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         public async Task<ActionResult<ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>>> GetMyReplacementRequests()
         {
             // Get the current customer ID using your custom AuthenTools
-            var userIdClaim = User.FindFirst("uid");
+            var userIdClaim = User.FindFirst("id");
             if (userIdClaim == null)
                 return Unauthorized("User ID not found in claims");
 
@@ -59,7 +59,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> GetReplacementRequestById(int id)
         {
             // Get the current customer ID using your custom AuthenTools
-            var userIdClaim = User.FindFirst("uid");
+            var userIdClaim = User.FindFirst("id");
             if (userIdClaim == null)
                 return Unauthorized("User ID not found in claims");
 
@@ -94,7 +94,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Get the current customer ID using your custom AuthenTools
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
@@ -149,7 +149,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Get the current customer ID from the authenticated user
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 

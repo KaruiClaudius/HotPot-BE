@@ -27,6 +27,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         public int BrothId { get; set; }
 
         [Required]
-        public List<CustomizationIngredientDto> Ingredients { get; set; }
+        public List<CustomizationIngredientsRequest> Ingredients { get; set; }
     }
 }

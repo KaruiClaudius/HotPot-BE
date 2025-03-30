@@ -35,7 +35,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Get current user ID from claims
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
@@ -56,7 +56,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             try
             {
                 // Get current user ID from claims
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
@@ -84,7 +84,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
 
                 // Verify the rental belongs to the current user
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
@@ -114,7 +114,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 // Verify the rental belongs to the current user
                 var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
-                var userIdClaim = User.FindFirst("uid");
+                var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 

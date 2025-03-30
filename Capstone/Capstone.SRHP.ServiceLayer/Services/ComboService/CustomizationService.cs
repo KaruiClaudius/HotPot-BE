@@ -200,7 +200,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
        string? note,
        int size,
        int brothId,
-       List<CustomizationIngredientDto> ingredients,
+       List<CustomizationIngredientsRequest> ingredients,
        string[]? imageURLs = null)
         {
             // Validate inputs
@@ -353,7 +353,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
 
-        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientDto> ingredients)
+        public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientsRequest> ingredients)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -540,7 +540,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
 
-        public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(int comboId, int size, int brothId, List<CustomizationIngredientDto> ingredients)
+        public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(int comboId, int size, int brothId, List<CustomizationIngredientsRequest> ingredients)
         {
             try
             {

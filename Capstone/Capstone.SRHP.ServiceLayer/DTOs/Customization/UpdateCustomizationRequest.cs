@@ -26,6 +26,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
     public string[]? ImageURLs { get; set; }
 
     [Required]
-    public List<CustomizationIngredientDto> Ingredients { get; set; }
+    public List<CustomizationIngredientsRequest> Ingredients { get; set; }
 }
 }
