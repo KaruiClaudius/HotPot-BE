@@ -241,13 +241,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
             try
             {
                 var user = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == id);
-
-                if (user.Role.Name == "Admin")
-                    throw new ValidationException("Không thể xoá tài khoản Admin");
+                    .FindAsync(u => u.UserId == id, include: query => query.Include(u => u.Role));
 
                 if (user == null)
                     throw new NotFoundException($"Không tìm thấy tài khoản");
+
+                if (user.Role.Name == "Admin")
+                    throw new ValidationException("Không thể xoá tài khoản Admin");
 
                 // Soft delete user
                 user.SoftDelete();
