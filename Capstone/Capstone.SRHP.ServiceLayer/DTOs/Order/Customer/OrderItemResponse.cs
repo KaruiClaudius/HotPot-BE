@@ -17,10 +17,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public string ImageUrl { get; set; }
         public int? ItemId { get; set; }
         public bool IsSellable { get; set; }
-
-        // Rental-specific properties
-        public DateTime? RentalStartDate { get; set; }
-        public DateTime? ExpectedReturnDate { get; set; }
-        public DateTime? ActualReturnDate { get; set; }
     }
 }

@@ -15,16 +15,19 @@ public class CustomerCustomizationController : ControllerBase
 {
     private readonly ICustomizationService _customizationService;
     private readonly IIngredientService _ingredientService;
+    private readonly IComboService _comboService;
     private readonly ILogger<CustomerCustomizationController> _logger;
 
     public CustomerCustomizationController(
         ICustomizationService customizationService,
         IIngredientService ingredientService,
         ISizeDiscountService sizeDiscountService,
+        IComboService comboService,
         ILogger<CustomerCustomizationController> logger)
     {
         _customizationService = customizationService;
         _ingredientService = ingredientService;
+        _comboService = comboService;
         _logger = logger;
     }
 
@@ -153,6 +156,10 @@ public class CustomerCustomizationController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token" });
             }
 
+            var combo = await _comboService.GetByIdAsync(request.ComboId);
+            if (combo == null)
+                return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
                 userId,
@@ -161,7 +168,7 @@ public class CustomerCustomizationController : ControllerBase
                 request.Size,
                 request.BrothId,
                 request.Ingredients,
-                request.ImageURLs);
+                combo.ImageURLs);
 
             var customizationDto = MapToCustomizationDetailDto(customization);
             return CreatedAtAction(nameof(GetCustomizationById), new { id = customization.CustomizationId }, customizationDto);

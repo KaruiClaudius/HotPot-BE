@@ -11,9 +11,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
     {
         [Range(1, int.MaxValue)]
         public int? Quantity { get; set; }
-        public decimal? VolumeWeight { get; set; }
-        public string? Unit { get; set; }
-
         public int? UtensilID { get; set; }
         public int? IngredientID { get; set; }
         public int? HotpotID { get; set; }
