@@ -40,4 +40,53 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         [Required]
         public int UserId { get; set; }
     }
+
+    // Basic DTO for chat session list view
+
+    public class ChatSessionDto
+    {
+        public int ChatSessionId { get; set; }
+        public int CustomerId { get; set; }
+        public string CustomerName { get; set; }
+        public int? ManagerId { get; set; }
+        public string ManagerName { get; set; }
+        public bool IsActive { get; set; }
+        public string Topic { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    // Detailed DTO for chat session with messages
+    public class ChatSessionDetailDto
+    {
+        public int ChatSessionId { get; set; }
+        public int CustomerId { get; set; }
+        public string CustomerName { get; set; }
+        public int? ManagerId { get; set; }
+        public string ManagerName { get; set; }
+        public bool IsActive { get; set; }
+        public string Topic { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
+    }
+
+    // DTO for chat messages
+    public class ChatMessageDto
+    {
+        public int ChatMessageId { get; set; }
+        public int SenderUserId { get; set; }
+        public string SenderName { get; set; }
+        public int ReceiverUserId { get; set; }
+        public string ReceiverName { get; set; }
+        public string Message { get; set; }
+        public bool IsRead { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    // DTO for unread message count
+    public class UnreadMessageCountDto
+    {
+        public int Count { get; set; }
+    }
 }

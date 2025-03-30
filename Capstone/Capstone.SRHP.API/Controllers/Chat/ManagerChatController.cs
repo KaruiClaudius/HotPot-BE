@@ -1,5 +1,4 @@
 ﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
@@ -7,11 +6,13 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-[Route("api/[controller]")]
+[Route("api/manager/chat")]
 [ApiController]
 [Authorize(Roles = "Manager")]
-
 public class ManagerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
@@ -27,25 +28,25 @@ public class ManagerChatController : ControllerBase
 
     [HttpGet("sessions/active")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSession>>>> GetActiveSessions()
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetActiveSessions()
     {
         var sessions = await _chatService.GetActiveChatSessionsAsync();
-        return Ok(ApiResponse<IEnumerable<ChatSession>>.SuccessResponse(sessions, "Active chat sessions retrieved successfully"));
+        return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Active chat sessions retrieved successfully"));
     }
 
     [HttpGet("sessions/manager/{managerId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSession>>>> GetManagerChatHistory(int managerId)
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetManagerChatHistory(int managerId)
     {
         try
         {
             var sessions = await _chatService.GetManagerChatHistoryAsync(managerId);
-            return Ok(ApiResponse<IEnumerable<ChatSession>>.SuccessResponse(sessions, "Manager chat history retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Manager chat history retrieved successfully"));
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
-            return NotFound(ApiResponse<IEnumerable<ChatSession>>.ErrorResponse(ex.Message));
+            return NotFound(ApiResponse<IEnumerable<ChatSessionDto>>.ErrorResponse(ex.Message));
         }
     }
 
@@ -54,7 +55,7 @@ public class ManagerChatController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<ChatSession>>> AssignManagerToSession(
+    public async Task<ActionResult<ApiResponse<ChatSessionDto>>> AssignManagerToSession(
     int sessionId,
     [FromBody] AssignManagerRequest request)
     {
@@ -63,46 +64,36 @@ public class ManagerChatController : ControllerBase
             // Validate request
             if (request == null || request.ManagerId <= 0)
             {
-                return BadRequest(ApiResponse<ChatSession>.ErrorResponse("Invalid request. Manager ID is required."));
+                return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse("Invalid request. Manager ID is required."));
             }
 
             var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, request.ManagerId);
 
-            // Get manager name directly from the User entity
-            string managerName = "Manager";
-            if (session.Manager != null)
-            {
-                managerName = session.Manager.Name ?? "Manager";
-            }
-
             // Notify the customer that a manager has accepted their chat
-            if (session.Customer != null)
-            {
-                await _chatHubContext.Clients.User(session.CustomerId.ToString()).SendAsync("ChatAccepted",
-                    session.ChatSessionId,
-                    request.ManagerId,
-                    managerName);
-            }
+            await _chatHubContext.Clients.User(session.CustomerId.ToString()).SendAsync("ChatAccepted",
+                session.ChatSessionId,
+                request.ManagerId,
+                session.ManagerName ?? "Manager");
 
             // Notify other managers that this chat has been taken
             await _chatHubContext.Clients.Group("Managers").SendAsync("ChatTaken",
                 sessionId,
                 request.ManagerId);
 
-            return Ok(ApiResponse<ChatSession>.SuccessResponse(session, "Manager assigned to chat session successfully"));
+            return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Manager assigned to chat session successfully"));
         }
         catch (NotFoundException ex)
         {
-            return NotFound(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+            return NotFound(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
         }
         catch (ValidationException ex)
         {
-            return BadRequest(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
             return StatusCode(StatusCodes.Status500InternalServerError,
-                ApiResponse<ChatSession>.ErrorResponse("An error occurred while assigning the manager to the chat session. Please try again later."));
+                ApiResponse<ChatSessionDto>.ErrorResponse("An error occurred while assigning the manager to the chat session. Please try again later."));
         }
     }
 
@@ -111,7 +102,7 @@ public class ManagerChatController : ControllerBase
     [HttpGet("messages/session/{sessionId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatMessage>>>> GetSessionMessages(
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatMessageDto>>>> GetSessionMessages(
         int sessionId,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20)
@@ -119,20 +110,20 @@ public class ManagerChatController : ControllerBase
         try
         {
             var messages = await _chatService.GetSessionMessagesAsync(sessionId, pageNumber, pageSize);
-            return Ok(ApiResponse<IEnumerable<ChatMessage>>.SuccessResponse(messages, "Session messages retrieved successfully"));
+            return Ok(ApiResponse<IEnumerable<ChatMessageDto>>.SuccessResponse(messages, "Session messages retrieved successfully"));
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
-            return NotFound(ApiResponse<IEnumerable<ChatMessage>>.ErrorResponse(ex.Message));
+            return NotFound(ApiResponse<IEnumerable<ChatMessageDto>>.ErrorResponse(ex.Message));
         }
     }
 
     [HttpGet("messages/unread/{userId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatMessage>>>> GetUnreadMessages(int userId)
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatMessageDto>>>> GetUnreadMessages(int userId)
     {
         var messages = await _chatService.GetUnreadMessagesAsync(userId);
-        return Ok(ApiResponse<IEnumerable<ChatMessage>>.SuccessResponse(messages, "Unread messages retrieved successfully"));
+        return Ok(ApiResponse<IEnumerable<ChatMessageDto>>.SuccessResponse(messages, "Unread messages retrieved successfully"));
     }
 
     [HttpGet("messages/unread/count/{userId}")]
@@ -147,39 +138,36 @@ public class ManagerChatController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ApiResponse<ChatSession>>> EndChatSession(int sessionId)
+    public async Task<ActionResult<ApiResponse<ChatSessionDto>>> EndChatSession(int sessionId)
     {
         try
         {
             var session = await _chatService.EndChatSessionAsync(sessionId);
 
             // Notify both parties that the chat has ended
-            if (session.Customer != null)
-            {
-                await _chatHubContext.Clients.User(session.Customer.UserId.ToString()).SendAsync("ChatEnded", sessionId);
-            }
+            await _chatHubContext.Clients.User(session.CustomerId.ToString()).SendAsync("ChatEnded", sessionId);
 
-            if (session.Manager != null && session.ManagerId.HasValue)
+            if (session.ManagerId.HasValue)
             {
                 await _chatHubContext.Clients.User(session.ManagerId.Value.ToString()).SendAsync("ChatEnded", sessionId);
             }
 
-            return Ok(ApiResponse<ChatSession>.SuccessResponse(session, "Chat session ended successfully"));
+            return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Chat session ended successfully"));
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
-            return NotFound(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+            return NotFound(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<ChatSession>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
         }
     }
 
     [HttpPost("messages")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage([FromBody] SendMessageRequest request)
+    public async Task<ActionResult<ApiResponse<ChatMessageDto>>> SendMessage([FromBody] SendMessageRequest request)
     {
         try
         {
@@ -193,11 +181,11 @@ public class ManagerChatController : ControllerBase
                 message.Message,
                 message.CreatedAt);
 
-            return Ok(ApiResponse<ChatMessage>.SuccessResponse(message, "Message sent successfully"));
+            return Ok(ApiResponse<ChatMessageDto>.SuccessResponse(message, "Message sent successfully"));
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<ChatMessage>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<ChatMessageDto>.ErrorResponse(ex.Message));
         }
     }
 
@@ -218,5 +206,24 @@ public class ManagerChatController : ControllerBase
         }
 
         return Ok(ApiResponse<bool>.SuccessResponse(true, "Message marked as read successfully"));
+    }
+
+    [HttpGet("sessions/{sessionId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<ChatSessionDetailDto>>> GetChatSession(int sessionId)
+    {
+        try
+        {
+            var session = await _chatService.GetChatSessionAsync(sessionId);
+            if (session == null)
+                return NotFound(ApiResponse<ChatSessionDetailDto>.ErrorResponse($"Chat session with ID {sessionId} not found"));
+
+            return Ok(ApiResponse<ChatSessionDetailDto>.SuccessResponse(session, "Chat session retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<ChatSessionDetailDto>.ErrorResponse(ex.Message));
+        }
     }
 }

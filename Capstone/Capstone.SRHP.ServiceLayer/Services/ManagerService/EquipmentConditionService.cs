@@ -124,23 +124,44 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             var pagedResult = await query.ToPagedResultAsync(paginationParams);
             return pagedResult.ToPagedListItemDto();
         }
-   
+
         public async Task<PagedResult<EquipmentConditionListItemDto>> GetFilteredConditionLogsAsync(
     EquipmentConditionFilterDto filterParams)
         {
             IQueryable<DamageDevice> query = _unitOfWork.Repository<DamageDevice>().GetAll();
 
             // Apply filters
-            if (!string.IsNullOrEmpty(filterParams.EquipmentType) && filterParams.EquipmentId.HasValue)
+            // Filter by equipment type
+            if (!string.IsNullOrEmpty(filterParams.EquipmentType))
             {
-                if (filterParams.EquipmentType.ToLower() == "hotpot")
+                string equipmentType = filterParams.EquipmentType.ToLower();
+
+                if (equipmentType == "hotpot")
                 {
-                    query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId);
+                    query = query.Where(c => c.HotPotInventoryId != null);
+
+                    // If ID is also provided, further filter by ID
+                    if (filterParams.EquipmentId.HasValue)
+                    {
+                        query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId);
+                    }
                 }
-                else if (filterParams.EquipmentType.ToLower() == "utensil")
+                else if (equipmentType == "utensil")
                 {
-                    query = query.Where(c => c.UtensilId == filterParams.EquipmentId);
+                    query = query.Where(c => c.UtensilId != null);
+
+                    // If ID is also provided, further filter by ID
+                    if (filterParams.EquipmentId.HasValue)
+                    {
+                        query = query.Where(c => c.UtensilId == filterParams.EquipmentId);
+                    }
                 }
+            }
+            // If only equipment ID is provided without type (optional)
+            else if (filterParams.EquipmentId.HasValue)
+            {
+                query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId ||
+                                        c.UtensilId == filterParams.EquipmentId);
             }
 
             if (filterParams.Status.HasValue)

@@ -6,15 +6,47 @@ namespace Capstone.HPTY.API.Hubs
     {
         private static Dictionary<int, string> _adminConnections = new Dictionary<int, string>();
 
-        public async Task RegisterAdminConnection(int adminId)
+        public async Task RegisterAdminConnection()
         {
-            // Store the connection ID with the admin ID
-            _adminConnections[adminId] = Context.ConnectionId;
+            try
+            {
+                // Extract userId from JWT claims
+                var userIdClaim = Context.User.FindFirst("uid");
 
-            // Add to the admin group
-            await Groups.AddToGroupAsync(Context.ConnectionId, "Administrators");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int adminId))
+                {
+                    await Clients.Caller.SendAsync("ChatError", "Admin ID not found or invalid");
+                    return;
+                }
 
-            await Clients.Caller.SendAsync("ConnectionRegistered", adminId);
+                // Verify the user is actually an admin
+                var userRole = Context.User.FindFirst("role")?.Value;
+                if (userRole?.ToLower() != "admin")
+                {
+                    await Clients.Caller.SendAsync("ChatError", "Only administrators can register as admin");
+                    return;
+                }
+
+                // Store the connection ID with the admin ID
+                _adminConnections[adminId] = Context.ConnectionId;
+
+                // Add to the admin group
+                await Groups.AddToGroupAsync(Context.ConnectionId, "Administrators");
+
+                await Clients.Caller.SendAsync("ConnectionRegistered", adminId);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.Error.WriteLine($"Error in RegisterAdminConnection: {ex.Message}");
+                Console.Error.WriteLine(ex.StackTrace);
+
+                // Send a more detailed error to the client
+                await Clients.Caller.SendAsync("ChatError", $"Admin registration error: {ex.Message}");
+
+                // Rethrow to let SignalR handle it
+                throw;
+            }
         }
 
         public async Task NotifyLowStock(string equipmentType, string equipmentName, int currentQuantity, int threshold)

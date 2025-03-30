@@ -34,7 +34,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Get the current staff member's work schedule
         /// </summary>
         [HttpGet("my-schedule")]
-        public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetMySchedule()
+        public async Task<ActionResult<IEnumerable<StaffWorkShiftDto>>> GetMySchedule()
         {
             try
             {
@@ -51,7 +51,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     return NotFound($"Staff record not found for user ID {userId}");
 
                 var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.UserId);
-                var shiftDtos = shifts.Adapt<IEnumerable<WorkShiftDto>>();
+                var shiftDtos = shifts.Adapt<IEnumerable<StaffWorkShiftDto>>();
                 return Ok(shiftDtos);
             }
             catch (Exception ex)
