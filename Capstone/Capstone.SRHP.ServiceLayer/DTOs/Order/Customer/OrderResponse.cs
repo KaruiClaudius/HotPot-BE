@@ -24,5 +24,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public DateTime? RentalStartDate { get; set; }
         public DateTime? ExpectedReturnDate { get; set; }
         public DateTime? ActualReturnDate { get; set; }
-    }
+    }    
 }

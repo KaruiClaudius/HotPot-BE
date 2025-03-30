@@ -408,7 +408,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Type = order.Payment.Type.ToString(),
                     Status = order.Payment.Status.ToString(),
                     Amount = order.Payment.Price,
-                    CreatedAt = order.Payment.CreatedAt
+                    UpdateAt = order.Payment.UpdatedAt
                 };
             }
 
