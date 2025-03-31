@@ -291,688 +291,490 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+
         private async Task<Order> AddToExistingOrderAsync(Order existingOrder, CreateOrderRequest request, int userId)
         {
-            // Create order details for new items
-            var newSellOrderDetails = new List<SellOrderDetail>();
-            var newRentOrderDetails = new List<RentOrderDetail>();
-            decimal additionalTotal = 0;
-            decimal additionalSellSubTotal = 0;
-            decimal additionalRentSubTotal = 0;
-            decimal additionalHotpotDeposit = 0;
-            bool hasSellItems = existingOrder.HasSellItems;
-            bool hasRentItems = existingOrder.HasRentItems;
-
-            // Get existing rental dates if any
-            DateTime? rentalStartDate = existingOrder.RentOrder?.RentalStartDate;
-            DateTime? expectedReturnDate = existingOrder.RentOrder?.ExpectedReturnDate;
-
+            // Process items
             foreach (var item in request.Items)
             {
-                // Validate that only one item type is specified
-                int itemTypeCount = 0;
-                if (item.UtensilID.HasValue) itemTypeCount++;
-                if (item.IngredientID.HasValue) itemTypeCount++;
-                if (item.HotpotID.HasValue) itemTypeCount++;
-                if (item.CustomizationID.HasValue) itemTypeCount++;
-                if (item.ComboID.HasValue) itemTypeCount++;
-
-                if (itemTypeCount != 1)
-                    throw new ValidationException("Each order item must specify exactly one item type");
-
                 // Process each item type
-                if (item.UtensilID.HasValue)
+                if (item.HotpotID.HasValue && item.HotpotID > 0)
                 {
-                    var utensil = await _utensilService.GetUtensilByIdAsync(item.UtensilID.Value);
-                    if (utensil == null || !utensil.Status || utensil.Quantity < item.Quantity)
-                        throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
-
-                    // Check if this utensil is already in the order
-                    var existingDetail = existingOrder.RentOrder?.RentOrderDetails
-                        .FirstOrDefault(d => d.UtensilId == item.UtensilID && !d.IsDelete);
-
-                    if (existingDetail != null)
-                    {
-                        // Update existing detail
-                        existingDetail.Quantity += (int)item.Quantity;
-                        await _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.RentOrderDetailId);
-                    }
-                    else
-                    {
-                        // Add new detail
-                        var orderDetail = new RentOrderDetail
-                        {
-                            OrderId = existingOrder.OrderId,
-                            Quantity = (int)item.Quantity,
-                            RentalPrice = utensil.Price,
-                            UtensilId = item.UtensilID
-                        };
-
-                        newRentOrderDetails.Add(orderDetail);
-                    }
-
-                    decimal itemTotal = (decimal)(utensil.Price * item.Quantity);
-                    additionalRentSubTotal += itemTotal;
-                    additionalTotal += itemTotal;
-                    hasRentItems = true;
-
-                    // Set rental dates if not already set
-                    if (!rentalStartDate.HasValue)
-                    {
-                        rentalStartDate = DateTime.Now;
-                        expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
-                    }
+                    await ProcessHotpotItem(existingOrder, item);
                 }
-                else if (item.IngredientID.HasValue)
+                else if (item.IngredientID.HasValue && item.IngredientID > 0)
                 {
-                    var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
-                    if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {item.IngredientID} not found");
-
-                    // Check if the requested quantity is available
-                    if (ingredient.Quantity < item.Quantity)
-                        throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
-
-                    // Get the latest price
-                    var latestPrice = ingredient.IngredientPrices
-                        .OrderByDescending(p => p.EffectiveDate)
-                        .FirstOrDefault()?.Price ?? 0;
-
-                    // Check if this ingredient is already in the order
-                    var existingDetail = existingOrder.SellOrder?.SellOrderDetails
-                        .FirstOrDefault(d => d.IngredientId == item.IngredientID && !d.IsDelete);
-
-                    if (existingDetail != null)
-                    {
-                        // Update existing detail
-                        existingDetail.Quantity += (int)item.Quantity;
-                        await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
-                    }
-                    else
-                    {
-                        // Add new detail
-                        var orderDetail = new SellOrderDetail
-                        {
-                            OrderId = existingOrder.OrderId,
-                            Quantity = (int)item.Quantity,
-                            UnitPrice = latestPrice,
-                            IngredientId = item.IngredientID
-                        };
-
-                        newSellOrderDetails.Add(orderDetail);
-                    }
-
-                    decimal itemTotal = (decimal)(latestPrice * item.Quantity);
-                    additionalSellSubTotal += itemTotal;
-                    additionalTotal += itemTotal;
-                    hasSellItems = true;
+                    await ProcessIngredientItem(existingOrder, item);
                 }
-                else if (item.HotpotID.HasValue)
+                else if (item.UtensilID.HasValue && item.UtensilID > 0)
                 {
-                    var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                    if (hotpot == null)
-                        throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
-
-                    // Get available hotpot inventory items
-                    var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
-                        .AsQueryable()
-                        .Where(h => h.HotpotId == item.HotpotID && h.Status == HotpotStatus.Available && !h.IsDelete)
-                        .Take((int)item.Quantity)
-                        .ToListAsync();
-
-                    if (availableHotpots.Count < item.Quantity)
-                        throw new ValidationException($"Only {availableHotpots.Count} hotpots of type {hotpot.Name} are available");
-
-                    hasRentItems = true;
-
-                    // Set rental dates if not already set
-                    if (!rentalStartDate.HasValue)
-                    {
-                        rentalStartDate = DateTime.Now;
-                        expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
-                    }
-
-                    // Create a separate order detail for each hotpot inventory item
-                    foreach (var hotpotInventory in availableHotpots)
-                    {
-                        hotpotInventory.Hotpot.Quantity -= 1;
-                        hotpotInventory.Status = HotpotStatus.Rented;
-                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-
-                        // Create rent order detail with reference to specific hotpot inventory
-                        var orderDetail = new RentOrderDetail
-                        {
-                            OrderId = existingOrder.OrderId,
-                            Quantity = 1, // Each hotpot inventory item is a single unit
-                            RentalPrice = hotpot.Price,
-                            HotpotInventoryId = hotpotInventory.HotPotInventoryId
-                        };
-
-                        newRentOrderDetails.Add(orderDetail);
-                        decimal itemTotal = hotpot.Price;
-                        additionalRentSubTotal += itemTotal;
-                        additionalTotal += itemTotal;
-
-                        // Calculate hotpot deposit (70% of hotpot price)
-                        additionalHotpotDeposit += hotpot.Price * 0.7m;
-                    }
+                    await ProcessUtensilItem(existingOrder, item);
                 }
-                else if (item.CustomizationID.HasValue)
+                else if (item.CustomizationID.HasValue && item.CustomizationID > 0)
                 {
-                    var customization = await _customizationService.GetByIdAsync(item.CustomizationID.Value);
-                    if (customization == null)
-                        throw new ValidationException($"Customization with ID {item.CustomizationID} not found");
-
-                    // Verify the customization belongs to the current user
-                    if (customization.UserId != userId)
-                        throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
-
-                    // Check if this customization is already in the order
-                    var existingDetail = existingOrder.SellOrder?.SellOrderDetails
-                        .FirstOrDefault(d => d.CustomizationId == item.CustomizationID && !d.IsDelete);
-
-                    if (existingDetail != null)
-                    {
-                        // Update existing detail
-                        existingDetail.Quantity += (int)item.Quantity;
-                        await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
-                    }
-                    else
-                    {
-                        // Add new detail
-                        var orderDetail = new SellOrderDetail
-                        {
-                            OrderId = existingOrder.OrderId,
-                            Quantity = (int)item.Quantity,
-                            UnitPrice = customization.TotalPrice,
-                            CustomizationId = item.CustomizationID
-                        };
-
-                        newSellOrderDetails.Add(orderDetail);
-                    }
-
-                    decimal itemTotal = (decimal)(customization.TotalPrice * item.Quantity);
-                    additionalSellSubTotal += itemTotal;
-                    additionalTotal += itemTotal;
-                    hasSellItems = true;
+                    await ProcessCustomizationItem(existingOrder, item);
                 }
-                else if (item.ComboID.HasValue)
+                else if (item.ComboID.HasValue && item.ComboID > 0)
                 {
-                    var combo = await _comboService.GetByIdAsync(item.ComboID.Value);
-                    if (combo == null)
-                        throw new ValidationException($"Combo with ID {item.ComboID} not found");
-
-                    // Check if this combo is already in the order
-                    var existingDetail = existingOrder.SellOrder?.SellOrderDetails
-                        .FirstOrDefault(d => d.ComboId == item.ComboID && !d.IsDelete);
-
-                    if (existingDetail != null)
-                    {
-                        // Update existing detail
-                        existingDetail.Quantity += (int)item.Quantity;
-                        await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
-                    }
-                    else
-                    {
-                        // Add new detail
-                        var orderDetail = new SellOrderDetail
-                        {
-                            OrderId = existingOrder.OrderId,
-                            Quantity = (int)item.Quantity,
-                            UnitPrice = combo.BasePrice,
-                            ComboId = item.ComboID
-                        };
-
-                        newSellOrderDetails.Add(orderDetail);
-                    }
-
-                    decimal itemTotal = (decimal)(combo.BasePrice * item.Quantity);
-                    additionalSellSubTotal += itemTotal;
-                    additionalTotal += itemTotal;
-                    hasSellItems = true;
+                    await ProcessComboItem(existingOrder, item);
                 }
             }
 
-            // Apply discount if provided or use existing discount
-            decimal discountPercentage = 0;
-            if (request.DiscountId.HasValue)
-            {
-                var discount = await _discountService.GetByIdAsync(request.DiscountId.Value);
-                if (discount == null)
-                    throw new ValidationException($"Discount with ID {request.DiscountId} not found");
+            // Calculate total price
+            await CalculateOrderTotalPrice(existingOrder);
 
-                // Validate discount is still valid
-                if (!await _discountService.IsDiscountValidAsync(request.DiscountId.Value))
-                    throw new ValidationException("The selected discount is not valid or has expired");
-
-                discountPercentage = discount.DiscountPercentage;
-                existingOrder.DiscountId = request.DiscountId;
-            }
-            else if (existingOrder.DiscountId.HasValue)
-            {
-                var existingDiscount = await _discountService.GetByIdAsync(existingOrder.DiscountId.Value);
-                if (existingDiscount != null && await _discountService.IsDiscountValidAsync(existingOrder.DiscountId.Value))
-                {
-                    discountPercentage = existingDiscount.DiscountPercentage;
-                }
-            }
-
-            // Calculate new total with discount
-            decimal newTotal = existingOrder.TotalPrice + additionalTotal;
-            if (discountPercentage > 0)
-            {
-                newTotal = newTotal * (1 - (discountPercentage / 100m));
-            }
-
-            // Update the main order
-            existingOrder.TotalPrice = newTotal;
-            existingOrder.HasSellItems = hasSellItems;
-            existingOrder.HasRentItems = hasRentItems;
-
-            // Update address and notes if provided
-            if (!string.IsNullOrEmpty(request.Address))
-            {
-                existingOrder.Address = request.Address;
-            }
-
-            if (!string.IsNullOrEmpty(request.Notes))
-            {
-                existingOrder.Notes = request.Notes;
-            }
-
-            await _unitOfWork.Repository<Order>().Update(existingOrder, existingOrder.OrderId);
-
-            // Update or create SellOrder if needed
-            if (hasSellItems)
-            {
-                if (existingOrder.SellOrder != null)
-                {
-                    existingOrder.SellOrder.SubTotal += additionalSellSubTotal;
-                    await _unitOfWork.Repository<SellOrder>().Update(existingOrder.SellOrder, existingOrder.SellOrder.OrderId);
-                }
-                else
-                {
-                    var sellOrder = new SellOrder
-                    {
-                        OrderId = existingOrder.OrderId,
-                        SubTotal = additionalSellSubTotal
-                    };
-                    await _unitOfWork.Repository<SellOrder>().InsertAsync(sellOrder);
-                }
-
-                // Insert new sell order details
-                foreach (var detail in newSellOrderDetails)
-                {
-                    await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(detail);
-                }
-            }
-
-            // Update or create RentOrder if needed
-            if (hasRentItems)
-            {
-                if (existingOrder.RentOrder != null)
-                {
-                    existingOrder.RentOrder.SubTotal += additionalRentSubTotal;
-                    existingOrder.RentOrder.HotpotDeposit += additionalHotpotDeposit;
-                    await _unitOfWork.Repository<RentOrder>().Update(existingOrder.RentOrder, existingOrder.RentOrder.OrderId);
-                }
-                else
-                {
-                    var rentOrder = new RentOrder
-                    {
-                        OrderId = existingOrder.OrderId,
-                        SubTotal = additionalRentSubTotal,
-                        HotpotDeposit = additionalHotpotDeposit,
-                        RentalStartDate = rentalStartDate.Value,
-                        ExpectedReturnDate = expectedReturnDate.Value
-                    };
-                    await _unitOfWork.Repository<RentOrder>().InsertAsync(rentOrder);
-                }
-
-                // Insert new rent order details
-                foreach (var detail in newRentOrderDetails)
-                {
-                    await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(detail);
-                }
-            }
-
+            // Update order
+            _unitOfWork.Repository<Order>().Update(existingOrder, existingOrder.OrderId);
             await _unitOfWork.CommitAsync();
 
-            // Update inventory quantities for non-hotpot items (hotpots are already handled)
-            foreach (var item in request.Items)
-            {
-                if (item.UtensilID.HasValue)
-                {
-                    await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, (int)-item.Quantity);
-                }
-                else if (item.IngredientID.HasValue)
-                {
-                    // Update ingredient quantity
-                    await _ingredientService.UpdateIngredientQuantityAsync(
-                        item.IngredientID.Value,
-                        -(int)item.Quantity);
-                }
-                // Note: HotPotInventory status is already updated above
-            }
-
-            // Reload order with all related entities
-            return await GetByIdAsync(existingOrder.OrderId);
+            return existingOrder;
         }
 
         private async Task<Order> CreateNewOrderAsync(CreateOrderRequest request, int userId)
         {
-            // Create order details
-            var sellOrderDetails = new List<SellOrderDetail>();
-            var rentOrderDetails = new List<RentOrderDetail>();
-            decimal totalPrice = 0;
-            decimal sellSubTotal = 0;
-            decimal rentSubTotal = 0;
-            decimal hotpotDeposit = 0;
-            bool hasSellItems = false;
-            bool hasRentItems = false;
+            // Get user's default address
+            var user = await _unitOfWork.Repository<User>().GetById(userId);
+            string address = user?.Address ?? "To be provided";
 
-            // Rental dates for RentOrder
-            DateTime? rentalStartDate = null;
-            DateTime? expectedReturnDate = null;
-
-
-            foreach (var item in request.Items)
-            {
-                // Validate that only one item type is specified
-                int itemTypeCount = 0;
-                if (item.UtensilID.HasValue) itemTypeCount++;
-                if (item.IngredientID.HasValue) itemTypeCount++;
-                if (item.HotpotID.HasValue) itemTypeCount++;
-                if (item.CustomizationID.HasValue) itemTypeCount++;
-                if (item.ComboID.HasValue) itemTypeCount++;
-
-                if (itemTypeCount != 1)
-                    throw new ValidationException("Each order item must specify exactly one item type");
-
-                // Get unit price based on item type
-                decimal unitPrice = 0;
-
-                if (item.UtensilID.HasValue)
-                {
-                    var utensil = await _utensilService.GetUtensilByIdAsync(item.UtensilID.Value);
-                    if (utensil == null || !utensil.Status || utensil.Quantity < item.Quantity)
-                        throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
-
-                    unitPrice = utensil.Price;
-                    hasRentItems = true;
-
-                    // Set rental dates if not already set
-                    if (!rentalStartDate.HasValue)
-                    {
-                        rentalStartDate = DateTime.Now;
-                        expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
-                    }
-
-                    // Create rent order detail for utensil
-                    var orderDetail = new RentOrderDetail
-                    {
-                        Quantity = (int)item.Quantity,
-                        RentalPrice = unitPrice,
-                        UtensilId = item.UtensilID
-                    };
-
-                    rentOrderDetails.Add(orderDetail);
-                    decimal itemTotal = (decimal)(unitPrice * item.Quantity);
-                    rentSubTotal += itemTotal;
-                    totalPrice += itemTotal;
-                }
-                else if (item.IngredientID.HasValue)
-                {
-                    var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
-                    if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {item.IngredientID} not found");
-
-                    // Check if the requested quantity is available
-                    if (ingredient.Quantity < item.Quantity)
-                        throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
-
-                    // Get the latest price
-                    var latestPrice = ingredient.IngredientPrices
-                        .OrderByDescending(p => p.EffectiveDate)
-                        .FirstOrDefault()?.Price ?? 0;
-
-                    unitPrice = latestPrice;
-                    hasSellItems = true;
-
-                    // Create sell order detail for ingredient
-                    var orderDetail = new SellOrderDetail
-                    {
-                        Quantity = (int)item.Quantity,
-                        UnitPrice = unitPrice,
-                        IngredientId = item.IngredientID
-                    };
-
-                    sellOrderDetails.Add(orderDetail);
-                    decimal itemTotal = (decimal)(unitPrice * item.Quantity);
-                    sellSubTotal += itemTotal;
-                    totalPrice += itemTotal;
-                }
-                else if (item.HotpotID.HasValue)
-                {
-                    var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
-                    if (hotpot == null)
-                        throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
-
-                    // Get available hotpot inventory items
-                    var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
-                        .AsQueryable()
-                        .Where(h => h.HotpotId == item.HotpotID && h.Status == HotpotStatus.Available && !h.IsDelete)
-                        .Take((int)item.Quantity)
-                        .ToListAsync();
-
-                    if (availableHotpots.Count < item.Quantity)
-                        throw new ValidationException($"Only {availableHotpots.Count} hotpots of type {hotpot.Name} are available");
-
-                    hasRentItems = true;
-
-                    // Set rental dates if not already set
-                    if (!rentalStartDate.HasValue)
-                    {
-                        rentalStartDate = DateTime.Now;
-                        expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
-                    }
-
-                    // Create a separate order detail for each hotpot inventory item
-                    foreach (var hotpotInventory in availableHotpots)
-                    {
-                        hotpotInventory.Hotpot.Quantity -= 1;
-                        hotpotInventory.Status = HotpotStatus.Rented;
-                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-
-                        // Create rent order detail with reference to specific hotpot inventory
-                        var orderDetail = new RentOrderDetail
-                        {
-                            Quantity = 1, // Each hotpot inventory item is a single unit
-                            RentalPrice = hotpot.Price,
-                            HotpotInventoryId = hotpotInventory.HotPotInventoryId
-                        };
-
-                        rentOrderDetails.Add(orderDetail);
-                        decimal itemTotal = hotpot.Price;
-                        rentSubTotal += itemTotal;
-                        totalPrice += itemTotal;
-
-                        // Calculate hotpot deposit (70% of hotpot price)
-                        hotpotDeposit += hotpot.Price * 0.7m;
-                    }
-                }
-                else if (item.CustomizationID.HasValue)
-                {
-                    var customization = await _customizationService.GetByIdAsync(item.CustomizationID.Value);
-                    if (customization == null)
-                        throw new ValidationException($"Customization with ID {item.CustomizationID} not found");
-
-                    // Verify the customization belongs to the current user
-                    if (customization.UserId != userId)
-                        throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
-
-                    unitPrice = customization.TotalPrice;
-                    hasSellItems = true;
-
-                    // Create sell order detail for customization
-                    var orderDetail = new SellOrderDetail
-                    {
-                        Quantity = (int)item.Quantity,
-                        UnitPrice = unitPrice,
-                        CustomizationId = item.CustomizationID
-                    };
-
-                    sellOrderDetails.Add(orderDetail);
-                    decimal itemTotal = (decimal)(unitPrice * item.Quantity);
-                    sellSubTotal += itemTotal;
-                    totalPrice += itemTotal;
-                }
-                else if (item.ComboID.HasValue)
-                {
-                    var combo = await _comboService.GetByIdAsync(item.ComboID.Value);
-                    if (combo == null)
-                        throw new ValidationException($"Combo with ID {item.ComboID} not found");
-
-                    // Combo price already includes any combo-specific discounts
-                    unitPrice = combo.BasePrice;
-                    hasSellItems = true;
-
-                    // Create sell order detail for combo
-                    var orderDetail = new SellOrderDetail
-                    {
-                        Quantity = (int)item.Quantity,
-                        UnitPrice = unitPrice,
-                        ComboId = item.ComboID
-                    };
-
-                    sellOrderDetails.Add(orderDetail);
-                    decimal itemTotal = (decimal)(unitPrice * item.Quantity);
-                    sellSubTotal += itemTotal;
-                    totalPrice += itemTotal;
-                }
-            }
-
-            // Apply discount if provided
-            if (request.DiscountId.HasValue)
-            {
-                var discount = await _discountService.GetByIdAsync(request.DiscountId.Value);
-                if (discount == null)
-                    throw new ValidationException($"Discount with ID {request.DiscountId} not found");
-
-                // Validate discount is still valid
-                if (!await _discountService.IsDiscountValidAsync(request.DiscountId.Value))
-                    throw new ValidationException("The selected discount is not valid or has expired");
-
-                // Apply discount to total price
-                totalPrice -= (decimal)(totalPrice * discount.DiscountPercentage / 100);
-            }
-
-
-
-            // Create main order
+            // Create new order
             var order = new Order
             {
                 UserId = userId,
-                Address = request.Address,
-                Notes = request.Notes,
-                TotalPrice = totalPrice,
+                Address = address, // Use user's default address
+                Notes = null, // No notes initially
                 Status = OrderStatus.Pending,
-                DiscountId = request.DiscountId,
-                HasSellItems = hasSellItems,
-                HasRentItems = hasRentItems
+                DiscountId = null, // No discount initially
+                SellOrder = new SellOrder
+                {
+                    SellOrderDetails = new List<SellOrderDetail>()
+                },
+                RentOrder = new RentOrder
+                {
+                    RentOrderDetails = new List<RentOrderDetail>()
+                }
             };
 
-            // Insert the main order first to get the OrderId
+            // Add order to database
             await _unitOfWork.Repository<Order>().InsertAsync(order);
             await _unitOfWork.CommitAsync();
 
-            // Create SellOrder if there are sell items
-            if (hasSellItems)
+            // Process items
+            foreach (var item in request.Items)
             {
-                var sellOrder = new SellOrder
+                // Process each item type
+                if (item.HotpotID.HasValue && item.HotpotID > 0)
                 {
-                    OrderId = order.OrderId,
-                    SubTotal = sellSubTotal
-                };
-
-                await _unitOfWork.Repository<SellOrder>().InsertAsync(sellOrder);
-
-                // Update SellOrderDetails with the OrderId
-                foreach (var detail in sellOrderDetails)
+                    await ProcessHotpotItem(order, item);
+                }
+                else if (item.IngredientID.HasValue && item.IngredientID > 0)
                 {
-                    detail.OrderId = order.OrderId;
-                    await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(detail);
+                    await ProcessIngredientItem(order, item);
+                }
+                else if (item.UtensilID.HasValue && item.UtensilID > 0)
+                {
+                    await ProcessUtensilItem(order, item);
+                }
+                else if (item.CustomizationID.HasValue && item.CustomizationID > 0)
+                {
+                    await ProcessCustomizationItem(order, item);
+                }
+                else if (item.ComboID.HasValue && item.ComboID > 0)
+                {
+                    await ProcessComboItem(order, item);
                 }
             }
 
-            // Create RentOrder if there are rent items
-            if (hasRentItems)
-            {
-                var rentOrder = new RentOrder
-                {
-                    OrderId = order.OrderId,
-                    SubTotal = rentSubTotal,
-                    HotpotDeposit = hotpotDeposit,
-                    RentalStartDate = rentalStartDate.Value,
-                    ExpectedReturnDate = expectedReturnDate.Value
-                };
+            // Calculate total price
+            await CalculateOrderTotalPrice(order);
 
-                await _unitOfWork.Repository<RentOrder>().InsertAsync(rentOrder);
-
-                // Update RentOrderDetails with the OrderId
-                foreach (var detail in rentOrderDetails)
-                {
-                    detail.OrderId = order.OrderId;
-                    await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(detail);
-                }
-            }
-
+            // Update order with calculated price
+            _unitOfWork.Repository<Order>().Update(order, order.OrderId);
             await _unitOfWork.CommitAsync();
 
-            // Create payment based on payment type
-            if (request.PaymentType == PaymentType.Cash)
-            {
-                // Create cash payment
-                await _paymentService.CreateCashPaymentAsync(userId, order.OrderId, totalPrice);
-            }
-            else if (request.PaymentType == PaymentType.Online)
-            {
-                // For online payment, we'll create a payment record but the actual payment link
-                // will be generated separately when the user proceeds to payment
-                var payment = new Payment
-                {
-                    UserId = userId,
-                    OrderId = order.OrderId,
-                    Price = totalPrice,
-                    Type = PaymentType.Online,
-                    Status = PaymentStatus.Pending,
-                    TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"))
-                };
+            return order;
+        }
+        private async Task ProcessHotpotItem(Order order, OrderItemRequest item)
+        {
+            var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
+            if (hotpot == null)
+                throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
 
-                await _unitOfWork.Repository<Payment>().InsertAsync(payment);
+            // Get available hotpot inventory items
+            var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
+                .AsQueryable()
+                .Where(h => h.HotpotId == item.HotpotID && h.Status == HotpotStatus.Available && !h.IsDelete)
+                .Take((int)item.Quantity)
+                .ToListAsync();
+
+            if (availableHotpots.Count < item.Quantity)
+                throw new ValidationException($"Only {availableHotpots.Count} hotpots of type {hotpot.Name} are available");
+
+            // Set rental dates if not already set
+            DateTime rentalStartDate = DateTime.Now;
+            DateTime expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
+
+            // Ensure RentOrder exists
+            if (order.RentOrder == null)
+            {
+                order.RentOrder = new RentOrder
+                {
+                    OrderId = order.OrderId,
+                    SubTotal = 0,
+                    HotpotDeposit = 0,
+                    RentalStartDate = rentalStartDate,
+                    ExpectedReturnDate = expectedReturnDate,
+                    RentOrderDetails = new List<RentOrderDetail>()
+                };
+                await _unitOfWork.Repository<RentOrder>().InsertAsync(order.RentOrder);
                 await _unitOfWork.CommitAsync();
             }
 
-            // Update inventory quantities for non-hotpot items (hotpots are already handled)
-            foreach (var item in request.Items)
+            decimal additionalHotpotDeposit = 0;
+
+            // Create a separate order detail for each hotpot inventory item
+            foreach (var hotpotInventory in availableHotpots)
             {
-                if (item.UtensilID.HasValue)
+                hotpotInventory.Hotpot.Quantity -= 1;
+                hotpotInventory.Status = HotpotStatus.Rented;
+                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotpotId);
+
+                // Create rent order detail with reference to specific hotpot inventory
+                var orderDetail = new RentOrderDetail
                 {
-                    await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, (int)-item.Quantity);
-                }
-                else if (item.IngredientID.HasValue)
-                {
-                    // Update ingredient quantity
-                    await _ingredientService.UpdateIngredientQuantityAsync(
-                        item.IngredientID.Value,
-                        -(int)item.Quantity);
-                }
-                // Note: HotPotInventory status is already updated above
+                    OrderId = order.OrderId,
+                    Quantity = 1, // Each hotpot inventory item is a single unit
+                    RentalPrice = hotpot.Price,
+                    HotpotInventoryId = hotpotInventory.HotPotInventoryId
+                };
+
+                await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(orderDetail);
+
+                // Add to order's rent order details
+                order.RentOrder.RentOrderDetails.Add(orderDetail);
+
+                // Update subtotal
+                order.RentOrder.SubTotal += hotpot.Price;
+
+                // Calculate hotpot deposit (70% of hotpot price)
+                additionalHotpotDeposit += hotpot.Price * 0.7m;
             }
 
-            // Reload order with all related entities
-            return await GetByIdAsync(order.OrderId);
+            // Update hotpot deposit
+            order.RentOrder.HotpotDeposit += additionalHotpotDeposit;
+
+            // Update order flags
+            order.HasRentItems = true;
+
+            // Update rent order
+            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder,order.OrderId);
+            await _unitOfWork.CommitAsync();
         }
+
+        private async Task ProcessIngredientItem(Order order, OrderItemRequest item)
+        {
+            var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
+            if (ingredient == null)
+                throw new ValidationException($"Ingredient with ID {item.IngredientID} not found");
+
+            // Check if the requested quantity is available
+            if (ingredient.Quantity < item.Quantity)
+                throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
+
+            // Get the latest price
+            var latestPrice = ingredient.IngredientPrices
+                .OrderByDescending(p => p.EffectiveDate)
+                .FirstOrDefault()?.Price ?? 0;
+
+            // Ensure SellOrder exists
+            if (order.SellOrder == null)
+            {
+                order.SellOrder = new SellOrder
+                {
+                    OrderId = order.OrderId,
+                    SubTotal = 0,
+                    SellOrderDetails = new List<SellOrderDetail>()
+                };
+                await _unitOfWork.Repository<SellOrder>().InsertAsync(order.SellOrder);
+                await _unitOfWork.CommitAsync();
+            }
+
+            // Check if this ingredient is already in the order
+            var existingDetail = order.SellOrder.SellOrderDetails
+                .FirstOrDefault(d => d.IngredientId == item.IngredientID && !d.IsDelete);
+
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Quantity += (int)item.Quantity;
+                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail,existingDetail.OrderId);
+            }
+            else
+            {
+                // Add new detail
+                var orderDetail = new SellOrderDetail
+                {
+                    OrderId = order.OrderId,
+                    Quantity = (int)item.Quantity,
+                    UnitPrice = latestPrice,
+                    IngredientId = item.IngredientID
+                };
+
+                await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(orderDetail);
+
+                // Add to order's sell order details
+                order.SellOrder.SellOrderDetails.Add(orderDetail);
+            }
+
+            // Update subtotal
+            order.SellOrder.SubTotal += latestPrice * (int)item.Quantity;
+
+            // Update order flags
+            order.HasSellItems = true;
+
+            // Update sell order
+            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.CommitAsync();
+
+            // Update ingredient quantity
+            await _ingredientService.UpdateIngredientQuantityAsync(
+                item.IngredientID.Value,
+                -(int)item.Quantity);
+        }
+
+        private async Task ProcessUtensilItem(Order order, OrderItemRequest item)
+        {
+            var utensil = await _utensilService.GetUtensilByIdAsync(item.UtensilID.Value);
+            if (utensil == null || !utensil.Status || utensil.Quantity < item.Quantity)
+                throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
+
+            // Set rental dates if not already set
+            DateTime rentalStartDate = DateTime.Now;
+            DateTime expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
+
+            // Ensure RentOrder exists
+            if (order.RentOrder == null)
+            {
+                order.RentOrder = new RentOrder
+                {
+                    OrderId = order.OrderId,
+                    SubTotal = 0,
+                    HotpotDeposit = 0,
+                    RentalStartDate = rentalStartDate,
+                    ExpectedReturnDate = expectedReturnDate,
+                    RentOrderDetails = new List<RentOrderDetail>()
+                };
+                await _unitOfWork.Repository<RentOrder>().InsertAsync(order.RentOrder);
+                await _unitOfWork.CommitAsync();
+            }
+
+            // Check if this utensil is already in the order
+            var existingDetail = order.RentOrder.RentOrderDetails
+                .FirstOrDefault(d => d.UtensilId == item.UtensilID && !d.IsDelete);
+
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Quantity += (int)item.Quantity;
+                _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+            }
+            else
+            {
+                // Add new detail
+                var orderDetail = new RentOrderDetail
+                {
+                    OrderId = order.OrderId,
+                    Quantity = (int)item.Quantity,
+                    RentalPrice = utensil.Price,
+                    UtensilId = item.UtensilID
+                };
+
+                await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(orderDetail);
+
+                // Add to order's rent order details
+                order.RentOrder.RentOrderDetails.Add(orderDetail);
+            }
+
+            // Update subtotal
+            order.RentOrder.SubTotal += utensil.Price * (int)item.Quantity;
+
+            // Update order flags
+            order.HasRentItems = true;
+
+            // Update rent order
+            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.OrderId);
+            await _unitOfWork.CommitAsync();
+
+            // Update utensil quantity
+            await _utensilService.UpdateUtensilQuantityAsync(item.UtensilID.Value, (int)-item.Quantity);
+        }
+
+        private async Task ProcessCustomizationItem(Order order, OrderItemRequest item)
+        {
+            var customization = await _customizationService.GetByIdAsync(item.CustomizationID.Value);
+            if (customization == null)
+                throw new ValidationException($"Customization with ID {item.CustomizationID} not found");
+
+            // Verify the customization belongs to the current user
+            if (customization.UserId != order.UserId)
+                throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
+
+            // Ensure SellOrder exists
+            if (order.SellOrder == null)
+            {
+                order.SellOrder = new SellOrder
+                {
+                    OrderId = order.OrderId,
+                    SubTotal = 0,
+                    SellOrderDetails = new List<SellOrderDetail>()
+                };
+                await _unitOfWork.Repository<SellOrder>().InsertAsync(order.SellOrder);
+                await _unitOfWork.CommitAsync();
+            }
+
+            // Check if this customization is already in the order
+            var existingDetail = order.SellOrder.SellOrderDetails
+                .FirstOrDefault(d => d.CustomizationId == item.CustomizationID && !d.IsDelete);
+
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Quantity += (int)item.Quantity;
+                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+            }
+            else
+            {
+                // Add new detail
+                var orderDetail = new SellOrderDetail
+                {
+                    OrderId = order.OrderId,
+                    Quantity = (int)item.Quantity,
+                    UnitPrice = customization.TotalPrice,
+                    CustomizationId = item.CustomizationID
+                };
+
+                await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(orderDetail);
+
+                // Add to order's sell order details
+                order.SellOrder.SellOrderDetails.Add(orderDetail);
+            }
+
+            // Update subtotal
+            order.SellOrder.SubTotal += customization.TotalPrice * (int)item.Quantity;
+
+            // Update order flags
+            order.HasSellItems = true;
+
+            // Update sell order
+            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.CommitAsync();
+        }
+
+        private async Task ProcessComboItem(Order order, OrderItemRequest item)
+        {
+            var combo = await _comboService.GetByIdAsync(item.ComboID.Value);
+            if (combo == null)
+                throw new ValidationException($"Combo with ID {item.ComboID} not found");
+
+            // Ensure SellOrder exists
+            if (order.SellOrder == null)
+            {
+                order.SellOrder = new SellOrder
+                {
+                    OrderId = order.OrderId,
+                    SubTotal = 0,
+                    SellOrderDetails = new List<SellOrderDetail>()
+                };
+                await _unitOfWork.Repository<SellOrder>().InsertAsync(order.SellOrder);
+                await _unitOfWork.CommitAsync();
+            }
+
+            // Check if this combo is already in the order
+            var existingDetail = order.SellOrder.SellOrderDetails
+                .FirstOrDefault(d => d.ComboId == item.ComboID && !d.IsDelete);
+
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Quantity += (int)item.Quantity;
+                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+            }
+            else
+            {
+                // Add new detail
+                var orderDetail = new SellOrderDetail
+                {
+                    OrderId = order.OrderId,
+                    Quantity = (int)item.Quantity,
+                    UnitPrice = combo.BasePrice,
+                    ComboId = item.ComboID
+                };
+
+                await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(orderDetail);
+
+                // Add to order's sell order details
+                order.SellOrder.SellOrderDetails.Add(orderDetail);
+            }
+
+            // Update subtotal
+            order.SellOrder.SubTotal += combo.BasePrice * (int)item.Quantity;
+
+            // Update order flags
+            order.HasSellItems = true;
+
+            // Update sell order
+            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.CommitAsync();
+        }
+
+        private async Task CalculateOrderTotalPrice(Order order)
+        {
+            decimal totalPrice = 0;
+
+            // Calculate sell order subtotal
+            if (order.SellOrder != null)
+            {
+                // Recalculate sell order subtotal to ensure accuracy
+                decimal sellSubTotal = 0;
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    sellSubTotal += detail.UnitPrice * detail.Quantity;
+                }
+
+                order.SellOrder.SubTotal = sellSubTotal;
+                totalPrice += sellSubTotal;
+            }
+
+            // Calculate rent order subtotal
+            if (order.RentOrder != null)
+            {
+                // Recalculate rent order subtotal to ensure accuracy
+                decimal rentSubTotal = 0;
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    rentSubTotal += detail.RentalPrice * detail.Quantity;
+                }
+
+                order.RentOrder.SubTotal = rentSubTotal;
+                totalPrice += rentSubTotal;
+
+                // Add hotpot deposit to total price
+                totalPrice += order.RentOrder.HotpotDeposit;
+            }
+
+            // Apply discount if applicable
+            if (order.DiscountId.HasValue)
+            {
+                var discount = await _discountService.GetByIdAsync(order.DiscountId.Value);
+                if (discount != null && await _discountService.IsDiscountValidAsync(order.DiscountId.Value))
+                {
+                    totalPrice = totalPrice * (1 - (discount.DiscountPercentage / 100m));
+                }
+            }
+
+            // Update order total price
+            order.TotalPrice = totalPrice;
+        }
+
 
         public async Task<Order> RemoveItemFromCartAsync(int userId, int orderDetailId, bool isSellItem)
         {
@@ -992,8 +794,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    decimal priceReduction = 0;
-
                     if (isSellItem)
                     {
                         // Find the sell order detail
@@ -1003,20 +803,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         if (detail == null)
                             throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
 
-                        // Calculate price reduction
-                        priceReduction = detail.UnitPrice * detail.Quantity;
-
                         // Soft delete the detail
                         detail.SoftDelete();
-                        await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
-
-                        // Update sell order subtotal
-                        pendingOrder.SellOrder.SubTotal -= priceReduction;
-                        await _unitOfWork.Repository<SellOrder>().Update(pendingOrder.SellOrder, pendingOrder.SellOrder.OrderId);
+                        await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.OrderId);
 
                         // Check if there are any remaining sell items
-                        var remainingSellItems = await _unitOfWork.Repository<SellOrderDetail>()
-                            .AnyAsync(d => d.OrderId == pendingOrder.OrderId && !d.IsDelete);
+                        var remainingSellItems = pendingOrder.SellOrder.SellOrderDetails
+                            .Any(d => !d.IsDelete);
 
                         pendingOrder.HasSellItems = remainingSellItems;
                     }
@@ -1029,63 +822,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         if (detail == null)
                             throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
 
-                        // Calculate price reduction
-                        priceReduction = detail.RentalPrice * detail.Quantity;
-
                         // Soft delete the detail
                         detail.SoftDelete();
-                        await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
-
-                        // Update rent order subtotal and deposit
-                        pendingOrder.RentOrder.SubTotal -= priceReduction;
-
-                        // Recalculate hotpot deposit if needed
-                        if (detail.HotpotInventoryId.HasValue)
-                        {
-                            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                .IncludeNested(q => q.Include(h => h.Hotpot))
-                                .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
-
-                            if (hotpotInventory != null)
-                            {
-                                pendingOrder.RentOrder.HotpotDeposit -= hotpotInventory.Hotpot.Price * 0.7m;
-                            }
-                        }
-
-                        await _unitOfWork.Repository<RentOrder>().Update(pendingOrder.RentOrder, pendingOrder.RentOrder.OrderId);
+                        await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.OrderId);
 
                         // Check if there are any remaining rent items
-                        var remainingRentItems = await _unitOfWork.Repository<RentOrderDetail>()
-                            .AnyAsync(d => d.OrderId == pendingOrder.OrderId && !d.IsDelete);
+                        var remainingRentItems = pendingOrder.RentOrder.RentOrderDetails
+                            .Any(d => !d.IsDelete);
 
                         pendingOrder.HasRentItems = remainingRentItems;
                     }
 
-                    // Recalculate total price
-                    decimal newTotal = 0;
+                    // Use the CalculateOrderTotalPrice method for consistency
+                    await CalculateOrderTotalPrice(pendingOrder);
 
-                    if (pendingOrder.HasSellItems)
-                    {
-                        newTotal += pendingOrder.SellOrder.SubTotal;
-                    }
-
-                    if (pendingOrder.HasRentItems)
-                    {
-                        newTotal += pendingOrder.RentOrder.SubTotal;
-                    }
-
-                    // Apply discount if any
-                    if (pendingOrder.DiscountId.HasValue)
-                    {
-                        var discount = await _discountService.GetByIdAsync(pendingOrder.DiscountId.Value);
-                        if (discount != null && await _discountService.IsDiscountValidAsync(pendingOrder.DiscountId.Value))
-                        {
-                            newTotal = newTotal * (1 - (discount.DiscountPercentage / 100m));
-                        }
-                    }
-
-                    pendingOrder.TotalPrice = newTotal;
+                    // Update the order
                     await _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
+                    await _unitOfWork.CommitAsync();
 
                     // If there are no items left, delete the order using the existing DeleteAsync method
                     if (!pendingOrder.HasSellItems && !pendingOrder.HasRentItems)
@@ -1098,15 +851,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         return null;
                     }
 
-                    await _unitOfWork.CommitAsync();
-
                     // Update payment records if needed
                     var payment = await _unitOfWork.Repository<Payment>()
                         .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
 
                     if (payment != null)
                     {
-                        payment.Price = newTotal;
+                        payment.Price = pendingOrder.TotalPrice;
                         await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
                         await _unitOfWork.CommitAsync();
                     }
@@ -1154,10 +905,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    decimal totalPriceDifference = 0;
-                    decimal sellSubTotalDifference = 0;
-                    decimal rentSubTotalDifference = 0;
-
                     // First, validate all updates to ensure we can complete the transaction
                     foreach (var update in itemUpdates)
                     {
@@ -1231,14 +978,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 }
                             }
 
-                            // Calculate price difference
-                            decimal priceDifference = detail.UnitPrice * (update.NewQuantity - detail.Quantity);
-                            sellSubTotalDifference += priceDifference;
-                            totalPriceDifference += priceDifference;
-
                             // Update quantity
                             detail.Quantity = update.NewQuantity;
-                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
+                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.OrderId);
                         }
                         else
                         {
@@ -1257,56 +999,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                         detail.UtensilId.Value, -quantityDifference);
                                 }
 
-                                // Calculate price difference
-                                decimal priceDifference = detail.RentalPrice * (update.NewQuantity - detail.Quantity);
-                                rentSubTotalDifference += priceDifference;
-                                totalPriceDifference += priceDifference;
-
                                 // Update quantity
                                 detail.Quantity = update.NewQuantity;
-                                await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
+                                await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.OrderId);
                             }
                         }
                     }
 
-                    // Update subtotals
-                    if (pendingOrder.HasSellItems && sellSubTotalDifference != 0)
-                    {
-                        pendingOrder.SellOrder.SubTotal += sellSubTotalDifference;
-                        await _unitOfWork.Repository<SellOrder>().Update(pendingOrder.SellOrder, pendingOrder.SellOrder.OrderId);
-                    }
+                    // Use the CalculateOrderTotalPrice method for consistency
+                    await CalculateOrderTotalPrice(pendingOrder);
 
-                    if (pendingOrder.HasRentItems && rentSubTotalDifference != 0)
-                    {
-                        pendingOrder.RentOrder.SubTotal += rentSubTotalDifference;
-                        await _unitOfWork.Repository<RentOrder>().Update(pendingOrder.RentOrder, pendingOrder.RentOrder.OrderId);
-                    }
-
-                    // Recalculate total price
-                    decimal newTotal = 0;
-
-                    if (pendingOrder.HasSellItems)
-                    {
-                        newTotal += pendingOrder.SellOrder.SubTotal;
-                    }
-
-                    if (pendingOrder.HasRentItems)
-                    {
-                        newTotal += pendingOrder.RentOrder.SubTotal;
-                    }
-
-                    // Apply discount if any
-                    if (pendingOrder.DiscountId.HasValue)
-                    {
-                        var discount = await _discountService.GetByIdAsync(pendingOrder.DiscountId.Value);
-                        if (discount != null && await _discountService.IsDiscountValidAsync(pendingOrder.DiscountId.Value))
-                        {
-                            newTotal = newTotal * (1 - (discount.DiscountPercentage / 100m));
-                        }
-                    }
-
-                    pendingOrder.TotalPrice = newTotal;
-                    await _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
+                    // Update the order
+                    _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
                     await _unitOfWork.CommitAsync();
 
                     // Update payment records if needed
@@ -1315,7 +1019,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     if (payment != null)
                     {
-                        payment.Price = newTotal;
+                        payment.Price = pendingOrder.TotalPrice;
                         await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
                         await _unitOfWork.CommitAsync();
                     }
@@ -1349,7 +1053,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (!string.IsNullOrWhiteSpace(request.Address))
                     order.Address = request.Address;
 
-                order.Notes = request.Notes;
+                if (!string.IsNullOrWhiteSpace(request.Notes))
+                    order.Notes = request.Notes;
 
                 // Update discount if provided
                 if (request.DiscountId.HasValue && request.DiscountId != order.DiscountId)

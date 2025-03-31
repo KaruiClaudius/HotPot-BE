@@ -10,7 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
     public class CustomizationEstimateRequest
     {
         [Required]
-        public int ComboId { get; set; }
+        public int? ComboId { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]
