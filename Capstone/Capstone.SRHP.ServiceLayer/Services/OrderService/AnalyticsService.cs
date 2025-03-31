@@ -687,7 +687,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Type = order.Payment.Type.ToString(),
                     Status = order.Payment.Status.ToString(),
                     Amount = order.Payment.Price,
-                    CreatedAt = order.Payment.CreatedAt
+                    UpdateAt = order.Payment.UpdatedAt
                 };
             }
 
