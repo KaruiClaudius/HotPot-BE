@@ -210,46 +210,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             }
         }
 
-        /// <summary>
-        /// Assign work days to a staff member
-        /// </summary>
-        [HttpPost("assign-staff")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<UserDto>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
-        {
-            try
-            {
-                // Validate request
-                if (assignDto == null || assignDto.StaffId <= 0)
-                {
-                    return BadRequest("Staff ID and work days are required");
-                }
-
-                var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
-
-                // Notify the staff member about their schedule update
-                await _scheduleHubContext.Clients.Group($"User_{staff.UserId}").SendAsync(
-                    "ReceiveScheduleUpdate",
-                    staff.UserId,
-                    DateTime.Now);
-
-                // Notify all managers about the schedule update
-                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
-
-                return Ok(staff.Adapt<UserDto>());
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, "An error occurred while assigning staff work days. Please try again later.");
-            }
-        }
 
         /// <summary>
         /// Assign work days and shifts to a manager
@@ -259,16 +219,23 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<UserDto>> AssignManagerWorkDaysAndShifts([FromBody] AssignManagerWorkDaysAndShiftsDto assignDto)
+        public async Task<ActionResult<ManagerDto>> AssignManagerWorkDaysAndShifts([FromBody] AssignManagerWorkDaysAndShiftsDto assignDto)
         {
             try
             {
                 // Validate request
-                if (assignDto == null || assignDto.ManagerId <= 0 || assignDto.WorkShiftIds == null)
+                if (assignDto == null || assignDto.ManagerId <= 0)
                 {
-                    return BadRequest("Manager ID, work days, and work shift IDs are required");
+                    return BadRequest("Manager ID is required");
                 }
 
+                // WorkShiftIds can be null or empty, which might mean "remove all shifts"
+                if (assignDto.WorkShiftIds == null)
+                {
+                    assignDto.WorkShiftIds = new List<int>(); // Empty list instead of null
+                }
+
+                // Note: We're allowing WorkDays.None as a valid value to clear the schedule
                 var manager = await _scheduleService.AssignManagerToWorkShiftsAsync(
                     assignDto.ManagerId,
                     assignDto.WorkDays,
@@ -283,7 +250,23 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify all managers about the schedule update
                 await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
 
-                return Ok(manager.Adapt<UserDto>());
+                // Create a custom ManagerDto with only the needed information
+                var managerDto = new ManagerDto
+                {
+                    UserId = manager.UserId,
+                    Name = manager.Name ?? string.Empty,
+                    Email = manager.Email ?? string.Empty,
+                    WorkDays = manager.WorkDays,
+                    WorkShifts = manager.MangerWorkShifts.Select(ws => new WorkShiftSDto
+                    {
+                        WorkShiftId = ws.WorkShiftId,
+                        ShiftName = ws.ShiftName ?? string.Empty,
+                        ShiftStartTime = ws.ShiftStartTime,
+                        ShiftEndTime = ws.ShiftEndTime
+                    }).ToList()
+                };
+
+                return Ok(managerDto);
             }
             catch (KeyNotFoundException ex)
             {

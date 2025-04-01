@@ -1,39 +1,38 @@
-﻿using Capstone.HPTY.ModelLayer.Enum;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.DTOs.User;
+// Use the fully qualified name for System.Security.Claims.ClaimTypes
+using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
-using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-// Use the fully qualified name for System.Security.Claims.ClaimTypes
-using SystemClaimTypes = System.Security.Claims.ClaimTypes;
-using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Schedule
 {
     [Route("api/manager/schedule")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
     public class ManagerScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
         private readonly IManagerService _managerService;
         private readonly IStaffService _staffService;
+        private readonly IHubContext<ScheduleHub> _scheduleHubContext;
 
         public ManagerScheduleController(
             IScheduleService scheduleService,
             IManagerService managerService,
-            IStaffService staffService)
+            IStaffService staffService,
+            IHubContext<ScheduleHub> scheduleHubContext)
         {
             _scheduleService = scheduleService;
             _managerService = managerService;
             _staffService = staffService;
+            _scheduleHubContext = scheduleHubContext;
         }
 
         /// <summary>
@@ -51,13 +50,37 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Find the manager ID associated with this user ID
-                var manager = await _managerService.GetManagerByIdAsync(userId);
-                if (manager == null)
-                    return NotFound($"Manager record not found for user ID {userId}");
-
+                // Get the manager's work shifts
                 var shifts = await _scheduleService.GetManagerWorkShiftsAsync(userId);
-                var shiftDtos = shifts.Adapt<List<ManagerWorkShiftDto>>();
+
+                if (shifts == null || !shifts.Any())
+                {
+                    return Ok(new List<ManagerWorkShiftDto>());
+                }
+
+                // Get the manager to access their WorkDays
+                var manager = await _managerService.GetManagerByIdAsync(userId);
+
+                // Manually map to DTO to ensure all properties are correctly mapped
+                var shiftDtos = shifts.Select(shift => new ManagerWorkShiftDto
+                {
+                    WorkShiftId = shift.WorkShiftId,
+                    ShiftStartTime = shift.ShiftStartTime ?? TimeSpan.Zero,
+                    ShiftEndTime = shift.ShiftEndTime ?? TimeSpan.Zero,
+                    ShiftName = shift.ShiftName,
+                    // Set DaysOfWeek from the manager's WorkDays if available
+                    DaysOfWeek = manager?.WorkDays ?? WorkDays.None,
+                    // Filter the Managers collection to only include the current manager
+                    Managers = shift.Managers?
+                        .Where(m => m.UserId == userId)
+                        .Select(m => new ManagerSDto
+                        {
+                            UserId = m.UserId,
+                            Name = m.Name,
+                            Email = m.Email,
+                        })
+                        .ToList() ?? new List<ManagerSDto>()
+                }).ToList();
 
                 return Ok(shiftDtos);
             }
@@ -78,15 +101,30 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Get all staff members
                 var staffMembers = await _staffService.GetAllStaffAsync();
 
+                if (staffMembers == null || !staffMembers.Any())
+                {
+                    return Ok(new List<StaffScheduleDto>());
+                }
+
                 var staffSchedules = new List<StaffScheduleDto>();
 
                 foreach (var staff in staffMembers)
                 {
+                    // Get the staff member's shifts
                     var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.UserId);
+
+                    // Create a staff DTO with work shifts
+                    var staffDto = new StaffSDto
+                    {
+                        UserId = staff.UserId,
+                        Name = staff.Name,
+                        Email = staff.Email,
+                        DaysOfWeek = staff.WorkDays ?? WorkDays.None
+                    };
 
                     staffSchedules.Add(new StaffScheduleDto
                     {
-                        Staff = staff.Adapt<StaffDto>(),
+                        Staff = staffDto
                     });
                 }
 
@@ -114,9 +152,18 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Get the staff member's shifts
                 var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staffId);
 
+                // Create a staff DTO with work shifts
+                var staffDto = new StaffSDto
+                {
+                    UserId = staff.UserId,
+                    Name = staff.Name,
+                    Email = staff.Email,
+                    DaysOfWeek = staff.WorkDays ?? WorkDays.None
+                };
+
                 var staffSchedule = new StaffScheduleDto
                 {
-                    Staff = staff.Adapt<StaffDto>(),
+                    Staff = staffDto
                 };
 
                 return Ok(staffSchedule);
@@ -131,18 +178,27 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Get staff members working on a specific day
         /// </summary>
         [HttpGet("staff-by-day")]
-        public async Task<ActionResult<IEnumerable<StaffDto>>> GetStaffByDay([FromQuery] WorkDays day)
+        public async Task<ActionResult<IEnumerable<StaffSDto>>> GetStaffByDay([FromQuery] WorkDays day = WorkDays.None)
         {
             try
             {
-                // Validate the day parameter
-                if (day == WorkDays.None)
-                {
-                    return Ok(Array.Empty<StaffDto>());
-                }
-
                 // Get all staff members
                 var allStaff = await _staffService.GetAllStaffAsync();
+
+                // If day is None (0), return all staff members
+                if (day == WorkDays.None)
+                {
+                    // Map all staff to DTOs
+                    var allStaffDtos = allStaff.Select(s => new StaffSDto
+                    {
+                        UserId = s.UserId,
+                        Name = s.Name,
+                        Email = s.Email,
+                        DaysOfWeek = s.WorkDays.GetValueOrDefault()
+                    }).ToList();
+
+                    return Ok(allStaffDtos);
+                }
 
                 // Filter staff members who work on the specified day
                 // Safely handle null WorkDays values
@@ -151,7 +207,14 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     (s.WorkDays.Value & day) != 0 // Use .Value to safely access the value
                 ).ToList();
 
-                var staffDtos = staffOnDay.Adapt<List<StaffDto>>();
+                // Map filtered staff to DTOs
+                var staffDtos = staffOnDay.Select(s => new StaffSDto
+                {
+                    UserId = s.UserId,
+                    Name = s.Name,
+                    Email = s.Email,
+                    DaysOfWeek = s.WorkDays.GetValueOrDefault()
+                }).ToList();
 
                 return Ok(staffDtos);
             }
@@ -159,6 +222,60 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-        }       
+        }
+
+        /// <summary>
+        /// Assign work days to a staff member
+        /// </summary>
+        [HttpPost("assign-staff")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<StaffSDto>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
+        {
+            try
+            {
+                // Validate request
+                if (assignDto == null || assignDto.StaffId <= 0)
+                {
+                    return BadRequest("Staff ID is required");
+                }
+
+                // Note: We're allowing WorkDays.None as a valid value to clear the schedule
+
+                var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
+
+                // Notify the staff member about their schedule update
+                await _scheduleHubContext.Clients.Group($"User_{staff.UserId}").SendAsync(
+                    "ReceiveScheduleUpdate",
+                    staff.UserId,
+                    DateTime.Now);
+
+                // Also notify the Staff group
+                await _scheduleHubContext.Clients.Group("Staff").SendAsync(
+                    "ReceiveAllScheduleUpdates");
+
+                // Manually map the staff entity to StaffSDto
+                var staffDto = new StaffSDto
+                {
+                    UserId = staff.UserId,
+                    Name = staff.Name,
+                    Email = staff.Email,
+                    DaysOfWeek = staff.WorkDays.GetValueOrDefault()
+                };
+
+                return Ok(staffDto);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }
