@@ -6,6 +6,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static Azure.Core.HttpHeader;
 
 [ApiController]
 [Route("api/customer/Customizations")]
@@ -120,7 +121,7 @@ public class CustomerCustomizationController : ControllerBase
         try
         {
             var priceEstimate = await _customizationService.CalculatePriceEstimateAsync(
-                request.ComboId,
+                request.ComboId, 
                 request.Size,
                 request.BrothId,
                 request.Ingredients);
@@ -156,9 +157,14 @@ public class CustomerCustomizationController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token" });
             }
 
-            var combo = await _comboService.GetByIdAsync(request.ComboId);
-            if (combo == null)
-                return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+
+            Combo combo = null;
+            if (request.ComboId.HasValue && request.ComboId.Value > 0)
+            {
+                combo = await _comboService.GetByIdAsync(request.ComboId.Value);
+                if (combo == null)
+                    return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+            }
 
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
@@ -188,7 +194,8 @@ public class CustomerCustomizationController : ControllerBase
         }
     }
 
-
+    // PUT: api/customer/customizations/{id}
+    // Updates an existing customization
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateCustomization(int id, UpdateCustomizationRequest request)
     {
@@ -209,15 +216,45 @@ public class CustomerCustomizationController : ControllerBase
             if (existingCustomization.UserId != userId)
                 return Forbid();
 
-            // Update customization properties
-            existingCustomization.Name = request.Name;
-            existingCustomization.Note = request.Note;
-            existingCustomization.Size = request.Size;
-            existingCustomization.HotpotBrothId = request.BrothId;
-            existingCustomization.ImageURLs = request.ImageURLs;
+            // Update only the properties that are provided in the request
+            if (request.Name != null)
+            {
+                existingCustomization.Name = request.Name;
+            }
 
-            // Update customization with new ingredients
-            await _customizationService.UpdateAsync(id, existingCustomization, request.Ingredients);
+            // Note can be explicitly set to null
+            existingCustomization.Note = request.Note;
+
+            if (request.Size.HasValue)
+            {
+                existingCustomization.Size = request.Size.Value;
+            }
+
+            if (request.BrothId.HasValue)
+            {
+                existingCustomization.HotpotBrothId = request.BrothId.Value;
+            }
+
+            // ImageURLs can be explicitly set to null
+            if (request.ImageURLs != null)
+            {
+                existingCustomization.ImageURLs = request.ImageURLs;
+            }
+
+            // Only update ingredients if they're provided
+            List<CustomizationIngredientsRequest> ingredientsToUpdate = request.Ingredients ??
+                // If no ingredients provided, use existing ones
+                existingCustomization.CustomizationIngredients
+                    .Where(ci => !ci.IsDelete)
+                    .Select(ci => new CustomizationIngredientsRequest
+                    {
+                        IngredientID = ci.IngredientId,
+                        Quantity = ci.Quantity
+                    })
+                    .ToList();
+
+            // Update customization with new or existing ingredients
+            await _customizationService.UpdateAsync(id, existingCustomization, ingredientsToUpdate);
 
             return NoContent();
         }
@@ -309,7 +346,7 @@ public class CustomerCustomizationController : ControllerBase
             Size = customization.Size,
             ImageURLs = customization.ImageURLs ?? new string[0],
             CreatedAt = customization.CreatedAt,
-            ComboId = customization.ComboId,
+            ComboId = customization.ComboId ?? 0,
             ComboName = customization.Combo?.Name ?? string.Empty,
             BrothId = customization.HotpotBrothId,
             BrothName = customization.HotpotBroth?.Name ?? string.Empty,

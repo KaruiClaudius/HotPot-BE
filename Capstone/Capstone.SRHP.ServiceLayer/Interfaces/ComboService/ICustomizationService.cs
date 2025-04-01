@@ -26,7 +26,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         bool ascending = false);
 
         Task<Customization> CreateCustomizationAsync(
-            int comboId,
+            int? comboId,
             int userId,
             string name,
             string? note,
@@ -36,7 +36,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
             string[]? imageURLs = null);
         Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientsRequest> ingredients);
         Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
-            int comboId,
+            int? comboId,
             int size,
             int brothId,
             List<CustomizationIngredientsRequest> ingredients);

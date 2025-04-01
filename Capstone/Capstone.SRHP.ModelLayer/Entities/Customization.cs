@@ -78,7 +78,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Required]
         [ForeignKey("Combo")]
-        public int ComboId { get; set; }
+        public int? ComboId { get; set; }
 
         [ForeignKey("AppliedDiscount")]
         public int? AppliedDiscountId { get; set; }

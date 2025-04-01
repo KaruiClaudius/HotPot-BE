@@ -36,9 +36,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("Discount")]
         public int? DiscountId { get; set; }
 
-        public bool HasSellItems { get; set; }
+        public bool HasSellItems { get; set; } = false;
 
-        public bool HasRentItems { get; set; }
+        public bool HasRentItems { get; set; } = false;
 
         public virtual User? User { get; set; }
         public virtual ShippingOrder? ShippingOrder { get; set; }

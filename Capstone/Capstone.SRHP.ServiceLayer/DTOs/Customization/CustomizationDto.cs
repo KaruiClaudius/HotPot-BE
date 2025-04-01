@@ -22,7 +22,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 
     public class CustomizationDetailDto : CustomizationDto
     {
-        public int ComboId { get; set; }
+        public int? ComboId { get; set; }
         public int BrothId { get; set; }
         public decimal DiscountPercentage { get; set; }
         public List<CustomizationIngredientDto> Ingredients { get; set; }

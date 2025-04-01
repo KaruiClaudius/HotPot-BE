@@ -21,7 +21,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         public int Size { get; set; }
 
         [Required]
-        public int ComboId { get; set; }
+        public int? ComboId { get; set; }
 
         [Required]
         public int BrothId { get; set; }

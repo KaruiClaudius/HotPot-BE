@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Authorization;
@@ -26,89 +27,102 @@ namespace Capstone.HPTY.API.Controllers.Customer
             _orderService = orderService;
         }
 
-        [HttpGet("get-orders")]
-        public async Task<IActionResult> GetOrders()
-        {
-            var response = await _paymentService.GetOrders();
-            if (response.error == 0)
-            {
-                return Ok(response);
-            }
-
-            _logger.LogError("Failed to get orders: {Message}", response.message);
-            return BadRequest(new { response.message });
-        }
-
-        [HttpGet("get-order-user/{userId}")]
-        public async Task<IActionResult> GetOrderByUser(int userId)
-        {
-            // Check if the user is requesting their own data or is an admin
-            var currentUserId = int.Parse(User.FindFirstValue("id"));
-            var isCustomer = User.IsInRole("Customer");
-
-            if (currentUserId != userId && !isCustomer)
-            {
-                return Forbid();
-            }
-
-            var response = await _paymentService.GetOrderByUserId(userId);
-            if (response.error == 0)
-            {
-                return Ok(response);
-            }
-
-            _logger.LogError("Failed to get order for user {UserId}: {Message}", userId, response.message);
-            return BadRequest(new { response.message });
-        }
-
-        [HttpPost("create-payment-link")]
+        [HttpPost("process-online-payment")]
         [Authorize]
-        public async Task<IActionResult> CreatePaymentLink([FromBody] CreatePaymentLinkRequest body, [FromQuery] string phone, [FromQuery] int postId, [FromQuery] int transactionId)
+        public async Task<IActionResult> ProcessOnlinePayment([FromBody] ProcessOnlinePaymentRequest request)
         {
-            // Verify the user is creating a payment for themselves
-            var currentUserPhone = User.FindFirstValue("phone");
-            var isCustomer = User.IsInRole("Customer");
-
-            if (currentUserPhone != phone && !isCustomer)
+            try
             {
-                return Forbid();
-            }
+                // Verify the user is creating a payment for themselves
+                var currentUserPhone = User.FindFirstValue("phone");
+                var userId = int.Parse(User.FindFirstValue("id"));
+                var isCustomer = User.IsInRole("Customer");
 
-            var response = await _paymentService.CreatePaymentLink(body, phone, postId, transactionId);
-            if (response.error == 0)
-            {
-                return Ok(response);
-            }
-
-            _logger.LogError("Failed to create payment link for phone {Phone}: {Message}", phone, response.message);
-            return BadRequest(new { response.message });
-        }
-
-        [HttpGet("get-order/{orderCode}")]
-        [Authorize]
-        public async Task<IActionResult> GetOrder(int orderCode)
-        {
-            var response = await _paymentService.GetOrder(orderCode);
-            if (response.error == 0)
-            {
-                // Verify the user is accessing their own payment
-                var result = response.data as PaymentOrderResult;
-                if (result?.Transaction != null)
+                if (currentUserPhone != request.BuyerPhone && !isCustomer)
                 {
-                    var currentUserId = int.Parse(User.FindFirstValue("id"));
-                    var isAdmin = User.IsInRole("Admin");
+                    return Forbid();
+                }
+                var productName = "Order " + request.OrderId;
 
-                    if (result.Transaction.UserId != currentUserId && !isAdmin)
-                    {
-                        return Forbid();
-                    }
+                // Create payment link request
+                var paymentLinkRequest = new CreatePaymentLinkRequest(
+                    productName,
+                    request.Description,
+                    request.Price,
+                    request.ReturnUrl,
+                    request.CancelUrl,
+                    request.BuyerName,
+                    request.BuyerPhone
+                );
+
+                // Process the payment
+                var response = await _paymentService.ProcessOnlinePayment(
+                    request.OrderId,
+                    request.Address,
+                    request.Notes,
+                    request.DiscountId,
+                    paymentLinkRequest,
+                    userId);
+
+                if (response.error == 0)
+                {
+                    return Ok(response);
                 }
 
-                return Ok(response);
+                _logger.LogError("Failed to process online payment for order {OrderId}: {Message}", request.OrderId, response.message);
+                return BadRequest(new { response.message });
             }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing online payment");
+                return StatusCode(500, new { message = "An error occurred while processing the online payment" });
+            }
+        }
 
-            _logger.LogError("Failed to get order {OrderCode}: {Message}", orderCode, response.message);
-            return BadRequest(new { response.message });
+        [HttpPost("process-cash-payment")]
+        [Authorize]
+        public async Task<IActionResult> ProcessCashPayment([FromBody] ProcessCashPaymentRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirstValue("id"));
+
+                // Process the cash payment
+                var payment = await _paymentService.ProcessCashPayment(
+                    request.OrderId,
+                    request.Address,
+                    request.Notes,
+                    request.DiscountId,
+                    userId);
+
+                return Ok(new
+                {
+                    message = "Cash payment created successfully",
+                    paymentId = payment.PaymentId,
+                    status = payment.Status.ToString()
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing cash payment");
+                return StatusCode(500, new { message = "An error occurred while processing the cash payment" });
+            }
         }
 
         [HttpPost("cancel-order/{orderCode}")]
@@ -189,200 +203,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
             _logger.LogError("Failed to check order {OrderCode} for user {UserPhone}: {Message}", request.OrderCode, userPhone, response.message);
             return BadRequest(new { response.message });
-        }
-
-        [HttpPost("create-cash-payment")]
-        [Authorize]
-        public async Task<IActionResult> CreateCashPayment([FromBody] CreateCashPaymentRequest request)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-                // Verify the user is creating a payment for themselves
-                if (request.UserId != userId && !User.IsInRole("Admin"))
-                {
-                    return Forbid();
-                }
-
-                var payment = await _paymentService.CreateCashPaymentAsync(
-                    request.UserId,
-                    request.OrderId,
-                    request.Amount);
-
-                return Ok(new
-                {
-                    message = "Cash payment created successfully",
-                    paymentId = payment.PaymentId,
-                    status = payment.Status.ToString()
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Not found error creating cash payment");
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating cash payment");
-                return StatusCode(500, new { message = "An error occurred while creating the cash payment" });
-            }
-        }
-
-        [HttpPut("{paymentId}/status")]
-        [Authorize(Roles = "Admin,Staff")]
-        public async Task<IActionResult> UpdatePaymentStatus(int paymentId, [FromBody] UpdatePaymentStatusRequest request)
-        {
-            try
-            {
-                if (!Enum.TryParse<PaymentStatus>(request.Status, true, out var status))
-                {
-                    return BadRequest(new { message = "Invalid payment status" });
-                }
-
-                var payment = await _paymentService.UpdatePaymentStatusAsync(paymentId, status);
-
-                return Ok(new
-                {
-                    message = "Payment status updated successfully",
-                    paymentId = payment.PaymentId,
-                    status = payment.Status.ToString()
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Not found error updating payment status for payment {PaymentId}", paymentId);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating payment status for payment {PaymentId}", paymentId);
-                return StatusCode(500, new { message = "An error occurred while updating the payment status" });
-            }
-        }
-
-        [HttpGet("user/{userId}")]
-        [Authorize]
-        public async Task<IActionResult> GetPaymentsByUser(int userId)
-        {
-            try
-            {
-                // Verify the user is accessing their own payments
-                var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (currentUserId != userId && !User.IsInRole("Admin"))
-                {
-                    return Forbid();
-                }
-
-                var payments = await _paymentService.GetPaymentsByUserIdAsync(userId);
-
-                var paymentDtos = payments.Select(p => new PaymentDto
-                {
-                    PaymentId = p.PaymentId,
-                    TransactionCode = p.TransactionCode,
-                    Type = p.Type.ToString(),
-                    Price = p.Price,
-                    Status = p.Status.ToString(),
-                    OrderId = p.OrderId,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                });
-
-                return Ok(paymentDtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payments for user {UserId}", userId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payments" });
-            }
-        }
-
-        [HttpGet("{paymentId}")]
-        [Authorize]
-        public async Task<IActionResult> GetPaymentById(int paymentId)
-        {
-            try
-            {
-                var payment = await _paymentService.GetPaymentByIdAsync(paymentId);
-
-                if (payment == null)
-                {
-                    return NotFound(new { message = $"Payment with ID {paymentId} not found" });
-                }
-
-                // Verify the user is accessing their own payment
-                var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (payment.UserId != currentUserId && !User.IsInRole("Admin"))
-                {
-                    return Forbid();
-                }
-
-                var paymentDto = new PaymentDto
-                {
-                    PaymentId = payment.PaymentId,
-                    TransactionCode = payment.TransactionCode,
-                    Type = payment.Type.ToString(),
-                    Price = payment.Price,
-                    Status = payment.Status.ToString(),
-                    OrderId = payment.OrderId,
-                    CreatedAt = payment.CreatedAt,
-                    UpdatedAt = payment.UpdatedAt
-                };
-
-                return Ok(paymentDto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payment {PaymentId}", paymentId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payment" });
-            }
-        }
-
-        [HttpGet("order/{orderId}")]
-        [Authorize]
-        public async Task<IActionResult> GetPaymentByOrderId(int orderId)
-        {
-            try
-            {
-                // First verify the user owns the order
-                var order = await _orderService.GetByIdAsync(orderId);
-                if (order == null)
-                {
-                    return NotFound(new { message = $"Order with ID {orderId} not found" });
-                }
-
-                var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (order.UserId != currentUserId && !User.IsInRole("Admin"))
-                {
-                    return Forbid();
-                }
-
-                var payment = await _paymentService.GetPaymentByOrderIdAsync(orderId);
-
-                if (payment == null)
-                {
-                    return NotFound(new { message = $"Payment for order with ID {orderId} not found" });
-                }
-
-                var paymentDto = new PaymentDto
-                {
-                    PaymentId = payment.PaymentId,
-                    TransactionCode = payment.TransactionCode,
-                    Type = payment.Type.ToString(),
-                    Price = payment.Price,
-                    Status = payment.Status.ToString(),
-                    OrderId = payment.OrderId,
-                    CreatedAt = payment.CreatedAt,
-                    UpdatedAt = payment.UpdatedAt
-                };
-
-                return Ok(paymentDto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payment for order {OrderId}", orderId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payment" });
-            }
         }
     }
 }
