@@ -1,13 +1,9 @@
-﻿using Capstone.HPTY.ServiceLayer.DTOs.Management;
+﻿using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
-using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
-using Mapster;
-using MapsterMapper;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SystemClaimTypes = System.Security.Claims.ClaimTypes;
 
 
 namespace Capstone.HPTY.API.Controllers.Schedule
@@ -34,7 +30,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Get the current staff member's work schedule
         /// </summary>
         [HttpGet("my-schedule")]
-        public async Task<ActionResult<IEnumerable<StaffWorkShiftDto>>> GetMySchedule()
+        public async Task<ActionResult<StaffScheduleDto>> GetMySchedule()
         {
             try
             {
@@ -45,14 +41,26 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Find the staff ID associated with this user ID
+                // Find the staff member
                 var staff = await _staffService.GetStaffByIdAsync(userId);
                 if (staff == null)
                     return NotFound($"Staff record not found for user ID {userId}");
 
-                var shifts = await _scheduleService.GetStaffWorkShiftsAsync(userId);
-                var shiftDtos = shifts.Adapt<List<StaffWorkShiftDto>>();
-                return Ok(shiftDtos);
+                // Create a staff DTO with work days
+                var staffDto = new StaffSDto
+                {
+                    UserId = staff.UserId,
+                    Name = staff.Name,
+                    Email = staff.Email,
+                    DaysOfWeek = staff.WorkDays ?? WorkDays.None
+                };
+
+                var staffSchedule = new StaffScheduleDto
+                {
+                    Staff = staffDto
+                };
+
+                return Ok(staffSchedule);
             }
             catch (Exception ex)
             {

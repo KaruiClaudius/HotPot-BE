@@ -21,17 +21,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int WorkShiftId { get; set; }
         public TimeSpan ShiftStartTime { get; set; }
         public TimeSpan? ShiftEndTime { get; set; }
+        public string ShiftName { get; set; }
         public WorkDays DaysOfWeek { get; set; }
-        public string? Status { get; set; }
-        public List<ManagerDto>? Managers { get; set; }
+        public List<ManagerSDto> Managers { get; set; }
     }
 
     public class StaffWorkShiftDto
     {
         public int WorkShiftId { get; set; }
+        public TimeSpan ShiftStartTime { get; set; }
+        public TimeSpan? ShiftEndTime { get; set; }
+        public string ShiftName { get; set; }
         public WorkDays DaysOfWeek { get; set; }
-        public string? Status { get; set; }
-        public List<StaffDto>? Staff { get; set; }
+        public List<StaffSDto>? Staff { get; set; }
     }
 
     public class StaffSDto
@@ -39,15 +41,16 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int UserId { get; set; }
         public string? Name { get; set; }
         public string? Email { get; set; }
-        public WorkDays WorkDays { get; set; }
+        public WorkDays DaysOfWeek { get; set; }
+
     }
 
-    public class ManagerDto
+    public class ManagerSDto
     {
         public int UserId { get; set; }
         public string? Name { get; set; }
         public string? Email { get; set; }
-        public WorkDays WorkDays { get; set; }
+
     }
 
     public class StaffScheduleDto

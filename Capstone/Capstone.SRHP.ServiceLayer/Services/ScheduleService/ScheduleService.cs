@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
@@ -44,18 +37,43 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
         public async Task<IEnumerable<WorkShift>> GetStaffWorkShiftsAsync(int staffId)
         {
-            var staff = await _unitOfWork.Repository<User>()
-                .FindAsync(s => s.UserId == staffId && s.RoleId == STAFF_ROLE_ID);
+            try
+            {
+                Console.WriteLine($"GetStaffWorkShiftsAsync: staffId = {staffId}");
 
-            if (staff == null)
-                throw new KeyNotFoundException($"Staff with ID {staffId} not found");
+                var staff = await _unitOfWork.Repository<User>()
+                    .FindAsync(s => s.UserId == staffId && s.RoleId == STAFF_ROLE_ID);
 
-            // Get all work shifts associated with this staff member
-            return await _unitOfWork.Repository<WorkShift>().GetAll()
-                .Include(w => w.Staff)
-                .Where(w => w.Staff.Any(s => s.UserId == staffId))
-                .OrderBy(w => w.ShiftStartTime)
-                .ToListAsync();
+                if (staff == null)
+                {
+                    Console.WriteLine($"Staff with ID {staffId} not found");
+                    throw new KeyNotFoundException($"Staff with ID {staffId} not found");
+                }
+
+                Console.WriteLine($"Staff found: {staff.Name}");
+
+                // Get all work shifts associated with this staff member
+                var shifts = await _unitOfWork.Repository<WorkShift>().GetAll()
+                    .Include(w => w.Staff)
+                    .Where(w => w.Staff.Any(s => s.UserId == staffId))
+                    .OrderBy(w => w.ShiftStartTime)
+                    .ToListAsync();
+
+                Console.WriteLine($"Shifts count: {shifts.Count}");
+                foreach (var shift in shifts)
+                {
+                    Console.WriteLine($"Shift ID: {shift.WorkShiftId}, Name: {shift.ShiftName}");
+                    Console.WriteLine($"Staff count in shift: {shift.Staff?.Count ?? 0}");
+                }
+
+                return shifts;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in GetStaffWorkShiftsAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         public async Task<IEnumerable<WorkShift>> GetManagerWorkShiftsAsync(int managerId)
