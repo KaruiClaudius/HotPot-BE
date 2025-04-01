@@ -13,16 +13,17 @@ namespace Capstone.HPTY.ModelLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
+        public int WorkShiftId { get; set; }
 
         public TimeSpan? ShiftStartTime { get; set; }
 
-        [Required]
-        public WorkDays DaysOfWeek { get; set; }
-        public AttendanceStatus? Status { get; set; }
+        public TimeSpan? ShiftEndTime { get; set; }
+
+        public string ShiftName { get; set; }
+
 
         [InverseProperty("StaffWorkShifts")]
-        public virtual ICollection<User> Staff { get; set; } = new List<User>();
+        public virtual ICollection<User>? Staff { get; set; } = new List<User>();
 
         [InverseProperty("MangerWorkShifts")]
         public virtual ICollection<User> Managers { get; set; } = new List<User>();

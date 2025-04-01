@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
         public async Task<WorkShift> GetWorkShiftByIdAsync(int shiftId)
         {
             return await _unitOfWork.Repository<WorkShift>()
-                .AsQueryable(w => w.Id == shiftId)
+                .AsQueryable(w => w.WorkShiftId == shiftId)
                 .Include(w => w.Staff)
                 .Include(w => w.Managers)
                 .FirstOrDefaultAsync();
@@ -49,10 +50,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             if (staff == null)
                 throw new KeyNotFoundException($"Staff with ID {staffId} not found");
 
+            // Get all work shifts associated with this staff member
             return await _unitOfWork.Repository<WorkShift>().GetAll()
-                .Where(w => (w.DaysOfWeek & staff.WorkDays) != 0)
                 .Include(w => w.Staff)
-                .OrderBy(w => w.DaysOfWeek)
+                .Where(w => w.Staff.Any(s => s.UserId == staffId))
+                .OrderBy(w => w.ShiftStartTime)
                 .ToListAsync();
         }
 
@@ -64,9 +66,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             if (manager == null)
                 throw new KeyNotFoundException($"Manager with ID {managerId} not found");
 
+            // Get all work shifts associated with this manager
             return await _unitOfWork.Repository<WorkShift>().GetAll()
-                .Where(w => (w.DaysOfWeek & manager.WorkDays) != 0)
                 .Include(w => w.Managers)
+                .Where(w => w.Managers.Any(m => m.UserId == managerId))
                 .OrderBy(w => w.ShiftStartTime)
                 .ToListAsync();
         }
@@ -79,17 +82,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             return workShift;
         }
 
-        public async Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan shiftStartTime, WorkDays daysOfWeek, AttendanceStatus? status)
+        public async Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan startTime, TimeSpan endTime, string shiftName)
         {
             var workShift = await _unitOfWork.Repository<WorkShift>()
-                .FindAsync(w => w.Id == shiftId);
+                .FindAsync(w => w.WorkShiftId == shiftId);
 
             if (workShift == null)
                 throw new KeyNotFoundException($"Work shift with ID {shiftId} not found");
 
-            workShift.ShiftStartTime = shiftStartTime;
-            workShift.DaysOfWeek = daysOfWeek;
-            workShift.Status = status;
+            workShift.ShiftStartTime = startTime;
+            workShift.ShiftEndTime = endTime;
+            workShift.ShiftName = shiftName;
             workShift.UpdatedAt = DateTime.UtcNow;
 
             await _unitOfWork.CommitAsync();
@@ -99,7 +102,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
         public async Task<bool> DeleteWorkShiftAsync(int shiftId)
         {
             var workShift = await _unitOfWork.Repository<WorkShift>()
-                .FindAsync(w => w.Id == shiftId);
+                .FindAsync(w => w.WorkShiftId == shiftId);
 
             if (workShift == null)
                 return false;
@@ -123,50 +126,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             await _unitOfWork.CommitAsync();
             return staff;
         }
+      
 
-        public async Task<User> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts)
+        public async Task<User> AssignManagerToWorkShiftsAsync(int managerId, WorkDays workDays, IEnumerable<int> workShiftIds)
         {
             var manager = await _unitOfWork.Repository<User>()
-                .FindAsync(m => m.UserId == managerId && m.RoleId == MANAGER_ROLE_ID);
+                .AsQueryable(m => m.UserId == managerId && m.RoleId == MANAGER_ROLE_ID)
+                .Include(m => m.MangerWorkShifts)
+                .FirstOrDefaultAsync();
 
             if (manager == null)
                 throw new KeyNotFoundException($"Manager with ID {managerId} not found");
 
-            manager.WorkDays = workDays;
-            manager.UpdatedAt = DateTime.UtcNow;
+            // Clear existing work shifts
+            manager.MangerWorkShifts.Clear();
 
-            // Verify that all work shifts have days that match the manager's work days
-            foreach (var shift in workShifts)
+            // Add new work shifts
+            foreach (var shiftId in workShiftIds)
             {
-                if ((shift.DaysOfWeek & workDays) == 0)
-                {
-                    throw new ValidationException($"Work shift with ID {shift.Id} has days that don't match the manager's work days");
-                }
-            }
+                var workShift = await _unitOfWork.Repository<WorkShift>()
+                    .AsQueryable(w => w.WorkShiftId == shiftId)
+                    .Include(w => w.Managers)
+                    .FirstOrDefaultAsync();
 
-            // Clear existing work shifts and add the new ones
-            if (manager.MangerWorkShifts != null)
-            {
-                // Detach the manager from all current work shifts
-                foreach (var shift in manager.MangerWorkShifts.ToList())
+                if (workShift != null)
                 {
-                    shift.Managers.Remove(manager);
-                }
-
-                // Clear the manager's work shifts collection
-                manager.MangerWorkShifts.Clear();
-
-                // Add the new work shifts
-                foreach (var shift in workShifts)
-                {
-                    manager.MangerWorkShifts.Add(shift);
-                    if (!shift.Managers.Contains(manager))
+                    manager.MangerWorkShifts.Add(workShift);
+                    if (!workShift.Managers.Contains(manager))
                     {
-                        shift.Managers.Add(manager);
+                        workShift.Managers.Add(manager);
                     }
                 }
             }
 
+            manager.WorkDays = workDays;
+            manager.UpdatedAt = DateTime.UtcNow;
             await _unitOfWork.CommitAsync();
             return manager;
         }

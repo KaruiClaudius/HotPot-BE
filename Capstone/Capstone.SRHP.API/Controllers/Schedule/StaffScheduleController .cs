@@ -50,8 +50,8 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 if (staff == null)
                     return NotFound($"Staff record not found for user ID {userId}");
 
-                var shifts = await _scheduleService.GetStaffWorkShiftsAsync(staff.UserId);
-                var shiftDtos = shifts.Adapt<IEnumerable<StaffWorkShiftDto>>();
+                var shifts = await _scheduleService.GetStaffWorkShiftsAsync(userId);
+                var shiftDtos = shifts.Adapt<List<StaffWorkShiftDto>>();
                 return Ok(shiftDtos);
             }
             catch (Exception ex)

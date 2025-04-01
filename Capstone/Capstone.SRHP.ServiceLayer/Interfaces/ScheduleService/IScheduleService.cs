@@ -15,10 +15,10 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService
         Task<IEnumerable<WorkShift>> GetStaffWorkShiftsAsync(int staffId);
         Task<IEnumerable<WorkShift>> GetManagerWorkShiftsAsync(int managerId);
         Task<WorkShift> CreateWorkShiftAsync(WorkShift workShift);
-        Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan shiftStartTime, WorkDays daysOfWeek, AttendanceStatus? status);
+        Task<WorkShift> UpdateWorkShiftAsync(int shiftId, TimeSpan startTime, TimeSpan endTime, string shiftName);
         Task<bool> DeleteWorkShiftAsync(int shiftId);
         Task<User> AssignStaffWorkDaysAsync(int staffId, WorkDays workDays);
-        Task<User> AssignManagerWorkDaysAndShiftsAsync(int managerId, WorkDays workDays, IEnumerable<WorkShift> workShifts);
+        Task<User> AssignManagerToWorkShiftsAsync(int managerId, WorkDays workDays, IEnumerable<int> workShiftIds);
 
     }
 }
