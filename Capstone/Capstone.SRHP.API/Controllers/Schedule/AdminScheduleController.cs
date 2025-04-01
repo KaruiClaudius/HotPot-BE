@@ -209,47 +209,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 return StatusCode(500, "An error occurred while deleting the work shift. Please try again later.");
             }
         }
-
-        /// <summary>
-        /// Assign work days to a staff member
-        /// </summary>
-        [HttpPost("assign-staff")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<UserDto>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
-        {
-            try
-            {
-                // Validate request
-                if (assignDto == null || assignDto.StaffId <= 0)
-                {
-                    return BadRequest("Staff ID and work days are required");
-                }
-
-                var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
-
-                // Notify the staff member about their schedule update
-                await _scheduleHubContext.Clients.Group($"User_{staff.UserId}").SendAsync(
-                    "ReceiveScheduleUpdate",
-                    staff.UserId,
-                    DateTime.Now);
-
-                // Notify all managers about the schedule update
-                await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
-
-                return Ok(staff.Adapt<UserDto>());
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, "An error occurred while assigning staff work days. Please try again later.");
-            }
-        }
+     
 
         /// <summary>
         /// Assign work days and shifts to a manager
