@@ -1,8 +1,6 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
-using Capstone.HPTY.ModelLayer.Exceptions;
-using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
@@ -11,6 +9,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Capstone.HPTY.API.Controllers.Schedule
 {
@@ -20,18 +22,20 @@ namespace Capstone.HPTY.API.Controllers.Schedule
     public class AdminScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
-        private readonly IHubContext<ScheduleHub> _scheduleHubContext;       
+        private readonly IHubContext<ScheduleHub> _scheduleHubContext;
+
         public AdminScheduleController(IScheduleService scheduleService, IHubContext<ScheduleHub> scheduleHubContext)
         {
             _scheduleService = scheduleService;
             _scheduleHubContext = scheduleHubContext;
         }
 
-
         /// <summary>
         /// Get all work shifts
         /// </summary>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetAllWorkShifts()
         {
             try
@@ -49,6 +53,9 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Get work shift by ID
         /// </summary>
         [HttpGet("{shiftId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<WorkShiftDto>> GetWorkShiftById(int shiftId)
         {
             try
@@ -69,15 +76,23 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Create a new work shift
         /// </summary>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<WorkShiftDto>> CreateWorkShift([FromBody] CreateWorkShiftDto createDto)
         {
             try
             {
+                if (createDto == null)
+                    return BadRequest("Work shift data is required");
+
                 var workShift = new WorkShift
                 {
                     ShiftStartTime = createDto.ShiftStartTime,
-                    DaysOfWeek = createDto.DaysOfWeek,
-                    Status = Enum.Parse<AttendanceStatus>(createDto.Status ?? "Scheduled")
+                    ShiftEndTime = createDto.ShiftEndTime,
+                    ShiftName = createDto.ShiftName,
+                    Staff = new List<User>(),
+                    Managers = new List<User>()
                 };
 
                 var createdShift = await _scheduleService.CreateWorkShiftAsync(workShift);
@@ -85,7 +100,9 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify all managers about the new shift
                 await _scheduleHubContext.Clients.Group("Managers").SendAsync("ReceiveAllScheduleUpdates");
 
-                return CreatedAtAction(nameof(GetWorkShiftById), new { shiftId = createdShift.Id }, createdShift.Adapt<WorkShiftDto>());
+                return CreatedAtAction(nameof(GetWorkShiftById),
+                    new { shiftId = createdShift.WorkShiftId },
+                    createdShift.Adapt<WorkShiftDto>());
             }
             catch (Exception ex)
             {
@@ -111,21 +128,19 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     return BadRequest("Update data is required");
                 }
 
-                var status = string.IsNullOrEmpty(updateDto.Status)
-                    ? (AttendanceStatus?)null
-                    : Enum.Parse<AttendanceStatus>(updateDto.Status);
-
                 var updatedShift = await _scheduleService.UpdateWorkShiftAsync(
                     shiftId,
                     updateDto.ShiftStartTime,
-                    updateDto.DaysOfWeek,
-                    status);
+                    updateDto.ShiftEndTime,
+                    updateDto.ShiftName);
 
-                // Get the staff members assigned to this shift
-                var staffMembers = updatedShift.Staff;
-                if (staffMembers != null && staffMembers.Any())
+                // Get the updated shift with staff information
+                var shiftWithStaff = await _scheduleService.GetWorkShiftByIdAsync(shiftId);
+
+                // Notify staff members about their schedule update
+                if (shiftWithStaff.Staff != null && shiftWithStaff.Staff.Any())
                 {
-                    foreach (var staff in staffMembers)
+                    foreach (var staff in shiftWithStaff.Staff)
                     {
                         // Notify each staff member about their schedule update
                         await _scheduleHubContext.Clients.Group($"User_{staff.UserId}").SendAsync(
@@ -140,13 +155,9 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 return Ok(updatedShift.Adapt<WorkShiftDto>());
             }
-            catch (NotFoundException ex)
+            catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -230,13 +241,9 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 return Ok(staff.Adapt<UserDto>());
             }
-            catch (NotFoundException ex)
+            catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -262,20 +269,10 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     return BadRequest("Manager ID, work days, and work shift IDs are required");
                 }
 
-                // Get all the work shifts by IDs
-                var workShifts = new List<WorkShift>();
-                foreach (var shiftId in assignDto.WorkShiftIds)
-                {
-                    var shift = await _scheduleService.GetWorkShiftByIdAsync(shiftId);
-                    if (shift == null)
-                        return NotFound($"Work shift with ID {shiftId} not found");
-                    workShifts.Add(shift);
-                }
-
-                var manager = await _scheduleService.AssignManagerWorkDaysAndShiftsAsync(
+                var manager = await _scheduleService.AssignManagerToWorkShiftsAsync(
                     assignDto.ManagerId,
                     assignDto.WorkDays,
-                    workShifts);
+                    assignDto.WorkShiftIds);
 
                 // Notify the manager about their schedule update
                 await _scheduleHubContext.Clients.Group($"User_{manager.UserId}").SendAsync(
@@ -288,23 +285,22 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 return Ok(manager.Adapt<UserDto>());
             }
-            catch (NotFoundException ex)
+            catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, "An error occurred while assigning manager work days and shifts. Please try again later.");
             }
         }
+
         /// <summary>
         /// Manually send a notification to all users about schedule updates
         /// </summary>
         [HttpPost("notify-all")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> NotifyAllUsers()
         {
             try
@@ -327,12 +323,14 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         /// Manually send a notification to a specific staff member
         /// </summary>
         [HttpPost("notify-staff/{staffId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> NotifyStaff(int staffId)
         {
             try
             {
                 // Notify the specific staff member about their schedule update
-                await _scheduleHubContext.Clients.Group($"Staff_{staffId}").SendAsync(
+                await _scheduleHubContext.Clients.Group($"User_{staffId}").SendAsync(
                     "ReceiveScheduleUpdate",
                     staffId,
                     DateTime.Now);
@@ -346,4 +344,3 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         }
     }
 }
-

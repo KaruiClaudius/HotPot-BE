@@ -158,53 +158,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         }
 
         // Pickup Service Methods
-        public async Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts)
-        {
-            var staff = await _unitOfWork.Repository<User>()
-                .Include(u => u.StaffWorkShifts)
-                .FirstOrDefaultAsync(u => u.UserId == userId && u.RoleId == STAFF_ROLE_ID);
-
-            if (staff == null)
-                throw new NotFoundException($"Staff with ID {userId} not found");
-
-            // Verify that all work shifts have days that match the staff's work days
-            if (staff.WorkDays.HasValue)
-            {
-                foreach (var shift in workShifts)
-                {
-                    if ((shift.DaysOfWeek & staff.WorkDays.Value) == 0)
-                    {
-                        throw new ValidationException($"Work shift with ID {shift.Id} has days that don't match the staff's work days");
-                    }
-                }
-            }
-
-            // Clear existing work shifts and add the new ones
-            if (staff.StaffWorkShifts != null)
-            {
-                // Detach the staff from all current work shifts
-                foreach (var shift in staff.StaffWorkShifts.ToList())
-                {
-                    shift.Staff.Remove(staff);
-                }
-
-                // Clear the staff's work shifts collection
-                staff.StaffWorkShifts.Clear();
-
-                // Add the new work shifts
-                foreach (var shift in workShifts)
-                {
-                    staff.StaffWorkShifts.Add(shift);
-                    if (!shift.Staff.Contains(staff))
-                    {
-                        shift.Staff.Add(staff);
-                    }
-                }
-            }
-
-            staff.SetUpdateDate();
-            await _unitOfWork.CommitAsync();
-        }
+     
 
         public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
         {

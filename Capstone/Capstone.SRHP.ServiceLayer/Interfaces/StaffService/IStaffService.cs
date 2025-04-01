@@ -18,7 +18,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
         Task<User> CreateStaffAsync(User staff);
         Task UpdateStaffAsync(int userId, User staffUpdate);
         Task DeleteStaffAsync(int userId);
-        Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts);
 
 
         // Pickup Interface

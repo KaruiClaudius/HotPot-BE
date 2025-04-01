@@ -87,7 +87,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     staffSchedules.Add(new StaffScheduleDto
                     {
                         Staff = staff.Adapt<StaffDto>(),
-                        WorkShifts = shifts.Adapt<List<StaffWorkShiftDto>>()
                     });
                 }
 
@@ -118,7 +117,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 var staffSchedule = new StaffScheduleDto
                 {
                     Staff = staff.Adapt<StaffDto>(),
-                    WorkShifts = shifts.Adapt<List<StaffWorkShiftDto>>()
                 };
 
                 return Ok(staffSchedule);
