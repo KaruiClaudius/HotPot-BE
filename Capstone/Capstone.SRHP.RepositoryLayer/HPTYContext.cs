@@ -177,12 +177,6 @@ namespace Capstone.HPTY.RepositoryLayer
 
 
 
-            modelBuilder.Entity<WorkShift>()
-                .Property(e => e.Status)
-                .IsRequired()
-                .HasConversion<int>();
-
-
 
             modelBuilder.Entity<Order>(entity =>
             {

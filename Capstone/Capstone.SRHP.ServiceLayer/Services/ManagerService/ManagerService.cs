@@ -62,18 +62,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw new NotFoundException($"Manager with ID {userId} not found");
 
             // Update properties as needed
-            existingManager.WorkDays = managerUpdate.WorkDays;
-            existingManager.Name = managerUpdate.Name;
-            existingManager.Email = managerUpdate.Email;
-            existingManager.PhoneNumber = managerUpdate.PhoneNumber;
-            existingManager.Address = managerUpdate.Address;
-            existingManager.Note = managerUpdate.Note;
-            existingManager.ImageURL = managerUpdate.ImageURL;
-            existingManager.SetUpdateDate();
+            //existingManager.WorkDays = managerUpdate.WorkDays;
+            //existingManager.Name = managerUpdate.Name;
+            //existingManager.Email = managerUpdate.Email;
+            //existingManager.PhoneNumber = managerUpdate.PhoneNumber;
+            //existingManager.Address = managerUpdate.Address;
+            //existingManager.Note = managerUpdate.Note;
+            //existingManager.ImageURL = managerUpdate.ImageURL;
+            //existingManager.SetUpdateDate();
 
             // Using the approach from source [0] to update entity properties
             // This is a cleaner way to update multiple properties
-            // _unitOfWork.Context.Entry(existingManager).CurrentValues.SetValues(managerUpdate);
+             _unitOfWork.Context.Entry(existingManager).CurrentValues.SetValues(managerUpdate);
 
             await _unitOfWork.CommitAsync();
         }
@@ -92,52 +92,65 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts)
-        {
-            var manager = await _unitOfWork.Repository<User>()
-                .Include(u => u.MangerWorkShifts)
-                .FirstOrDefaultAsync(u => u.UserId == userId && u.RoleId == MANAGER_ROLE_ID);
+        //public async Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts)
+        //{
+        //    var manager = await _unitOfWork.Repository<User>()
+        //        .AsQueryable(u => u.UserId == userId && u.RoleId == MANAGER_ROLE_ID)
+        //        .Include(u => u.MangerWorkShifts)
+        //        .FirstOrDefaultAsync();
 
-            if (manager == null)
-                throw new NotFoundException($"Manager with ID {userId} not found");
+        //    if (manager == null)
+        //        throw new NotFoundException($"Manager with ID {userId} not found");
 
-            // Verify that all work shifts have days that match the manager's work days
-            if (manager.WorkDays.HasValue)
-            {
-                foreach (var shift in workShifts)
-                {
-                    if ((shift.DaysOfWeek & manager.WorkDays.Value) == 0)
-                    {
-                        throw new ValidationException($"Work shift with ID {shift.Id} has days that don't match the manager's work days");
-                    }
-                }
-            }
+        //    // Initialize the collection if it's null
+        //    if (manager.MangerWorkShifts == null)
+        //    {
+        //        manager.MangerWorkShifts = new List<WorkShift>();
+        //    }
 
-            // Clear existing work shifts and add the new ones
-            if (manager.MangerWorkShifts != null)
-            {
-                // Detach the manager from all current work shifts
-                foreach (var shift in manager.MangerWorkShifts.ToList())
-                {
-                    shift.Managers.Remove(manager);
-                }
+        //    // Get the current work shifts to properly handle the relationship
+        //    var currentWorkShifts = manager.MangerWorkShifts.ToList();
 
-                // Clear the manager's work shifts collection
-                manager.MangerWorkShifts.Clear();
+        //    // Remove manager from work shifts that are no longer associated
+        //    foreach (var shift in currentWorkShifts)
+        //    {
+        //        if (!workShifts.Any(ws => ws.WorkShiftId == shift.WorkShiftId))
+        //        {
+        //            // Remove the manager from this shift's Managers collection
+        //            if (shift.Managers != null)
+        //            {
+        //                shift.Managers.Remove(manager);
+        //            }
 
-                // Add the new work shifts
-                foreach (var shift in workShifts)
-                {
-                    manager.MangerWorkShifts.Add(shift);
-                    if (!shift.Managers.Contains(manager))
-                    {
-                        shift.Managers.Add(manager);
-                    }
-                }
-            }
+        //            // Remove the shift from the manager's collection
+        //            manager.MangerWorkShifts.Remove(shift);
+        //        }
+        //    }
 
-            manager.SetUpdateDate();
-            await _unitOfWork.CommitAsync();
-        }
+        //    // Add manager to new work shifts
+        //    foreach (var shift in workShifts)
+        //    {
+        //        // Check if the shift is already in the manager's collection
+        //        if (!manager.MangerWorkShifts.Any(ws => ws.WorkShiftId == shift.WorkShiftId))
+        //        {
+        //            // Add the shift to the manager's collection
+        //            manager.MangerWorkShifts.Add(shift);
+
+        //            // Add the manager to the shift's Managers collection
+        //            if (shift.Managers == null)
+        //            {
+        //                shift.Managers = new List<User>();
+        //            }
+
+        //            if (!shift.Managers.Contains(manager))
+        //            {
+        //                shift.Managers.Add(manager);
+        //            }
+        //        }
+        //    }
+
+        //    manager.SetUpdateDate();
+        //    await _unitOfWork.CommitAsync();
+        //}
     }
 }

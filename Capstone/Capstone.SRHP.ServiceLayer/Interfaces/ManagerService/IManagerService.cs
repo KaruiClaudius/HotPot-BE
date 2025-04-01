@@ -14,6 +14,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<User> CreateManagerAsync(User manager);
         Task UpdateManagerAsync(int userId, User managerUpdate);
         Task DeleteManagerAsync(int userId);
-        Task AssignWorkShiftsAsync(int userId, IEnumerable<WorkShift> workShifts);
     }
 }
