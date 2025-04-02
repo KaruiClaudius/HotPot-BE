@@ -182,7 +182,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
         /// <summary>
-        /// Update quantities of multiple items in the cart
+        /// Update quantities of items in the cart (set quantity to 0 to remove an item)
         /// </summary>
         [HttpPut("cart/items")]
         public async Task<ActionResult<OrderResponse>> UpdateCartItems([FromBody] UpdateCartItemsRequest request)
@@ -222,45 +222,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 _logger.LogError(ex, "Error updating cart items");
                 return StatusCode(500, new { message = "An error occurred while updating the cart" });
-            }
-        }
-
-        /// <summary>
-        /// Remove an item from the cart
-        /// </summary>
-        [HttpDelete("cart/items")]
-        public async Task<ActionResult<OrderResponse>> RemoveCartItem([FromBody] RemoveCartItemRequest request)
-        {
-            try
-            {
-                var userIdClaim = User.FindFirstValue("id");
-                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-                {
-                    return Unauthorized(new { message = "Invalid user identification" });
-                }
-
-                var updatedCart = await _orderService.RemoveItemFromCartAsync(userId, request.OrderDetailId, request.IsSellItem);
-
-                if (updatedCart == null)
-                {
-                    return Ok(new { message = "Cart is now empty" });
-                }
-
-                var cartResponse = MapOrderToResponse(updatedCart);
-                return Ok(cartResponse);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing item from cart");
-                return StatusCode(500, new { message = "An error occurred while removing the item from the cart" });
             }
         }
 
@@ -412,12 +373,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Payment = null
             };
 
+            // Track added detail IDs to prevent duplicates
+            var addedSellDetailIds = new HashSet<int>();
+            var addedRentDetailIds = new HashSet<int>();
+
             // Add hotpot deposit from RentOrder if available
             if (order.RentOrder != null)
             {
                 response.HotpotDeposit = order.RentOrder.HotpotDeposit;
-
-                // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;
                 response.ExpectedReturnDate = order.RentOrder.ExpectedReturnDate;
                 response.ActualReturnDate = order.RentOrder.ActualReturnDate;
@@ -432,6 +395,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
+                    // Skip if we've already added this detail
+                    if (!addedSellDetailIds.Add(detail.SellOrderDetailId))
+                    {
+                        _logger.LogWarning($"Duplicate sell detail ID found: {detail.SellOrderDetailId}");
+                        continue;
+                    }
+
                     string itemType = "";
                     string itemName = "Unknown";
                     string imageUrl = null;
@@ -443,22 +413,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
-
-                        response.Items.Add(new OrderItemResponse
-                        {
-                            OrderDetailId = detail.SellOrderDetailId,
-                            Quantity = detail.Quantity,
-                            UnitPrice = detail.UnitPrice,
-                            TotalPrice = detail.UnitPrice * detail.Quantity,
-                            ItemType = itemType,
-                            ItemName = itemName,
-                            ImageUrl = imageUrl,
-                            ItemId = itemId,
-                            IsSellable = true
-                        });
-
-                        // Skip the default add below for ingredients
-                        continue;
                     }
                     else if (detail.CustomizationId.HasValue && detail.Customization != null)
                     {
@@ -494,6 +448,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
+                    // Skip if we've already added this detail
+                    if (!addedRentDetailIds.Add(detail.RentOrderDetailId))
+                    {
+                        _logger.LogWarning($"Duplicate rent detail ID found: {detail.RentOrderDetailId}");
+                        continue;
+                    }
+
                     string itemType = "";
                     string itemName = "Unknown";
                     string imageUrl = null;
@@ -556,7 +517,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
 
             return response;
-
         }
 
         private decimal CalculateDiscountAmount(decimal totalPrice, decimal discountPercent)
