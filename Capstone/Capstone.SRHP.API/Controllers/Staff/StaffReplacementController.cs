@@ -20,18 +20,15 @@ namespace Capstone.HPTY.API.Controllers.Staff
     public class StaffReplacementController : ControllerBase
     {
         private readonly IReplacementRequestService _replacementService;
-        private readonly IEquipmentService _equipmentService;
         private readonly IUserService _userService;
         private readonly IHubContext<EquipmentHub> _equipmentHubContext;
 
         public StaffReplacementController(
             IReplacementRequestService replacementService,
-            IEquipmentService equipmentService,
             IUserService userService,
             IHubContext<EquipmentHub> equipmentHubContext)
         {
             _replacementService = replacementService;
-            _equipmentService = equipmentService;
             _userService = userService;
             _equipmentHubContext = equipmentHubContext;
         }
@@ -124,28 +121,21 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
-        [HttpPut("{id}/status")]
+        [HttpPost("{id}/verify")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> UpdateReplacementStatus(
-            int id, [FromBody] UpdateReplacementStatusDto updateDto)
+        public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> VerifyEquipmentFaulty(
+            int id, [FromBody] VerifyEquipmentFaultyDto verifyDto)
         {
             try
             {
-                // Get the current user's ID from the claims using the "id" claim type
+                // Get the current user's ID from the claims
                 var userIdClaim = User.FindFirst("id");
-                if (userIdClaim == null)
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
                 {
-                    return Unauthorized(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
-                        "User ID not found in claims"));
-                }
-
-                if (!int.TryParse(userIdClaim.Value, out var userId))
-                {
-                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(
-                        "Invalid user identity format"));
+                    return Unauthorized(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User ID not found in claims"));
                 }
 
                 var staff = await _userService.GetByIdAsync(userId);
@@ -162,39 +152,32 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 if (request.AssignedStaffId != staff.UserId)
                     return Forbid();
 
-                var updatedRequest = await _replacementService.UpdateReplacementStatusAsync(
-                    id, updateDto.Status, updateDto.Notes);
+                var updatedRequest = await _replacementService.VerifyEquipmentFaultyAsync(
+                    id, verifyDto.IsFaulty, verifyDto.VerificationNotes, staff.UserId);
 
                 var dto = MapToDetailDto(updatedRequest);
 
-                // Notify managers about the status update
-                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveReplacementStatusUpdate",
+                // Notify managers about the verification
+                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveEquipmentVerification",
                     id,
-                    updateDto.Status.ToString(),
-                    updateDto.Notes,
+                    dto.EquipmentName,
+                    verifyDto.IsFaulty,
+                    verifyDto.VerificationNotes,
                     staff.UserId,
                     $"{staff.Name}");
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0)
                 {
-                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementUpdate",
+                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveEquipmentVerification",
                         id,
                         dto.EquipmentName,
-                        updateDto.Status.ToString(),
-                        updateDto.Notes);
+                        verifyDto.IsFaulty,
+                        verifyDto.VerificationNotes);
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
-                    dto, "Replacement request status updated successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
+                    dto, verifyDto.IsFaulty ? "Equipment verified as faulty" : "Equipment verified as not faulty"));
             }
             catch (Exception ex)
             {
@@ -276,111 +259,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
-            }
-        }
-
-        #endregion
-
-        #region Equipment Failure Logging
-
-        [HttpPost("failures")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ConditionLogDto>>> LogEquipmentFailure([FromBody] EquipmentFailureDto failureDto)
-        {
-            try
-            {
-                // Get the current user's ID from the claims
-                var userIdClaim = User.FindFirst("id");
-                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
-                {
-                    return Unauthorized(ApiResponse<ConditionLogDto>.ErrorResponse("User ID not found in claims"));
-                }
-
-                // Validate that exactly one equipment type is specified
-                bool hasUtensil = failureDto.UtensilID.HasValue && failureDto.UtensilID.Value > 0;
-                bool hasHotPot = failureDto.HotPotInventoryId.HasValue && failureDto.HotPotInventoryId.Value > 0;
-
-                if ((!hasUtensil && !hasHotPot) || (hasUtensil && hasHotPot))
-                {
-                    return BadRequest(ApiResponse<ConditionLogDto>.ErrorResponse(
-                        "Exactly one equipment type (either UtensilId or HotPotInventoryId) must be specified with a valid ID"));
-                }
-
-                var result = await _equipmentService.LogEquipmentFailureAsync(failureDto);
-
-                // Notify managers about the new equipment failure
-                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveNewFailure",
-                    result.DamageDeviceId,
-                    result.Name,
-                    result.Description,
-                    result.Status,
-                    result.LoggedDate);
-
-                return CreatedAtAction(nameof(GetConditionLog), new { id = result.DamageDeviceId },
-                    ApiResponse<ConditionLogDto>.SuccessResponse(result, "Equipment failure logged successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<ConditionLogDto>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpGet("failures/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<ConditionLogDetailDto>>> GetConditionLog(int id)
-        {
-            var conditionLog = await _equipmentService.GetConditionLogByIdAsync(id);
-            if (conditionLog == null)
-                return NotFound(ApiResponse<ConditionLogDetailDto>.ErrorResponse($"Condition log with ID {id} not found"));
-
-            return Ok(ApiResponse<ConditionLogDetailDto>.SuccessResponse(conditionLog, "Condition log retrieved successfully"));
-        }
-
-        [HttpGet("failures/active")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ConditionLogDto>>>> GetActiveConditionLogs()
-        {
-            var conditionLogs = await _equipmentService.GetActiveConditionLogsAsync();
-            return Ok(ApiResponse<IEnumerable<ConditionLogDto>>.SuccessResponse(conditionLogs, "Active condition logs retrieved successfully"));
-        }
-
-        [HttpPost("failures/{id}/verify")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ConditionLogDto>>> VerifyEquipmentFailure(
-            int id, [FromBody] VerifyEquipmentDto verifyDto)
-        {
-            try
-            {
-                // Get the current user's ID from the claims
-                var userIdClaim = User.FindFirst("id");
-                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
-                {
-                    return Unauthorized(ApiResponse<ConditionLogDto>.ErrorResponse("User ID not found in claims"));
-                }
-
-                // Verify the equipment failure
-                var result = await _equipmentService.VerifyEquipmentFailureAsync(id, verifyDto.IsVerified, verifyDto.VerificationNotes, userId);
-
-                if (result == null)
-                    return NotFound(ApiResponse<ConditionLogDto>.ErrorResponse($"Condition log with ID {id} not found"));
-
-                // Notify managers about the verification
-                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveFailureVerification",
-                    id,
-                    verifyDto.IsVerified,
-                    verifyDto.VerificationNotes,
-                    userId);
-
-                return Ok(ApiResponse<ConditionLogDto>.SuccessResponse(result,
-                    verifyDto.IsVerified ? "Equipment failure verified" : "Equipment failure not verified"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<ConditionLogDto>.ErrorResponse(ex.Message));
             }
         }
 

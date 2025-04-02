@@ -108,5 +108,14 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
         public List<ReplacementRequestSummaryDto> RecentRequests { get; set; }
     }
+    public class VerifyEquipmentFaultyDto
+    {
+        [Required]
+        public bool IsFaulty { get; set; }
+
+        [Required]
+        [StringLength(1000)]
+        public string VerificationNotes { get; set; }
+    }
 
 }

@@ -193,13 +193,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         public async Task<ReplacementRequest> MarkReplacementAsCompletedAsync(int requestId, string completionNotes)
         {
             var request = await _unitOfWork.Repository<ReplacementRequest>()
-                .FindAsync(r => r.ReplacementRequestId == requestId);
+        .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
                 throw new NotFoundException($"Replacement request with ID {requestId} not found");
 
+            // Only allow completion for requests that are in progress (already verified as faulty)
             if (request.Status != ReplacementRequestStatus.InProgress)
-                throw new ValidationException("Only in-progress requests can be marked as completed");
+                throw new ValidationException("Only in-progress requests can be marked as completed. The equipment must first be verified as faulty.");
 
             request.Status = ReplacementRequestStatus.Completed;
             request.CompletionDate = DateTime.UtcNow;
@@ -212,7 +213,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 Name = "Equipment Replacement",
                 Description = $"Equipment replaced. Reason: {request.RequestReason}. Notes: {completionNotes}",
                 Status = MaintenanceStatus.Completed,
-                LoggedDate = DateTime.UtcNow
+                LoggedDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
             };
 
             // Set the appropriate equipment ID based on the equipment type
@@ -290,7 +292,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 throw new NotFoundException($"Staff with ID {staffId} not found");
 
             return await _unitOfWork.Repository<ReplacementRequest>()
-                .GetAll(r => r.AssignedStaffId == staffId)
+                .GetAll(r => r.AssignedStaffId == staffId
+                          && r.CustomerId != null  // Only include requests with a customer
+                          && r.Status == ReplacementRequestStatus.Approved
+                          || r.Status == ReplacementRequestStatus.InProgress) 
                 .Include(r => r.Customer)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
@@ -326,6 +331,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             }
 
             await _unitOfWork.CommitAsync();
+
+            return request;
+        }
+
+        public async Task<ReplacementRequest> VerifyEquipmentFaultyAsync(int requestId, bool isFaulty, string verificationNotes, int staffId)
+        {
+            var request = await _unitOfWork.Repository<ReplacementRequest>()
+                .FindAsync(r => r.ReplacementRequestId == requestId);
+
+            if (request == null)
+                throw new NotFoundException($"Replacement request with ID {requestId} not found");
+
+            if (request.Status != ReplacementRequestStatus.Approved)
+                throw new ValidationException("Only approved requests can be verified");
+
+            if (request.AssignedStaffId != staffId)
+                throw new ValidationException("Only the assigned staff member can verify this request");
+
+            // Update the request based on verification
+            if (isFaulty)
+            {
+                // If faulty, mark as in progress (ready for physical replacement)
+                request.Status = ReplacementRequestStatus.InProgress;
+                request.AdditionalNotes = (request.AdditionalNotes ?? "") +
+                    $"\n\nVerification ({DateTime.UtcNow:g}): Equipment confirmed faulty. {verificationNotes}";
+            }
+            else
+            {
+                // If not faulty, mark as rejected
+                request.Status = ReplacementRequestStatus.Rejected;
+                request.AdditionalNotes = (request.AdditionalNotes ?? "") +
+                    $"\n\nVerification ({DateTime.UtcNow:g}): Equipment not faulty. {verificationNotes}";
+            }
+
+            request.SetUpdateDate();
+            await _unitOfWork.CommitAsync();
+
+            // Load related entities for notification
+            if (request.CustomerId > 0)
+            {
+                request.Customer = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == request.CustomerId && u.RoleId == CUSTOMER_ROLE_ID)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Notify customer about verification
+            await _notificationService.NotifyCustomerAboutReplacementAsync(request);
+
+            // Notify managers about the status change
+            await _notificationService.NotifyReplacementStatusChangeAsync(request);
 
             return request;
         }
