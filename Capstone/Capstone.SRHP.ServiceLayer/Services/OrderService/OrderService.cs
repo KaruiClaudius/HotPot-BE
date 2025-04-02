@@ -414,7 +414,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         private async Task ProcessHotpotItem(Order order, OrderItemRequest item)
         {
-            item.Quantity = 1;
             var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
             if (hotpot == null)
                 throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
@@ -431,7 +430,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Set rental dates if not already set
             DateTime rentalStartDate = DateTime.Now;
-            DateTime expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
+            DateTime expectedReturnDate = DateTime.Now.AddDays(2); // Default rental period
 
             // Ensure RentOrder exists
             if (order.RentOrder == null)
@@ -454,9 +453,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Create a separate order detail for each hotpot inventory item
             foreach (var hotpotInventory in availableHotpots)
             {
-                hotpotInventory.Hotpot.Quantity -= 1;
+                // Update hotpot quantity
+                if (hotpotInventory.Hotpot != null)
+                {
+                    hotpotInventory.Hotpot.Quantity -= 1;
+                    // If you need to update the Hotpot entity, do it separately
+                    // await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
+                }
+
+                // Update hotpot inventory status
                 hotpotInventory.Status = HotpotStatus.Rented;
-                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotpotId);
+
+                // Fix: Use the correct primary key (HotPotInventoryId)
+                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
 
                 // Create rent order detail with reference to specific hotpot inventory
                 var orderDetail = new RentOrderDetail
@@ -486,7 +495,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasRentItems = true;
 
             // Update rent order
-            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.OrderId);
+            await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
 
@@ -526,7 +535,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+
+                // Fix: Use the correct primary key (SellOrderDetailId)
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -552,7 +563,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
 
             // Update ingredient quantity
@@ -595,7 +606,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+
+                // Fix: Use the correct primary key (RentOrderDetailId)
+                await _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.RentOrderDetailId);
             }
             else
             {
@@ -621,7 +634,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasRentItems = true;
 
             // Update rent order
-            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.OrderId);
+            await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
             await _unitOfWork.CommitAsync();
 
             // Update utensil quantity
@@ -659,7 +672,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -685,7 +698,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
 
@@ -716,7 +729,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -742,7 +755,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
 
