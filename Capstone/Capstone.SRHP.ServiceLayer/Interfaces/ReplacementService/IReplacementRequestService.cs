@@ -21,6 +21,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService
         // Staff methods
         Task<IEnumerable<ReplacementRequest>> GetAssignedReplacementRequestsAsync(int staffId);
         Task<ReplacementRequest> UpdateReplacementStatusAsync(int requestId, ReplacementRequestStatus status, string notes);
+        Task<ReplacementRequest> VerifyEquipmentFaultyAsync(int requestId, bool isFaulty, string verificationNotes, int staffId);
 
         // Customer methods
         Task<ReplacementRequest> CreateReplacementRequestAsync(ReplacementRequest request);

@@ -33,9 +33,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public DateTime? CompletionDate { get; set; }
 
-        [Required]
         [ForeignKey("Customer")]
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
 
         public int? AssignedStaffId { get; set; }
 
