@@ -76,7 +76,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("HotpotBroth")]
         public int HotpotBrothId { get; set; }
 
-        [Required]
+
         [ForeignKey("Combo")]
         public int? ComboId { get; set; }
 

@@ -157,13 +157,17 @@ public class CustomerCustomizationController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token" });
             }
 
+            string[] imageURLs = null;
 
-            Combo combo = null;
+            // Only try to get the combo if ComboId has a value and is greater than 0
             if (request.ComboId.HasValue && request.ComboId.Value > 0)
             {
-                combo = await _comboService.GetByIdAsync(request.ComboId.Value);
+                var combo = await _comboService.GetByIdAsync(request.ComboId.Value);
                 if (combo == null)
                     return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+
+                // Only set imageURLs if combo is not null
+                imageURLs = combo.ImageURLs;
             }
 
             var customization = await _customizationService.CreateCustomizationAsync(
@@ -174,7 +178,7 @@ public class CustomerCustomizationController : ControllerBase
                 request.Size,
                 request.BrothId,
                 request.Ingredients,
-                combo.ImageURLs);
+                imageURLs); 
 
             var customizationDto = MapToCustomizationDetailDto(customization);
             return CreatedAtAction(nameof(GetCustomizationById), new { id = customization.CustomizationId }, customizationDto);
@@ -222,8 +226,10 @@ public class CustomerCustomizationController : ControllerBase
                 existingCustomization.Name = request.Name;
             }
 
-            // Note can be explicitly set to null
-            existingCustomization.Note = request.Note;
+            if (request.Note != null)
+            {
+                existingCustomization.Note = request.Note;
+            }
 
             if (request.Size.HasValue)
             {
