@@ -49,7 +49,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         // Navigation properties to the specific order types
         public virtual SellOrder? SellOrder { get; set; }
         public virtual RentOrder? RentOrder { get; set; }
-
+        public virtual ICollection<PaymentReceipt> Receipts { get; set; } = new List<PaymentReceipt>();
 
     }
 }

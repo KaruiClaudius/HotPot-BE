@@ -55,4 +55,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Common
         public string? SortBy { get; set; } = "LoggedDate";
         public bool SortDescending { get; set; } = true;
     }
+
+    
 }
