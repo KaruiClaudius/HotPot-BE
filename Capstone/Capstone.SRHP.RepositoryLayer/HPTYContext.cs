@@ -49,6 +49,8 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
         public DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
 
+        public virtual DbSet<PaymentReceipt> PaymentReceipts { get; set; }
+
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -122,8 +124,20 @@ namespace Capstone.HPTY.RepositoryLayer
             //    entity.Property(c => c.LoyatyPoint)
             //        .HasDefaultValue(0);
             //});
+            modelBuilder.Entity<PaymentReceipt>()
+               .HasOne(r => r.Payment)
+               .WithOne(p => p.Receipt)
+               .HasForeignKey<PaymentReceipt>(r => r.PaymentId)
+               .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PaymentReceipt>()
+                .HasOne(r => r.Order)
+                .WithMany(o => o.Receipts)
+                .HasForeignKey(r => r.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<StaffPickupAssignment>()
+
                 .HasOne(a => a.RentOrderDetail)
                 .WithMany()
                 .HasForeignKey(a => a.RentOrderDetailId)

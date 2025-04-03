@@ -29,5 +29,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public virtual User User { get; set; }
         public virtual Order? Order { get; set; }
+        public virtual PaymentReceipt Receipt { get; set; }
+
     }
 }
