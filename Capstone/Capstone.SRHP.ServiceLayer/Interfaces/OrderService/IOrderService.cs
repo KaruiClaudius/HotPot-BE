@@ -30,7 +30,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<Order> CreateAsync(CreateOrderRequest request, int userId);
         Task<Order> UpdateAsync(int id, UpdateOrderRequest request);
         Task<Order> UpdateStatusAsync(int id, OrderStatus status);
-        Task<Order> RemoveItemFromCartAsync(int userId, int orderDetailId, bool isSellItem);
         Task<Order> UpdateCartItemsQuantityAsync(int userId, CartItemUpdate[] itemUpdates);
     }
 }

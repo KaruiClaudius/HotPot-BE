@@ -4,6 +4,7 @@ using Capstone.HPTY.RepositoryLayer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Capstone.HPTY.RepositoryLayer.Migrations
 {
     [DbContext(typeof(HPTYContext))]
-    partial class HPTYContextModelSnapshot : ModelSnapshot
+    [Migration("20250403122437_nullable-comboid-customiztion")]
+    partial class nullablecomboidcustomiztion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1594,50 +1597,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.ToTable("Payments");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.PaymentReceipt", b =>
-                {
-                    b.Property<int>("ReceiptId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReceiptId"));
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDelete")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PaymentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReceiptNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("ReceiptId");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("PaymentId")
-                        .IsUnique();
-
-                    b.ToTable("PaymentReceipts");
-                });
-
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
                 {
                     b.Property<int>("OrderId")
@@ -2910,25 +2869,6 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.PaymentReceipt", b =>
-                {
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
-                        .WithMany("Receipts")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Capstone.HPTY.ModelLayer.Entities.Payment", "Payment")
-                        .WithOne("Receipt")
-                        .HasForeignKey("Capstone.HPTY.ModelLayer.Entities.PaymentReceipt", "PaymentId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-
-                    b.Navigation("Payment");
-                });
-
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>
                 {
                     b.HasOne("Capstone.HPTY.ModelLayer.Entities.Order", "Order")
@@ -3230,19 +3170,11 @@ namespace Capstone.HPTY.RepositoryLayer.Migrations
 
                     b.Navigation("Payment");
 
-                    b.Navigation("Receipts");
-
                     b.Navigation("RentOrder");
 
                     b.Navigation("SellOrder");
 
                     b.Navigation("ShippingOrder");
-                });
-
-            modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.Payment", b =>
-                {
-                    b.Navigation("Receipt")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Capstone.HPTY.ModelLayer.Entities.RentOrder", b =>

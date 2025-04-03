@@ -54,19 +54,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<PagedResult<Order>> GetOrdersAsync(
-     string searchTerm = null,
-     int? userId = null,
-     string status = null,
-     DateTime? fromDate = null,
-     DateTime? toDate = null,
-     decimal? minPrice = null,
-     decimal? maxPrice = null,
-     bool? hasHotpot = null,
-     string paymentStatus = null,
-     int pageNumber = 1,
-     int pageSize = 10,
-     string sortBy = "CreatedAt",
-     bool ascending = false)
+            string searchTerm = null,
+            int? userId = null,
+            string status = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            bool? hasHotpot = null,
+            string paymentStatus = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "CreatedAt",
+            bool ascending = false)
         {
             try
             {
@@ -103,7 +103,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         o.Notes != null && EF.Functions.Collate(o.Notes.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                         o.User != null && o.User.Name != null && EF.Functions.Collate(o.User.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                         o.User != null && o.User.Email != null && EF.Functions.Collate(o.User.Email.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                        o.User != null && o.User.PhoneNumber != null && EF.Functions.Collate(o.User.PhoneNumber.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) 
+                        o.User != null && o.User.PhoneNumber != null && EF.Functions.Collate(o.User.PhoneNumber.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
                     );
                 }
 
@@ -206,35 +206,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
 
-        public async Task<Order> GetByIdAsync(int id)
+        public async Task<Order> GetByIdAsync(int orderId)
         {
             try
             {
                 var order = await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Include(o => o.User)
-                    .Include(o => o.Discount)
-                    .Include(o => o.Payment)
-                    .Include(o => o.SellOrder)
-                        .ThenInclude(so => so.SellOrderDetails)
-                            .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrder)
-                        .ThenInclude(so => so.SellOrderDetails)
-                            .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrder)
-                        .ThenInclude(so => so.SellOrderDetails)
-                            .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrder)
-                        .ThenInclude(ro => ro.RentOrderDetails)
-                            .ThenInclude(od => od.Utensil)
-                    .Include(o => o.RentOrder)
-                        .ThenInclude(ro => ro.RentOrderDetails)
-                            .ThenInclude(od => od.HotpotInventory)
-                                .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .FirstOrDefaultAsync(o => o.OrderId == id && !o.IsDelete);
+                        .IncludeNested(query => query
+                            .Include(o => o.User)
+                            .Include(o => o.Discount)
+                            .Include(o => o.Payment)
+                            .Include(o => o.SellOrder)
+                                .ThenInclude(so => so.SellOrderDetails)
+                                    .ThenInclude(sod => sod.Ingredient)
+                            .Include(o => o.SellOrder)
+                                .ThenInclude(so => so.SellOrderDetails)
+                                    .ThenInclude(sod => sod.Customization)
+                            .Include(o => o.SellOrder)
+                                .ThenInclude(so => so.SellOrderDetails)
+                                    .ThenInclude(sod => sod.Combo)
+                            .Include(o => o.RentOrder)
+                                .ThenInclude(ro => ro.RentOrderDetails)
+                                    .ThenInclude(rod => rod.Utensil)
+                            .Include(o => o.RentOrder)
+                                .ThenInclude(ro => ro.RentOrderDetails)
+                                    .ThenInclude(rod => rod.HotpotInventory)
+                                        .ThenInclude(hi => hi.Hotpot))
+                        .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
                 if (order == null)
-                    throw new NotFoundException($"Order with ID {id} not found");
+                    throw new NotFoundException($"Order with ID {orderId} not found");
 
                 return order;
             }
@@ -244,7 +244,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving order {OrderId}", id);
+                _logger.LogError(ex, "Error retrieving order {OrderId}", orderId);
                 throw;
             }
         }
@@ -262,10 +262,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Check if user already has a pending order (cart)
                     var existingPendingOrder = await _unitOfWork.Repository<Order>()
                         .IncludeNested(query =>
-                            query.Include(o => o.SellOrder)
-                                 .ThenInclude(so => so.SellOrderDetails)
+                            query.Include(o => o.User)
+                                 .Include(o => o.Discount)
+                                 .Include(o => o.Payment)
+                                 .Include(o => o.SellOrder)
+                                     .ThenInclude(so => so.SellOrderDetails)
+                                     .ThenInclude(sod => sod.Ingredient)
+                                 .Include(o => o.SellOrder)
+                                     .ThenInclude(so => so.SellOrderDetails)
+                                     .ThenInclude(sod => sod.Customization)
+                                 .Include(o => o.SellOrder)
+                                     .ThenInclude(so => so.SellOrderDetails)
+                                     .ThenInclude(sod => sod.Combo)
                                  .Include(o => o.RentOrder)
-                                 .ThenInclude(ro => ro.RentOrderDetails))
+                                     .ThenInclude(ro => ro.RentOrderDetails)    
+                                 .Include(o => o.RentOrder)
+                                     .ThenInclude(ro => ro.RentOrderDetails)
+                                     .ThenInclude(rod => rod.Utensil)
+                                 .Include(o => o.RentOrder)
+                                     .ThenInclude(ro => ro.RentOrderDetails)
+                                         .ThenInclude(rod => rod.HotpotInventory)
+                                            .ThenInclude(hi => hi.Hotpot))
                         .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
 
                     if (existingPendingOrder != null)
@@ -291,7 +308,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-
+        #region create helper
         private async Task<Order> AddToExistingOrderAsync(Order existingOrder, CreateOrderRequest request, int userId)
         {
             // Process items
@@ -393,6 +410,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             return order;
         }
+
+
         private async Task ProcessHotpotItem(Order order, OrderItemRequest item)
         {
             var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
@@ -411,7 +430,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Set rental dates if not already set
             DateTime rentalStartDate = DateTime.Now;
-            DateTime expectedReturnDate = DateTime.Now.AddDays(7); // Default rental period
+            DateTime expectedReturnDate = DateTime.Now.AddDays(2); // Default rental period
 
             // Ensure RentOrder exists
             if (order.RentOrder == null)
@@ -434,9 +453,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Create a separate order detail for each hotpot inventory item
             foreach (var hotpotInventory in availableHotpots)
             {
-                hotpotInventory.Hotpot.Quantity -= 1;
+                // Update hotpot quantity
+                if (hotpotInventory.Hotpot != null)
+                {
+                    hotpotInventory.Hotpot.Quantity -= 1;
+                    // If you need to update the Hotpot entity, do it separately
+                    // await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
+                }
+
+                // Update hotpot inventory status
                 hotpotInventory.Status = HotpotStatus.Rented;
-                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotpotId);
+
+                // Fix: Use the correct primary key (HotPotInventoryId)
+                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
 
                 // Create rent order detail with reference to specific hotpot inventory
                 var orderDetail = new RentOrderDetail
@@ -466,7 +495,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasRentItems = true;
 
             // Update rent order
-            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder,order.OrderId);
+            await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
 
@@ -506,7 +535,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail,existingDetail.OrderId);
+
+                // Fix: Use the correct primary key (SellOrderDetailId)
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -532,7 +563,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
 
             // Update ingredient quantity
@@ -575,7 +606,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+
+                // Fix: Use the correct primary key (RentOrderDetailId)
+                await _unitOfWork.Repository<RentOrderDetail>().Update(existingDetail, existingDetail.RentOrderDetailId);
             }
             else
             {
@@ -601,7 +634,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasRentItems = true;
 
             // Update rent order
-            _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.OrderId);
+            await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
             await _unitOfWork.CommitAsync();
 
             // Update utensil quantity
@@ -639,7 +672,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -665,7 +698,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
 
@@ -696,7 +729,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.OrderId);
+                await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
             }
             else
             {
@@ -722,9 +755,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.HasSellItems = true;
 
             // Update sell order
-            _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.OrderId);
+            await _unitOfWork.Repository<SellOrder>().Update(order.SellOrder, order.SellOrder.OrderId);
             await _unitOfWork.CommitAsync();
         }
+
+        #endregion 
 
         private async Task CalculateOrderTotalPrice(Order order)
         {
@@ -775,118 +810,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             order.TotalPrice = totalPrice;
         }
 
-
-        public async Task<Order> RemoveItemFromCartAsync(int userId, int orderDetailId, bool isSellItem)
-        {
-            try
-            {
-                // Find the user's pending order
-                var pendingOrder = await _unitOfWork.Repository<Order>()
-                    .IncludeNested(query =>
-                        query.Include(o => o.SellOrder)
-                             .ThenInclude(so => so.SellOrderDetails)
-                             .Include(o => o.RentOrder)
-                             .ThenInclude(ro => ro.RentOrderDetails))
-                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
-
-                if (pendingOrder == null)
-                    throw new NotFoundException("No pending order found");
-
-                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-                {
-                    if (isSellItem)
-                    {
-                        // Find the sell order detail
-                        var detail = pendingOrder.SellOrder?.SellOrderDetails
-                            .FirstOrDefault(d => d.SellOrderDetailId == orderDetailId && !d.IsDelete);
-
-                        if (detail == null)
-                            throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
-
-                        // Soft delete the detail
-                        detail.SoftDelete();
-                        await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.OrderId);
-
-                        // Check if there are any remaining sell items
-                        var remainingSellItems = pendingOrder.SellOrder.SellOrderDetails
-                            .Any(d => !d.IsDelete);
-
-                        pendingOrder.HasSellItems = remainingSellItems;
-                    }
-                    else
-                    {
-                        // Find the rent order detail
-                        var detail = pendingOrder.RentOrder?.RentOrderDetails
-                            .FirstOrDefault(d => d.RentOrderDetailId == orderDetailId && !d.IsDelete);
-
-                        if (detail == null)
-                            throw new NotFoundException($"Order detail with ID {orderDetailId} not found");
-
-                        // Soft delete the detail
-                        detail.SoftDelete();
-                        await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.OrderId);
-
-                        // Check if there are any remaining rent items
-                        var remainingRentItems = pendingOrder.RentOrder.RentOrderDetails
-                            .Any(d => !d.IsDelete);
-
-                        pendingOrder.HasRentItems = remainingRentItems;
-                    }
-
-                    // Use the CalculateOrderTotalPrice method for consistency
-                    await CalculateOrderTotalPrice(pendingOrder);
-
-                    // Update the order
-                    await _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
-                    await _unitOfWork.CommitAsync();
-
-                    // If there are no items left, delete the order using the existing DeleteAsync method
-                    if (!pendingOrder.HasSellItems && !pendingOrder.HasRentItems)
-                    {
-                        // We need to commit our changes first to ensure the order is properly updated
-                        await _unitOfWork.CommitAsync();
-
-                        // Now call the existing DeleteAsync method to handle inventory returns and payment cancellation
-                        await DeleteAsync(pendingOrder.OrderId);
-                        return null;
-                    }
-
-                    // Update payment records if needed
-                    var payment = await _unitOfWork.Repository<Payment>()
-                        .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
-
-                    if (payment != null)
-                    {
-                        payment.Price = pendingOrder.TotalPrice;
-                        await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
-                        await _unitOfWork.CommitAsync();
-                    }
-
-                    // Reload order with all related entities
-                    return await GetByIdAsync(pendingOrder.OrderId);
-                });
-            }
-            catch (ValidationException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing item from cart");
-                throw;
-            }
-        }
-
         public async Task<Order> UpdateCartItemsQuantityAsync(int userId, CartItemUpdate[] itemUpdates)
         {
             if (itemUpdates == null || !itemUpdates.Any())
                 throw new ValidationException("No items to update");
 
-            // Validate all quantities are positive
+            // Validate all quantities are non-negative (allowing 0 for removal)
             foreach (var update in itemUpdates)
             {
-                if (update.NewQuantity <= 0)
-                    throw new ValidationException("Quantity must be greater than zero");
+                if (update.NewQuantity < 0)
+                    throw new ValidationException("Quantity cannot be negative");
             }
 
             try
@@ -908,6 +841,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // First, validate all updates to ensure we can complete the transaction
                     foreach (var update in itemUpdates)
                     {
+                        // Skip validation for items being removed (quantity = 0)
+                        if (update.NewQuantity == 0)
+                            continue;
+
                         if (update.IsSellItem)
                         {
                             // Find the sell order detail
@@ -966,21 +903,42 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             var detail = pendingOrder.SellOrder?.SellOrderDetails
                                 .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
-                            // Update inventory if it's an ingredient
-                            if (detail.IngredientId.HasValue)
-                            {
-                                int quantityDifference = update.NewQuantity - detail.Quantity;
+                            if (detail == null)
+                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
 
-                                if (quantityDifference != 0)
+                            // Handle item removal (quantity = 0)
+                            if (update.NewQuantity == 0)
+                            {
+                                // Return inventory if it's an ingredient
+                                if (detail.IngredientId.HasValue)
                                 {
                                     await _ingredientService.UpdateIngredientQuantityAsync(
-                                        detail.IngredientId.Value, -quantityDifference);
+                                        detail.IngredientId.Value, detail.Quantity);
                                 }
+
+                                // Soft delete the detail
+                                detail.SoftDelete();
+                            }
+                            else
+                            {
+                                // Update inventory if it's an ingredient
+                                if (detail.IngredientId.HasValue)
+                                {
+                                    int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                    if (quantityDifference != 0)
+                                    {
+                                        await _ingredientService.UpdateIngredientQuantityAsync(
+                                            detail.IngredientId.Value, -quantityDifference);
+                                    }
+                                }
+
+                                // Update quantity
+                                detail.Quantity = update.NewQuantity;
                             }
 
-                            // Update quantity
-                            detail.Quantity = update.NewQuantity;
-                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.OrderId);
+                            // Update the detail in the database
+                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
                         }
                         else
                         {
@@ -988,23 +946,60 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             var detail = pendingOrder.RentOrder?.RentOrderDetails
                                 .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
-                            // For utensils, update inventory
-                            if (detail.UtensilId.HasValue)
-                            {
-                                int quantityDifference = update.NewQuantity - detail.Quantity;
+                            if (detail == null)
+                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
 
-                                if (quantityDifference != 0)
+                            // Handle item removal (quantity = 0)
+                            if (update.NewQuantity == 0)
+                            {
+                                // Return inventory if it's a utensil
+                                if (detail.UtensilId.HasValue)
                                 {
                                     await _utensilService.UpdateUtensilQuantityAsync(
-                                        detail.UtensilId.Value, -quantityDifference);
+                                        detail.UtensilId.Value, detail.Quantity);
+                                }
+                                else if (detail.HotpotInventoryId.HasValue)
+                                {
+                                    // For hotpot inventory, update status back to Available
+                                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                        .GetById(detail.HotpotInventoryId.Value);
+
+                                    if (hotpotInventory != null)
+                                    {
+                                        hotpotInventory.Status = HotpotStatus.Available;
+                                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                                    }
                                 }
 
-                                // Update quantity
-                                detail.Quantity = update.NewQuantity;
-                                await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.OrderId);
+                                // Soft delete the detail
+                                detail.SoftDelete();
                             }
+                            else
+                            {
+                                // For utensils, update inventory
+                                if (detail.UtensilId.HasValue)
+                                {
+                                    int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                                    if (quantityDifference != 0)
+                                    {
+                                        await _utensilService.UpdateUtensilQuantityAsync(
+                                            detail.UtensilId.Value, -quantityDifference);
+                                    }
+
+                                    // Update quantity
+                                    detail.Quantity = update.NewQuantity;
+                                }
+                            }
+
+                            // Update the detail in the database
+                            await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
                         }
                     }
+
+                    // Update HasSellItems and HasRentItems flags
+                    pendingOrder.HasSellItems = pendingOrder.SellOrder?.SellOrderDetails?.Any(d => !d.IsDelete) ?? false;
+                    pendingOrder.HasRentItems = pendingOrder.RentOrder?.RentOrderDetails?.Any(d => !d.IsDelete) ?? false;
 
                     // Use the CalculateOrderTotalPrice method for consistency
                     await CalculateOrderTotalPrice(pendingOrder);
@@ -1211,7 +1206,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 // Update hotpot status to Available after maintenance
                                 hotpotInventory.Status = HotpotStatus.Available; // Set to available
-                                                               // Update last maintain date on the hotpot itself
+                                                                                 // Update last maintain date on the hotpot itself
                                 if (hotpotInventory.Hotpot != null)
                                 {
                                     hotpotInventory.Hotpot.LastMaintainDate = DateTime.Now;
