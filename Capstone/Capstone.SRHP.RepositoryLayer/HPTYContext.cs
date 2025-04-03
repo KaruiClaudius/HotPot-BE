@@ -124,6 +124,18 @@ namespace Capstone.HPTY.RepositoryLayer
             //    entity.Property(c => c.LoyatyPoint)
             //        .HasDefaultValue(0);
             //});
+
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.StaffWorkShifts)
+                .WithMany(w => w.Staff)
+                .UsingEntity(j => j.ToTable("UserStaffWorkShifts"));
+
+            // Configure Manager-WorkShift relationship
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.MangerWorkShifts)
+                .WithMany(w => w.Managers)
+                .UsingEntity(j => j.ToTable("UserManagerWorkShifts"));
+
             modelBuilder.Entity<PaymentReceipt>()
                .HasOne(r => r.Payment)
                .WithOne(p => p.Receipt)

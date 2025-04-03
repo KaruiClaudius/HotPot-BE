@@ -11,8 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public TimeSpan? ShiftStartTime { get; set; }
         public TimeSpan? ShiftEndTime { get; set; }
         public string ShiftName { get; set; }
-        //public List<UserDto>? Staff { get; set; }
-        //public List<UserDto>? Managers { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }
