@@ -44,7 +44,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Validate pagination parameters
                 if (pageNumber < 1) pageNumber = 1;
                 if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
 
                 var result = await _productService.GetAllProductsAsync(
                     productType, searchTerm, typeId, material, size,
