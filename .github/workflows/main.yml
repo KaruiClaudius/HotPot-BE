@@ -55,27 +55,9 @@ jobs:
 
       - name: Run automated tests
         run: |
-          # Determine which docker compose command to use
-          if docker compose version &>/dev/null; then
-            DOCKER_COMPOSE_CMD="docker compose"
-          else
-            DOCKER_COMPOSE_CMD="docker-compose"
-          fi
-          
-          # Find the correct container name
-          CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep 'capstone-server')
-          
-          if [ -z "$CONTAINER_NAME" ]; then
-            echo "❌ Capstone server container not found!"
-            docker ps
-            exit 1
-          fi
-          
-          echo "Found container: $CONTAINER_NAME"
-          
-          # Run the tests in the appropriate container
+          # Run the tests directly
           echo "Running automated tests..."
-          docker exec -T $CONTAINER_NAME dotnet test ../Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
+          dotnet test ./Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
           
           # Check if tests passed
           if [ $? -eq 0 ]; then
