@@ -46,23 +46,20 @@ jobs:
             docker-compose up --build -d
           fi
 
-      - name: Verify containers are running
-        working-directory: ./Capstone
-        run: |
-          sleep 10
-          docker ps
-          echo "Deployment completed successfully"
-
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+    
       - name: Run automated tests
         run: |
-          # Run the tests directly
           echo "Running automated tests..."
           dotnet test ./Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
-          
-          # Check if tests passed
-          if [ $? -eq 0 ]; then
-            echo "✅ All tests passed successfully!"
-          else
-            echo "❌ Tests failed!"
-            exit 1
-          fi
+            
+            # Check if tests passed
+            if [ $? -eq 0 ]; then
+              echo "✅ All tests passed successfully!"
+            else
+              echo "❌ Tests failed!"
+              exit 1
+            fi
