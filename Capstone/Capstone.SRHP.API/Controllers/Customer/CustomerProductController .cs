@@ -1,5 +1,10 @@
-﻿using Capstone.HPTY.ServiceLayer.DTOs.Customer;
+﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
+using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,14 +16,43 @@ namespace Capstone.HPTY.API.Controllers.Customer
     public class CustomerProductController : ControllerBase
     {
         private readonly IUnifiedProductService _productService;
+        private readonly IIngredientService _ingredientService;
         private readonly ILogger<CustomerProductController> _logger;
 
         public CustomerProductController(
             IUnifiedProductService productService,
+            IIngredientService ingredientService,
             ILogger<CustomerProductController> logger)
         {
             _productService = productService;
+            _ingredientService = ingredientService;
             _logger = logger;
+        }
+
+        [HttpGet("IngredientsTypes")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<IngredientTypeDto>>>> GetAllIngredientTypes()
+        {
+            try
+            {
+                var types = await _ingredientService.GetAllIngredientTypesAsync();
+                var typeDtos = types.Select(MapToIngredientTypeDto).ToList();
+
+                return Ok(new ApiResponse<IEnumerable<IngredientTypeDto>>
+                {
+                    Success = true,
+                    Message = "Ingredient types retrieved successfully",
+                    Data = typeDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ingredient types");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve ingredient types"
+                });
+            }
         }
 
         [HttpGet]
@@ -44,7 +78,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Validate pagination parameters
                 if (pageNumber < 1) pageNumber = 1;
                 if (pageSize < 1) pageSize = 10;
-                if (pageSize > 50) pageSize = 50;
 
                 var result = await _productService.GetAllProductsAsync(
                     productType, searchTerm, typeId, material, size,
@@ -112,6 +145,18 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 _logger.LogError(ex, "Error retrieving types for {ProductType}", productType);
                 return StatusCode(500, new { message = "An error occurred while retrieving product types" });
             }
+        }
+
+        private static IngredientTypeDto MapToIngredientTypeDto(IngredientType type)
+        {
+            if (type == null) return null;
+
+            return new IngredientTypeDto
+            {
+                IngredientTypeId = type.IngredientTypeId,
+                Name = type.Name,
+                IngredientCount = type.Ingredients?.Count(i => !i.IsDelete) ?? 0
+            };
         }
     }
 }

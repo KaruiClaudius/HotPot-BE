@@ -156,7 +156,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Name = request.Name,
                     Description = request.Description,
-                    Size = 0,
+                    Size = request.Size,
                     IsCustomizable = true,
                     HotpotBrothId = request.HotpotBrothID,
                     ImageURLs = request.ImageURLs
@@ -192,13 +192,34 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (existingCombo == null)
                     return NotFound(new { message = $"Combo with ID {id} not found" });
 
-                existingCombo.Name = request.Name;
-                existingCombo.Description = request.Description;
-                existingCombo.Size = request.Size;
-                existingCombo.HotpotBrothId = request.HotpotBrothID;
-                existingCombo.ImageURLs = request.ImageURLs;
 
-                // Update tutorial video ID if provided
+                // Only update properties that are explicitly provided in the request
+                if (!string.IsNullOrEmpty(request.Name))
+                {
+                    existingCombo.Name = request.Name;
+                }
+
+                // For nullable properties, check if they're provided in the request
+                if (request.Description != null) // This allows explicitly setting to null or a new value
+                {
+                    existingCombo.Description = request.Description;
+                }
+
+                if (request.Size > 0)
+                {
+                    existingCombo.Size = request.Size;
+                }
+
+                if (request.HotpotBrothID > 0)
+                {
+                    existingCombo.HotpotBrothId = request.HotpotBrothID;
+                }
+
+                if (request.ImageURLs != null) // This allows explicitly setting to null or a new array
+                {
+                    existingCombo.ImageURLs = request.ImageURLs;
+                }
+
                 if (request.TurtorialVideoID.HasValue)
                 {
                     existingCombo.TurtorialVideoId = request.TurtorialVideoID.Value;
@@ -218,7 +239,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error update combo");
+                _logger.LogError(ex, "Error updating combo with ID {ComboId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }

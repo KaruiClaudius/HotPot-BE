@@ -88,15 +88,23 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 try
                 {
-                    if (size <= 0)
-                        return BadRequest(new { message = "Size must be greater than 0" });
-
                     var combo = await _comboService.GetByIdAsync(comboId);
                     if (combo == null)
                         return NotFound(new { message = $"Combo with ID {comboId} not found" });
 
+                    if (size <= 0 && !combo.IsCustomizable)
+                        return BadRequest(new { message = "Size must be greater than 0" });
+
                     // Calculate price for the specified size
-                    var basePrice = combo.BasePrice * size;
+
+                    decimal basePrice = 0;
+                    if (size == 0)
+                        basePrice = combo.BasePrice;
+                    else
+                        basePrice = combo.BasePrice * size;
+
+
+
 
                     // Get applicable discount
                     var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);

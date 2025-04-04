@@ -413,6 +413,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             return await _unitOfWork.Repository<IngredientType>()
                 .FindAll(t => !t.IsDelete)
+                .Include(i => i.Ingredients)
                 .OrderBy(t => t.Name)
                 .ToListAsync();
         }

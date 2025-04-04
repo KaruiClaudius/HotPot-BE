@@ -215,7 +215,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<DamageDeviceDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<DamageDeviceDto>>> CreateDevice([FromBody] CreateConditionLogRequest request)
+        public async Task<ActionResult<ApiResponse<DamageDeviceDto>>> CreateDevice([FromBody] CreateDamageDeviceRequest request)
         {
             try
             {
@@ -267,7 +267,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<DamageDeviceDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<DamageDeviceDto>>> UpdateDevice(int id, [FromBody] UpdateConditionLogRequest request)
+        public async Task<ActionResult<ApiResponse<DamageDeviceDto>>> UpdateDevice(int id, [FromBody] UpdateDamageDeviceRequest request)
         {
             try
             {
@@ -278,7 +278,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Update only the properties that are provided
                 if (request.Name != null) existingDevice.Name = request.Name;
                 if (request.Description != null) existingDevice.Description = request.Description;
-                if (request.Status.HasValue) existingDevice.Status = request.Status.Value;
+                if (request.Status != null && Enum.TryParse(request.Status, true, out MaintenanceStatus status))
+                    existingDevice.Status = status;
 
                 await _damageDeviceService.UpdateAsync(id, existingDevice);
                 var updatedDevice = await _damageDeviceService.GetByIdAsync(id);
@@ -373,7 +374,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new DamageDeviceDto
             {
-                ConditionLogId = device.DamageDeviceId,
+                DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
                 StatusName = device.Status.GetDisplayName(),
@@ -387,7 +388,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new DamageHotpotDto
             {
-                ConditionLogId = device.DamageDeviceId,
+                DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
                 StatusName = device.Status.GetDisplayName(),
@@ -403,7 +404,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
             return new DamageUtensilDto
             {
-                ConditionLogId = device.DamageDeviceId,
+                DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
                 StatusName = device.Status.GetDisplayName(),
@@ -421,7 +422,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             // First create the base DTO properties
             var detailDto = new DamageDeviceDetailDto
             {
-                ConditionLogId = device.DamageDeviceId,
+                DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
                 StatusName = device.Status.GetDisplayName(),

@@ -8,19 +8,14 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
 {
-    public class CreateConditionLogRequest
+    public class UpdateDamageDeviceRequest
     {
-        [Required]
         [StringLength(100, MinimumLength = 3)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(1000)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
-        [Required]
-        public MaintenanceStatus Status { get; set; }
-
-        public int? UtensilID { get; set; }
-        public int? HotPotInventoryId { get; set; }
+        public string? Status { get; set; }
     }
 }

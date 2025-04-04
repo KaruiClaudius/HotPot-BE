@@ -9,7 +9,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
 {
     public class DamageDeviceDto
     {
-        public int ConditionLogId { get; set; }
+        public int DamageDeviceId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string StatusName { get; set; }

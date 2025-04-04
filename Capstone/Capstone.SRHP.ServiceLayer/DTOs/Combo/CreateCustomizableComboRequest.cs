@@ -18,6 +18,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public string? Description { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue)]
+        public int Size { get; set; }
+
+        [Required]
         public int HotpotBrothID { get; set; }
 
         public string[]? ImageURLs { get; set; }

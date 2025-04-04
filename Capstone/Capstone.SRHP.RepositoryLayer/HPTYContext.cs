@@ -1354,6 +1354,86 @@ namespace Capstone.HPTY.RepositoryLayer
                     UtensilId = 5
                 }
             );
+
+            modelBuilder.Entity<SizeDiscount>().HasData(
+                new SizeDiscount
+                {
+                    SizeDiscountId = 1,
+                    MinSize = 2,
+                    DiscountPercentage = 4.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 2,
+                    MinSize = 4,
+                    DiscountPercentage = 8.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 3,
+                    MinSize = 6,
+                    DiscountPercentage = 12.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 4,
+                    MinSize = 8,
+                    DiscountPercentage = 16.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 5,
+                    MinSize = 10,
+                    DiscountPercentage = 20.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 6,
+                    MinSize = 15,
+                    DiscountPercentage = 24.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                },
+                new SizeDiscount
+                {
+                    SizeDiscountId = 7,
+                    MinSize = 20,
+                    DiscountPercentage = 28.00m,
+                    StartDate = new DateTime(2023, 1, 1),
+                    EndDate = null, // No end date (ongoing)
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    IsDelete = false
+                }
+            );
         }
     }
 }
