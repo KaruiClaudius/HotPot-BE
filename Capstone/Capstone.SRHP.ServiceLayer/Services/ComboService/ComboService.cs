@@ -194,7 +194,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (string.IsNullOrWhiteSpace(combo.Name))
                     throw new ValidationException("Combo name cannot be empty");
 
-                if (combo.Size <= 0 && !combo.IsCustomizable)
+                //if (combo.Size <= 0 && !combo.IsCustomizable)                
+                if (combo.Size <= 0)
                     throw new ValidationException("Combo size must be greater than 0");
 
                 // Validate video properties if provided
@@ -254,7 +255,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 combo.BasePrice = 0;
                 combo.TotalPrice = 0;
 
-                // Get applicable discount for this size
 
                 // Get applicable discount for this size if size is greater than 0
                 if (combo.Size > 0)

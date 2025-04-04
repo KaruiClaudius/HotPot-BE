@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.ServiceLayer.DTOs.Combo;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
@@ -59,7 +60,6 @@ public class CustomerCustomizationController : ControllerBase
             // Validate pagination parameters
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-            if (pageSize > 50) pageSize = 50;
 
             var result = await _customizationService.GetCustomizationsAsync(
                 searchTerm, userId, comboId, minSize, maxSize, minPrice, maxPrice,
@@ -159,6 +159,7 @@ public class CustomerCustomizationController : ControllerBase
             }
 
             string[] imageURLs = null;
+            int size = 0;
 
             // Only try to get the combo if ComboId has a value and is greater than 0
             if (request.ComboId.HasValue && request.ComboId.Value > 0)
@@ -166,17 +167,21 @@ public class CustomerCustomizationController : ControllerBase
                 var combo = await _comboService.GetByIdAsync(request.ComboId.Value);
                 if (combo == null)
                     return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+                if (combo.Size != 0)
+                    size = combo.Size;
 
                 // Only set imageURLs if combo is not null
                 imageURLs = combo.ImageURLs;
             }
+
+
 
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
                 userId,
                 request.Name,
                 request.Note,
-                request.Size,
+                size,
                 request.BrothId,
                 request.Ingredients,
                 imageURLs); 
@@ -199,50 +204,73 @@ public class CustomerCustomizationController : ControllerBase
         }
     }
 
-    [HttpPatch("{id}")]
-    public async Task<ActionResult> PartialUpdate(int id, [FromBody] JsonPatchDocument<Combo> patchDoc)
+    [HttpPut("{id}")]
+    public async Task<ActionResult> UpdateCustomization(int id, UpdateCustomizationRequest request)
     {
         try
         {
-            var existingCombo = await _comboService.GetByIdAsync(id);
-            if (existingCombo == null)
-                return NotFound(new { message = $"Combo with ID {id} not found" });
-
-            // Create a clone to avoid modifying the original directly
-            var comboCopy = new Combo
+            // Get user ID from claims
+            var userIdClaim = User.FindFirstValue("id");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
             {
-                ComboId = existingCombo.ComboId,
-                Name = existingCombo.Name,
-                Description = existingCombo.Description,
-                Size = existingCombo.Size,
-                BasePrice = existingCombo.BasePrice,
-                TotalPrice = existingCombo.TotalPrice,
-                IsCustomizable = existingCombo.IsCustomizable,
-                HotpotBrothId = existingCombo.HotpotBrothId,
-                TurtorialVideoId = existingCombo.TurtorialVideoId,
-                ImageURLs = existingCombo.ImageURLs,
-                AppliedDiscountId = existingCombo.AppliedDiscountId,
-                CreatedAt = existingCombo.CreatedAt,
-                UpdatedAt = DateTime.UtcNow,
-                IsDelete = existingCombo.IsDelete
-            };
-
-            // Apply the patch to the copy
-            patchDoc.ApplyTo(comboCopy, ModelState);
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
+                return Unauthorized(new { message = "User ID not found in token" });
             }
 
-            // Validate the patched entity
-            if (string.IsNullOrEmpty(comboCopy.Name))
+            // Check if customization exists and belongs to the user
+            var existingCustomization = await _customizationService.GetByIdAsync(id);
+            if (existingCustomization == null)
+                return NotFound(new { message = $"Customization with ID {id} not found" });
+
+            if (existingCustomization.UserId != userId)
+                return Forbid();
+
+            // Only update properties that are explicitly provided in the request
+            if (request.Name != null)
             {
-                return BadRequest(new { message = "Name cannot be empty" });
+                existingCustomization.Name = request.Name;
             }
 
-            // Update the combo
-            await _comboService.UpdateAsync(id, comboCopy);
+            if (request.Note != null)
+            {
+                existingCustomization.Note = request.Note;
+            }
+
+            if (request.Size.HasValue)
+            {
+                existingCustomization.Size = request.Size.Value;
+            }
+
+            if (request.BrothId.HasValue)
+            {
+                existingCustomization.HotpotBrothId = request.BrothId.Value;
+            }
+
+            if (request.ImageURLs != null)
+            {
+                existingCustomization.ImageURLs = request.ImageURLs;
+            }
+
+            // Determine which ingredients to use
+            List<CustomizationIngredientsRequest> ingredientsToUpdate;
+
+            if (request.Ingredients != null)
+            {
+                ingredientsToUpdate = request.Ingredients;
+            }
+            else
+            {
+                ingredientsToUpdate = existingCustomization.CustomizationIngredients
+                    .Where(ci => !ci.IsDelete)
+                    .Select(ci => new CustomizationIngredientsRequest
+                    {
+                        IngredientID = ci.IngredientId,
+                        Quantity = ci.Quantity
+                    })
+                    .ToList();
+            }
+
+            // Update customization with new or existing ingredients
+            await _customizationService.UpdateAsync(id, existingCustomization, ingredientsToUpdate);
 
             return NoContent();
         }
@@ -256,10 +284,11 @@ public class CustomerCustomizationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating combo with ID {ComboId}", id);
+            _logger.LogError(ex, "Error updating customization with ID {CustomizationId}", id);
             return StatusCode(500, new { message = ex.Message });
         }
     }
+
 
     // DELETE: api/customer/customizations/{id}
     // Deletes a customization

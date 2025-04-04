@@ -330,37 +330,64 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         var allowedTypeEntries = typeGroup.Value;
 
                         // Check if this type is included in the ingredients
-                        if (!ingredientsByType.ContainsKey(typeId) || ingredientsByType[typeId].Count < allowedTypeEntries.Count)
+                        if (!ingredientsByType.ContainsKey(typeId))
                         {
                             // Get the type name for a better error message
                             var typeName = await _unitOfWork.Repository<IngredientType>()
                                 .GetById(typeId);
 
-                            throw new ValidationException($"Combo requires {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but only {ingredientsByType.GetValueOrDefault(typeId)?.Count ?? 0} were provided");
+                            throw new ValidationException($"Combo requires {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but none were provided");
+                        }
+
+                        var ingredientsOfType = ingredientsByType[typeId];
+
+                        // Check if the exact number of ingredients is provided
+                        if (ingredientsOfType.Count < allowedTypeEntries.Count)
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Combo requires exactly {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but only {ingredientsOfType.Count} were provided");
+                        }
+                        else if (ingredientsOfType.Count > allowedTypeEntries.Count)
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Combo allows only {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but {ingredientsOfType.Count} were provided");
                         }
 
                         // Validate minimum quantities for each entry
                         for (int i = 0; i < allowedTypeEntries.Count; i++)
                         {
                             var allowedType = allowedTypeEntries[i];
+                            var ingredientDto = ingredientsOfType[i];
 
-                            // If we have enough ingredients of this type, check the minimum quantity
-                            if (i < ingredientsByType[typeId].Count)
+                            // Get the ingredient details
+                            var ingredient = await _unitOfWork.Repository<Ingredient>()
+                                .FindAsync(ing => ing.IngredientId == ingredientDto.IngredientID && !ing.IsDelete);
+
+                            if (ingredientDto.Quantity < allowedType.MinQuantity)
                             {
-                                var ingredientDto = ingredientsByType[typeId][i];
-
-                                // Get the ingredient details
-                                var ingredient = await _unitOfWork.Repository<Ingredient>()
-                                    .FindAsync(ing => ing.IngredientId == ingredientDto.IngredientID && !ing.IsDelete);
-
-                                if (ingredientDto.Quantity < allowedType.MinQuantity)
-                                {
-                                    throw new ValidationException($"Ingredient {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} quantity must be at least {allowedType.MinQuantity}");
-                                }
+                                throw new ValidationException($"Ingredient {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} quantity must be at least {allowedType.MinQuantity}");
                             }
                         }
                     }
+                    foreach (var typeId in ingredientsByType.Keys)
+                    {
+                        if (!allowedTypesByTypeId.ContainsKey(typeId))
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Ingredient type '{typeName?.Name ?? typeId.ToString()}' is not allowed for this combo");
+                        }
+                    }
                 }
+            
 
                 // Add selected ingredients
                 foreach (var ingredientDto in ingredients)
@@ -433,14 +460,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (string.IsNullOrWhiteSpace(entity.Name))
                     throw new ValidationException("Customization name cannot be empty");
 
-                if (entity.Size <= 0)
-                    throw new ValidationException("Size must be greater than 0");
-
                 // Treat comboId = 0 as null (create from scratch)
                 if (entity.ComboId == 0)
                 {
                     entity.ComboId = null;
                 }
+
+                if (entity.Size <= 0 && entity.ComboId != null)
+                    throw new ValidationException("Size must be greater than 0");
+
 
                 // Validate image URLs if provided
                 if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
@@ -523,8 +551,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                     // Group allowed types by type ID to count occurrences
                     var allowedTypesByTypeId = allowedTypes
-                        .GroupBy(at => at.IngredientTypeId)
-                        .ToDictionary(g => g.Key, g => g.ToList());
+                                    .GroupBy(at => at.IngredientTypeId)
+                                    .ToDictionary(g => g.Key, g => g.ToList());
 
                     // Validate each ingredient type
                     foreach (var typeGroup in allowedTypesByTypeId)
@@ -533,34 +561,61 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         var allowedTypeEntries = typeGroup.Value;
 
                         // Check if this type is included in the ingredients
-                        if (!ingredientsByType.ContainsKey(typeId) || ingredientsByType[typeId].Count < allowedTypeEntries.Count)
+                        if (!ingredientsByType.ContainsKey(typeId))
                         {
                             // Get the type name for a better error message
                             var typeName = await _unitOfWork.Repository<IngredientType>()
                                 .GetById(typeId);
 
-                            throw new ValidationException($"Combo requires {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but only {ingredientsByType.GetValueOrDefault(typeId)?.Count ?? 0} were provided");
+                            throw new ValidationException($"Combo requires {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but none were provided");
+                        }
+
+                        var ingredientsOfType = ingredientsByType[typeId];
+
+                        // Check if the exact number of ingredients is provided
+                        if (ingredientsOfType.Count < allowedTypeEntries.Count)
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Combo requires exactly {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but only {ingredientsOfType.Count} were provided");
+                        }
+                        else if (ingredientsOfType.Count > allowedTypeEntries.Count)
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Combo allows only {allowedTypeEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but {ingredientsOfType.Count} were provided");
                         }
 
                         // Validate minimum quantities for each entry
                         for (int i = 0; i < allowedTypeEntries.Count; i++)
                         {
                             var allowedType = allowedTypeEntries[i];
+                            var ingredientDto = ingredientsOfType[i];
 
-                            // If we have enough ingredients of this type, check the minimum quantity
-                            if (i < ingredientsByType[typeId].Count)
+                            // Get the ingredient details
+                            var ingredient = await _unitOfWork.Repository<Ingredient>()
+                                .FindAsync(ing => ing.IngredientId == ingredientDto.IngredientID && !ing.IsDelete);
+
+                            if (ingredientDto.Quantity < allowedType.MinQuantity)
                             {
-                                var ingredientDto = ingredientsByType[typeId][i];
-
-                                // Get the ingredient details
-                                var ingredient = await _unitOfWork.Repository<Ingredient>()
-                                    .FindAsync(ing => ing.IngredientId == ingredientDto.IngredientID && !ing.IsDelete);
-
-                                if (ingredientDto.Quantity < allowedType.MinQuantity)
-                                {
-                                    throw new ValidationException($"Ingredient {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} quantity must be at least {allowedType.MinQuantity}");
-                                }
+                                throw new ValidationException($"Ingredient {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} quantity must be at least {allowedType.MinQuantity}");
                             }
+                        }
+                    }
+                    // Check if there are any extra ingredient types that aren't allowed
+                    foreach (var typeId in ingredientsByType.Keys)
+                    {
+                        if (!allowedTypesByTypeId.ContainsKey(typeId))
+                        {
+                            // Get the type name for a better error message
+                            var typeName = await _unitOfWork.Repository<IngredientType>()
+                                .GetById(typeId);
+
+                            throw new ValidationException($"Ingredient type '{typeName?.Name ?? typeId.ToString()}' is not allowed for this combo");
                         }
                     }
                 }
