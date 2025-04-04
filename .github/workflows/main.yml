@@ -52,3 +52,25 @@ jobs:
           sleep 10
           docker ps
           echo "Deployment completed successfully"
+
+      - name: Run automated tests
+        working-directory: ./Capstone
+        run: |
+          # Determine which docker compose command to use
+          if docker compose version &>/dev/null; then
+            DOCKER_COMPOSE_CMD="docker compose"
+          else
+            DOCKER_COMPOSE_CMD="docker-compose"
+          fi
+          
+          # Run the tests in the appropriate container
+          echo "Running automated tests..."
+          $DOCKER_COMPOSE_CMD exec -T api dotnet test ../Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
+          
+          # Check if tests passed
+          if [ $? -eq 0 ]; then
+            echo "✅ All tests passed successfully!"
+          else
+            echo "❌ Tests failed!"
+            exit 1
+          fi
