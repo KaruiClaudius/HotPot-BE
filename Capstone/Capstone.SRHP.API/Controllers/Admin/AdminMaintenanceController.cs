@@ -278,7 +278,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Update only the properties that are provided
                 if (request.Name != null) existingDevice.Name = request.Name;
                 if (request.Description != null) existingDevice.Description = request.Description;
-                if (request.Status.HasValue) existingDevice.Status = request.Status.Value;
+                if (request.Status != null && Enum.TryParse(request.Status, true, out MaintenanceStatus status))
+                    existingDevice.Status = status;
 
                 await _damageDeviceService.UpdateAsync(id, existingDevice);
                 var updatedDevice = await _damageDeviceService.GetByIdAsync(id);
