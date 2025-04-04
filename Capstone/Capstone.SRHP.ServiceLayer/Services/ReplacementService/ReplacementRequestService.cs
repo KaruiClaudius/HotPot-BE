@@ -32,7 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         public async Task<IEnumerable<ReplacementRequest>> GetAllReplacementRequestsAsync()
         {
             return await _unitOfWork.Repository<ReplacementRequest>()
-                .GetAll()
+                .GetAll(r => r.CustomerId != null)
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
@@ -47,7 +47,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         public async Task<IEnumerable<ReplacementRequest>> GetReplacementRequestsByStatusAsync(ReplacementRequestStatus status)
         {
             return await _unitOfWork.Repository<ReplacementRequest>()
-                .GetAll(r => r.Status == status)
+                .GetAll(r => r.Status == status && r.CustomerId != null)
                 .Include(r => r.Customer)
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.ConditionLog)
