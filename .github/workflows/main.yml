@@ -53,8 +53,7 @@ jobs:
           docker ps
           echo "Deployment completed successfully"
 
-      - name: Run automated tests
-        working-directory: ./Capstone
+      - name: Verify containers and run tests
         run: |
           # Determine which docker compose command to use
           if docker compose version &>/dev/null; then
@@ -63,9 +62,31 @@ jobs:
             DOCKER_COMPOSE_CMD="docker-compose"
           fi
           
-          # Run the tests in the appropriate container
+          # List all running containers
+          echo "Listing all running containers:"
+          docker ps
+          
+          # Check if the api container is running
+          if ! docker ps --format '{{.Names}}' | grep -q "api"; then
+            echo "❌ API container is not running! Checking logs..."
+            cd ./Capstone
+            $DOCKER_COMPOSE_CMD logs
+            
+            echo "Attempting to restart the container..."
+            $DOCKER_COMPOSE_CMD up -d
+            cd ..
+            
+            sleep 10
+            
+            if ! docker ps --format '{{.Names}}' | grep -q "api"; then
+              echo "❌ Failed to start API container after retry!"
+              exit 1
+            fi
+          fi
+          
+          # Run the tests directly on the runner (not in the container)
           echo "Running automated tests..."
-          $DOCKER_COMPOSE_CMD exec -T api dotnet test ../Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
+          dotnet test ./Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
           
           # Check if tests passed
           if [ $? -eq 0 ]; then
