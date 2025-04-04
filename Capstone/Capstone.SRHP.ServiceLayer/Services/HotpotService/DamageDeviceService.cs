@@ -90,8 +90,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     break;
                 case "status":
                     orderedQuery = request.Ascending
-                        ? query.OrderBy(d => d.Status)
-                        : query.OrderByDescending(d => d.Status);
+                        ? query.OrderBy(d =>
+                            d.Status == MaintenanceStatus.Pending ? 0 :
+                            d.Status == MaintenanceStatus.InProgress ? 1 :
+                            d.Status == MaintenanceStatus.Completed ? 2 :
+                            d.Status == MaintenanceStatus.Cancelled ? 3 : 4)
+                        : query.OrderByDescending(d =>
+                            d.Status == MaintenanceStatus.Pending ? 0 :
+                            d.Status == MaintenanceStatus.InProgress ? 1 :
+                            d.Status == MaintenanceStatus.Completed ? 2 :
+                            d.Status == MaintenanceStatus.Cancelled ? 3 : 4);
                     break;
                 case "loggeddate":
                 default:
