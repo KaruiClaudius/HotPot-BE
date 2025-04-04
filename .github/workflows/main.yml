@@ -54,7 +54,7 @@ jobs:
       - name: Run automated tests
         run: |
           echo "Running automated tests..."
-          dotnet test ./Capstone.HPTY.Test/Capstone.HPTY.Test.csproj
+          dotnet test ./Capstone.HPTY.Test/Capstone.HPTY.Test.csproj --nologo --verbosity normal /p:TreatWarningsAsErrors=false
             
             # Check if tests passed
             if [ $? -eq 0 ]; then
