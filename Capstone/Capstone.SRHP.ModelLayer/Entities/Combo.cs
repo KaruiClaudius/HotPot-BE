@@ -82,7 +82,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public virtual TurtorialVideo? TurtorialVideo { get; set; }
         public virtual Ingredient? HotpotBroth { get; set; }
-        public virtual Customization? Customization { get; set; }
+        public virtual ICollection<Customization>? Customizations { get; set; }
         public virtual ICollection<SellOrderDetail>? SellOrderDetails { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; } = new List<ComboIngredient>();
         public virtual ICollection<ComboAllowedIngredientType>? AllowedIngredientTypes { get; set; } = new List<ComboAllowedIngredientType>();
