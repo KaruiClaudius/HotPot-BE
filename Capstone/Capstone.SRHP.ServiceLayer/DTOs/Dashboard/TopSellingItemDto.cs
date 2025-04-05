@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
 {
+
     public class TopSellingItemDto
     {
         public int ItemId { get; set; }
