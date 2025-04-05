@@ -387,6 +387,11 @@ namespace Capstone.HPTY.RepositoryLayer
                     .WithMany()
                     .HasForeignKey(e => e.HotpotBrothId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(c => c.Combo)
+                    .WithMany(c => c.Customizations)
+                    .HasForeignKey(c => c.ComboId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
 
