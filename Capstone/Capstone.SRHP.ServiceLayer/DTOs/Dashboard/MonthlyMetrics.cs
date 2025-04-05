@@ -13,6 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
         public string MonthName { get; set; }
         public decimal Revenue { get; set; }
         public int OrderCount { get; set; }
+        public int CompletedOrderCount { get; set; }
         public Dictionary<string, int> OrdersByStatus { get; set; }
     }
 }

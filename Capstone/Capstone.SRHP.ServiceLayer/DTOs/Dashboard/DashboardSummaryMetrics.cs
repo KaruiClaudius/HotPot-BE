@@ -10,6 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
     {
         public decimal TotalRevenue { get; set; }
         public int TotalOrders { get; set; }
+        public int TotalCompletedOrders { get; set; }
         public int TotalCustomers { get; set; }
         public decimal AverageOrderValue { get; set; }
         public decimal HotpotDepositsTotal { get; set; }

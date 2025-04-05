@@ -40,9 +40,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                // Start with base query
+                DateTime adjustedFromDate = fromDate;
+
+                // If the date range is less than a year, extend fromDate to include a full year
+                if ((toDate - fromDate).TotalDays < 365)
+                {
+                    adjustedFromDate = new DateTime(toDate.Year - 1, toDate.Month, 1);
+                }
+
+                // Start with base query using the adjusted date for fetching orders
                 var query = _unitOfWork.Repository<Order>()
-                    .FindAll(o => !o.IsDelete && o.CreatedAt >= fromDate && o.CreatedAt <= toDate);
+                    .FindAll(o => !o.IsDelete && o.CreatedAt >= adjustedFromDate && o.CreatedAt <= toDate);
 
                 // Apply order status filter
                 if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
@@ -124,6 +132,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .ToListAsync();
 
+                // For overall metrics and other calculations, use the original date range
+                var filteredOrders = orders.Where(o => o.CreatedAt >= fromDate && o.CreatedAt <= toDate).ToList();
+
                 // Process the data to build the consolidated response
                 var response = new ConsolidatedDashboardResponse
                 {
@@ -145,24 +156,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         private DashboardSummaryMetrics CalculateOverallMetrics(List<Order> orders)
         {
-            // Calculate total revenue
-            decimal totalRevenue = orders.Sum(o => o.TotalPrice);
+            // Filter out pending orders for revenue calculations
+            var completedOrders = orders.Where(o => o.Status != OrderStatus.Pending).ToList();
 
-            // Count total orders
+            // Calculate total revenue from completed orders only
+            decimal totalRevenue = completedOrders.Sum(o => o.TotalPrice);
+
+            // Count total orders (including pending)
             int totalOrders = orders.Count;
+
+            // Count total completed orders
+            int totalCompletedOrders = completedOrders.Count;
 
             // Count unique customers
             int totalCustomers = orders.Select(o => o.UserId).Distinct().Count();
 
-            // Calculate average order value
-            decimal averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+            // Calculate average order value (based on completed orders only)
+            decimal averageOrderValue = totalCompletedOrders > 0 ? totalRevenue / totalCompletedOrders : 0;
 
-            // Calculate hotpot deposits total
-            decimal hotpotDepositsTotal = orders
+            // Calculate hotpot deposits total (from completed orders only)
+            decimal hotpotDepositsTotal = completedOrders
                 .Where(o => o.RentOrder != null)
                 .Sum(o => o.RentOrder.HotpotDeposit);
 
-            // Calculate revenue by product type
+            // Calculate revenue by product type (from completed orders only)
             var revenueByType = new RevenueByProductType
             {
                 Ingredients = 0,
@@ -173,8 +190,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 HotpotDeposits = hotpotDepositsTotal
             };
 
-            // Process sell order details
-            foreach (var order in orders.Where(o => o.SellOrder?.SellOrderDetails != null))
+            // Process sell order details (from completed orders only)
+            foreach (var order in completedOrders.Where(o => o.SellOrder?.SellOrderDetails != null))
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
@@ -195,8 +212,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
             }
 
-            // Process rent order details
-            foreach (var order in orders.Where(o => o.RentOrder?.RentOrderDetails != null))
+            // Process rent order details (from completed orders only)
+            foreach (var order in completedOrders.Where(o => o.RentOrder?.RentOrderDetails != null))
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
@@ -217,6 +234,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 TotalRevenue = totalRevenue,
                 TotalOrders = totalOrders,
+                TotalCompletedOrders = totalCompletedOrders,
                 TotalCustomers = totalCustomers,
                 AverageOrderValue = averageOrderValue,
                 HotpotDepositsTotal = hotpotDepositsTotal,
@@ -226,44 +244,87 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         private List<MonthlyMetrics> CalculateMonthlyMetrics(List<Order> orders)
         {
-            // Group orders by year and month
-            var groupedOrders = orders
-                .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
-                .Select(g => new
-                {
-                    Year = g.Key.Year,
-                    Month = g.Key.Month,
-                    Orders = g.ToList()
-                })
-                .OrderBy(g => g.Year)
-                .ThenBy(g => g.Month)
-                .ToList();
+            // Get the end date (either the latest order date or today)
+            DateTime endDate = orders.Any() ? orders.Max(o => o.CreatedAt) : DateTime.Now;
 
-            // Create a complete list of months in the date range
-            var result = new List<MonthlyMetrics>();
+            // Create a list to hold the last 12 months
+            var last12Months = new List<MonthlyMetrics>();
 
-            foreach (var group in groupedOrders)
+            // Start with 11 months before the end date
+            var currentMonth = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-11);
+
+            // Loop through 12 months
+            for (int i = 0; i < 12; i++)
             {
-                // Calculate metrics for this month
-                var monthlyMetrics = new MonthlyMetrics
+                // Add this month to the list
+                last12Months.Add(new MonthlyMetrics
                 {
-                    Year = group.Year,
-                    Month = group.Month,
-                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(group.Month),
-                    Revenue = group.Orders.Sum(o => o.TotalPrice),
-                    OrderCount = group.Orders.Count,
-                    OrdersByStatus = group.Orders
+                    Year = currentMonth.Year,
+                    Month = currentMonth.Month,
+                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(currentMonth.Month),
+                    Revenue = 0,
+                    OrderCount = 0,
+                    CompletedOrderCount = 0, // New property
+                    OrdersByStatus = new Dictionary<string, int>()
+                });
+
+                // Move to the next month
+                currentMonth = currentMonth.AddMonths(1);
+            }
+
+            // Filter orders to only include those from the last 12 months
+            var startDate = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-11);
+            var relevantOrders = orders.Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate).ToList();
+
+            // Group orders by year and month
+            var groupedOrders = relevantOrders
+                .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
+                .ToDictionary(
+                    g => $"{g.Key.Year}-{g.Key.Month}",
+                    g => g.ToList()
+                );
+
+            // Fill in the data for months that have orders
+            foreach (var monthData in last12Months)
+            {
+                string key = $"{monthData.Year}-{monthData.Month}";
+
+                if (groupedOrders.ContainsKey(key))
+                {
+                    var monthOrders = groupedOrders[key];
+                    var completedMonthOrders = monthOrders.Where(o => o.Status != OrderStatus.Pending).ToList();
+
+                    // Revenue only from completed orders
+                    monthData.Revenue = completedMonthOrders.Sum(o => o.TotalPrice);
+
+                    // Total orders (including pending)
+                    monthData.OrderCount = monthOrders.Count;
+
+                    // Completed orders only
+                    monthData.CompletedOrderCount = completedMonthOrders.Count;
+
+                    // Calculate orders by status
+                    monthData.OrdersByStatus = monthOrders
                         .GroupBy(o => o.Status)
                         .ToDictionary(
                             g => g.Key.ToString(),
                             g => g.Count()
-                        )
-                };
+                        );
+                }
 
-                result.Add(monthlyMetrics);
+                // Ensure all statuses are represented in OrdersByStatus
+                foreach (var status in Enum.GetValues(typeof(OrderStatus)).Cast<OrderStatus>())
+                {
+                    string statusName = status.ToString();
+                    if (!monthData.OrdersByStatus.ContainsKey(statusName))
+                    {
+                        monthData.OrdersByStatus[statusName] = 0;
+                    }
+                }
             }
 
-            return result;
+            // Return the list (already sorted by year and month)
+            return last12Months;
         }
 
         private OrderStatusMetrics CalculateOrderStatusMetrics(List<Order> orders)
@@ -276,7 +337,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     g => new OrderStatusDetail
                     {
                         Count = g.Count(),
-                        Revenue = g.Sum(o => o.TotalPrice),
+                        Revenue = g.Key != OrderStatus.Pending ? g.Sum(o => o.TotalPrice) : 0, // Zero revenue for pending
                         Percentage = orders.Count > 0 ? (decimal)g.Count() / orders.Count * 100 : 0
                     }
                 );
@@ -303,15 +364,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .Select(MapOrderToResponse)
                 .ToList();
 
+            // Calculate total revenue (excluding pending orders)
+            decimal totalRevenue = orders
+                .Where(o => o.Status != OrderStatus.Pending)
+                .Sum(o => o.TotalPrice);
+
             return new OrderStatusMetrics
             {
                 TotalOrders = orders.Count,
+                TotalRevenue = totalRevenue,
                 StatusDetails = ordersByStatus,
                 RecentOrders = recentOrders
             };
         }
         private ProductConsumptionStats CalculateProductConsumptionStats(List<Order> orders, int limit)
         {
+            var completedOrders = orders.Where(o => o.Status != OrderStatus.Pending).ToList();
+
             // Create dictionaries to track sales by product type
             var ingredientSales = new Dictionary<int, TopSellingItemDto>();
             var comboSales = new Dictionary<int, TopSellingItemDto>();
@@ -320,7 +389,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var utensilSales = new Dictionary<int, TopSellingItemDto>();
 
             // Process sell order details
-            foreach (var order in orders.Where(o => o.SellOrder?.SellOrderDetails != null))
+            foreach (var order in completedOrders.Where(o => o.SellOrder?.SellOrderDetails != null))
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {

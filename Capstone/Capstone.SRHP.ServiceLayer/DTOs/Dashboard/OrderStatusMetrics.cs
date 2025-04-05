@@ -10,6 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
     public class OrderStatusMetrics
     {
         public int TotalOrders { get; set; }
+        public decimal TotalRevenue { get; set; } 
         public Dictionary<string, OrderStatusDetail> StatusDetails { get; set; }
         public List<OrderResponse> RecentOrders { get; set; }
     }
