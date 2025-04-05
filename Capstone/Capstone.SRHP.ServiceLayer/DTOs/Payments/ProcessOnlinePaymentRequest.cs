@@ -22,23 +22,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Payments
 
         public int? DiscountId { get; set; }
 
-        // Payment details
-        [Required]
-        public string ProductName { get; set; }
-
         [Required]
         public string Description { get; set; }
-
-        [Required]
-        public int Price { get; set; }
 
         public string? ReturnUrl { get; set; }
 
         public string? CancelUrl { get; set; }
-
-        public string? BuyerName { get; set; }
-
-        [Required]
-        public string BuyerPhone { get; set; }
     }
 }

@@ -33,26 +33,40 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                // Verify the user is creating a payment for themselves
                 var currentUserPhone = User.FindFirstValue("phone");
-                var userId = int.Parse(User.FindFirstValue("id"));
+                var currentUserName = User.FindFirstValue("name");
+                var userIdValue = User.FindFirstValue("id");
+                if (userIdValue == null)
+                {
+                    return BadRequest(new { message = "User ID not found" });
+                }
+                var userId = int.Parse(userIdValue);
                 var isCustomer = User.IsInRole("Customer");
 
-                if (currentUserPhone != request.BuyerPhone && !isCustomer)
+                if (!isCustomer)
                 {
                     return Forbid();
                 }
                 var productName = "Order " + request.OrderId;
 
+                var order = await _orderService.GetByIdAsync(request.OrderId);
+
+                if (order == null)
+                {
+                    return NotFound(new { message = "Order not found" });
+                }
+
+                int price = (int)order.TotalPrice;
+
                 // Create payment link request
                 var paymentLinkRequest = new CreatePaymentLinkRequest(
                     productName,
                     request.Description,
-                    request.Price,
+                    price,
                     request.ReturnUrl,
                     request.CancelUrl,
-                    request.BuyerName,
-                    request.BuyerPhone
+                    currentUserName,
+                    currentUserPhone
                 );
 
                 // Process the payment
