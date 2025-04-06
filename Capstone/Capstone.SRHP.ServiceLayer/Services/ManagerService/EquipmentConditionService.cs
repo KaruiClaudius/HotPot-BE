@@ -126,7 +126,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         }
 
         public async Task<PagedResult<EquipmentConditionListItemDto>> GetFilteredConditionLogsAsync(
-    EquipmentConditionFilterDto filterParams)
+            EquipmentConditionFilterDto filterParams)
         {
             IQueryable<DamageDevice> query = _unitOfWork.Repository<DamageDevice>().GetAll();
 
@@ -164,20 +164,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                                         c.UtensilId == filterParams.EquipmentId);
             }
 
+            // Filter by equipment name
+            if (!string.IsNullOrEmpty(filterParams.EquipmentName))
+            {
+                string equipmentName = filterParams.EquipmentName.ToLower();
+
+                query = query.Where(c =>
+                    (c.HotPotInventory != null && c.HotPotInventory.Hotpot != null &&
+                     c.HotPotInventory.Hotpot.Name.ToLower().Contains(equipmentName)) ||
+                    (c.Utensil != null && c.Utensil.UtensilType != null &&
+                     c.Utensil.Name.ToLower().Contains(equipmentName))
+                );
+            }
+
             if (filterParams.Status.HasValue)
             {
                 query = query.Where(c => c.Status == filterParams.Status);
-            }
-
-            if (filterParams.StartDate.HasValue)
-            {
-                query = query.Where(c => c.LoggedDate >= filterParams.StartDate);
-            }
-
-            if (filterParams.EndDate.HasValue)
-            {
-                query = query.Where(c => c.LoggedDate <= filterParams.EndDate);
-            }
+            }          
 
             // Include related entities
             query = query
