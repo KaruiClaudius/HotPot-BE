@@ -430,7 +430,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Set rental dates if not already set
             DateTime rentalStartDate = DateTime.Now;
-            DateTime expectedReturnDate = DateTime.Now.AddDays(2); // Default rental period
+            DateTime expectedReturnDate = DateTime.Now; // Default rental period
 
             // Ensure RentOrder exists
             if (order.RentOrder == null)
@@ -439,7 +439,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     SubTotal = 0,
-                    HotpotDeposit = 0,
                     RentalStartDate = rentalStartDate,
                     ExpectedReturnDate = expectedReturnDate,
                     RentOrderDetails = new List<RentOrderDetail>()
@@ -488,8 +487,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 additionalHotpotDeposit += hotpot.Price * 0.7m;
             }
 
-            // Update hotpot deposit
-            order.RentOrder.HotpotDeposit += additionalHotpotDeposit;
 
             // Update order flags
             order.HasRentItems = true;
@@ -589,7 +586,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     SubTotal = 0,
-                    HotpotDeposit = 0,
                     RentalStartDate = rentalStartDate,
                     ExpectedReturnDate = expectedReturnDate,
                     RentOrderDetails = new List<RentOrderDetail>()
@@ -791,9 +787,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 order.RentOrder.SubTotal = rentSubTotal;
                 totalPrice += rentSubTotal;
-
-                // Add hotpot deposit to total price
-                totalPrice += order.RentOrder.HotpotDeposit;
             }
 
             // Apply discount if applicable

@@ -13,7 +13,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
         public decimal Customizations { get; set; }
         public decimal Hotpots { get; set; }
         public decimal Utensils { get; set; }
-        public decimal HotpotDeposits { get; set; }
     }
 
 }

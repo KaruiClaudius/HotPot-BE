@@ -18,8 +18,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal SubTotal { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal HotpotDeposit { get; set; }
 
         // Moved properties from RentOrderDetail
         [Required]

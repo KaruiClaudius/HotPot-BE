@@ -377,8 +377,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             // Add hotpot deposit from RentOrder if available
             if (order.RentOrder != null)
             {
-                response.HotpotDeposit = order.RentOrder.HotpotDeposit;
-
                 // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;
                 response.ExpectedReturnDate = order.RentOrder.ExpectedReturnDate;
@@ -389,10 +387,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 response.DamageFee = order.RentOrder.DamageFee;
                 response.RentalNotes = order.RentOrder.RentalNotes;
                 response.ReturnCondition = order.RentOrder.ReturnCondition;
-            }
-            else
-            {
-                response.HotpotDeposit = 0;
             }
 
             // Map sell order details

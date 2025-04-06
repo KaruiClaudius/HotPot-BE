@@ -174,11 +174,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Calculate average order value (based on completed orders only)
             decimal averageOrderValue = totalCompletedOrders > 0 ? totalRevenue / totalCompletedOrders : 0;
 
-            // Calculate hotpot deposits total (from completed orders only)
-            decimal hotpotDepositsTotal = completedOrders
-                .Where(o => o.RentOrder != null)
-                .Sum(o => o.RentOrder.HotpotDeposit);
-
             // Calculate revenue by product type (from completed orders only)
             var revenueByType = new RevenueByProductType
             {
@@ -186,8 +181,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Combos = 0,
                 Customizations = 0,
                 Hotpots = 0,
-                Utensils = 0,
-                HotpotDeposits = hotpotDepositsTotal
+                Utensils = 0
             };
 
             // Process sell order details (from completed orders only)
@@ -237,7 +231,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 TotalCompletedOrders = totalCompletedOrders,
                 TotalCustomers = totalCustomers,
                 AverageOrderValue = averageOrderValue,
-                HotpotDepositsTotal = hotpotDepositsTotal,
                 RevenueByType = revenueByType
             };
         }
@@ -588,8 +581,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Add hotpot deposit from RentOrder if available
             if (order.RentOrder != null)
             {
-                response.HotpotDeposit = order.RentOrder.HotpotDeposit;
-
                 // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;
                 response.ExpectedReturnDate = order.RentOrder.ExpectedReturnDate;
@@ -600,10 +591,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 response.DamageFee = order.RentOrder.DamageFee;
                 response.RentalNotes = order.RentOrder.RentalNotes;
                 response.ReturnCondition = order.RentOrder.ReturnCondition;
-            }
-            else
-            {
-                response.HotpotDeposit = 0;
             }
 
             // Map sell order details

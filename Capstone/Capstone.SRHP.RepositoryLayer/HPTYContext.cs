@@ -250,10 +250,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasColumnType("decimal(18,2)")
                     .IsRequired();
 
-                entity.Property(e => e.HotpotDeposit)
-                    .HasColumnType("decimal(18,2)")
-                    .IsRequired();
-
                 // Configure rental properties
                 entity.Property(e => e.RentalStartDate)
                     .IsRequired();

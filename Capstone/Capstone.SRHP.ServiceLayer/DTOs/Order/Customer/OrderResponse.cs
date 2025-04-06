@@ -27,7 +27,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public List<PaymentInfo> AdditionalPayments { get; set; }
 
         // Rental-specific properties
-        public decimal HotpotDeposit { get; set; }
         public DateTime? RentalStartDate { get; set; }
         public DateTime? ExpectedReturnDate { get; set; }
         public DateTime? ActualReturnDate { get; set; }

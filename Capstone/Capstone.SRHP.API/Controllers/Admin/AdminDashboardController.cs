@@ -133,7 +133,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 csvBuilder.AppendLine($"Customizations,{dashboardData.OverallMetrics.RevenueByType.Customizations:C}");
                 csvBuilder.AppendLine($"Hotpots,{dashboardData.OverallMetrics.RevenueByType.Hotpots:C}");
                 csvBuilder.AppendLine($"Utensils,{dashboardData.OverallMetrics.RevenueByType.Utensils:C}");
-                csvBuilder.AppendLine($"Hotpot Deposits,{dashboardData.OverallMetrics.RevenueByType.HotpotDeposits:C}");
                 csvBuilder.AppendLine();
 
                 // Add monthly data
