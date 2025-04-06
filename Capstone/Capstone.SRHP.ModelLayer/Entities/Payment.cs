@@ -18,6 +18,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public PaymentStatus Status { get; set; }
 
+        [Required]
+        public PaymentPurpose Purpose { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
 

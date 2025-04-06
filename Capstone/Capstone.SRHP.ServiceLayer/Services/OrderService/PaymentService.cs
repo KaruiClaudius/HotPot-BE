@@ -484,7 +484,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable()
                     .Include(o => o.User)
                     .Include(o => o.Discount)
-                    .Include(o => o.Payment)
+                    .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)

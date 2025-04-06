@@ -75,7 +75,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable()
                     .Include(o => o.User)
                     .Include(o => o.Discount)
-                    .Include(o => o.Payment)
+                    .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)
@@ -153,7 +153,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (!string.IsNullOrWhiteSpace(paymentStatus) && Enum.TryParse<PaymentStatus>(paymentStatus, true, out var pmtStatus))
                 {
-                    query = query.Where(o => o.Payment != null && o.Payment.Status == pmtStatus);
+                    query = query.Where(o => o.Payments.Any(p => p.Status == pmtStatus));
                 }
 
                 // Get total count before applying pagination
@@ -214,7 +214,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .IncludeNested(query => query
                             .Include(o => o.User)
                             .Include(o => o.Discount)
-                            .Include(o => o.Payment)
+                            .Include(o => o.Payments)
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
                                     .ThenInclude(sod => sod.Ingredient)
@@ -264,7 +264,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .IncludeNested(query =>
                             query.Include(o => o.User)
                                  .Include(o => o.Discount)
-                                 .Include(o => o.Payment)
+                                 .Include(o => o.Payments)
                                  .Include(o => o.SellOrder)
                                      .ThenInclude(so => so.SellOrderDetails)
                                      .ThenInclude(sod => sod.Ingredient)

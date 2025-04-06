@@ -182,9 +182,10 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired()
                     .HasMaxLength(50);
 
+
                 entity.HasOne(p => p.Order)
-                    .WithOne(o => o.Payment)
-                    .HasForeignKey<Payment>(p => p.OrderId)
+                    .WithMany(o => o.Payments)  
+                    .HasForeignKey(p => p.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
