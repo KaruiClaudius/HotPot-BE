@@ -1,6 +1,10 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Order;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
+using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -14,13 +18,16 @@ namespace Capstone.HPTY.API.Controllers.Staff
     public class StaffPaymentController : ControllerBase
     {
         private readonly IStaffPaymentService _staffPaymentService;
+        private readonly IPaymentService _paymentService;
         private readonly ILogger<StaffPaymentController> _logger;
 
         public StaffPaymentController(
             IStaffPaymentService staffPaymentService,
+            IPaymentService paymentService,
             ILogger<StaffPaymentController> logger)
         {
             _staffPaymentService = staffPaymentService;
+            _paymentService = paymentService;
             _logger = logger;
         }
 
@@ -84,6 +91,105 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 _logger.LogError(ex, "Error generating receipt for payment {PaymentId}", paymentId);
                 return StatusCode(500, $"An error occurred while generating receipt: {ex.Message}");
+            }
+        }
+
+        [HttpPost("orders/{orderId}/record-return")]
+        public async Task<IActionResult> RecordHotpotReturn(int orderId, [FromBody] RecordReturnRequest request)
+        {
+            try
+            {
+                var order = await _paymentService.RecordHotpotReturnAsync(
+                    orderId,
+                    request.ReturnCondition,
+                    request.DamageFee
+                );
+
+                return Ok(new
+                {
+                    message = "Hotpot return recorded successfully",
+                    order = new
+                    {
+                        orderId = order.OrderId,
+                        status = order.Status.ToString(),
+                        actualReturnDate = order.RentOrder?.ActualReturnDate,
+                        lateFee = order.RentOrder?.LateFee,
+                        damageFee = order.RentOrder?.DamageFee,
+                        returnCondition = order.RentOrder?.ReturnCondition
+                    }
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording hotpot return for order {OrderId}", orderId);
+                return StatusCode(500, new { message = "An error occurred while recording the hotpot return" });
+            }
+        }
+
+
+        [HttpGet("orders/{orderId}/payments")]
+        public async Task<IActionResult> GetOrderPayments(int orderId)
+        {
+            try
+            {
+                var payments = await _paymentService.GetListPaymentByOrderIdAsync(orderId);
+
+                return Ok(new
+                {
+                    payments = payments.Select(p => new
+                    {
+                        paymentId = p.PaymentId,
+                        transactionCode = p.TransactionCode,
+                        amount = p.Price,
+                        type = p.Type.ToString(),
+                        status = p.Status.ToString(),
+                        purpose = p.Purpose.ToString(),
+                        createdAt = p.CreatedAt,
+                        updatedAt = p.UpdatedAt
+                    })
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting payments for order {OrderId}", orderId);
+                return StatusCode(500, new { message = "An error occurred while retrieving the order payments" });
+            }
+        }
+
+        [HttpPut("payments/{paymentId}/status")]
+        public async Task<IActionResult> UpdatePaymentStatus(int paymentId, [FromBody] UpdatePaymentStatusRequest request)
+        {
+            try
+            {
+                var paymentStatus = Enum.Parse<PaymentStatus>(request.Status, true);
+                var payment = await _paymentService.UpdatePaymentStatusAsync(paymentId, paymentStatus);
+                return Ok(new
+                {
+                    message = "Payment status updated successfully",
+                    paymentId = payment.PaymentId,
+                    status = payment.Status.ToString()
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating status for payment {PaymentId}", paymentId);
+                return StatusCode(500, new { message = "An error occurred while updating the payment status" });
             }
         }
     }

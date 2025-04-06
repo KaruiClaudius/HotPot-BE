@@ -9,7 +9,6 @@ namespace Capstone.HPTY.ModelLayer.Enum
     public enum PaymentPurpose
     {
         OrderPayment,
-        HotpotDeposit,
         LateFee,
         DamageFee,
         DepositRefund

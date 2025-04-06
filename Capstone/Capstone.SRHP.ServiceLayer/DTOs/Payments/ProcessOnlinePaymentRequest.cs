@@ -22,6 +22,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Payments
 
         public int? DiscountId { get; set; }
 
+        public DateTime? ExpectedReturnDate { get; set; }
+
         [Required]
         public string Description { get; set; }
 
