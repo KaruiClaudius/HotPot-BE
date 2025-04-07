@@ -6,12 +6,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
+namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
 {
     public class UpdateOrderStatusRequest
     {
         [Required]
-        [EnumDataType(typeof(OrderStatus))]
-        public OrderStatus Status { get; set; }
+        public OrderStatus NewStatus { get; set; }
+
+        public string Notes { get; set; }
     }
 }

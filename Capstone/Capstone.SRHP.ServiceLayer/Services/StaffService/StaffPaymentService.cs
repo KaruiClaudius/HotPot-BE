@@ -14,7 +14,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.OrderService
+namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 {
     public class StaffPaymentService : IStaffPaymentService
     {

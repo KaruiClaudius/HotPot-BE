@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
+namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
 {
     public class OrderItemRequest
     {

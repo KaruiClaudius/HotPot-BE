@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Enum;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
+namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
 {
     public class UpdateOrderRequest
     {

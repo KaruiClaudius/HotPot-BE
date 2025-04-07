@@ -8,7 +8,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;

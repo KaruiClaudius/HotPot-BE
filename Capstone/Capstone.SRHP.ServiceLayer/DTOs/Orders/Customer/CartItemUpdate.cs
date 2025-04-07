@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
+namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
 {
-    public class RemoveCartItemRequest
+    public class CartItemUpdate
     {
         public int OrderDetailId { get; set; }
         public bool IsSellItem { get; set; }
+        public int NewQuantity { get; set; }
     }
 }
