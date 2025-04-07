@@ -880,15 +880,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             }
                             else if (detail.HotpotInventoryId.HasValue)
                             {
-                                // For hotpot inventory, we need to check if we have enough available hotpots of the same type
+                                // For hotpot inventory, we need special handling
                                 var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                                     .GetById(detail.HotpotInventoryId.Value);
 
                                 if (hotpotInventory == null)
                                     throw new NotFoundException($"Hotpot inventory with ID {detail.HotpotInventoryId.Value} not found");
 
-                                // Calculate how many more we need
-                                int quantityDifference = update.NewQuantity - 1; // Always 1 for hotpot inventory items
+                                // Find all hotpots of the same type in the order
+                                var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
+                                    .Where(d => d.HotpotInventoryId.HasValue && !d.IsDelete)
+                                    .ToList();
+
+                                var hotpotInventoryIds = allHotpotDetails
+                                    .Select(d => d.HotpotInventoryId.Value)
+                                    .ToList();
+
+                                var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
+                                    .FindAll(h => hotpotInventoryIds.Contains(h.HotPotInventoryId) && !h.IsDelete)
+                                    .ToListAsync();
+
+                                var sameTypeDetails = allHotpotDetails
+                                    .Where(d => hotpotInventories.Any(h => h.HotPotInventoryId == d.HotpotInventoryId &&
+                                                                          h.HotpotId == hotpotInventory.HotpotId))
+                                    .ToList();
+
+                                // Calculate current quantity and how many more we need
+                                int currentQuantity = sameTypeDetails.Count;
+                                int quantityDifference = update.NewQuantity - currentQuantity;
 
                                 if (quantityDifference > 0)
                                 {
@@ -912,46 +931,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         if (update.IsSellItem)
                         {
-                            // Find the sell order detail
-                            var detail = pendingOrder.SellOrder?.SellOrderDetails
-                                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
-
-                            if (detail == null)
-                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
-
-                            // Handle item removal (quantity = 0)
-                            if (update.NewQuantity == 0)
-                            {
-                                // Return inventory if it's an ingredient
-                                if (detail.IngredientId.HasValue)
-                                {
-                                    await _ingredientService.UpdateIngredientQuantityAsync(
-                                        detail.IngredientId.Value, detail.Quantity);
-                                }
-
-                                // Soft delete the detail
-                                detail.SoftDelete();
-                            }
-                            else
-                            {
-                                // Update inventory if it's an ingredient
-                                if (detail.IngredientId.HasValue)
-                                {
-                                    int quantityDifference = update.NewQuantity - detail.Quantity;
-
-                                    if (quantityDifference != 0)
-                                    {
-                                        await _ingredientService.UpdateIngredientQuantityAsync(
-                                            detail.IngredientId.Value, -quantityDifference);
-                                    }
-                                }
-
-                                // Update quantity
-                                detail.Quantity = update.NewQuantity;
-                            }
-
-                            // Update the detail in the database
-                            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
+                            // Process sell items
+                            await ProcessSellItemUpdate(pendingOrder, update);
                         }
                         else
                         {
@@ -962,140 +943,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             if (detail == null)
                                 throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
 
-                            // Handle item removal (quantity = 0)
-                            if (update.NewQuantity == 0)
+                            if (detail.UtensilId.HasValue)
                             {
-                                // Return inventory if it's a utensil
-                                if (detail.UtensilId.HasValue)
-                                {
-                                    await _utensilService.UpdateUtensilQuantityAsync(
-                                        detail.UtensilId.Value, detail.Quantity);
-                                }
-                                else if (detail.HotpotInventoryId.HasValue)
-                                {
-                                    // For hotpot inventory, update status back to Available
-                                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                        .GetById(detail.HotpotInventoryId.Value);
-
-                                    if (hotpotInventory != null)
-                                    {
-                                        hotpotInventory.Status = HotpotStatus.Available;
-                                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                                    }
-                                }
-
-                                // Soft delete the detail
-                                detail.SoftDelete();
+                                // Process utensil items
+                                await ProcessUtensilUpdate(pendingOrder, update, detail);
                             }
-                            else
+                            else if (detail.HotpotInventoryId.HasValue)
                             {
-                                // For utensils, update inventory
-                                if (detail.UtensilId.HasValue)
-                                {
-                                    int quantityDifference = update.NewQuantity - detail.Quantity;
-
-                                    if (quantityDifference != 0)
-                                    {
-                                        await _utensilService.UpdateUtensilQuantityAsync(
-                                            detail.UtensilId.Value, -quantityDifference);
-                                    }
-
-                                    // Update quantity
-                                    detail.Quantity = update.NewQuantity;
-                                }
-                                else if (detail.HotpotInventoryId.HasValue)
-                                {
-                                    // For hotpot inventory, we need to add additional hotpot inventory items
-                                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                        .IncludeNested(query => query.Include(h => h.Hotpot))
-                                        .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
-
-                                    if (hotpotInventory == null)
-                                        throw new NotFoundException($"Hotpot inventory with ID {detail.HotpotInventoryId.Value} not found");
-
-                                    // Calculate how many more we need
-                                    int quantityDifference = update.NewQuantity - 1; // Always 1 for hotpot inventory items
-
-                                    if (quantityDifference > 0)
-                                    {
-                                        // Get available hotpots of the same type
-                                        var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
-                                            .FindAll(h => h.HotpotId == hotpotInventory.HotpotId &&
-                                                          h.Status == HotpotStatus.Available &&
-                                                          !h.IsDelete)
-                                            .Take(quantityDifference)
-                                            .ToListAsync();
-
-                                        // Add each available hotpot as a new rent order detail
-                                        foreach (var availableHotpot in availableHotpots)
-                                        {
-                                            var newDetail = new RentOrderDetail
-                                            {
-                                                OrderId = pendingOrder.OrderId,
-                                                HotpotInventoryId = availableHotpot.HotPotInventoryId,
-                                                Quantity = 1, // Always 1 for hotpot inventory items
-                                                RentalPrice = hotpotInventory.Hotpot.Price // Use the same price as the original
-                                            };
-
-                                            // Update hotpot status to Reserved
-                                            availableHotpot.Status = HotpotStatus.Rented;
-                                            await _unitOfWork.Repository<HotPotInventory>().Update(availableHotpot, availableHotpot.HotPotInventoryId);
-
-                                            // Add the new detail
-                                            await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(newDetail);
-                                        }
-                                    }
-                                    else if (quantityDifference < 0)
-                                    {
-                                        // We need to remove some hotpot inventory items
-                                        // Find all hotpot details of the same type (excluding the current one)
-                                        var hotpotDetails = pendingOrder.RentOrder.RentOrderDetails
-                                            .Where(d => d.HotpotInventoryId.HasValue &&
-                                                        d.HotpotInventoryId != detail.HotpotInventoryId &&
-                                                        !d.IsDelete)
-                                            .ToList();
-
-                                        // Get the hotpot IDs for all details
-                                        var hotpotInventoryIds = hotpotDetails
-                                            .Select(d => d.HotpotInventoryId.Value)
-                                            .ToList();
-
-                                        // Get the actual hotpot inventories to check their hotpot type
-                                        var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
-                                            .FindAll(h => hotpotInventoryIds.Contains(h.HotPotInventoryId) && !h.IsDelete)
-                                            .ToListAsync();
-
-                                        // Find details with the same hotpot type
-                                        var sameTypeDetails = hotpotDetails
-                                            .Where(d => hotpotInventories.Any(h => h.HotPotInventoryId == d.HotpotInventoryId &&
-                                                                                  h.HotpotId == hotpotInventory.HotpotId))
-                                            .OrderByDescending(d => d.CreatedAt) // Remove the most recently added first
-                                            .Take(-quantityDifference)
-                                            .ToList();
-
-                                        // Remove the details
-                                        foreach (var detailToRemove in sameTypeDetails)
-                                        {
-                                            // Update hotpot status back to Available
-                                            var hotpotToRemove = await _unitOfWork.Repository<HotPotInventory>()
-                                                .GetById(detailToRemove.HotpotInventoryId.Value);
-
-                                            if (hotpotToRemove != null)
-                                            {
-                                                hotpotToRemove.Status = HotpotStatus.Available;
-                                                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotToRemove, hotpotToRemove.HotPotInventoryId);
-                                            }
-
-                                            // Soft delete the detail
-                                            detailToRemove.SoftDelete();
-                                            await _unitOfWork.Repository<RentOrderDetail>().Update(detailToRemove, detailToRemove.RentOrderDetailId);
-                                        }
-                                    }
-                                }
+                                // Process hotpot items with special handling
+                                await ProcessHotpotUpdate(pendingOrder, update, detail);
                             }
-
-                            // Update the detail in the database
-                            await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
                         }
                     }
 
@@ -1135,6 +992,189 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 throw;
             }
         }
+
+        // Helper method for processing hotpot updates
+        private async Task ProcessHotpotUpdate(Order pendingOrder, CartItemUpdate update, RentOrderDetail detail)
+        {
+            // Get the hotpot inventory for the primary detail
+            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                .IncludeNested(query => query.Include(h => h.Hotpot))
+                .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
+
+            if (hotpotInventory == null)
+                throw new NotFoundException($"Hotpot inventory with ID {detail.HotpotInventoryId.Value} not found");
+
+            // Step 1: Find all hotpot details of the same type in the order
+            var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
+                .Where(d => d.HotpotInventoryId.HasValue && !d.IsDelete)
+                .ToList();
+
+            // Get the hotpot IDs for all details
+            var hotpotInventoryIds = allHotpotDetails
+                .Select(d => d.HotpotInventoryId.Value)
+                .ToList();
+
+            // Get the actual hotpot inventories to check their hotpot type
+            var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
+                .FindAll(h => hotpotInventoryIds.Contains(h.HotPotInventoryId) && !h.IsDelete)
+                .ToListAsync();
+
+            // Find all details with the same hotpot type as the one being updated
+            var sameTypeDetails = allHotpotDetails
+                .Where(d => hotpotInventories.Any(h => h.HotPotInventoryId == d.HotpotInventoryId &&
+                                                      h.HotpotId == hotpotInventory.HotpotId))
+                .ToList();
+
+            // Step 2: Calculate current quantity (number of same type hotpots)
+            int currentQuantity = sameTypeDetails.Count;
+
+            // Step 3: Compare with requested quantity and adjust
+            int quantityDifference = update.NewQuantity - currentQuantity;
+
+            if (quantityDifference == 0)
+            {
+                // No change needed
+                return;
+            }
+            else if (quantityDifference > 0)
+            {
+                // Need to add more hotpots
+                // Check if we have enough available hotpots of the same type
+                var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAll(h => h.HotpotId == hotpotInventory.HotpotId &&
+                                  h.Status == HotpotStatus.Available &&
+                                  !h.IsDelete)
+                    .Take(quantityDifference)
+                    .ToListAsync();
+
+                if (availableHotpots.Count < quantityDifference)
+                    throw new ValidationException($"Only {availableHotpots.Count} additional hotpots of this type are available");
+
+                // Add each available hotpot as a new rent order detail
+                foreach (var availableHotpot in availableHotpots)
+                {
+                    var newDetail = new RentOrderDetail
+                    {
+                        OrderId = pendingOrder.OrderId,
+                        HotpotInventoryId = availableHotpot.HotPotInventoryId,
+                        Quantity = 1, // Always 1 for hotpot inventory items
+                        RentalPrice = hotpotInventory.Hotpot.Price // Use the same price as the original
+                    };
+
+                    // Update hotpot status to Reserved
+                    availableHotpot.Status = HotpotStatus.Reserved;
+                    await _unitOfWork.Repository<HotPotInventory>().Update(availableHotpot, availableHotpot.HotPotInventoryId);
+
+                    // Add the new detail
+                    await _unitOfWork.Repository<RentOrderDetail>().InsertAsync(newDetail);
+                }
+            }
+            else // quantityDifference < 0
+            {
+                // Need to remove some hotpots
+                // Sort by most recently added first (to remove newest ones first)
+                var detailsToRemove = sameTypeDetails
+                    .OrderByDescending(d => d.CreatedAt)
+                    .Take(-quantityDifference)
+                    .ToList();
+
+                // Remove the details
+                foreach (var detailToRemove in detailsToRemove)
+                {
+                    // Update hotpot status back to Available
+                    var hotpotToRemove = await _unitOfWork.Repository<HotPotInventory>()
+                        .GetById(detailToRemove.HotpotInventoryId.Value);
+
+                    if (hotpotToRemove != null)
+                    {
+                        hotpotToRemove.Status = HotpotStatus.Available;
+                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotToRemove, hotpotToRemove.HotPotInventoryId);
+                    }
+
+                    // Soft delete the detail
+                    detailToRemove.SoftDelete();
+                    await _unitOfWork.Repository<RentOrderDetail>().Update(detailToRemove, detailToRemove.RentOrderDetailId);
+                }
+            }
+        }
+
+        // Helper method for processing sell item updates
+        private async Task ProcessSellItemUpdate(Order pendingOrder, CartItemUpdate update)
+        {
+            // Find the sell order detail
+            var detail = pendingOrder.SellOrder?.SellOrderDetails
+                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+            if (detail == null)
+                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+
+            // Handle item removal (quantity = 0)
+            if (update.NewQuantity == 0)
+            {
+                // Return inventory if it's an ingredient
+                if (detail.IngredientId.HasValue)
+                {
+                    await _ingredientService.UpdateIngredientQuantityAsync(
+                        detail.IngredientId.Value, detail.Quantity);
+                }
+
+                // Soft delete the detail
+                detail.SoftDelete();
+            }
+            else
+            {
+                // Update inventory if it's an ingredient
+                if (detail.IngredientId.HasValue)
+                {
+                    int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                    if (quantityDifference != 0)
+                    {
+                        await _ingredientService.UpdateIngredientQuantityAsync(
+                            detail.IngredientId.Value, -quantityDifference);
+                    }
+                }
+
+                // Update quantity
+                detail.Quantity = update.NewQuantity;
+            }
+
+            // Update the detail in the database
+            await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
+        }
+
+        // Helper method for processing utensil updates
+        private async Task ProcessUtensilUpdate(Order pendingOrder, CartItemUpdate update, RentOrderDetail detail)
+        {
+            // Handle item removal (quantity = 0)
+            if (update.NewQuantity == 0)
+            {
+                // Return inventory
+                await _utensilService.UpdateUtensilQuantityAsync(
+                    detail.UtensilId.Value, detail.Quantity);
+
+                // Soft delete the detail
+                detail.SoftDelete();
+            }
+            else
+            {
+                // Update inventory
+                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                if (quantityDifference != 0)
+                {
+                    await _utensilService.UpdateUtensilQuantityAsync(
+                        detail.UtensilId.Value, -quantityDifference);
+                }
+
+                // Update quantity
+                detail.Quantity = update.NewQuantity;
+            }
+
+            // Update the detail in the database
+            await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
+        }
+
 
         public async Task<Order> UpdateAsync(int id, UpdateOrderRequest request)
         {
