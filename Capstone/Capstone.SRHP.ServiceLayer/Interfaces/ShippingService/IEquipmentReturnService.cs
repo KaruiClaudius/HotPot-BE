@@ -12,6 +12,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
             int assignmentId,
             EquipmentReturnRequest request);
 
-        Task<RentOrder> GetRentOrderAsync(int orderId);
+        Task<RentOrderDetail> GetRentOrderDetailAsync(int rentOrderDetailId);
     }
 }

@@ -22,9 +22,10 @@ namespace Capstone.HPTY.API.Controllers.Staff
         private readonly IEquipmentReturnService _equipmentReturnService;
         private readonly INotificationService _notificationService;
 
-        public StaffRentalController(IRentOrderService rentOrderService,
+
+        public StaffRentalController(IRentOrderService rentOrderService, 
             IStaffService staffService,
-            IEquipmentReturnService equipmentReturnService,
+            IEquipmentReturnService equipmentReturnService, 
             INotificationService notificationService)
         {
             _rentOrderService = rentOrderService;
@@ -62,29 +63,29 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 return StatusCode(500, ApiResponse<List<StaffPickupAssignmentDto>>.ErrorResponse(ex.Message));
             }
         }
+      
 
-        [HttpGet("listings")]
-        public async Task<ActionResult<PagedResult<RentalListingDto>>> GetRentalListings(
-                   [FromQuery] string type = "pending",
-                   [FromQuery] int pageNumber = 1,
-                   [FromQuery] int pageSize = 10)
+        [HttpGet("all-pending-pickups")]
+        public async Task<ActionResult<PagedResult<RentalListingDto>>> GetAllPendingPickups([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                if (type.Equals("pending", StringComparison.OrdinalIgnoreCase))
-                {
-                    var pendingPickups = await _rentOrderService.GetPendingPickupsAsync(pageNumber, pageSize);
-                    return Ok(pendingPickups);
-                }
-                else if (type.Equals("overdue", StringComparison.OrdinalIgnoreCase))
-                {
-                    var overdueRentals = await _rentOrderService.GetOverdueRentalsAsync(pageNumber, pageSize);
-                    return Ok(overdueRentals);
-                }
-                else
-                {
-                    return BadRequest(new { message = "Invalid type. Please specify 'pending' or 'overdue'." });
-                }
+                var pendingPickups = await _rentOrderService.GetPendingPickupsAsync(pageNumber, pageSize);
+                return Ok(pendingPickups);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+      
+        [HttpGet("overdue")]
+        public async Task<ActionResult<PagedResult<RentalListingDto>>> GetOverdueRentals([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var overdueRentals = await _rentOrderService.GetOverdueRentalsAsync(pageNumber, pageSize);
+                return Ok(overdueRentals);
             }
             catch (Exception ex)
             {
@@ -92,13 +93,13 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
-        [HttpGet("order/{id}")]
-        public async Task<IActionResult> GetRentOrder(int id)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetRentalDetail(int id)
         {
             try
             {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
-                return Ok(rentOrder);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
+                return Ok(rentOrderDetail);
             }
             catch (NotFoundException ex)
             {
@@ -125,7 +126,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 // Create the equipment return request with staff ID
                 var equipmentReturnRequest = new EquipmentReturnRequest
                 {
-                    RentOrderId = request.RentOrderId,
+                    RentOrderDetailId = request.RentOrderDetailId,
                     ReturnDate = request.CompletedDate,
                     ReturnCondition = request.ReturnCondition,
                     DamageFee = request.DamageFee,
@@ -152,14 +153,14 @@ namespace Capstone.HPTY.API.Controllers.Staff
                         request.AssignmentId.Value,
                         equipmentReturnRequest);
                 }
-                else if (request.RentOrderId.HasValue)
+                else if (request.RentOrderDetailId.HasValue)
                 {
-                    // Process direct order return (new primary method)
+                    // Process direct equipment return
                     result = await _equipmentReturnService.ProcessEquipmentReturnAsync(equipmentReturnRequest);
                 }
                 else
                 {
-                    return BadRequest(ApiResponse<bool>.ErrorResponse("Either AssignmentId, OrderId, or RentOrderDetailId must be provided"));
+                    return BadRequest(ApiResponse<bool>.ErrorResponse("Either AssignmentId or RentOrderDetailId must be provided"));
                 }
 
                 return Ok(ApiResponse<bool>.SuccessResponse(result, "Return recorded successfully"));

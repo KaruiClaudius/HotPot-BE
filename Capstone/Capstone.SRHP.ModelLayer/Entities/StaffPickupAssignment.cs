@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int AssignmentId { get; set; }
 
         [Required]
-        public int OrderId { get; set; }
+        public int RentOrderDetailId { get; set; }
 
         [Required]
         public int StaffId { get; set; }
@@ -28,8 +28,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(500)]
         public string? Notes { get; set; }
 
-        [ForeignKey(nameof(OrderId))]
-        public virtual RentOrder RentOrder { get; set; }
+        [ForeignKey(nameof(RentOrderDetailId))]
+        public virtual RentOrderDetail RentOrderDetail { get; set; }
 
 
         [ForeignKey(nameof(StaffId))]

@@ -68,7 +68,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Get the created assignment
                 var assignments = await _staffService.GetStaffAssignmentsAsync(request.StaffId);
-                var assignmentDto = assignments.FirstOrDefault(a => a.OrderId == request.RentOrderDetailId);
+                var assignmentDto = assignments.FirstOrDefault(a => a.RentOrderDetailId == request.RentOrderDetailId);
 
                 if (assignmentDto == null)
                 {
@@ -170,17 +170,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
                 var result = await _rentOrderService.UpdateRentOrderDetailAsync(id, request);
 
                 // Notify the customer if the return date has changed
                 if (!string.IsNullOrEmpty(request.ExpectedReturnDate) &&
                     DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate) &&
-                    rentOrder.ExpectedReturnDate != parsedDate &&
-                    rentOrder.Order?.UserId != null)
+                    rentOrderDetail.RentOrder.ExpectedReturnDate != parsedDate &&
+                    rentOrderDetail.RentOrder.Order?.UserId != null)
                 {
                     await _notificationService.NotifyCustomerRentalExtendedAsync(
-                        rentOrder.Order.UserId,
+                        rentOrderDetail.RentOrder.Order.UserId,
                         id,
                         parsedDate);
                 }

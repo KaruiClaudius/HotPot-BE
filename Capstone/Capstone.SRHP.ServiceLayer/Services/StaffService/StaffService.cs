@@ -184,7 +184,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                 // Check if this rental is already assigned
                 var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .FindAsync(a => a.OrderId == rentOrderDetailId && a.CompletedDate == null);
+                    .FindAsync(a => a.RentOrderDetailId == rentOrderDetailId && a.CompletedDate == null);
 
                 if (existingAssignment != null)
                 {
@@ -201,7 +201,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Create new assignment
                     var assignment = new StaffPickupAssignment
                     {
-                        OrderId = rentOrderDetailId,
+                        RentOrderDetailId = rentOrderDetailId,
                         StaffId = staffId,
                         AssignedDate = DateTime.UtcNow,
                         Notes = notes
@@ -226,36 +226,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
             // Get all assignments for this staff member
             var assignments = await _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.StaffId == staffId && !a.IsDelete)
+                .AsQueryable(a => a.StaffId == staffId)
                 .Include(a => a.Staff)
-                .Include(a => a.RentOrder)
-                    .ThenInclude(r => r.Order)
+                .Include(a => a.RentOrderDetail)
+                    .ThenInclude(r => r.RentOrder)
+                    .ThenInclude(r=> r.Order)
                         .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.HotpotInventory)
-                        .ThenInclude(h => h != null ? h.Hotpot : null)
+                .Include(a => a.RentOrderDetail.Utensil)
+                .Include(a => a.RentOrderDetail.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
 
             // Map to DTOs
             var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
             {
                 AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
+                RentOrderDetailId = a.RentOrderDetail.RentOrderDetailId,
                 StaffId = a.StaffId,
                 StaffName = a.Staff?.Name,
                 AssignedDate = a.AssignedDate,
                 CompletedDate = a.CompletedDate,
                 Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                // Get equipment summary from all details
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
+                CustomerName = a.RentOrderDetail?.RentOrder.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.RentOrder.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.RentOrder.Order?.User?.PhoneNumber,
+                EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
+                               a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
+                               "Unknown",
+                Quantity = a.RentOrderDetail?.Quantity ?? 0,
+                ExpectedReturnDate = a.RentOrderDetail?.RentOrder?.ExpectedReturnDate ?? DateTime.Now
             }).ToList();
 
             return assignmentDtos;
@@ -267,14 +266,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var query = _unitOfWork.Repository<StaffPickupAssignment>()
                 .AsQueryable(a => a.CompletedDate == null && !a.IsDelete)
                 .Include(a => a.Staff)
-                .Include(a => a.RentOrder)
+                .Include(a => a.RentOrderDetail)
+                    .ThenInclude(r => r.RentOrder)
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.HotpotInventory)
-                        .ThenInclude(h => h != null ? h.Hotpot : null);
+                .Include(a => a.RentOrderDetail.Utensil)
+                .Include(a => a.RentOrderDetail.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null);
 
             // Get total count before pagination
             var totalCount = await query.CountAsync();
@@ -290,20 +288,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
             {
                 AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
+                RentOrderDetailId = a.RentOrderDetail.RentOrderDetailId,
                 StaffId = a.StaffId,
                 StaffName = a.Staff?.Name,
                 AssignedDate = a.AssignedDate,
                 CompletedDate = a.CompletedDate,
                 Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                // Get equipment summary from all details
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
+                CustomerName = a.RentOrderDetail?.RentOrder.Order?.User?.Name,
+                CustomerAddress = a.RentOrderDetail?.RentOrder.Order?.User?.Address,
+                CustomerPhone = a.RentOrderDetail?.RentOrder.Order?.User?.PhoneNumber,
+                EquipmentName = a.RentOrderDetail?.Utensil?.Name ??
+                               a.RentOrderDetail?.HotpotInventory?.Hotpot?.Name ??
+                               "Unknown",
+                Quantity = a.RentOrderDetail?.Quantity ?? 0,
+                ExpectedReturnDate = a.RentOrderDetail?.RentOrder.ExpectedReturnDate ?? DateTime.Now
             }).ToList();
 
             return new PagedResult<StaffPickupAssignmentDto>
@@ -313,46 +311,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
-        }
-
-        private string GetEquipmentSummary(ICollection<RentOrderDetail> details)
-        {
-            if (details == null || !details.Any())
-                return "No equipment";
-
-            var equipmentCounts = new Dictionary<string, int>();
-
-            foreach (var detail in details.Where(d => !d.IsDelete))
-            {
-                string name;
-                if (detail.UtensilId.HasValue && detail.Utensil != null)
-                {
-                    name = detail.Utensil.Name;
-                }
-                else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
-                {
-                    name = detail.HotpotInventory.Hotpot.Name;
-                }
-                else
-                {
-                    continue;
-                }
-
-                if (equipmentCounts.ContainsKey(name))
-                {
-                    equipmentCounts[name] += detail.Quantity;
-                }
-                else
-                {
-                    equipmentCounts[name] = detail.Quantity;
-                }
-            }
-
-            // Create a summary string
-            var summary = string.Join(", ", equipmentCounts.Select(kv => $"{kv.Value}x {kv.Key}"));
-            return string.IsNullOrEmpty(summary) ? "No equipment" : summary;
-        }
-
+        }       
 
         private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
         {

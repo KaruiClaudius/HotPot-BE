@@ -8,7 +8,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
 {
     public class EquipmentReturnRequest
     {
-        public int? RentOrderId { get; set; }
+        public int? RentOrderDetailId { get; set; }
         public DateTime ReturnDate { get; set; }
         public string ReturnCondition { get; set; }
         public decimal? DamageFee { get; set; }

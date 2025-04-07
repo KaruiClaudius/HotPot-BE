@@ -75,44 +75,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpGet("order/{id}")]
-        public async Task<IActionResult> GetRentOrder(int id)
-        {
-            try
-            {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
 
-                // Verify the rental belongs to the current user
-                var userIdClaim = User.FindFirst("id");
-                if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
-
-                int userId = int.Parse(userIdClaim.Value);
-
-                if (rentOrder.Order.UserId != userId)
-                {
-                    return Forbid();
-                }
-
-                return Ok(rentOrder);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        // Keep this endpoint for backward compatibility
-        [HttpGet("detail/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetRentalDetail(int id)
         {
             try
             {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
 
                 // Verify the rental belongs to the current user
                 var userIdClaim = User.FindFirst("id");
@@ -121,12 +90,12 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                if (rentOrder.Order.UserId != userId)
+                if (rentOrderDetail.RentOrder.Order.UserId != userId)
                 {
                     return Forbid();
                 }
 
-                return Ok(rentOrder);
+                return Ok(rentOrderDetail);
             }
             catch (NotFoundException ex)
             {
@@ -138,20 +107,20 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpPost("order/{id}/extend")]
+        [HttpPost("{id}/extend")]
         public async Task<IActionResult> ExtendRentalPeriod(int id, [FromBody] ExtendRentalRequest request)
         {
             try
             {
                 // Verify the rental belongs to the current user
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
+                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(id);
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
                     return Unauthorized("User ID not found in claims");
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                if (rentOrder.Order.UserId != userId)
+                if (rentOrderDetail.RentOrder.Order.UserId != userId)
                 {
                     return Forbid();
                 }
@@ -179,6 +148,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
     }
 }
 

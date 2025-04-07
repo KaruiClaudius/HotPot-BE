@@ -38,13 +38,16 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Ingredient> Ingredients { get; set; }
         public virtual DbSet<IngredientType> IngredientTypes { get; set; }
         public virtual DbSet<IngredientPrice> IngredientPrices { get; set; }
+        //public virtual DbSet<Staff> Staffs { get; set; }
+        //public virtual DbSet<Manager> Managers { get; set; }
+        //public virtual DbSet<Customer> Customers { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
         public virtual DbSet<ChatMessage> ChatMessages { get; set; }
         public virtual DbSet<ChatSession> ChatSessions { get; set; }
         public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
         public virtual DbSet<ComboAllowedIngredientType> ComboAllowedIngredientTypes { get; set; }
         public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
-        public virtual DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
+        public DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
 
         public virtual DbSet<PaymentReceipt> PaymentReceipts { get; set; }
 
@@ -147,9 +150,9 @@ namespace Capstone.HPTY.RepositoryLayer
 
             modelBuilder.Entity<StaffPickupAssignment>()
 
-                .HasOne(a => a.RentOrder)
+                .HasOne(a => a.RentOrderDetail)
                 .WithMany()
-                .HasForeignKey(a => a.OrderId)
+                .HasForeignKey(a => a.RentOrderDetailId)
                 .OnDelete(DeleteBehavior.Restrict);        
 
             modelBuilder.Entity<StaffPickupAssignment>()

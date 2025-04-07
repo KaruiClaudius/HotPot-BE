@@ -94,6 +94,47 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+        [HttpPost("orders/{orderId}/record-return")]
+        public async Task<IActionResult> RecordHotpotReturn(int orderId, [FromBody] RecordReturnRequest request)
+        {
+            try
+            {
+                var order = await _paymentService.RecordHotpotReturnAsync(
+                    orderId,
+                    request.ReturnCondition,
+                    request.DamageFee
+                );
+
+                return Ok(new
+                {
+                    message = "Hotpot return recorded successfully",
+                    order = new
+                    {
+                        orderId = order.OrderId,
+                        status = order.Status.ToString(),
+                        actualReturnDate = order.RentOrder?.ActualReturnDate,
+                        lateFee = order.RentOrder?.LateFee,
+                        damageFee = order.RentOrder?.DamageFee,
+                        returnCondition = order.RentOrder?.ReturnCondition
+                    }
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording hotpot return for order {OrderId}", orderId);
+                return StatusCode(500, new { message = "An error occurred while recording the hotpot return" });
+            }
+        }
+
+
         [HttpGet("orders/{orderId}/payments")]
         public async Task<IActionResult> GetOrderPayments(int orderId)
         {
