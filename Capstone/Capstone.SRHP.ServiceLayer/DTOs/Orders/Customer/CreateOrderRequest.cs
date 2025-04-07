@@ -6,13 +6,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.DTOs.Order
+namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
 {
-    public class UpdateOrderStatusRequest
+    public class CreateOrderRequest
     {
         [Required]
-        public OrderStatus NewStatus { get; set; }
-
-        public string Notes { get; set; }
+        public List<OrderItemRequest> Items { get; set; }
     }
 }

@@ -11,5 +11,6 @@ namespace Capstone.HPTY.ModelLayer.Enum
         Available = 0,
         Rented = 1,
         Damaged = 2,
+        Reserved = 3,
     }
 }

@@ -8,7 +8,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Dashboard;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -565,7 +565,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 TotalPrice = order.TotalPrice,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                UpdatedAt = (DateTime)order.UpdatedAt,
+                UpdatedAt = order.UpdatedAt,
                 User = order.User != null ? new UserInfo
                 {
                     UserId = order.User.UserId,

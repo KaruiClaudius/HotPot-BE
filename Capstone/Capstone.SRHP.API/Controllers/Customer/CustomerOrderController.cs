@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
@@ -446,6 +446,10 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 }
             }
 
+            // Group hotpot items by hotpot type
+            var hotpotGroups = new Dictionary<int, List<RentOrderDetail>>();
+            var nonHotpotItems = new List<RentOrderDetail>();
+
             // Map rent order details
             if (order.RentOrder?.RentOrderDetails != null)
             {
@@ -458,6 +462,27 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         continue;
                     }
 
+                    // Separate hotpot items from other rental items
+                    if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                    {
+                        int hotpotId = detail.HotpotInventory.HotpotId;
+
+                        if (!hotpotGroups.ContainsKey(hotpotId))
+                        {
+                            hotpotGroups[hotpotId] = new List<RentOrderDetail>();
+                        }
+
+                        hotpotGroups[hotpotId].Add(detail);
+                    }
+                    else
+                    {
+                        nonHotpotItems.Add(detail);
+                    }
+                }
+
+                // Process non-hotpot rental items
+                foreach (var detail in nonHotpotItems)
+                {
                     string itemType = "";
                     string itemName = "Unknown";
                     string imageUrl = null;
@@ -469,13 +494,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Utensil.Name;
                         imageUrl = detail.Utensil.ImageURL;
                         itemId = detail.UtensilId;
-                    }
-                    else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
-                    {
-                        itemType = "Hotpot";
-                        itemName = detail.HotpotInventory.Hotpot.Name;
-                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
-                        itemId = detail.HotpotInventory.HotpotId;
                     }
 
                     response.Items.Add(new OrderItemResponse
@@ -490,6 +508,41 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         ItemId = itemId,
                         IsSellable = false
                     });
+                }
+
+                // Process grouped hotpot items
+                foreach (var group in hotpotGroups)
+                {
+                    var details = group.Value;
+                    if (details.Count == 0) continue;
+
+                    // Get the first detail to extract common information
+                    var firstDetail = details.First();
+                    var hotpot = firstDetail.HotpotInventory.Hotpot;
+
+                    // Create a grouped item response
+                    var groupedItem = new OrderItemResponse
+                    {
+                        // Use the first detail's ID as the primary ID
+                        OrderDetailId = firstDetail.RentOrderDetailId,
+                        // Set quantity to the number of items in the group
+                        Quantity = details.Count,
+                        // Use the rental price from the first item
+                        UnitPrice = firstDetail.RentalPrice,
+                        // Calculate total price for all items
+                        TotalPrice = firstDetail.RentalPrice * details.Count,
+                        ItemType = "Hotpot",
+                        ItemName = hotpot.Name,
+                        ImageUrl = hotpot.ImageURLs?.FirstOrDefault(),
+                        ItemId = hotpot.HotpotId,
+                        IsSellable = false,
+                        // Add a list of all detail IDs in this group
+                        RelatedDetailIds = details.Select(d => d.RentOrderDetailId).ToList(),
+                        // Add a list of all inventory IDs (serial numbers) in this group
+                        SerialNumbers = details.Select(d => d.HotpotInventory.SeriesNumber).ToList()
+                    };
+
+                    response.Items.Add(groupedItem);
                 }
             }
 

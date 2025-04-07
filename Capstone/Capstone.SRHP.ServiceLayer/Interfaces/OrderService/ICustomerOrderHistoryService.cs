@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {

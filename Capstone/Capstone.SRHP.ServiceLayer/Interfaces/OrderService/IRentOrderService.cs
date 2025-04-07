@@ -5,13 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IRentOrderService
     {
-        Task<IEnumerable<RentOrderDetail>> GetByOrderIdAsync(int orderId);
+        Task<IEnumerable<RentOrder>> GetByOrderIdAsync(int orderId);
         Task<PagedResult<RentalListingDto>> GetPendingPickupsAsync(int pageNumber = 1, int pageSize = 10);
         Task<List<RentOrderDetailDto>> GetPendingPickupsByUserAsync(int userId);
         Task<PagedResult<RentalListingDto>> GetOverdueRentalsAsync(int pageNumber = 1, int pageSize = 10);

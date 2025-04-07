@@ -8,7 +8,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
@@ -34,7 +34,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _logger = logger;
         }
 
-        public async Task<IEnumerable<RentOrderDetail>> GetByOrderIdAsync(int orderId)
+        public async Task<IEnumerable<RentOrder>> GetByOrderIdAsync(int orderId)
         {
             try
             {
@@ -45,11 +45,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
 
-                return await _unitOfWork.Repository<RentOrderDetail>()
+                return await _unitOfWork.Repository<RentOrder>()
                     .AsQueryable(r => r.OrderId == orderId && !r.IsDelete)
-                    .Include(r => r.Utensil)
-                    .Include(r => r.HotpotInventory)
-                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(rod => rod.Utensil)
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(rod => rod.HotpotInventory)
+                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .ToListAsync();
             }
             catch (NotFoundException)
@@ -69,14 +71,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 var today = DateTime.Today;
 
-                var query = _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable(r => r.RentOrder.ExpectedReturnDate.Date == today && r.RentOrder.ActualReturnDate == null && !r.IsDelete)
-                    .Include(r => r.RentOrder)
-                        .ThenInclude(r=>r.Order)
+                // Query RentOrders directly instead of RentOrderDetails
+                var query = _unitOfWork.Repository<RentOrder>()
+                    .AsQueryable(r => r.ExpectedReturnDate.Date == today && r.ActualReturnDate == null && !r.IsDelete)
+                    .Include(r => r.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.Utensil)
-                    .Include(r => r.HotpotInventory)
-                        .ThenInclude(hi => hi != null ? hi.Hotpot : null);
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(d => d.Utensil)
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(d => d.HotpotInventory)
+                            .ThenInclude(hi => hi != null ? hi.Hotpot : null);
 
                 // Get total count before applying pagination
                 var totalCount = await query.CountAsync();
@@ -88,7 +92,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .ToListAsync();
 
                 // Map to DTOs
-                var dtos = items.Select(MapToRentalListingDto).ToList();
+                var dtos = items.SelectMany(rentOrder =>
+                    rentOrder.RentOrderDetails.Where(d => !d.IsDelete).Select(detail =>
+                        MapToRentalListingDto(detail, rentOrder)
+                    )
+                ).ToList();
 
                 return new PagedResult<RentalListingDto>
                 {
@@ -111,14 +119,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 var today = DateTime.Today;
 
-                var query = _unitOfWork.Repository<RentOrderDetail>()
-                    .AsQueryable(r => r.RentOrder.ExpectedReturnDate.Date < today && r.RentOrder.ActualReturnDate == null && !r.IsDelete)
-                    .Include(r => r.RentOrder)
-                        .ThenInclude(r=>r.Order)
+                // Query RentOrders directly instead of RentOrderDetails
+                var query = _unitOfWork.Repository<RentOrder>()
+                    .AsQueryable(r => r.ExpectedReturnDate.Date < today && r.ActualReturnDate == null && !r.IsDelete)
+                    .Include(r => r.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.Utensil)
-                    .Include(r => r.HotpotInventory)
-                        .ThenInclude(hi => hi != null ? hi.Hotpot : null);
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(d => d.Utensil)
+                    .Include(r => r.RentOrderDetails)
+                        .ThenInclude(d => d.HotpotInventory)
+                            .ThenInclude(hi => hi != null ? hi.Hotpot : null);
 
                 // Get total count before applying pagination
                 var totalCount = await query.CountAsync();
@@ -130,7 +140,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .ToListAsync();
 
                 // Map to DTOs
-                var dtos = items.Select(MapToRentalListingDto).ToList();
+                var dtos = items.SelectMany(rentOrder =>
+                    rentOrder.RentOrderDetails.Where(d => !d.IsDelete).Select(detail =>
+                        MapToRentalListingDto(detail, rentOrder)
+                    )
+                ).ToList();
 
                 return new PagedResult<RentalListingDto>
                 {
@@ -147,6 +161,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+
         public async Task<List<RentOrderDetailDto>> GetPendingPickupsByUserAsync(int userId)
         {
             // Verify the user exists
@@ -156,51 +171,56 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             if (user == null)
                 throw new NotFoundException($"User with ID {userId} not found");
 
-            // Get all rent order details for this user that are due for return
+            // Get all rent orders for this user that are due for return
             var today = DateTime.Today;
 
-            var pendingPickups = await _unitOfWork.Repository<RentOrderDetail>()
-                .AsQueryable(r => r.RentOrder.Order.UserId == userId &&
-                                 r.RentOrder.ExpectedReturnDate.Date <= today &&
-                                 r.RentOrder.ActualReturnDate == null &&
-                                 !r.IsDelete)
-                .Include(r => r.RentOrder)
-                    .ThenInclude(r => r.Order)
+            var pendingRentOrders = await _unitOfWork.Repository<RentOrder>()
+                .AsQueryable(r => r.Order.UserId == userId &&
+                                r.ExpectedReturnDate.Date <= today &&
+                                r.ActualReturnDate == null &&
+                                !r.IsDelete)
+                .Include(r => r.Order)
                     .ThenInclude(o => o.User)
-                .Include(r => r.Utensil)
-                .Include(r => r.HotpotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null)
+                .Include(r => r.RentOrderDetails)
+                    .ThenInclude(d => d.Utensil)
+                .Include(r => r.RentOrderDetails)
+                    .ThenInclude(d => d.HotpotInventory)
+                        .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
 
             // Map to DTOs
-            var pendingPickupDtos = pendingPickups.Select(p => new RentOrderDetailDto
-            {
-                RentOrderDetailId = p.RentOrderDetailId,
-                OrderId = p.OrderId,
-                UtensilId = p.UtensilId,
-                HotpotInventoryId = p.HotpotInventoryId,
-                Quantity = p.Quantity,
-                RentalPrice = p.RentalPrice,
-                ExpectedReturnDate = p.RentOrder.ExpectedReturnDate,
-                ActualReturnDate = p.RentOrder.ActualReturnDate,
-                LateFee = p.RentOrder.LateFee,
-                DamageFee = p.RentOrder.DamageFee,
-                CustomerName = p.RentOrder.Order?.User?.Name,
-                CustomerAddress = p.RentOrder.Order?.User?.Address,
-                // Check if there's an active pickup assignment              
-            }).ToList();
+            var pendingPickupDtos = pendingRentOrders
+                .SelectMany(rentOrder => rentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .Select(detail => new RentOrderDetailDto
+                    {
+                        RentOrderDetailId = detail.RentOrderDetailId,
+                        OrderId = detail.OrderId,
+                        UtensilId = detail.UtensilId,
+                        HotpotInventoryId = detail.HotpotInventoryId,
+                        Quantity = detail.Quantity,
+                        RentalPrice = detail.RentalPrice,
+                        ExpectedReturnDate = rentOrder.ExpectedReturnDate,
+                        ActualReturnDate = rentOrder.ActualReturnDate,
+                        LateFee = rentOrder.LateFee,
+                        DamageFee = rentOrder.DamageFee,
+                        CustomerName = rentOrder.Order?.User?.Name,
+                        CustomerAddress = rentOrder.Order?.User?.Address,
+                    }))
+                .ToList();
 
             return pendingPickupDtos;
         }
 
-        public async Task<bool> UpdateRentOrderDetailAsync(int rentOrderDetailId, UpdateRentOrderDetailRequest request)
+        public async Task<bool> UpdateRentOrderDetailAsync(int orderId, UpdateRentOrderDetailRequest request)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(rentOrderDetailId);
+                // Get the rent order
+                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(orderId);
 
                 // Validate request
-                if (rentOrderDetail.RentOrder.ActualReturnDate.HasValue)
+                if (rentOrder.ActualReturnDate.HasValue)
                     throw new ValidationException("Cannot update a rental that has already been returned");
 
                 // Update expected return date if provided
@@ -209,10 +229,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate))
                     {
                         // Ensure expected return date is not before rental start date
-                        if (parsedDate < rentOrderDetail.RentOrder.RentalStartDate)
+                        if (parsedDate < rentOrder.RentalStartDate)
                             throw new ValidationException("Expected return date cannot be before rental start date");
 
-                        rentOrderDetail.RentOrder.ExpectedReturnDate = parsedDate;
+                        rentOrder.ExpectedReturnDate = parsedDate;
                     }
                     else
                     {
@@ -223,12 +243,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update notes if provided
                 if (request.Notes != null)  // Allow empty string to clear notes
                 {
-                    rentOrderDetail.RentOrder.RentalNotes = request.Notes;
+                    rentOrder.RentalNotes = request.Notes;
                 }
 
-                rentOrderDetail.SetUpdateDate();
-                await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
-
+                rentOrder.SetUpdateDate();
+                await _unitOfWork.Repository<RentOrder>().UpdateDetached(rentOrder);
 
                 await _unitOfWork.CommitAsync();
                 return true;
@@ -238,24 +257,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Only log for exceptions that aren't validation or not found
                 if (!(ex is NotFoundException || ex is ValidationException))
                 {
-                    _logger.LogError(ex, "Error updating rent order detail {RentOrderDetailId}", rentOrderDetailId);
+                    _logger.LogError(ex, "Error updating rent order {OrderId}", orderId);
                 }
             });
         }
-        
-        public async Task<decimal> CalculateLateFeeAsync(int rentOrderDetailId, DateTime actualReturnDate)
+
+        public async Task<decimal> CalculateLateFeeAsync(int orderId, DateTime actualReturnDate)
         {
             try
             {
-                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(rentOrderDetailId);
+                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(orderId);
 
-                if (actualReturnDate <= rentOrderDetail.RentOrder.ExpectedReturnDate)
+                if (actualReturnDate <= rentOrder.ExpectedReturnDate)
                     return 0; // No late fee
 
-                var daysLate = (actualReturnDate - rentOrderDetail.RentOrder.ExpectedReturnDate).Days;
+                var daysLate = (actualReturnDate - rentOrder.ExpectedReturnDate).Days;
 
-                // Calculate late fee as 10% of rental price per day late
-                return daysLate * (rentOrderDetail.RentalPrice * 0.1m);
+                // Calculate late fee as 10% of total rental price per day late
+                decimal totalRentalPrice = rentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .Sum(d => d.RentalPrice);
+
+                return daysLate * (totalRentalPrice * 0.1m);
             }
             catch (NotFoundException)
             {
@@ -263,7 +286,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calculating late fee for rent order detail {RentOrderDetailId}", rentOrderDetailId);
+                _logger.LogError(ex, "Error calculating late fee for rent order {OrderId}", orderId);
                 throw;
             }
         }
@@ -383,36 +406,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<bool> ExtendRentalPeriodAsync(int rentOrderDetailId, DateTime newExpectedReturnDate)
+        public async Task<bool> ExtendRentalPeriodAsync(int orderId, DateTime newExpectedReturnDate)
         {
             return await _unitOfWork.ExecuteInTransactionAsync<bool>(async () =>
             {
-                var rentOrderDetail = await _equipmentReturnService.GetRentOrderDetailAsync(rentOrderDetailId);
+                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(orderId);
 
                 // Validate request
-                if (rentOrderDetail.RentOrder.ActualReturnDate.HasValue)
+                if (rentOrder.ActualReturnDate.HasValue)
                     throw new ValidationException("Cannot extend a rental that has already been returned");
 
-                if (newExpectedReturnDate <= rentOrderDetail.RentOrder.ExpectedReturnDate)
+                if (newExpectedReturnDate <= rentOrder.ExpectedReturnDate)
                     throw new ValidationException("New expected return date must be after the current expected return date");
 
                 // Calculate additional rental fee
-                var additionalDays = (newExpectedReturnDate - rentOrderDetail.RentOrder.ExpectedReturnDate).Days;
-                var dailyRate = rentOrderDetail.RentalPrice / (rentOrderDetail.RentOrder.ExpectedReturnDate - rentOrderDetail.RentOrder.RentalStartDate).Days;
+                var additionalDays = (newExpectedReturnDate - rentOrder.ExpectedReturnDate).Days;
+
+                // Calculate daily rate based on total rental price
+                decimal totalRentalPrice = rentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .Sum(d => d.RentalPrice);
+
+                var dailyRate = totalRentalPrice / (rentOrder.ExpectedReturnDate - rentOrder.RentalStartDate).Days;
                 var additionalFee = additionalDays * dailyRate;
 
                 // Update expected return date
-                rentOrderDetail.RentOrder.ExpectedReturnDate = newExpectedReturnDate;
-                rentOrderDetail.RentalPrice += additionalFee; // Add additional fee to rental price
-                rentOrderDetail.RentOrder.RentalNotes = string.IsNullOrEmpty(rentOrderDetail.RentOrder.RentalNotes)
-                    ? $"Rental period extended by {additionalDays} days on {DateTime.Now}"
-                    : $"{rentOrderDetail.RentOrder.RentalNotes}\nRental period extended by {additionalDays} days on {DateTime.Now}";
+                rentOrder.ExpectedReturnDate = newExpectedReturnDate;
 
-                rentOrderDetail.SetUpdateDate();
-                await _unitOfWork.Repository<RentOrderDetail>().UpdateDetached(rentOrderDetail);
+                // Update rental notes
+                rentOrder.RentalNotes = string.IsNullOrEmpty(rentOrder.RentalNotes)
+                    ? $"Rental period extended by {additionalDays} days on {DateTime.Now}"
+                    : $"{rentOrder.RentalNotes}\nRental period extended by {additionalDays} days on {DateTime.Now}";
+
+                // Update subtotal
+                rentOrder.SubTotal += additionalFee;
+
+                rentOrder.SetUpdateDate();
+                await _unitOfWork.Repository<RentOrder>().UpdateDetached(rentOrder);
 
                 // Update order total price
-                var order = await _unitOfWork.Repository<Order>().GetById(rentOrderDetail.OrderId);
+                var order = await _unitOfWork.Repository<Order>().GetById(rentOrder.OrderId);
                 if (order != null)
                 {
                     order.TotalPrice += additionalFee;
@@ -424,67 +457,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 return true;
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Error extending rental period for rent order detail {RentOrderDetailId}", rentOrderDetailId);
-            }
-        });
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error extending rental period for rent order {OrderId}", orderId);
+                }
+            });
         }
 
         public async Task<PagedResult<RentOrderDetailResponse>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10)
         {
             var today = DateTime.Today;
 
-            // Get all rent order details that are due for pickup today or overdue
-            var pendingPickupsQuery = _unitOfWork.Repository<RentOrderDetail>()
-                .AsQueryable(r => r.RentOrder.ExpectedReturnDate.Date <= today && r.RentOrder.ActualReturnDate == null && !r.IsDelete)
-                .Include(r => r.RentOrder)
-                    .ThenInclude(r => r.Order)
+            // Get all rent orders that are due for pickup today or overdue
+            var pendingRentOrdersQuery = _unitOfWork.Repository<RentOrder>()
+                .AsQueryable(r => r.ExpectedReturnDate.Date <= today && r.ActualReturnDate == null && !r.IsDelete)
+                .Include(r => r.Order)
                     .ThenInclude(o => o.User)
-                .Include(r => r.Utensil)
-                .Include(r => r.HotpotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null);
+                .Include(r => r.RentOrderDetails)
+                    .ThenInclude(d => d.Utensil)
+                .Include(r => r.RentOrderDetails)
+                    .ThenInclude(d => d.HotpotInventory)
+                        .ThenInclude(h => h != null ? h.Hotpot : null);
 
-            // Get all rent order details that are already assigned
-            var assignedPickupIds = await _unitOfWork.Repository<StaffPickupAssignment>()
+            // Get all rent orders that are already assigned
+            var assignedOrderIds = await _unitOfWork.Repository<StaffPickupAssignment>()
                 .AsQueryable(a => a.CompletedDate == null)
-                .Select(a => a.RentOrderDetailId)
+                .Select(a => a.OrderId)
                 .ToListAsync();
 
-            // Filter out the assigned pickups
-            var unassignedPickupsQuery = pendingPickupsQuery.Where(p => !assignedPickupIds.Contains(p.RentOrderDetailId));
+            // Filter out the assigned orders
+            var unassignedRentOrdersQuery = pendingRentOrdersQuery.Where(p => !assignedOrderIds.Contains(p.OrderId));
 
             // Get total count before applying pagination
-            var totalCount = await unassignedPickupsQuery.CountAsync();
+            var totalCount = await unassignedRentOrdersQuery.CountAsync();
 
             // Apply pagination
-            var items = await unassignedPickupsQuery
+            var items = await unassignedRentOrdersQuery
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             // Map to DTOs
-            var dtoItems = items.Select(item => new RentOrderDetailResponse
-            {
-                Id = item.RentOrderDetailId,
-                OrderId = item.OrderId,
-                EquipmentType = item.HotpotInventoryId.HasValue ? "Hotpot" : "Utensil",
-                EquipmentId = item.HotpotInventoryId ?? item.UtensilId ?? 0,
-                EquipmentName = item.HotpotInventoryId.HasValue
-                    ? item.HotpotInventory?.Hotpot?.Name
-                    : item.Utensil?.Name,
-                RentalStartDate = item.RentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
-                ExpectedReturnDate = item.RentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
-                ActualReturnDate = item.RentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
-                Status = item.RentOrder.ActualReturnDate.HasValue ? "Returned" : "Pending",
-                CustomerName = item.RentOrder.Order?.User?.Name,
-                CustomerAddress = item.RentOrder.Order?.Address,
-                CustomerPhone = item.RentOrder.Order?.User?.PhoneNumber,
-                Notes = item.RentOrder.RentalNotes
-            }).ToList();
+            var dtoItems = items.SelectMany(rentOrder =>
+                rentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .Select(detail => new RentOrderDetailResponse
+                    {
+                        Id = detail.RentOrderDetailId,
+                        OrderId = detail.OrderId,
+                        EquipmentType = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Utensil",
+                        EquipmentId = detail.HotpotInventoryId ?? detail.UtensilId ?? 0,
+                        EquipmentName = detail.HotpotInventoryId.HasValue
+                            ? detail.HotpotInventory?.Hotpot?.Name
+                            : detail.Utensil?.Name,
+                        RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
+                        ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
+                        ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
+                        Status = rentOrder.ActualReturnDate.HasValue ? "Returned" : "Pending",
+                        CustomerName = rentOrder.Order?.User?.Name,
+                        CustomerAddress = rentOrder.Order?.User?.Address,
+                        CustomerPhone = rentOrder.Order?.User?.PhoneNumber,
+                        Notes = rentOrder.RentalNotes
+                    })
+            ).ToList();
 
             return new PagedResult<RentOrderDetailResponse>
             {
@@ -493,7 +531,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
-        }      
+        }
 
         private string DetermineRentalStatus(RentOrderDetail rentOrderDetail)
         {
@@ -515,7 +553,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return "Active";
             }
         }
-        private RentalListingDto MapToRentalListingDto(RentOrderDetail detail)
+
+        private RentalListingDto MapToRentalListingDto(RentOrderDetail detail, RentOrder rentOrder)
         {
             return new RentalListingDto
             {
@@ -527,16 +566,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     : detail.HotpotInventory?.Hotpot?.Name,
                 Quantity = detail.Quantity,
                 RentalPrice = detail.RentalPrice,
-                RentalStartDate = detail.RentOrder.RentalStartDate,
-                ExpectedReturnDate = detail.RentOrder.ExpectedReturnDate,
-                ActualReturnDate = detail.RentOrder.ActualReturnDate,
-                CustomerName = detail.RentOrder.Order?.User?.Name,
-                CustomerAddress = detail.RentOrder.Order?.User?.Address,
-                CustomerPhone = detail.RentOrder.Order?.User?.PhoneNumber,
-                LateFee = detail.RentOrder.LateFee,
-                DamageFee = detail.RentOrder.DamageFee
+                RentalStartDate = rentOrder.RentalStartDate,
+                ExpectedReturnDate = rentOrder.ExpectedReturnDate,
+                ActualReturnDate = rentOrder.ActualReturnDate,
+                CustomerName = rentOrder.Order?.User?.Name,
+                CustomerAddress = rentOrder.Order?.User?.Address,
+                CustomerPhone = rentOrder.Order?.User?.PhoneNumber,
+                LateFee = rentOrder.LateFee,
+                DamageFee = rentOrder.DamageFee
             };
         }
-
     }
 }

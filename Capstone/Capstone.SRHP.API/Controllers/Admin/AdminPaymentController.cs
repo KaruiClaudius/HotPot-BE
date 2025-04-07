@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Authorization;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin
 {

@@ -1,7 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Authorization;

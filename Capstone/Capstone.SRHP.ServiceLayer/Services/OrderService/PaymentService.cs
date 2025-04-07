@@ -14,7 +14,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Microsoft.Extensions.Logging;
 
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
-using Capstone.HPTY.ServiceLayer.DTOs.Order.Customer;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
