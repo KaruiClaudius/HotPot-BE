@@ -12,10 +12,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
     public class EquipmentConditionService : IEquipmentConditionService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IEventPublisher _eventPublisher;
 
-        public EquipmentConditionService(IUnitOfWork unitOfWork)
+
+        public EquipmentConditionService(IUnitOfWork unitOfWork, IEventPublisher eventPublisher)
         {
             _unitOfWork = unitOfWork;
+            _eventPublisher = eventPublisher;
         }
 
         // Existing methods remain the same
@@ -57,9 +60,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .FirstOrDefaultAsync();
             }
 
+            // Publish event to notify about the condition log
+            // This will allow the stock service to react to severe conditions
+            _eventPublisher.Publish(new EquipmentConditionLoggedEvent
+            {
+                HotPotInventoryId = conditionLog.HotPotInventoryId,
+                UtensilId = conditionLog.UtensilId,
+                Status = conditionLog.Status,
+                Description = conditionLog.Description
+            });
+
+            // Optionally update equipment status directly if requested
+            if (request.UpdateEquipmentStatus)
+            {
+                await UpdateEquipmentStatusBasedOnCondition(
+                    conditionLog.HotPotInventoryId,
+                    conditionLog.UtensilId,
+                    conditionLog.Status,
+                    conditionLog.Description);
+            }
+
             // Convert to DTO and return
             return conditionLog.ToDetailDto();
         }
+
 
         public async Task<EquipmentConditionDetailDto> GetConditionLogByIdAsync(int conditionLogId)
         {
@@ -240,6 +264,44 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             await _unitOfWork.CommitAsync();
 
             return conditionLog.ToDetailDto();
+        }
+
+        private async Task UpdateEquipmentStatusBasedOnCondition(
+            int? hotPotInventoryId,
+            int? utensilId,
+            MaintenanceStatus status,
+            string description)
+        {
+            // Only update status for severe conditions
+            if (status != MaintenanceStatus.Pending)
+                return;
+
+            if (hotPotInventoryId.HasValue)
+            {
+                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAsync(h => h.HotPotInventoryId == hotPotInventoryId.Value);
+
+                if (hotpot != null)
+                {
+                    // Set to damaged if condition is pending
+                    hotpot.Status = HotpotStatus.Damaged;
+                    hotpot.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            else if (utensilId.HasValue)
+            {
+                var utensil = await _unitOfWork.Repository<Utensil>()
+                    .FindAsync(u => u.UtensilId == utensilId.Value);
+
+                if (utensil != null)
+                {
+                    // Set to unavailable if condition is pending
+                    utensil.Status = false;
+                    utensil.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _unitOfWork.CommitAsync();
         }
     }
 }

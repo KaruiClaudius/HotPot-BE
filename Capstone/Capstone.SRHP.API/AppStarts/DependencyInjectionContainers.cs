@@ -2,6 +2,7 @@
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
@@ -125,6 +126,9 @@ namespace Capstone.HPTY.API.AppStarts
             // Email Service
             services.AddTransient<IEmailSender, EmailService>();
             services.AddScoped<EmailService>();
+
+
+            services.AddSingleton<IEventPublisher, EventPublisher>();
 
             // External Services
             services.AddHttpClient();

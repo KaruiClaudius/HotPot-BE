@@ -8,6 +8,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,11 +17,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
     public class EquipmentStockService : IEquipmentStockService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IEventPublisher _eventPublisher;
         private const int DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
-        public EquipmentStockService(IUnitOfWork unitOfWork)
+        public EquipmentStockService(IUnitOfWork unitOfWork, IEventPublisher eventPublisher)
         {
             _unitOfWork = unitOfWork;
+            _eventPublisher = eventPublisher;
+
+            // Subscribe to equipment condition events
+            _eventPublisher.Subscribe<EquipmentConditionLoggedEvent>(HandleEquipmentConditionLogged);
         }
 
 
@@ -421,5 +427,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             return result;
         }
         #endregion
+
+        private async void HandleEquipmentConditionLogged(EquipmentConditionLoggedEvent eventData)
+        {
+            // Only react to pending maintenance issues
+            if (eventData.Status != MaintenanceStatus.Pending)
+                return;
+
+            try
+            {
+                if (eventData.HotPotInventoryId.HasValue)
+                {
+                    // Update hotpot status to damaged
+                    await UpdateHotPotInventoryAsync(
+                        eventData.HotPotInventoryId.Value,
+                        HotpotStatus.Damaged,
+                        $"Automatically marked as damaged due to {eventData.Status} condition: {eventData.Description}");
+                }
+                else if (eventData.UtensilId.HasValue)
+                {
+                    // Update utensil status to unavailable
+                    await UpdateUtensilStatusAsync(
+                        eventData.UtensilId.Value,
+                        false,
+                        $"Automatically marked as unavailable due to {eventData.Status} condition: {eventData.Description}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception - in a real application, use a proper logging framework
+                Console.WriteLine($"Error handling equipment condition event: {ex.Message}");
+            }
+        }
     }
 }

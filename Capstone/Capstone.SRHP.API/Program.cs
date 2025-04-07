@@ -100,7 +100,6 @@ else
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseStaticFiles();
@@ -114,12 +113,14 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-app.MapHub<EquipmentHub>("/equipmentHub");
-app.MapHub<FeedbackHub>("/feedbackHub");
-app.MapHub<ScheduleHub>("/scheduleHub");
-app.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
-app.MapHub<EquipmentStockHub>("/equipmentStockHub");
 app.MapHub<NotificationHub>("/notificationHub");
+app.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
+app.MapHub<EquipmentHub>("/equipmentHub");
+app.MapHub<EquipmentStockHub>("/equipmentStockHub");
+app.MapHub<ScheduleHub>("/scheduleHub");
+app.MapHub<FeedbackHub>("/feedbackHub");
+
+
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
 

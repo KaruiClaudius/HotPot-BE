@@ -89,6 +89,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         // Only one of these should be provided
         public int? HotPotInventoryId { get; set; }
         public int? UtensilId { get; set; }
+        public bool UpdateEquipmentStatus { get; set; } = false; 
+
     }
 
 }
