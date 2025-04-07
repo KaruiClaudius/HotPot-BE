@@ -355,12 +355,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
             var response = new OrderResponse
             {
                 OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
                 Address = order.Address,
                 Notes = order.Notes,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                UpdatedAt = (DateTime)order.UpdatedAt,
+                UpdatedAt = order.UpdatedAt,
                 User = order.User != null ? new UserInfo
                 {
                     UserId = order.User.UserId,
@@ -373,6 +374,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Payment = null,
                 AdditionalPayments = new List<PaymentInfo>()
             };
+
+            var addedSellDetailIds = new HashSet<int>();
+            var addedRentDetailIds = new HashSet<int>();
 
             // Add hotpot deposit from RentOrder if available
             if (order.RentOrder != null)
@@ -394,7 +398,51 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
-                    // Existing code for mapping sell order details...
+                    // Skip if we've already added this detail
+                    if (!addedSellDetailIds.Add(detail.SellOrderDetailId))
+                    {
+                        _logger.LogWarning($"Duplicate sell detail ID found: {detail.SellOrderDetailId}");
+                        continue;
+                    }
+
+                    string itemType = "";
+                    string itemName = "Unknown";
+                    string imageUrl = null;
+                    int? itemId = null;
+
+                    if (detail.IngredientId.HasValue && detail.Ingredient != null)
+                    {
+                        itemType = "Ingredient";
+                        itemName = detail.Ingredient.Name;
+                        imageUrl = detail.Ingredient.ImageURL;
+                        itemId = detail.IngredientId;
+                    }
+                    else if (detail.CustomizationId.HasValue && detail.Customization != null)
+                    {
+                        itemType = "Customization";
+                        itemName = detail.Customization.Name;
+                        itemId = detail.CustomizationId;
+                    }
+                    else if (detail.ComboId.HasValue && detail.Combo != null)
+                    {
+                        itemType = "Combo";
+                        itemName = detail.Combo.Name;
+                        imageUrl = detail.Combo.ImageURL;
+                        itemId = detail.ComboId;
+                    }
+
+                    response.Items.Add(new OrderItemResponse
+                    {
+                        OrderDetailId = detail.SellOrderDetailId,
+                        Quantity = detail.Quantity,
+                        UnitPrice = detail.UnitPrice,
+                        TotalPrice = detail.UnitPrice * detail.Quantity,
+                        ItemType = itemType,
+                        ItemName = itemName,
+                        ImageUrl = imageUrl,
+                        ItemId = itemId,
+                        IsSellable = true
+                    });
                 }
             }
 
@@ -403,7 +451,45 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
-                    // Existing code for mapping rent order details...
+                    // Skip if we've already added this detail
+                    if (!addedRentDetailIds.Add(detail.RentOrderDetailId))
+                    {
+                        _logger.LogWarning($"Duplicate rent detail ID found: {detail.RentOrderDetailId}");
+                        continue;
+                    }
+
+                    string itemType = "";
+                    string itemName = "Unknown";
+                    string imageUrl = null;
+                    int? itemId = null;
+
+                    if (detail.UtensilId.HasValue && detail.Utensil != null)
+                    {
+                        itemType = "Utensil";
+                        itemName = detail.Utensil.Name;
+                        imageUrl = detail.Utensil.ImageURL;
+                        itemId = detail.UtensilId;
+                    }
+                    else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                    {
+                        itemType = "Hotpot";
+                        itemName = detail.HotpotInventory.Hotpot.Name;
+                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
+                        itemId = detail.HotpotInventory.HotpotId;
+                    }
+
+                    response.Items.Add(new OrderItemResponse
+                    {
+                        OrderDetailId = detail.RentOrderDetailId,
+                        Quantity = detail.Quantity,
+                        UnitPrice = detail.RentalPrice,
+                        TotalPrice = detail.RentalPrice * detail.Quantity,
+                        ItemType = itemType,
+                        ItemName = itemName,
+                        ImageUrl = imageUrl,
+                        ItemId = itemId,
+                        IsSellable = false
+                    });
                 }
             }
 

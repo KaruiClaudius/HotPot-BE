@@ -69,7 +69,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
             // HP = Hotpot, YY = Year, MM = Month, DD = Day, XXXX = Random 4-digit number
             string datePart = DateTime.UtcNow.ToString("yyMMdd");
             string randomPart = GenerateRandomDigits(4);
-            return $"HP-{datePart}-{randomPart}";
+            return $"ORD-{datePart}-{randomPart}";
         }
 
         // Helper method to generate random digits

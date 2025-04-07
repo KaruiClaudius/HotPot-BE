@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public decimal TotalPrice { get; set; }
         public string Status { get; set; }
         public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
         public UserInfo User { get; set; }
         public List<OrderItemResponse> Items { get; set; }
         public DiscountInfo Discount { get; set; }
