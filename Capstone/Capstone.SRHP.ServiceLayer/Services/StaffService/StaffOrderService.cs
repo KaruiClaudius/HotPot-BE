@@ -177,7 +177,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .ThenInclude(rd => rd.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                 .Include(o => o.Discount)
-                .Include(o => o.Payment)
+                .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
             if (order == null)

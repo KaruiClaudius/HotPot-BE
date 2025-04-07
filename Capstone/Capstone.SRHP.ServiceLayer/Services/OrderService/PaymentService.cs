@@ -34,7 +34,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _discountService = discountService;
         }
 
-        public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId, CreatePaymentLinkRequest paymentRequest, int userId)
+        public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId, DateTime? expectedReturnDate, CreatePaymentLinkRequest paymentRequest, int userId)
         {
             try
             {
@@ -43,7 +43,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     Address = address,
                     Notes = notes,
-                    DiscountId = discountId
+                    DiscountId = discountId,
+                    ExpectedReturnDate = expectedReturnDate
                 };
 
                 await OrderUpdateAsync(orderId, updateRequest);
@@ -96,7 +97,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     OrderId = orderId,
                     Price = paymentRequest.price,
                     Type = PaymentType.Online,
-                    Status = PaymentStatus.Pending
+                    Status = PaymentStatus.Pending,
+                    Purpose = PaymentPurpose.OrderPayment
                 };
 
                 await _unitOfWork.Repository<Payment>().InsertAsync(paymentTransaction);
@@ -122,7 +124,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId, int userId)
+        public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId, DateTime? expectedReturnDate, int userId)
         {
             try
             {
@@ -131,7 +133,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     Address = address,
                     Notes = notes,
-                    DiscountId = discountId
+                    DiscountId = discountId,
+                    ExpectedReturnDate = expectedReturnDate
                 };
 
                 var order = await OrderUpdateAsync(orderId, updateRequest);
@@ -144,7 +147,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     OrderId = orderId,
                     Price = order.TotalPrice,
                     Type = PaymentType.Cash,
-                    Status = PaymentStatus.Pending
+                    Status = PaymentStatus.Pending,
+                    Purpose = PaymentPurpose.OrderPayment
                 };
 
                 await _unitOfWork.Repository<Payment>().InsertAsync(payment);
@@ -343,6 +347,198 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        public async Task<Payment> ProcessAdditionalFeePaymentAsync(
+    int orderId,
+    PaymentPurpose feeType,
+    decimal amount,
+    PaymentType paymentType,
+    string notes = null)
+        {
+            try
+            {
+                // Validate the fee type
+                if (feeType != PaymentPurpose.LateFee && feeType != PaymentPurpose.DamageFee)
+                {
+                    throw new ArgumentException("Fee type must be either LateFee or DamageFee");
+                }
+
+                // Get the order
+                var order = await GetOrderByIdAsync(orderId);
+
+                // Validate order status - only allow additional fees for orders that are not pending
+                if (order.Status == OrderStatus.Pending)
+                {
+                    throw new ValidationException("Cannot add additional fees to pending orders");
+                }
+
+                // Validate that the order has a rent order
+                if (order.RentOrder == null)
+                {
+                    throw new ValidationException("Cannot add additional fees to orders without rental items");
+                }
+
+                // Create payment record
+                var payment = new Payment
+                {
+                    TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
+                    UserId = order.UserId,
+                    OrderId = orderId,
+                    Price = amount,
+                    Type = paymentType,
+                    Status = PaymentStatus.Pending,
+                    Purpose = feeType
+                };
+
+                await _unitOfWork.Repository<Payment>().InsertAsync(payment);
+
+                // Update the RentOrder with the fee amount
+                if (feeType == PaymentPurpose.LateFee)
+                {
+                    order.RentOrder.LateFee = (order.RentOrder.LateFee ?? 0) + amount;
+                    if (!string.IsNullOrEmpty(notes))
+                    {
+                        order.RentOrder.RentalNotes = string.IsNullOrEmpty(order.RentOrder.RentalNotes)
+                            ? $"Late Fee: {notes}"
+                            : $"{order.RentOrder.RentalNotes}\nLate Fee: {notes}";
+                    }
+                }
+                else if (feeType == PaymentPurpose.DamageFee)
+                {
+                    order.RentOrder.DamageFee = (order.RentOrder.DamageFee ?? 0) + amount;
+                    if (!string.IsNullOrEmpty(notes))
+                    {
+                        order.RentOrder.ReturnCondition = string.IsNullOrEmpty(order.RentOrder.ReturnCondition)
+                            ? $"Damage Fee: {notes}"
+                            : $"{order.RentOrder.ReturnCondition}\nDamage Fee: {notes}";
+                    }
+                }
+
+                // Update the order
+                order.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(order, orderId);
+
+                await _unitOfWork.CommitAsync();
+
+                return payment;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing {FeeType} payment for order {OrderId}", feeType, orderId);
+                throw;
+            }
+        }
+
+        public async Task<Payment> ProcessLateFeePaymentAsync(
+            int orderId,
+            decimal amount,
+            PaymentType paymentType,
+            string notes = null)
+        {
+            return await ProcessAdditionalFeePaymentAsync(orderId, PaymentPurpose.LateFee, amount, paymentType, notes);
+        }
+
+        public async Task<Payment> ProcessDamageFeePaymentAsync(
+            int orderId,
+            decimal amount,
+            PaymentType paymentType,
+            string notes = null)
+        {
+            return await ProcessAdditionalFeePaymentAsync(orderId, PaymentPurpose.DamageFee, amount, paymentType, notes);
+        }
+
+        public async Task<Order> RecordHotpotReturnAsync(int orderId, string returnCondition, decimal? damageFee = null)
+        {
+            try
+            {
+                var order = await GetOrderByIdAsync(orderId);
+
+                // Validate that the order has a rent order with hotpot
+                if (order.RentOrder == null)
+                {
+                    throw new ValidationException("Order does not have rental items");
+                }
+
+                // Check if any hotpot items exist in the order
+                bool hasHotpot = order.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId.HasValue);
+                if (!hasHotpot)
+                {
+                    throw new ValidationException("Order does not have any hotpot items");
+                }
+
+                // Set the actual return date
+                order.RentOrder.ActualReturnDate = DateTime.UtcNow;
+
+                // Set the return condition
+                if (!string.IsNullOrEmpty(returnCondition))
+                {
+                    order.RentOrder.ReturnCondition = returnCondition;
+                }
+
+                decimal totalFee = 0;
+                string feeDescription = "";
+
+                // Calculate late fee if returned after expected date
+                if (order.RentOrder.ExpectedReturnDate < DateTime.UtcNow)
+                {
+                    // Calculate days late
+                    int daysLate = (int)Math.Ceiling((DateTime.UtcNow - order.RentOrder.ExpectedReturnDate).TotalDays);
+
+                    // Calculate late fee (example: $5 per day late)
+                    decimal lateFee = daysLate * 5.0m; // You might want to make this configurable
+
+                    // Set the late fee
+                    order.RentOrder.LateFee = lateFee;
+
+                    totalFee += lateFee;
+                    feeDescription += $"Late return fee for {daysLate} days: ${lateFee}";
+                }
+
+                // Add damage fee if provided
+                if (damageFee.HasValue && damageFee.Value > 0)
+                {
+                    order.RentOrder.DamageFee = damageFee.Value;
+
+                    totalFee += damageFee.Value;
+                    feeDescription += (feeDescription.Length > 0 ? "\n" : "") + $"Damage fee: ${damageFee.Value} - {returnCondition}";
+                }
+
+                // Create a single payment record for all fees if there are any
+                if (totalFee > 0)
+                {
+                    var payment = new Payment
+                    {
+                        TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
+                        UserId = order.UserId,
+                        OrderId = orderId,
+                        Price = totalFee,
+                        Type = PaymentType.Cash, // Default to cash, can be changed later
+                        Status = PaymentStatus.Pending,
+                        Purpose = PaymentPurpose.LateFee, // Use LateFee as the primary purpose
+                    };
+
+                    await _unitOfWork.Repository<Payment>().InsertAsync(payment);
+                }
+
+                // Update the order status if all items are returned
+                if (order.Status == OrderStatus.Returning)
+                {
+                    order.Status = OrderStatus.Completed;
+                }
+
+                // Update the order
+                order.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(order, orderId);
+                await _unitOfWork.CommitAsync();
+
+                return await GetOrderByIdAsync(orderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording hotpot return for order {OrderId}", orderId);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<Payment>> GetPaymentsByUserIdAsync(int userId)
         {
             try
@@ -359,30 +555,47 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<Payment> GetPaymentByIdAsync(int paymentId)
-        {
-            try
-            {
-                return await _unitOfWork.Repository<Payment>()
-                    .FindAsync(p => p.PaymentId == paymentId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payment {PaymentId}", paymentId);
-                throw;
-            }
-        }
-
         public async Task<Payment> GetPaymentByOrderIdAsync(int orderId)
         {
             try
             {
-                return await _unitOfWork.Repository<Payment>()
-                    .FindAsync(p => p.OrderId == orderId);
+                return await GetMainPaymentForOrderAsync(orderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting payment for order {OrderId}", orderId);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<Payment>> GetListPaymentByOrderIdAsync(int orderId)
+        {
+            try
+            {
+                return await _unitOfWork.Repository<Payment>()
+                    .FindAll(p => p.OrderId == orderId)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting payments for order {OrderId}", orderId);
+                throw;
+            }
+        }
+
+        public async Task<Payment> GetMainPaymentForOrderAsync(int orderId)
+        {
+            try
+            {
+                return await _unitOfWork.Repository<Payment>()
+                    .FindAll(p => p.OrderId == orderId && p.Purpose == PaymentPurpose.OrderPayment)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting main payment for order {OrderId}", orderId);
                 throw;
             }
         }
@@ -403,6 +616,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (!string.IsNullOrWhiteSpace(request.Notes))
                     order.Notes = request.Notes;
+
+                // Update expected return date if provided and order has rental items
+                if (request.ExpectedReturnDate.HasValue && order.RentOrder != null)
+                {
+                    // Validate that the expected return date is in the future
+                    if (request.ExpectedReturnDate.Value <= DateTime.UtcNow.AddHours(7))
+                        throw new ValidationException("Expected return date must be in the future");
+
+                    // Validate that the expected return date is after the rental start date
+                    if (request.ExpectedReturnDate.Value <= order.RentOrder.RentalStartDate)
+                        throw new ValidationException("Expected return date must be after the rental start date");
+
+
+                    order.RentOrder.ExpectedReturnDate = request.ExpectedReturnDate.Value;
+                    order.RentOrder.SetUpdateDate();
+                }
 
                 // Update discount if provided
                 if (request.DiscountId.HasValue && request.DiscountId != order.DiscountId)
@@ -450,11 +679,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await _unitOfWork.CommitAsync();
 
                 // Update payment amount if exists
-                var payment = await GetPaymentByOrderIdAsync(id);
-                if (payment != null && payment.Status == PaymentStatus.Pending)
+                var mainPayment = await GetPaymentByOrderIdAsync(id);
+                if (mainPayment != null && mainPayment.Status == PaymentStatus.Pending)
                 {
-                    payment.Price = order.TotalPrice;
-                    await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+                    mainPayment.Price = order.TotalPrice;
+                    await _unitOfWork.Repository<Payment>().Update(mainPayment, mainPayment.PaymentId);
                     await _unitOfWork.CommitAsync();
                 }
 
@@ -484,7 +713,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable()
                     .Include(o => o.User)
                     .Include(o => o.Discount)
-                    .Include(o => o.Payment)
+                    .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)

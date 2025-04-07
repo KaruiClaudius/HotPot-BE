@@ -75,7 +75,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable()
                     .Include(o => o.User)
                     .Include(o => o.Discount)
-                    .Include(o => o.Payment)
+                    .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Ingredient)
@@ -153,7 +153,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (!string.IsNullOrWhiteSpace(paymentStatus) && Enum.TryParse<PaymentStatus>(paymentStatus, true, out var pmtStatus))
                 {
-                    query = query.Where(o => o.Payment != null && o.Payment.Status == pmtStatus);
+                    query = query.Where(o => o.Payments.Any(p => p.Status == pmtStatus));
                 }
 
                 // Get total count before applying pagination
@@ -214,7 +214,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .IncludeNested(query => query
                             .Include(o => o.User)
                             .Include(o => o.Discount)
-                            .Include(o => o.Payment)
+                            .Include(o => o.Payments)
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
                                     .ThenInclude(sod => sod.Ingredient)
@@ -264,7 +264,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .IncludeNested(query =>
                             query.Include(o => o.User)
                                  .Include(o => o.Discount)
-                                 .Include(o => o.Payment)
+                                 .Include(o => o.Payments)
                                  .Include(o => o.SellOrder)
                                      .ThenInclude(so => so.SellOrderDetails)
                                      .ThenInclude(sod => sod.Ingredient)
@@ -430,7 +430,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Set rental dates if not already set
             DateTime rentalStartDate = DateTime.Now;
-            DateTime expectedReturnDate = DateTime.Now.AddDays(2); // Default rental period
+            DateTime expectedReturnDate = DateTime.Now; // Default rental period
 
             // Ensure RentOrder exists
             if (order.RentOrder == null)
@@ -439,7 +439,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     SubTotal = 0,
-                    HotpotDeposit = 0,
                     RentalStartDate = rentalStartDate,
                     ExpectedReturnDate = expectedReturnDate,
                     RentOrderDetails = new List<RentOrderDetail>()
@@ -488,8 +487,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 additionalHotpotDeposit += hotpot.Price * 0.7m;
             }
 
-            // Update hotpot deposit
-            order.RentOrder.HotpotDeposit += additionalHotpotDeposit;
 
             // Update order flags
             order.HasRentItems = true;
@@ -589,7 +586,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     SubTotal = 0,
-                    HotpotDeposit = 0,
                     RentalStartDate = rentalStartDate,
                     ExpectedReturnDate = expectedReturnDate,
                     RentOrderDetails = new List<RentOrderDetail>()
@@ -791,9 +787,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 order.RentOrder.SubTotal = rentSubTotal;
                 totalPrice += rentSubTotal;
-
-                // Add hotpot deposit to total price
-                totalPrice += order.RentOrder.HotpotDeposit;
             }
 
             // Apply discount if applicable

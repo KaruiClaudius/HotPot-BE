@@ -33,34 +33,47 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                // Verify the user is creating a payment for themselves
                 var currentUserPhone = User.FindFirstValue("phone");
-                var userId = int.Parse(User.FindFirstValue("id"));
+                var currentUserName = User.FindFirstValue("name");
+                var userIdValue = User.FindFirstValue("id");
+                if (userIdValue == null)
+                {
+                    return BadRequest(new { message = "User ID not found" });
+                }
+                var userId = int.Parse(userIdValue);
                 var isCustomer = User.IsInRole("Customer");
-
-                if (currentUserPhone != request.BuyerPhone && !isCustomer)
+                if (!isCustomer)
                 {
                     return Forbid();
                 }
+
                 var productName = "Order " + request.OrderId;
+                var order = await _orderService.GetByIdAsync(request.OrderId);
+                if (order == null)
+                {
+                    return NotFound(new { message = "Order not found" });
+                }
+
+                int price = (int)order.TotalPrice;
 
                 // Create payment link request
                 var paymentLinkRequest = new CreatePaymentLinkRequest(
                     productName,
                     request.Description,
-                    request.Price,
+                    price,
                     request.ReturnUrl,
                     request.CancelUrl,
-                    request.BuyerName,
-                    request.BuyerPhone
+                    currentUserName,
+                    currentUserPhone
                 );
 
-                // Process the payment
+                // Process the payment with expected return date
                 var response = await _paymentService.ProcessOnlinePayment(
                     request.OrderId,
                     request.Address,
                     request.Notes,
                     request.DiscountId,
+                    request.ExpectedReturnDate, // Add this parameter
                     paymentLinkRequest,
                     userId);
 
@@ -86,7 +99,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return StatusCode(500, new { message = "An error occurred while processing the online payment" });
             }
         }
-
         [HttpPost("process-cash-payment")]
         [Authorize]
         public async Task<IActionResult> ProcessCashPayment([FromBody] ProcessCashPaymentRequest request)
@@ -95,12 +107,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var userId = int.Parse(User.FindFirstValue("id"));
 
-                // Process the cash payment
+                // Process the cash payment with expected return date
                 var payment = await _paymentService.ProcessCashPayment(
                     request.OrderId,
                     request.Address,
                     request.Notes,
                     request.DiscountId,
+                    request.ExpectedReturnDate, // Add this parameter
                     userId);
 
                 return Ok(new
@@ -124,6 +137,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return StatusCode(500, new { message = "An error occurred while processing the cash payment" });
             }
         }
+
 
         [HttpPost("cancel-order/{orderCode}")]
         [Authorize]

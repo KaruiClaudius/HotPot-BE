@@ -182,9 +182,10 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired()
                     .HasMaxLength(50);
 
+
                 entity.HasOne(p => p.Order)
-                    .WithOne(o => o.Payment)
-                    .HasForeignKey<Payment>(p => p.OrderId)
+                    .WithMany(o => o.Payments)  
+                    .HasForeignKey(p => p.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -246,10 +247,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(e => e.SubTotal)
-                    .HasColumnType("decimal(18,2)")
-                    .IsRequired();
-
-                entity.Property(e => e.HotpotDeposit)
                     .HasColumnType("decimal(18,2)")
                     .IsRequired();
 
@@ -387,6 +384,11 @@ namespace Capstone.HPTY.RepositoryLayer
                     .WithMany()
                     .HasForeignKey(e => e.HotpotBrothId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(c => c.Combo)
+                    .WithMany(c => c.Customizations)
+                    .HasForeignKey(c => c.ComboId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
 

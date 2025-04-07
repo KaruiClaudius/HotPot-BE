@@ -208,7 +208,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 Notes = order.Notes ?? string.Empty,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status,
-                HotpotDeposit = order.RentOrder.HotpotDeposit,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
                 HasShipping = order.ShippingOrder != null,

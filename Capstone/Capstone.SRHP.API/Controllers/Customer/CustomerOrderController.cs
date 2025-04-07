@@ -355,39 +355,42 @@ namespace Capstone.HPTY.API.Controllers.Customer
             var response = new OrderResponse
             {
                 OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
                 Address = order.Address,
                 Notes = order.Notes,
                 TotalPrice = order.TotalPrice,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                User = new UserInfo
+                User = order.User != null ? new UserInfo
                 {
                     UserId = order.User.UserId,
                     Name = order.User.Name,
                     PhoneNumber = order.User.PhoneNumber,
                     Email = order.User.Email
-                },
+                } : null,
                 Items = new List<OrderItemResponse>(),
                 Discount = null,
-                Payment = null
+                Payment = null,
+                AdditionalPayments = new List<PaymentInfo>()
             };
 
-            // Track added detail IDs to prevent duplicates
             var addedSellDetailIds = new HashSet<int>();
             var addedRentDetailIds = new HashSet<int>();
 
             // Add hotpot deposit from RentOrder if available
             if (order.RentOrder != null)
             {
-                response.HotpotDeposit = order.RentOrder.HotpotDeposit;
+                // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;
                 response.ExpectedReturnDate = order.RentOrder.ExpectedReturnDate;
                 response.ActualReturnDate = order.RentOrder.ActualReturnDate;
-            }
-            else
-            {
-                response.HotpotDeposit = 0;
+
+                // Add late fee and damage fee information
+                response.LateFee = order.RentOrder.LateFee;
+                response.DamageFee = order.RentOrder.DamageFee;
+                response.RentalNotes = order.RentOrder.RentalNotes;
+                response.ReturnCondition = order.RentOrder.ReturnCondition;
             }
 
             // Map sell order details
@@ -499,21 +502,70 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     Title = order.Discount.Title,
                     Description = order.Discount.Description,
                     Percent = order.Discount.DiscountPercentage,
-                    DiscountAmount = CalculateDiscountAmount(order.TotalPrice, order.Discount.DiscountPercentage)
+                    DiscountAmount = order.TotalPrice * (order.Discount.DiscountPercentage / 100)
                 };
             }
 
-            // Map payment if available
-            if (order.Payment != null)
+            // Map payments if available
+            if (order.Payments != null && order.Payments.Any())
             {
-                response.Payment = new PaymentInfo
+                // If you have a PaymentPurpose enum
+                if (order.Payments.Any(p => p.Purpose == PaymentPurpose.OrderPayment))
                 {
-                    PaymentId = order.Payment.PaymentId,
-                    Type = order.Payment.Type.ToString(),
-                    Status = order.Payment.Status.ToString(),
-                    Amount = order.Payment.Price,
-                    UpdateAt = order.Payment.UpdatedAt
-                };
+                    // Get the main order payment
+                    var mainPayment = order.Payments
+                        .Where(p => p.Purpose == PaymentPurpose.OrderPayment)
+                        .OrderByDescending(p => p.CreatedAt)
+                        .FirstOrDefault();
+
+                    if (mainPayment != null)
+                    {
+                        response.Payment = new PaymentInfo
+                        {
+                            PaymentId = mainPayment.PaymentId,
+                            Type = mainPayment.Type.ToString(),
+                            Status = mainPayment.Status.ToString(),
+                            Amount = mainPayment.Price,
+                            UpdateAt = mainPayment.UpdatedAt,
+                            Purpose = mainPayment.Purpose.ToString()
+                        };
+                    }
+                }
+                else
+                {
+                    // If no specific order payment, use the first payment as the main one
+                    var firstPayment = order.Payments.OrderBy(p => p.CreatedAt).FirstOrDefault();
+                    if (firstPayment != null)
+                    {
+                        response.Payment = new PaymentInfo
+                        {
+                            PaymentId = firstPayment.PaymentId,
+                            Type = firstPayment.Type.ToString(),
+                            Status = firstPayment.Status.ToString(),
+                            Amount = firstPayment.Price,
+                            UpdateAt = firstPayment.UpdatedAt,
+                            Purpose = firstPayment.Purpose.ToString()
+                        };
+                    }
+                }
+
+                // Map all other payments as additional payments
+                foreach (var payment in order.Payments)
+                {
+                    // Skip the main payment that we already mapped
+                    if (response.Payment != null && payment.PaymentId == response.Payment.PaymentId)
+                        continue;
+
+                    response.AdditionalPayments.Add(new PaymentInfo
+                    {
+                        PaymentId = payment.PaymentId,
+                        Type = payment.Type.ToString(),
+                        Status = payment.Status.ToString(),
+                        Amount = payment.Price,
+                        UpdateAt = payment.UpdatedAt,
+                        Purpose = payment.Purpose.ToString()
+                    });
+                }
             }
 
             return response;

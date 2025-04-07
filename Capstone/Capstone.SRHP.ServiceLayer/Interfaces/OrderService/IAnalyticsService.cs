@@ -9,9 +9,13 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IAnalyticsService
     {
-        Task<DashboardSummary> GetDashboardSummaryAsync(DateTime fromDate, DateTime toDate);
-        Task<List<TopSellingItemDto>> GetTopSellingItemsAsync(string itemType, DateTime fromDate, DateTime toDate, int limit);
-        Task<List<SalesTrendDto>> GetSalesTrendAsync(string period, DateTime fromDate, DateTime toDate);
-        Task<OrdersByStatusDto> GetOrdersByStatusAsync(DateTime fromDate, DateTime toDate, int limit);
+        Task<ConsolidatedDashboardResponse> GetConsolidatedDashboardDataAsync(
+            DateTime fromDate,
+            DateTime toDate,
+            string status = null,
+            string productType = null,
+            bool? hasHotpot = null,
+            string paymentStatus = null,
+            int topProductsLimit = 5);
     }
 }

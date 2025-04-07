@@ -17,5 +17,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public string? Notes { get; set; }
 
         public int? DiscountId { get; set; }
+
+        public DateTime? ExpectedReturnDate { get; set; }
     }
 }

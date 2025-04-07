@@ -11,9 +11,15 @@ namespace Capstone.HPTY.ModelLayer.Entities
 {
     public class Order : BaseEntity
     {
+        private static readonly Random _random = new Random();
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int OrderId { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        public string OrderCode { get; set; }
 
         [Required]
         [StringLength(500)]
@@ -44,12 +50,43 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ShippingOrder? ShippingOrder { get; set; }
         public virtual Feedback? Feedback { get; set; }
         public virtual Discount? Discount { get; set; }
-        public virtual Payment? Payment { get; set; }
+        public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
         // Navigation properties to the specific order types
         public virtual SellOrder? SellOrder { get; set; }
         public virtual RentOrder? RentOrder { get; set; }
         public virtual ICollection<PaymentReceipt> Receipts { get; set; } = new List<PaymentReceipt>();
 
+        public Order()
+        {
+            OrderCode = GenerateOrderCode();
+        }
+
+        // Method to generate a unique order code
+        private string GenerateOrderCode()
+        {
+            // Generate a code with format: HP-YYMMDD-XXXX
+            // HP = Hotpot, YY = Year, MM = Month, DD = Day, XXXX = Random 4-digit number
+            string datePart = DateTime.UtcNow.ToString("yyMMdd");
+            string randomPart = GenerateRandomDigits(4);
+            return $"ORD-{datePart}-{randomPart}";
+        }
+
+        // Helper method to generate random digits
+        private static string GenerateRandomDigits(int length)
+        {
+            const string chars = "0123456789";
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[_random.Next(s.Length)]).ToArray());
+        }
+
+        // Method to manually set the order code (for migrations or special cases)
+        public void SetOrderCode(string code)
+        {
+            if (string.IsNullOrEmpty(code))
+                throw new ArgumentException("Order code cannot be null or empty");
+
+            OrderCode = code;
+        }
     }
 }

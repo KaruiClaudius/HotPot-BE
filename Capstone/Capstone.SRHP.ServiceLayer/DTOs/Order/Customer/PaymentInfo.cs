@@ -13,5 +13,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Order.Customer
         public string Status { get; set; }
         public decimal Amount { get; set; }
         public DateTime? UpdateAt { get; set; }
+        public string Purpose { get; set; }
     }
 }

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
 {
-    public class SalesTrendDto
+    public class OrderStatusDetail
     {
-        public DateTime Date { get; set; }
+        public int Count { get; set; }
         public decimal Revenue { get; set; }
-        public int OrderCount { get; set; }
+        public decimal Percentage { get; set; }
     }
 }
