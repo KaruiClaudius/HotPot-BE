@@ -49,9 +49,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Common
     {
         public string? EquipmentType { get; set; }
         public int? EquipmentId { get; set; }
-        public MaintenanceStatus? Status { get; set; }
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        public string? EquipmentName { get; set; } 
+        public MaintenanceStatus? Status { get; set; }    
         public string? SortBy { get; set; } = "LoggedDate";
         public bool SortDescending { get; set; } = true;
     }
