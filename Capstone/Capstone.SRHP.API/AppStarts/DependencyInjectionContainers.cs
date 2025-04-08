@@ -60,6 +60,8 @@ namespace Capstone.HPTY.API.AppStarts
 
             services.AddSingleton(payOS);
 
+            //services.AddHostedService<CartCleanupService>();
+
             // Core Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

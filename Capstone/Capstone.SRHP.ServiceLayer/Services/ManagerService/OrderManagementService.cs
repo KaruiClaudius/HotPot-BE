@@ -229,7 +229,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
                     .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)

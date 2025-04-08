@@ -46,7 +46,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     return Forbid();
                 }
 
-                var productName = "Order " + request.OrderId;
+                // Verify cart items availability before processing payment
+                var verifyResponse = await _paymentService.VerifyCartBeforePaymentAsync(request.OrderId);
+                if (verifyResponse.error != 0)
+                {
+                    return BadRequest(new { message = verifyResponse.message, details = verifyResponse.data });
+                }
+
+                string productName = "Order " + request.OrderId;
                 var order = await _orderService.GetByIdAsync(request.OrderId);
                 if (order == null)
                 {
@@ -57,13 +64,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 // Create payment link request
                 var paymentLinkRequest = new CreatePaymentLinkRequest(
-                    productName,
-                    request.Description,
-                    price,
-                    request.ReturnUrl,
-                    request.CancelUrl,
-                    currentUserName,
-                    currentUserPhone
+                    productName: productName,
+                    description: request.Description,
+                    price: price,
+                    returnUrl: request.ReturnUrl,
+                    cancelUrl: request.CancelUrl,
+                    buyerName: currentUserName,
+                    buyerPhone: currentUserPhone
                 );
 
                 // Process the payment with expected return date
@@ -72,7 +79,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     request.Address,
                     request.Notes,
                     request.DiscountId,
-                    request.ExpectedReturnDate, // Add this parameter
+                    request.ExpectedReturnDate,
                     paymentLinkRequest,
                     userId);
 
@@ -98,6 +105,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return StatusCode(500, new { message = "An error occurred while processing the online payment" });
             }
         }
+
+
         [HttpPost("process-cash-payment")]
         [Authorize]
         public async Task<IActionResult> ProcessCashPayment([FromBody] ProcessCashPaymentRequest request)
@@ -106,13 +115,20 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var userId = int.Parse(User.FindFirstValue("id"));
 
+                // Verify cart items availability before processing payment
+                var verifyResponse = await _paymentService.VerifyCartBeforePaymentAsync(request.OrderId);
+                if (verifyResponse.error != 0)
+                {
+                    return BadRequest(new { message = verifyResponse.message, details = verifyResponse.data });
+                }
+
                 // Process the cash payment with expected return date
                 var payment = await _paymentService.ProcessCashPayment(
                     request.OrderId,
                     request.Address,
                     request.Notes,
                     request.DiscountId,
-                    request.ExpectedReturnDate, // Add this parameter
+                    request.ExpectedReturnDate,
                     userId);
 
                 return Ok(new
@@ -142,52 +158,60 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [Authorize]
         public async Task<IActionResult> CancelOrder(int orderCode, [FromQuery] string reason)
         {
-            // First get the order to verify ownership
-            var getResponse = await _paymentService.GetOrder(orderCode);
-            if (getResponse.error != 0)
-            {
-                return BadRequest(new { message = getResponse.message });
-            }
-
-            // Verify the user is cancelling their own payment
             try
             {
-                // Cast to object first, then access properties
-                var responseData = getResponse.data as object;
-                if (responseData != null)
+                // First get the order to verify ownership
+                var getResponse = await _paymentService.GetOrder(orderCode);
+                if (getResponse.error != 0)
                 {
-                    // Use reflection to safely access properties
-                    var transactionProperty = responseData.GetType().GetProperty("Transaction");
-                    if (transactionProperty != null)
-                    {
-                        var transaction = transactionProperty.GetValue(responseData) as Payment;
-                        if (transaction != null)
-                        {
-                            var currentUserId = int.Parse(User.FindFirstValue("id"));
-                            var isAdmin = User.IsInRole("Admin");
+                    return BadRequest(new { message = getResponse.message });
+                }
 
-                            if (transaction.UserId != currentUserId && !isAdmin)
+                // Verify the user is cancelling their own payment
+                try
+                {
+                    // Cast to object first, then access properties
+                    var responseData = getResponse.data as object;
+                    if (responseData != null)
+                    {
+                        // Use reflection to safely access properties
+                        var transactionProperty = responseData.GetType().GetProperty("Transaction");
+                        if (transactionProperty != null)
+                        {
+                            var transaction = transactionProperty.GetValue(responseData) as Payment;
+                            if (transaction != null)
                             {
-                                return Forbid();
+                                var currentUserId = int.Parse(User.FindFirstValue("id"));
+                                var isAdmin = User.IsInRole("Admin");
+
+                                if (transaction.UserId != currentUserId && !isAdmin)
+                                {
+                                    return Forbid();
+                                }
                             }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error checking payment ownership for order {OrderCode}", orderCode);
+                    // Continue anyway if we can't verify ownership
+                }
+
+                var response = await _paymentService.CancelOrder(orderCode, reason);
+                if (response.error == 0)
+                {
+                    return Ok(response);
+                }
+
+                _logger.LogError("Failed to cancel order {OrderCode}: {Reason}, Error: {Message}", orderCode, reason, response.message);
+                return BadRequest(new { message = response.message });
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking payment ownership for order {OrderCode}", orderCode);
-                // Continue anyway if we can't verify ownership
+                _logger.LogError(ex, "Error cancelling order {OrderCode}", orderCode);
+                return StatusCode(500, new { message = "An error occurred while cancelling the order" });
             }
-
-            var response = await _paymentService.CancelOrder(orderCode, reason);
-            if (response.error == 0)
-            {
-                return Ok(response);
-            }
-
-            _logger.LogError("Failed to cancel order {OrderCode}: {Reason}, Error: {Message}", orderCode, reason, response.message);
-            return BadRequest(new { response.message });
         }
 
         [HttpPost("confirm-webhook")]
@@ -206,16 +230,25 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
         [HttpPost("check-order")]
         [Authorize]
-        public async Task<IActionResult> CheckOrder([FromBody] CheckOrderRequest request, [FromQuery] string userPhone)
+        public async Task<IActionResult> CheckOrder([FromBody] CheckOrderRequest request)
         {
-            var response = await _paymentService.CheckOrder(request, userPhone);
-            if (response.error == 0)
+            try
             {
-                return Ok(response);
-            }
+                var currentUserPhone = User.FindFirstValue("phone");
+                var response = await _paymentService.CheckOrder(request, currentUserPhone);
+                if (response.error == 0)
+                {
+                    return Ok(response);
+                }
 
-            _logger.LogError("Failed to check order {OrderCode} for user {UserPhone}: {Message}", request.OrderCode, userPhone, response.message);
-            return BadRequest(new { response.message });
+                _logger.LogError("Failed to check order {OrderCode}: {Message}", request.OrderCode, response.message);
+                return BadRequest(new { response.message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking order status");
+                return StatusCode(500, new { message = "An error occurred while checking the order status" });
+            }
         }
     }
 }

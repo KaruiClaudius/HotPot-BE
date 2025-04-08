@@ -81,8 +81,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 .Include(r => r.Order)
                     .ThenInclude(o => o.User)
                 .Include(r => r.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(r => r.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                 .FirstOrDefaultAsync(r => r.OrderId == orderId && !r.IsDelete);
@@ -193,16 +191,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
         private async Task UpdateInventoryStatus(RentOrderDetail rentOrderDetail)
         {
-            if (rentOrderDetail.UtensilId.HasValue)
-            {
-                var utensil = await _utensilService.GetUtensilByIdAsync(rentOrderDetail.UtensilId.Value);
-                if (utensil != null)
-                {
-                    // Update utensil quantity
-                    await _utensilService.UpdateUtensilQuantityAsync(utensil.UtensilId, rentOrderDetail.Quantity);
-                }
-            }
-            else if (rentOrderDetail.HotpotInventoryId.HasValue)
+            if (rentOrderDetail.HotpotInventoryId.HasValue)
             {
                 var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>().GetById(rentOrderDetail.HotpotInventoryId.Value);
                 if (hotpotInventory != null)

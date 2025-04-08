@@ -24,6 +24,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int? IngredientId { get; set; }
         public int? CustomizationId { get; set; }
         public int? ComboId { get; set; }
+        public int? UtensilId { get; set; }
 
         public virtual SellOrder SellOrder { get; set; } = null!;
 
@@ -35,5 +36,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [ForeignKey(nameof(ComboId))]
         public virtual Combo? Combo { get; set; }
+
+        [ForeignKey(nameof(UtensilId))]
+        public virtual Utensil? Utensil { get; set; }
     }
 }

@@ -48,8 +48,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return await _unitOfWork.Repository<RentOrder>()
                     .AsQueryable(r => r.OrderId == orderId && !r.IsDelete)
                     .Include(r => r.RentOrderDetails)
-                        .ThenInclude(rod => rod.Utensil)
-                    .Include(r => r.RentOrderDetails)
                         .ThenInclude(rod => rod.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .ToListAsync();
@@ -76,8 +74,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable(r => r.ExpectedReturnDate.Date == today && r.ActualReturnDate == null && !r.IsDelete)
                     .Include(r => r.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.RentOrderDetails)
-                        .ThenInclude(d => d.Utensil)
                     .Include(r => r.RentOrderDetails)
                         .ThenInclude(d => d.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null);
@@ -124,8 +120,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .AsQueryable(r => r.ExpectedReturnDate.Date < today && r.ActualReturnDate == null && !r.IsDelete)
                     .Include(r => r.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.RentOrderDetails)
-                        .ThenInclude(d => d.Utensil)
                     .Include(r => r.RentOrderDetails)
                         .ThenInclude(d => d.HotpotInventory)
                             .ThenInclude(hi => hi != null ? hi.Hotpot : null);
@@ -182,8 +176,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .Include(r => r.Order)
                     .ThenInclude(o => o.User)
                 .Include(r => r.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(r => r.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
@@ -196,7 +188,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         RentOrderDetailId = detail.RentOrderDetailId,
                         OrderId = detail.OrderId,
-                        UtensilId = detail.UtensilId,
                         HotpotInventoryId = detail.HotpotInventoryId,
                         Quantity = detail.Quantity,
                         RentalPrice = detail.RentalPrice,
@@ -291,22 +282,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync(int? utensilId = null, int? hotpotInventoryId = null)
+        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync( int? hotpotInventoryId = null)
         {
             try
             {
                 IQueryable<RentOrderDetail> query = _unitOfWork.Repository<RentOrderDetail>().AsQueryable();
 
-                // If both parameters are null, get all non-deleted records
-                if (!utensilId.HasValue && !hotpotInventoryId.HasValue)
-                {
-                    query = query.Where(r => !r.IsDelete);
-                }
-                else if (utensilId.HasValue)
-                {
-                    query = query.Where(r => r.UtensilId == utensilId.Value && !r.IsDelete);
-                }
-                else if (hotpotInventoryId.HasValue)
+
+                if (hotpotInventoryId.HasValue)
                 {
                     query = query.Where(r => r.HotpotInventoryId == hotpotInventoryId.Value && !r.IsDelete);
                 }
@@ -315,7 +298,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(r => r.RentOrder)
                         .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.Utensil)
                     .Include(r => r.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .OrderByDescending(r => r.RentOrder.RentalStartDate)
@@ -327,7 +309,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Id = r.RentOrderDetailId,
                     OrderId = r.OrderId,
                     CustomerName = r.RentOrder.Order?.User?.Name ?? "Unknown",
-                    EquipmentName = r.Utensil?.Name ?? r.HotpotInventory?.Hotpot?.Name ?? "Unknown",
+                    EquipmentName = r.HotpotInventory?.Hotpot?.Name ?? "Unknown",
                     RentalStartDate = r.RentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                     ExpectedReturnDate = r.RentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
                     ActualReturnDate = r.RentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
@@ -376,7 +358,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(r => r.RentOrder)
                         .ThenInclude(o => o.Order)
                         .ThenInclude(o => o.User)
-                    .Include(r => r.Utensil)
                     .Include(r => r.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .OrderByDescending(r => r.RentOrder.RentalStartDate)
@@ -388,7 +369,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Id = r.RentOrderDetailId,
                     OrderId = r.OrderId,
                     CustomerName = r.RentOrder.Order?.User?.Name ?? "Unknown",
-                    EquipmentName = r.Utensil?.Name ?? r.HotpotInventory?.Hotpot?.Name ?? "Unknown",
+                    EquipmentName = r.HotpotInventory?.Hotpot?.Name ?? "Unknown",
                     RentalStartDate = r.RentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                     ExpectedReturnDate = r.RentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
                     ActualReturnDate = r.RentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
@@ -477,8 +458,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .Include(r => r.Order)
                     .ThenInclude(o => o.User)
                 .Include(r => r.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(r => r.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null);
 
@@ -508,11 +487,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         Id = detail.RentOrderDetailId,
                         OrderId = detail.OrderId,
-                        EquipmentType = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Utensil",
-                        EquipmentId = detail.HotpotInventoryId ?? detail.UtensilId ?? 0,
+                        EquipmentType = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Unknown",
+                        EquipmentId = detail.HotpotInventoryId ?? 0,
                         EquipmentName = detail.HotpotInventoryId.HasValue
                             ? detail.HotpotInventory?.Hotpot?.Name
-                            : detail.Utensil?.Name,
+                            : "Unknown Equipment",
                         RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                         ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
                         ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
@@ -553,17 +532,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return "Active";
             }
         }
-
         private RentalListingDto MapToRentalListingDto(RentOrderDetail detail, RentOrder rentOrder)
         {
             return new RentalListingDto
             {
                 RentOrderDetailId = detail.RentOrderDetailId,
                 OrderId = detail.OrderId,
-                EquipmentType = detail.UtensilId.HasValue ? "Utensil" : "Hotpot",
-                EquipmentName = detail.UtensilId.HasValue
-                    ? detail.Utensil?.Name
-                    : detail.HotpotInventory?.Hotpot?.Name,
+                EquipmentType = "Hotpot",
+                EquipmentName = detail.HotpotInventory?.Hotpot?.Name,
                 Quantity = detail.Quantity,
                 RentalPrice = detail.RentalPrice,
                 RentalStartDate = rentOrder.RentalStartDate,

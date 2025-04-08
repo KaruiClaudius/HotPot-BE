@@ -232,8 +232,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
                 .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(a => a.RentOrder.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
@@ -292,8 +290,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
                 .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
-                .Include(a => a.RentOrder.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
@@ -335,8 +331,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(a => a.RentOrder)
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.Utensil)
                 .Include(a => a.RentOrder.RentOrderDetails)
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null);
@@ -390,11 +384,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             foreach (var detail in details.Where(d => !d.IsDelete))
             {
                 string name;
-                if (detail.UtensilId.HasValue && detail.Utensil != null)
-                {
-                    name = detail.Utensil.Name;
-                }
-                else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
                 {
                     name = detail.HotpotInventory.Hotpot.Name;
                 }

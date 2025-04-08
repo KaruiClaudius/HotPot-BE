@@ -17,7 +17,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<PagedResult<RentalListingDto>> GetOverdueRentalsAsync(int pageNumber = 1, int pageSize = 10);
         Task<bool> UpdateRentOrderDetailAsync(int rentOrderDetailId, UpdateRentOrderDetailRequest request);
         Task<decimal> CalculateLateFeeAsync(int rentOrderDetailId, DateTime actualReturnDate);
-        Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync(int? utensilId = null, int? hotpotInventoryId = null);
+        Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync(int? hotpotInventoryId = null);
         Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByUserAsync(int? userId = null);
         Task<bool> ExtendRentalPeriodAsync(int rentOrderDetailId, DateTime newExpectedReturnDate);
         Task<PagedResult<RentOrderDetailResponse>> GetUnassignedPickupsAsync(int pageNumber = 1, int pageSize = 10);
