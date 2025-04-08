@@ -10,7 +10,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
     public class StaffPickupAssignmentDto
     {
         public int AssignmentId { get; set; }
-        public int RentOrderDetailId { get; set; }
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
         public int StaffId { get; set; }
         public string StaffName { get; set; }
         public DateTime AssignedDate { get; set; }
@@ -18,10 +19,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string Notes { get; set; }
         public string CustomerName { get; set; }
         public string CustomerAddress { get; set; }
-        public string CustomerPhone { get; set; } 
-        public string EquipmentName { get; set; }
-        public int Quantity { get; set; }
-        public DateTime ExpectedReturnDate { get; set; }
+        public string CustomerPhone { get; set; }
+        public DateTime? RentalStartDate { get; set; }
+        public DateTime? ExpectedReturnDate { get; set; }
+        public string EquipmentSummary { get; set; }
     }
 
     public class PickupAssignmentRequestDto
@@ -42,7 +43,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
     public class UnifiedReturnRequestDto
     {
         public int? AssignmentId { get; set; }
-        public int? RentOrderDetailId { get; set; }
+        public int? RentOrderId { get; set; }
         public DateTime CompletedDate { get; set; }
         public string ReturnCondition { get; set; }
         public decimal? DamageFee { get; set; }

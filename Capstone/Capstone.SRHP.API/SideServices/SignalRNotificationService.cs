@@ -119,12 +119,14 @@ namespace Capstone.HPTY.API.SideServices
 
         public async Task NotifyStaffNewAssignmentAsync(int staffId, int assignmentId, StaffPickupAssignmentDto assignment)
         {
+            string equipmentDescription = assignment.EquipmentSummary ?? "equipment";
+
             await _hubContext.Clients.Group($"User_{staffId}").SendAsync("ReceiveRentalNotification",
                 new
                 {
                     Type = "NewAssignment",
                     Title = "New Pickup Assignment",
-                    Message = $"You have been assigned to pick up {assignment.EquipmentName} from {assignment.CustomerName}",
+                    Message = $"You have been assigned to pick up {equipmentDescription} from {assignment.CustomerName}",
                     AssignmentId = assignmentId,
                     Assignment = assignment,
                     Timestamp = DateTime.UtcNow

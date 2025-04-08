@@ -11,7 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 {
     public interface IRentOrderService
     {
-        Task<IEnumerable<RentOrderDetail>> GetByOrderIdAsync(int orderId);
+        Task<IEnumerable<RentOrder>> GetByOrderIdAsync(int orderId);
         Task<PagedResult<RentalListingDto>> GetPendingPickupsAsync(int pageNumber = 1, int pageSize = 10);
         Task<List<RentOrderDetailDto>> GetPendingPickupsByUserAsync(int userId);
         Task<PagedResult<RentalListingDto>> GetOverdueRentalsAsync(int pageNumber = 1, int pageSize = 10);
