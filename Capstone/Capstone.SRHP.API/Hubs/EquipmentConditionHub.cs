@@ -12,7 +12,7 @@ namespace Capstone.HPTY.API.Hubs
             try
             {
                 // Extract userId from JWT claims
-                var userIdClaim = Context.User.FindFirst("uid");
+                var userIdClaim = Context.User.FindFirst("id");
 
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int adminId))
                 {
@@ -34,7 +34,7 @@ namespace Capstone.HPTY.API.Hubs
                 // Add to the admin group
                 await Groups.AddToGroupAsync(Context.ConnectionId, "Administrators");
 
-                await Clients.Caller.SendAsync("ConnectionRegistered", adminId);
+                await Clients.Caller.SendAsync("AdminConnectionRegistered", adminId);
             }
             catch (Exception ex)
             {

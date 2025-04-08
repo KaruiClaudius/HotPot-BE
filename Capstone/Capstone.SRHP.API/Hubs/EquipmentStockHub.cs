@@ -6,24 +6,15 @@ namespace Capstone.HPTY.API.Hubs
     {
         private static Dictionary<int, string> _adminConnections = new Dictionary<int, string>();
 
-        public async Task RegisterAdminConnection()
+        public async Task RegisterAdminConnection(int adminId)
         {
             try
             {
-                // Extract userId from JWT claims
-                var userIdClaim = Context.User.FindFirst("uid");
-
-                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int adminId))
-                {
-                    await Clients.Caller.SendAsync("ChatError", "Admin ID not found or invalid");
-                    return;
-                }
-
                 // Verify the user is actually an admin
                 var userRole = Context.User.FindFirst("role")?.Value;
                 if (userRole?.ToLower() != "admin")
                 {
-                    await Clients.Caller.SendAsync("ChatError", "Only administrators can register as admin");
+                    await Clients.Caller.SendAsync("Error", "Only administrators can register as admin");
                     return;
                 }
 
@@ -33,18 +24,12 @@ namespace Capstone.HPTY.API.Hubs
                 // Add to the admin group
                 await Groups.AddToGroupAsync(Context.ConnectionId, "Administrators");
 
-                await Clients.Caller.SendAsync("ConnectionRegistered", adminId);
+                await Clients.Caller.SendAsync("AdminConnectionRegistered", adminId);
             }
             catch (Exception ex)
             {
-                // Log the exception
                 Console.Error.WriteLine($"Error in RegisterAdminConnection: {ex.Message}");
-                Console.Error.WriteLine(ex.StackTrace);
-
-                // Send a more detailed error to the client
-                await Clients.Caller.SendAsync("ChatError", $"Admin registration error: {ex.Message}");
-
-                // Rethrow to let SignalR handle it
+                await Clients.Caller.SendAsync("Error", $"Admin registration error: {ex.Message}");
                 throw;
             }
         }

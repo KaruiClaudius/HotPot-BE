@@ -47,12 +47,12 @@ namespace Capstone.HPTY.API.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task RegisterConnection()
+        public async Task RegisterUserConnection()
         {
             try
             {
                 // Extract userId from JWT claims
-                var userIdClaim = Context.User.FindFirst("uid");
+                var userIdClaim = Context.User.FindFirst("id");
 
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
@@ -76,7 +76,7 @@ namespace Capstone.HPTY.API.Hubs
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Customers");
                 }
 
-                await Clients.Caller.SendAsync("ConnectionRegistered", userId);
+                await Clients.Caller.SendAsync("UserConnectionRegistered", userId);
             }
             catch (Exception ex)
             {
