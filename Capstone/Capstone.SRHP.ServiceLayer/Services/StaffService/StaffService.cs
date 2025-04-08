@@ -261,6 +261,71 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             return assignmentDtos;
         }
 
+        public async Task<PagedResult<StaffPickupAssignmentDto>> GetStaffAssignmentsPaginatedAsync(int staffId, bool pendingOnly, int pageNumber, int pageSize)
+        {
+            // Verify the staff member exists
+            var staff = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
+
+            if (staff == null)
+                throw new NotFoundException($"Staff with ID {staffId} not found");
+
+            // Get all assignments for this staff member
+            var query = _unitOfWork.Repository<StaffPickupAssignment>()
+                .AsQueryable(a => a.StaffId == staffId && !a.IsDelete);
+
+            if (pendingOnly)
+            {
+                query = query.Where(a => a.CompletedDate == null);
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var assignments = await query
+                .OrderBy(a => a.AssignedDate)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Include(a => a.Staff)
+                .Include(a => a.RentOrder)
+                    .ThenInclude(r => r.Order)
+                        .ThenInclude(o => o.User)
+                .Include(a => a.RentOrder.RentOrderDetails)
+                    .ThenInclude(d => d.Utensil)
+                .Include(a => a.RentOrder.RentOrderDetails)
+                    .ThenInclude(d => d.HotpotInventory)
+                        .ThenInclude(h => h != null ? h.Hotpot : null)
+                .ToListAsync();
+
+            // Map to DTOs
+            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            {
+                AssignmentId = a.AssignmentId,
+                OrderId = a.OrderId,
+                StaffId = a.StaffId,
+                StaffName = a.Staff?.Name,
+                AssignedDate = a.AssignedDate,
+                CompletedDate = a.CompletedDate,
+                Notes = a.Notes,
+                CustomerName = a.RentOrder?.Order?.User?.Name,
+                CustomerAddress = a.RentOrder?.Order?.User?.Address,
+                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
+                OrderCode = a.RentOrder?.Order?.OrderCode,
+                RentalStartDate = a.RentOrder?.RentalStartDate,
+                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
+                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
+            }).ToList();
+
+            return new PagedResult<StaffPickupAssignmentDto>
+            {
+                Items = assignmentDtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
         {
             // Get all current assignments (not completed)
