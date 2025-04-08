@@ -102,6 +102,7 @@ namespace Capstone.HPTY.API.AppStarts
             // Staff Services
             services.AddScoped<IStaffService, StaffService>();
             services.AddScoped<IStaffPaymentService, StaffPaymentService>();
+            services.AddScoped<IStaffOrderService, StaffOrderService>();
 
             // Notification Services
             services.AddScoped<INotificationService, SignalRNotificationService>();

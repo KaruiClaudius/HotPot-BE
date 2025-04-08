@@ -32,7 +32,10 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
         [HttpGet("my-assignments")]
-        public async Task<ActionResult<ApiResponse<List<StaffPickupAssignmentDto>>>> GetMyAssignments([FromQuery] bool pendingOnly = false)
+        public async Task<ActionResult<ApiResponse<PagedResult<StaffPickupAssignmentDto>>>> GetMyAssignments(
+            [FromQuery] bool pendingOnly = false,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -43,23 +46,19 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 int staffId = int.Parse(userIdClaim.Value);
 
-                var myAssignments = await _staffService.GetStaffAssignmentsAsync(staffId);
+                // Fetch paginated assignments
+                var pagedAssignments = await _staffService.GetStaffAssignmentsPaginatedAsync(staffId, pendingOnly, pageNumber, pageSize);
 
-                // Filter for pending pickups if requested
-                if (pendingOnly)
-                {
-                    myAssignments = myAssignments.Where(a => a.CompletedDate == null).ToList();
-                }
-
-                return Ok(ApiResponse<List<StaffPickupAssignmentDto>>.SuccessResponse(
-                    myAssignments,
+                return Ok(ApiResponse<PagedResult<StaffPickupAssignmentDto>>.SuccessResponse(
+                    pagedAssignments,
                     pendingOnly ? "My pending pickups retrieved successfully" : "My assignments retrieved successfully"));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse<List<StaffPickupAssignmentDto>>.ErrorResponse(ex.Message));
+                return StatusCode(500, ApiResponse<PagedResult<StaffPickupAssignmentDto>>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("listings")]
         public async Task<ActionResult<PagedResult<RentalListingDto>>> GetRentalListings(
