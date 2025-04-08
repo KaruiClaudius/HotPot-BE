@@ -3,7 +3,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.AspNetCore.Authorization;
@@ -20,17 +19,16 @@ namespace Capstone.HPTY.API.Controllers.Staff
         private readonly IRentOrderService _rentOrderService;
         private readonly IStaffService _staffService;
         private readonly IEquipmentReturnService _equipmentReturnService;
-        private readonly INotificationService _notificationService;
 
         public StaffRentalController(IRentOrderService rentOrderService,
             IStaffService staffService,
-            IEquipmentReturnService equipmentReturnService,
-            INotificationService notificationService)
+            IEquipmentReturnService equipmentReturnService
+            )
         {
             _rentOrderService = rentOrderService;
             _staffService = staffService;
             _equipmentReturnService = equipmentReturnService;
-            _notificationService = notificationService;
+            
         }
 
         [HttpGet("my-assignments")]

@@ -1,33 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Microsoft.AspNetCore.SignalR;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Capstone.HPTY.API.SideServices
 {
-   public class EquipmentStockMonitorService : BackgroundService
+    public class EquipmentStockMonitorService : BackgroundService
     {
         private readonly ILogger<EquipmentStockMonitorService> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IHubContext<EquipmentStockHub> _hubContext;
         private readonly TimeSpan _checkInterval = TimeSpan.FromHours(6); // Check every 6 hours
         private const int DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
         public EquipmentStockMonitorService(
             ILogger<EquipmentStockMonitorService> logger,
-            IServiceProvider serviceProvider,
-            IHubContext<EquipmentStockHub> hubContext)
+            IServiceProvider serviceProvider)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _hubContext = hubContext;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,6 +54,7 @@ namespace Capstone.HPTY.API.SideServices
             using (var scope = _serviceProvider.CreateScope())
             {
                 var equipmentStockService = scope.ServiceProvider.GetRequiredService<IEquipmentStockService>();
+                var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
                 // Check for low stock utensils
                 var lowStockUtensils = await equipmentStockService.GetLowStockUtensilsAsync(DEFAULT_LOW_STOCK_THRESHOLD);
@@ -67,12 +64,11 @@ namespace Capstone.HPTY.API.SideServices
                         utensil.Name, utensil.Quantity);
 
                     // Notify administrators about low stock
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveLowStockAlert",
+                    await notificationService.NotifyLowStock(
                         "Utensil",
                         utensil.Name,
                         utensil.Quantity,
-                        DEFAULT_LOW_STOCK_THRESHOLD,
-                        DateTime.UtcNow);
+                        DEFAULT_LOW_STOCK_THRESHOLD);
                 }
 
                 // Check for unavailable equipment
@@ -83,6 +79,14 @@ namespace Capstone.HPTY.API.SideServices
                 {
                     _logger.LogWarning("Unavailable hotpot detected: {hotpotName}, Series: {series}",
                         hotpot.HotpotName ?? "Unknown", hotpot.SeriesNumber);
+
+                    // Notify about unavailable hotpot
+                    await notificationService.NotifyStatusChange(
+                        "HotPot",
+                        hotpot.HotPotInventoryId,
+                        hotpot.HotpotName ?? $"HotPot #{hotpot.SeriesNumber}",
+                        false,
+                        "Equipment is currently unavailable");
                 }
 
                 var utensils = await equipmentStockService.GetAllUtensilsAsync();
@@ -92,17 +96,18 @@ namespace Capstone.HPTY.API.SideServices
                 {
                     _logger.LogWarning("Unavailable utensil detected: {utensilName}, Quantity: {quantity}",
                         utensil.Name, utensil.Quantity);
+
+                    // Notify about unavailable utensil
+                    await notificationService.NotifyStatusChange(
+                        "Utensil",
+                        utensil.UtensilId,
+                        utensil.Name,
+                        false,
+                        utensil.Quantity == 0 ? "Out of stock" : "Equipment is currently unavailable");
                 }
 
-                // Send a summary notification to administrators
-                if (unavailableHotpots.Any() || unavailableUtensils.Any() || lowStockUtensils.Any())
-                {
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStockSummary",
-                        unavailableHotpots.Count,
-                        unavailableUtensils.Count,
-                        lowStockUtensils.Count(),
-                        DateTime.UtcNow);
-                }
+                // No need for a separate summary notification as the individual notifications will be sufficient
+                // with the new notification system that handles grouping and aggregation
             }
         }
     }

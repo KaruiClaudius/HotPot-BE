@@ -41,11 +41,11 @@ builder.Services.AddSignalR(options => {
 });
 
 // Add logging
-//builder.Logging.AddConsole();
-//builder.Logging.AddDebug();
-//builder.Logging.SetMinimumLevel(LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
 
 
 // Add Email
@@ -114,11 +114,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
-app.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
-app.MapHub<EquipmentHub>("/equipmentHub");
-app.MapHub<EquipmentStockHub>("/equipmentStockHub");
-app.MapHub<ScheduleHub>("/scheduleHub");
-app.MapHub<FeedbackHub>("/feedbackHub");
+
 
 
 

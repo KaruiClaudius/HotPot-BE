@@ -4,6 +4,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,12 +22,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
     public class CustomerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _customerFeedbackService;
-        private readonly IHubContext<FeedbackHub> _feedbackHubContext;
+        private readonly INotificationService _notificationService;
 
-        public CustomerFeedbackController(IFeedbackService customerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext)
+        public CustomerFeedbackController(
+            IFeedbackService customerFeedbackService,
+            INotificationService notificationService)
         {
             _customerFeedbackService = customerFeedbackService;
-            _feedbackHubContext = feedbackHubContext;
+            _notificationService = notificationService;
         }
 
         [HttpGet("{id}")]
@@ -72,12 +75,11 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Get customer name for notification
                 string customerName = feedback.User?.Name ?? "Customer";
 
-                // Notify admins about the new feedback that needs approval via SignalR
-                await _feedbackHubContext.Clients.Group("Admins").SendAsync("ReceiveNewFeedback",
+                // Notify admins about the new feedback that needs approval
+                await _notificationService.NotifyNewFeedback(
                     feedback.FeedbackId,
                     customerName,
-                    feedback.Title,
-                    feedback.CreatedAt);
+                    feedback.Title);
 
                 return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId },
                     ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(feedback, "Feedback created successfully. It will be reviewed by an administrator."));

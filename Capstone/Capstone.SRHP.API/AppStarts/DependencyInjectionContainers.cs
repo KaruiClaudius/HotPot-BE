@@ -9,6 +9,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
@@ -30,7 +31,6 @@ using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Net.payOS;
 
 namespace Capstone.HPTY.API.AppStarts
@@ -129,6 +129,7 @@ namespace Capstone.HPTY.API.AppStarts
 
 
             services.AddSingleton<IEventPublisher, EventPublisher>();
+            services.AddSingleton<IConnectionManager, ConnectionManager>();
 
             // External Services
             services.AddHttpClient();

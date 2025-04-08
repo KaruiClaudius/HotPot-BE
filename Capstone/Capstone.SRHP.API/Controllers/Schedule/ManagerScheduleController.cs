@@ -1,9 +1,11 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 // Use the fully qualified name for System.Security.Claims.ClaimTypes
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Mapster;
@@ -15,24 +17,24 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 {
     [Route("api/manager/schedule")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager")]
     public class ManagerScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
         private readonly IManagerService _managerService;
         private readonly IStaffService _staffService;
-        private readonly IHubContext<ScheduleHub> _scheduleHubContext;
+        private readonly INotificationService _notificationService;
 
         public ManagerScheduleController(
             IScheduleService scheduleService,
             IManagerService managerService,
             IStaffService staffService,
-            IHubContext<ScheduleHub> scheduleHubContext)
+            INotificationService notificationService)
         {
             _scheduleService = scheduleService;
             _managerService = managerService;
             _staffService = staffService;
-            _scheduleHubContext = scheduleHubContext;
+            _notificationService = notificationService;
         }
 
         /// <summary>
@@ -232,29 +234,24 @@ namespace Capstone.HPTY.API.Controllers.Schedule
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<StaffSDto>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
+        public async Task<ActionResult<ApiResponse<StaffSDto>>> AssignStaffWorkDays([FromBody] AssignStaffWorkDaysDto assignDto)
         {
             try
             {
                 // Validate request
                 if (assignDto == null || assignDto.StaffId <= 0)
                 {
-                    return BadRequest("Staff ID is required");
+                    return BadRequest(ApiResponse<StaffSDto>.ErrorResponse("Staff ID is required"));
                 }
 
                 // Note: We're allowing WorkDays.None as a valid value to clear the schedule
-
                 var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
 
                 // Notify the staff member about their schedule update
-                await _scheduleHubContext.Clients.Group($"User_{staff.UserId}").SendAsync(
-                    "ReceiveScheduleUpdate",
-                    staff.UserId,
-                    DateTime.Now);
+                await _notificationService.NotifyScheduleUpdate(staff.UserId, DateTime.Now);
 
-                // Also notify the Staff group
-                await _scheduleHubContext.Clients.Group("Staff").SendAsync(
-                    "ReceiveAllScheduleUpdates");
+                // Also notify all staff about schedule updates
+                await _notificationService.NotifyAllScheduleUpdates();
 
                 // Manually map the staff entity to StaffSDto
                 var staffDto = new StaffSDto
@@ -265,15 +262,16 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     DaysOfWeek = staff.WorkDays.GetValueOrDefault()
                 };
 
-                return Ok(staffDto);
+                return Ok(ApiResponse<StaffSDto>.SuccessResponse(
+                    staffDto, $"Work days assigned to {staff.Name} successfully"));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(ApiResponse<StaffSDto>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, ApiResponse<StaffSDto>.ErrorResponse(ex.Message));
             }
         }
 

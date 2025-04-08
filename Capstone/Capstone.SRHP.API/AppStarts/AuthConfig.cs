@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Capstone.HPTY.API.AppStarts
 {
@@ -41,9 +41,8 @@ namespace Capstone.HPTY.API.AppStarts
                                 // If the request is for our hub...
                                 var path = context.HttpContext.Request.Path;
                                 if (!string.IsNullOrEmpty(accessToken) &&
-                                    (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/notificationHub")
-                                    || path.StartsWithSegments("/equipmentConditionHub") || path.StartsWithSegments("/equipmentHub") || path.StartsWithSegments("/equipmentStockHub")
-                                    || path.StartsWithSegments("/scheduleHub") || path.StartsWithSegments("/feedbackHub")
+                                    (path.StartsWithSegments("/chatHub") 
+                                    || path.StartsWithSegments("/notificationHub")                       
                                     ))
                                 {
                                     // Read the token out of the query string

@@ -1,5 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Exceptions;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
@@ -139,7 +141,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
         [HttpPost("order/{id}/extend")]
-        public async Task<IActionResult> ExtendRentalPeriod(int id, [FromBody] ExtendRentalRequest request)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ApiResponse<bool>>> ExtendRentalPeriod(int id, [FromBody] ExtendRentalRequest request)
         {
             try
             {
@@ -147,7 +155,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized(ApiResponse<bool>.ErrorResponse("User ID not found in claims"));
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -164,19 +172,19 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     id,
                     request.NewExpectedReturnDate);
 
-                return Ok(new { message = "Rental period extended successfully" });
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Rental period extended successfully"));
             }
             catch (NotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
             }
         }
     }

@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
@@ -24,7 +25,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
         private readonly IRentOrderService _rentOrderService;
         private readonly IStaffService _staffService;
         private readonly IEquipmentReturnService _equipmentReturnService;
-
         private readonly INotificationService _notificationService;
 
         public ManagerRentalController(
@@ -166,7 +166,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> AdjustReturnDateForException(int id, [FromBody] UpdateRentOrderDetailRequest request)
+        public async Task<ActionResult<ApiResponse<bool>>> AdjustReturnDateForException(int id, [FromBody] UpdateRentOrderDetailRequest request)
         {
             try
             {
@@ -185,19 +185,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         parsedDate);
                 }
 
-                return Ok(new { message = "Rental detail updated successfully" });
+                return Ok(ApiResponse<bool>.SuccessResponse(result, "Rental detail updated successfully"));
             }
             catch (NotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
             }
         }
 

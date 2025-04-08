@@ -4,11 +4,10 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
-using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
@@ -18,15 +17,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerReplacementController : ControllerBase
     {
         private readonly IReplacementRequestService _replacementService;
-        private readonly IHubContext<EquipmentHub> _equipmentHubContext;
+        private readonly INotificationService _notificationService;
 
         public ManagerReplacementController(
             IReplacementRequestService replacementService,
-            IHubContext<EquipmentHub> equipmentHubContext)
+            INotificationService notificationService)
         {
             _replacementService = replacementService;
-            _equipmentHubContext = equipmentHubContext;
+            _notificationService = notificationService;
         }
+
 
         #region Replacement Request Management
 
@@ -77,7 +77,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> ReviewReplacementRequest(
-            int id, [FromBody] ReviewReplacementRequestDto reviewDto)
+           int id, [FromBody] ReviewReplacementRequestDto reviewDto)
         {
             try
             {
@@ -87,19 +87,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var dto = MapToDetailDto(request);
 
                 // Notify staff about the review decision
-                await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveReplacementReview",
-                    id,
-                    reviewDto.IsApproved,
-                    reviewDto.ReviewNotes);
+                await _notificationService.NotifyReplacementStatusChangeAsync(request);
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0)
                 {
-                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementUpdate",
-                        id,
-                        dto.EquipmentName,
-                        reviewDto.IsApproved ? "approved" : "rejected",
-                        reviewDto.ReviewNotes);
+                    await _notificationService.NotifyCustomerAboutReplacementAsync(request);
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
@@ -128,7 +121,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> AssignStaffToReplacement(
-            int id, [FromBody] AssignStaffRequest assignDto)
+             int id, [FromBody] AssignStaffRequest assignDto)
         {
             try
             {
@@ -138,28 +131,23 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var dto = MapToDetailDto(request);
 
                 // Notify staff about the assignment
-                await _equipmentHubContext.Clients.Group("Staff").SendAsync("ReceiveAssignmentUpdate",
-                    id,
-                    assignDto.StaffId,
-                    dto.EquipmentName,
-                    dto.Status.ToString(),
-                    DateTime.UtcNow);
+                await _notificationService.NotifyReplacementStatusChangeAsync(request);
 
                 // Notify the specific staff member who was assigned
-                await _equipmentHubContext.Clients.User(assignDto.StaffId.ToString()).SendAsync("ReceiveNewAssignment",
-                    id,
-                    dto.EquipmentName,
-                    dto.RequestReason,
-                    dto.Status.ToString());
+                if (request.AssignedStaffId.HasValue)
+                {
+                    await _notificationService.NotifyStaffReplacementAssignmentAsync(
+                        request.AssignedStaffId.Value,
+                        request.ReplacementRequestId,
+                        dto.EquipmentName,
+                        dto.RequestReason,
+                        dto.Status.ToString());
+                }
 
                 // Notify the customer if applicable
-                if (dto.CustomerId!=0)
+                if (dto.CustomerId != 0)
                 {
-                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementUpdate",
-                        id,
-                        dto.EquipmentName,
-                        "in progress",
-                        "A staff member has been assigned to handle your replacement request.");
+                    await _notificationService.NotifyCustomerAboutReplacementAsync(request);
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
@@ -193,7 +181,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 }
 
                 // Send a direct notification to the customer
-                await _equipmentHubContext.Clients.User(request.CustomerId.ToString()).SendAsync("ReceiveDirectNotification",
+                await _notificationService.NotifyCustomerDirectlyAsync(
+                    request.CustomerId,
                     request.ConditionLogId,
                     request.Message,
                     request.EstimatedResolutionTime);

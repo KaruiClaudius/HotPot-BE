@@ -1,31 +1,27 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Capstone.HPTY.ServiceLayer.Extensions;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/equipment-condition")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager")]
     public class ManagerEquipmentConditionsController : ControllerBase
     {
         private readonly IEquipmentConditionService _equipmentConditionService;
-        private readonly IHubContext<EquipmentConditionHub> _hubContext;
+        private readonly INotificationService _notificationService;
 
         public ManagerEquipmentConditionsController(
             IEquipmentConditionService equipmentConditionService,
-            IHubContext<EquipmentConditionHub> hubContext)
+            INotificationService notificationService)
         {
             _equipmentConditionService = equipmentConditionService;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
         }
 
         [HttpPost]
@@ -100,8 +96,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<EquipmentConditionDetailDto>>> UpdateConditionStatus(
-    int id,
-    [FromBody] UpdateConditionStatusRequest request)
+            int id,
+            [FromBody] UpdateConditionStatusRequest request)
         {
             try
             {
@@ -109,14 +105,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (result == null)
                     return NotFound(ApiResponse<EquipmentConditionDetailDto>.ErrorResponse($"Condition log with ID {id} not found"));
 
-                // Notify administrators about the status update
-                await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusUpdate",
+                // Notify administrators about the status update using the new notification service
+                await _notificationService.NotifyEquipmentStatusChange(
                     id,
                     result.EquipmentType,
                     result.EquipmentName,
                     result.Name,
-                    request.Status.ToString(),
-                    DateTime.UtcNow);
+                    request.Status.ToString());
 
                 return Ok(ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Condition status updated successfully"));
             }
@@ -126,6 +121,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+
         [HttpPost("notify-administrators")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -133,15 +129,14 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
-                // Notify administrators directly with the provided information
-                await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveDirectNotification",
+                // Notify administrators using the new notification service
+                await _notificationService.NotifyConditionIssue(
                     request.ConditionLogId,
                     request.EquipmentType,
                     request.EquipmentName,
                     request.IssueName,
                     request.Description,
-                    request.ScheduleType.ToString(),
-                    DateTime.UtcNow);
+                    request.ScheduleType.ToString());
 
                 return Ok(ApiResponse<bool>.SuccessResponse(true, "Administrators notified successfully"));
             }
