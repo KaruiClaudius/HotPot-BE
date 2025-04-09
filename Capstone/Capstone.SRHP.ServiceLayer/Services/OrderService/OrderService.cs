@@ -1343,7 +1343,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                 }
                 // If order is moving from Pending to Processing (payment confirmed)
-                else if (order.Status == OrderStatus.Processing && status == OrderStatus.Processing)
+                else if (order.Status == OrderStatus.Processing)
                 {
                     // Finalize inventory deduction
                     await FinalizeInventoryDeduction(order);
