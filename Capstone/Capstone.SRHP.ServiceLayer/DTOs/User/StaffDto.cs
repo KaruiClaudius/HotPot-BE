@@ -25,5 +25,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.User
         public string Email { get; set; }
         public string Phone { get; set; }
         public bool IsAvailable { get; set; }
+        public int AssignmentCount { get; set; }
     }
 }
