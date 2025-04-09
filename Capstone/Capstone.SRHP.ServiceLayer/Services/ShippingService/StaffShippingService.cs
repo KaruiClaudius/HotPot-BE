@@ -156,6 +156,62 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             }
         }
 
+        public async Task<ShippingListDto> UpdateShippingStatusAsync(int shippingOrderId, string? notes = null)
+        {
+            try
+            {
+                _logger.LogInformation("Updating shipping status for order ID: {ShippingOrderId}", shippingOrderId);
+
+                // Find the shipping order with its associated order
+                var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .IncludeNested(query => query.Include(so => so.Order))
+                    .FirstOrDefaultAsync(so => so.ShippingOrderId == shippingOrderId);
+
+                if (shippingOrder == null)
+                {
+                    throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+                }
+
+                // Update shipping order status
+                shippingOrder.IsDelivered = true;
+
+                // Set delivery time if not already set
+                if (shippingOrder.DeliveryTime == null)
+                {
+                    shippingOrder.DeliveryTime = DateTime.UtcNow;
+                }
+
+                // Update notes if provided
+                if (!string.IsNullOrWhiteSpace(notes))
+                {
+                    shippingOrder.DeliveryNotes = notes;
+                }
+
+                // Update the associated order status to Delivered
+                if (shippingOrder.Order != null)
+                {
+                    shippingOrder.Order.Status = OrderStatus.Delivered;
+                    shippingOrder.Order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(shippingOrder.Order, shippingOrder.OrderId);
+                }
+
+                // Save changes
+                await _unitOfWork.Repository<ShippingOrder>().Update(shippingOrder, shippingOrderId);
+                await _unitOfWork.CommitAsync();
+
+                // Fetch the updated shipping order with all details
+                return await GetShippingDetailAsync(shippingOrderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating shipping status for order ID: {ShippingOrderId}", shippingOrderId);
+                throw;
+            }
+        }
+
+
+
+
         // Helper method to map ShippingOrder entity to ShippingListDto
         private ShippingListDto MapToShippingListDto(ShippingOrder shippingOrder)
         {
@@ -257,9 +313,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             {
                 _logger.LogInformation("Saving proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
 
-                // Find the shipping order
+                // Find the shipping order with its associated order
                 var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                    .FindAsync(so => so.ShippingOrderId == shippingOrderId);
+                    .IncludeNested(query => query.Include(so => so.Order))
+                    .FirstOrDefaultAsync(so => so.ShippingOrderId == shippingOrderId);
 
                 if (shippingOrder == null)
                 {
@@ -292,7 +349,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     shippingOrder.DeliveryTime = DateTime.UtcNow;
                 }
 
+                // Update the associated order status to Delivered
+                if (shippingOrder.Order != null)
+                {
+                    shippingOrder.Order.Status = OrderStatus.Delivered;
+                    shippingOrder.Order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(shippingOrder.Order, shippingOrder.OrderId);
+                }
+
                 // Save changes
+                await _unitOfWork.Repository<ShippingOrder>().Update(shippingOrder, shippingOrderId);
                 await _unitOfWork.CommitAsync();
 
                 // Return response
