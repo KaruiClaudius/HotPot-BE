@@ -604,7 +604,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 throw new ValidationException($"Duplicate serial numbers found: {string.Join(", ", duplicates)}");
             }
 
-            // Check if any of these serial numbers already exist for this hotpot
+            // Check if any of these serial numbers already exist for THIS SPECIFIC hotpot type
             var existingSerialNumbers = await _unitOfWork.Repository<HotPotInventory>()
                 .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && seriesNumbers.Contains(i.SeriesNumber))
                 .Select(i => i.SeriesNumber)
@@ -612,7 +612,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             if (existingSerialNumbers.Any())
             {
-                throw new ValidationException($"Serial numbers already exist for this hotpot: {string.Join(", ", existingSerialNumbers)}");
+                throw new ValidationException($"Serial numbers already exist for this hotpot type: {string.Join(", ", existingSerialNumbers)}");
             }
         }
 
