@@ -1,27 +1,40 @@
-﻿using Capstone.HPTY.API.SideServices;
+﻿using Capstone.HPTY.API.Controllers.OrderHistory;
+using Capstone.HPTY.API.SideServices;
 using Capstone.HPTY.ServiceLayer.DTOs.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using static Capstone.HPTY.RepositoryLayer.Utils.AuthenTools;
 
 namespace Capstone.HPTY.API.Hubs
 {
     public class NotificationHub : Hub<INotificationClient>
     {
         private readonly IConnectionManager _connectionManager;
+        private readonly ILogger<INotificationClient> _logger;
 
-        public NotificationHub(IConnectionManager connectionManager)
+        public NotificationHub(IConnectionManager connectionManager, ILogger<INotificationClient> logger)
         {
             _connectionManager = connectionManager;
+            _logger = logger;
         }
 
         public async Task RegisterConnection()
         {
             try
             {
+                // Log all claims for debugging
+                //var allClaims = Context.User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+                //_logger.LogInformation("Claims in token: {@Claims}", allClaims);
+
                 // Extract userId from JWT claims
+                var roleClaim = Context.User.FindFirst("role")
+                    ?? Context.User.FindFirst(ClaimTypes.Role)
+                    ?? Context.User.Claims.FirstOrDefault(c => c.Type.Contains("role", StringComparison.OrdinalIgnoreCase));
                 var userIdClaim = Context.User.FindFirst("id");
-                var roleClaim = Context.User.FindFirst("role");
+
+             //   _logger.LogInformation("User ID claim: {UserIdClaim}, Role claim: {RoleClaim}",
+             //userIdClaim?.Value, roleClaim?.Value);
 
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {

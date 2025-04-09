@@ -165,6 +165,4 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Notification
         public string CustomerName { get; set; }
     }
 
-    // These were duplicates and have been removed:
-    // - ReplacementStatusChangeDto (use ReplacementStatusUpdateDto instead)
 }
