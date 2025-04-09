@@ -205,6 +205,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 if (hotpot == null)
                     throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
+
+                if (entity.Status == MaintenanceStatus.Completed)
+                {
+                    hotpot.Status = HotpotStatus.Available;
+                    await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, id);
+                }
             }
 
             // Validate Utensil exists if changed
