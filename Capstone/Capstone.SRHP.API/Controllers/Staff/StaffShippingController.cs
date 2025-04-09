@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Exceptions;
+﻿using System.Security.Claims;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
@@ -26,16 +27,22 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
 
         /// Get all shipping orders assigned to a staff member    
-        [HttpGet("list/{staffId}")]
+        [HttpGet("list")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<ShippingListDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ShippingListDto>>>> GetShippingList(int staffId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<ShippingListDto>>>> GetShippingList()
         {
+            var userIdClaim = User.FindFirstValue("id");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+
+            {
+                return Unauthorized(new { message = "User ID not found in token" });
+            }
             try
             {
-                _logger.LogInformation("Staff {StaffId} retrieving shipping list", staffId);
+                _logger.LogInformation("Staff {StaffId} retrieving shipping list", userId);
 
-                var shippingList = await _staffShippingService.GetShippingListAsync(staffId);
+                var shippingList = await _staffShippingService.GetShippingListAsync(userId);
 
                 return Ok(new ApiResponse<IEnumerable<ShippingListDto>>
                 {
@@ -46,7 +53,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving shipping list for staff ID: {StaffId}", staffId);
+                _logger.LogError(ex, "Error retrieving shipping list for staff ID: {StaffId}", userId);
 
                 return BadRequest(new ApiErrorResponse
                 {
