@@ -9,11 +9,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 {
     public class UpdateIngredientRequest
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
-        public string ImageURL { get; set; }
+        public string? ImageURL { get; set; }
 
         [Range(0, int.MaxValue)]
         public int? MinStockLevel { get; set; }

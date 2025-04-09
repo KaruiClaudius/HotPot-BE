@@ -10,16 +10,16 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Utensil
     public class UpdateUtensilRequest
     {
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(50)]
-        public string Material { get; set; }
+        public string? Material { get; set; }
 
         [StringLength(1000)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [StringLength(2000)]
-        public string ImageURL { get; set; }
+        public string? ImageURL { get; set; }
 
         [Range(0.01, double.MaxValue)]
         public decimal? Price { get; set; }

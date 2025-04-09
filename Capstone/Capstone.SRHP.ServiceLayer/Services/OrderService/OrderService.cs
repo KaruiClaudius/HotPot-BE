@@ -259,33 +259,48 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
                     // Check if user already has a pending order (cart)
+                    // Use a simpler query to avoid duplicate entries
                     var existingPendingOrder = await _unitOfWork.Repository<Order>()
-                        .IncludeNested(query =>
-                            query.Include(o => o.User)
-                                 .Include(o => o.Discount)
-                                 .Include(o => o.Payments)
-                                 .Include(o => o.SellOrder)
-                                     .ThenInclude(so => so.SellOrderDetails)
-                                     .ThenInclude(sod => sod.Ingredient)
-                                 .Include(o => o.SellOrder)
-                                     .ThenInclude(so => so.SellOrderDetails)
-                                     .ThenInclude(sod => sod.Customization)
-                                 .Include(o => o.SellOrder)
-                                     .ThenInclude(so => so.SellOrderDetails)
-                                     .ThenInclude(sod => sod.Combo)
-                                 .Include(o => o.RentOrder)
-                                     .ThenInclude(ro => ro.RentOrderDetails)
-                                 .Include(o => o.SellOrder)
-                                     .ThenInclude(ro => ro.SellOrderDetails)
-                                         .ThenInclude(od => od.Utensil)
-                                 .Include(o => o.RentOrder)
-                                     .ThenInclude(ro => ro.RentOrderDetails)
-                                         .ThenInclude(rod => rod.HotpotInventory)
-                                            .ThenInclude(hi => hi.Hotpot))
+                        .Include(o => o.User)
+                        .Include(o => o.Discount)
+                        .Include(o => o.Payments)
+                        .Include(o => o.SellOrder)
+                        .Include(o => o.RentOrder)
                         .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
 
                     if (existingPendingOrder != null)
                     {
+                        // Load the details separately to avoid duplicates
+                        if (existingPendingOrder.SellOrder != null)
+                        {
+                            // Load SellOrderDetails with a single query
+                            var sellOrderDetails = await _unitOfWork.Repository<SellOrderDetail>()
+                                .AsQueryable()
+                                .Include(d => d.Ingredient)
+                                .Include(d => d.Utensil)
+                                .Include(d => d.Customization)
+                                .Include(d => d.Combo)
+                                .Where(d => d.OrderId == existingPendingOrder.OrderId && !d.IsDelete)
+                                .ToListAsync();
+
+                            // Assign the loaded details to the order
+                            existingPendingOrder.SellOrder.SellOrderDetails = sellOrderDetails;
+                        }
+
+                        if (existingPendingOrder.RentOrder != null)
+                        {
+                            // Load RentOrderDetails with a single query
+                            var rentOrderDetails = await _unitOfWork.Repository<RentOrderDetail>()
+                                .AsQueryable()
+                                .Include(d => d.HotpotInventory)
+                                    .ThenInclude(hi => hi.Hotpot)
+                                .Where(d => d.OrderId == existingPendingOrder.OrderId && !d.IsDelete)
+                                .ToListAsync();
+
+                            // Assign the loaded details to the order
+                            existingPendingOrder.RentOrder.RentOrderDetails = rentOrderDetails;
+                        }
+
                         // User has an existing pending order - add items to it
                         return await AddToExistingOrderAsync(existingPendingOrder, request, userId);
                     }
@@ -490,9 +505,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Add to order's rent order details
                 order.RentOrder.RentOrderDetails.Add(orderDetail);
 
-                // Update subtotal
-                order.RentOrder.SubTotal += hotpot.Price;
-
                 // Calculate hotpot deposit (70% of hotpot price)
                 additionalHotpotDeposit += hotpot.Price * 0.7m;
             }
@@ -562,9 +574,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SellOrder.SellOrderDetails.Add(orderDetail);
             }
 
-            // Update subtotal
-            order.SellOrder.SubTotal += latestPrice * (int)item.Quantity;
-
             // Update order flags
             order.HasSellItems = true;
 
@@ -622,8 +631,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SellOrder.SellOrderDetails.Add(orderDetail);
             }
 
-            // Update subtotal
-            order.SellOrder.SubTotal += utensil.Price * (int)item.Quantity;
 
             // Update order flags
             order.HasSellItems = true;
@@ -686,9 +693,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SellOrder.SellOrderDetails.Add(orderDetail);
             }
 
-            // Update subtotal
-            order.SellOrder.SubTotal += customization.TotalPrice * (int)item.Quantity;
-
             // Update order flags
             order.HasSellItems = true;
 
@@ -743,8 +747,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SellOrder.SellOrderDetails.Add(orderDetail);
             }
 
-            // Update subtotal
-            order.SellOrder.SubTotal += combo.BasePrice * (int)item.Quantity;
 
             // Update order flags
             order.HasSellItems = true;
@@ -763,9 +765,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Calculate sell order subtotal
             if (order.SellOrder != null)
             {
-                // Recalculate sell order subtotal to ensure accuracy
+                // Get distinct details to avoid counting duplicates
+                var distinctDetails = order.SellOrder.SellOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .GroupBy(d => d.SellOrderDetailId)
+                    .Select(g => g.First())
+                    .ToList();
+
+                // Log the details for debugging
+                _logger.LogInformation($"Order {order.OrderId} has {distinctDetails.Count} distinct sell order details");
+
+                // Check for duplicates
+                var duplicateIds = order.SellOrder.SellOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .GroupBy(d => d.SellOrderDetailId)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                if (duplicateIds.Any())
+                {
+                    _logger.LogWarning($"Found {duplicateIds.Count} duplicate sell detail IDs in order {order.OrderId}: {string.Join(", ", duplicateIds)}");
+                }
+
+                // Recalculate sell order subtotal using distinct details
                 decimal sellSubTotal = 0;
-                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                foreach (var detail in distinctDetails)
                 {
                     sellSubTotal += detail.UnitPrice * detail.Quantity;
                 }
@@ -777,9 +802,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Calculate rent order subtotal
             if (order.RentOrder != null)
             {
-                // Recalculate rent order subtotal to ensure accuracy
+                // Get distinct details to avoid counting duplicates
+                var distinctDetails = order.RentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete)
+                    .GroupBy(d => d.RentOrderDetailId)
+                    .Select(g => g.First())
+                    .ToList();
+
+                // Recalculate rent order subtotal using distinct details
                 decimal rentSubTotal = 0;
-                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                foreach (var detail in distinctDetails)
                 {
                     rentSubTotal += detail.RentalPrice * detail.Quantity;
                 }
