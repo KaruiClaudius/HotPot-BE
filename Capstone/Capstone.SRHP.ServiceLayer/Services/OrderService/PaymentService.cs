@@ -60,6 +60,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, $"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}", null);
                 }
 
+                if (order.HasRentItems)
+                {
+                    // Get current date without time component
+                    DateTime today = DateTime.UtcNow.Date.AddHours(7);
+
+                    // Check if provided date is valid (in the future)
+                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value.Date <= today)
+                    {
+                        throw new ValidationException("Expected return date must be in the future");
+                    }
+                }
+
                 // 3. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
@@ -69,7 +81,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     ExpectedReturnDate = expectedReturnDate
                 };
 
-                await OrderUpdateAsync(orderId, updateRequest);
+                try
+                {
+                    await OrderUpdateAsync(orderId, updateRequest);
+                }
+                catch (ValidationException ex)
+                {
+                    return new Response(-1, ex.Message, null);
+                }
 
                 // 4. Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
@@ -142,7 +161,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Error processing online payment for order {OrderId}", orderId);
-                return new Response(-1, "fail", null);
+                return new Response(-1, $"{exception.Message}", null);
             }
         }
 
@@ -1364,20 +1383,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (!string.IsNullOrWhiteSpace(request.Notes))
                     order.Notes = request.Notes;
 
-                // Update expected return date if provided and order has rental items
-                if (request.ExpectedReturnDate.HasValue && order.RentOrder != null)
+                // Update rental dates if provided and order has rental items
+                if (order.RentOrder != null && request.ExpectedReturnDate.HasValue)
                 {
-                    // Validate that the expected return date is in the future
-                    if (request.ExpectedReturnDate.Value <= DateTime.UtcNow.AddHours(7))
+
+                    DateTime today = DateTime.UtcNow.AddHours(7);
+                    order.RentOrder.RentalStartDate = today;
+                    DateTime expectedReturnDate = request.ExpectedReturnDate.Value.Date;
+
+                    // Validate expected return date is after rental start date
+                    if (expectedReturnDate <= today)
+                    {
                         throw new ValidationException("Expected return date must be in the future");
+                    }
 
-                    // Validate that the expected return date is after the rental start date
-                    if (request.ExpectedReturnDate.Value <= order.RentOrder.RentalStartDate)
-                        throw new ValidationException("Expected return date must be after the rental start date");
-
-
+                    if (request.ExpectedReturnDate.HasValue &&
+                        request.ExpectedReturnDate.Value.Date <= order.RentOrder.RentalStartDate.Date)
+                    {
+                        throw new ValidationException("Expected return date must be at least one day after rental start date");
+                    }
                     order.RentOrder.ExpectedReturnDate = request.ExpectedReturnDate.Value;
-                    order.RentOrder.SetUpdateDate();
+                    await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
                 }
 
                 // Update discount if provided
@@ -1424,15 +1450,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, id);
                 await _unitOfWork.CommitAsync();
-
-                // Update payment amount if exists
-                var mainPayment = await GetPaymentByOrderIdAsync(id);
-                if (mainPayment != null && mainPayment.Status == PaymentStatus.Pending)
-                {
-                    mainPayment.Price = order.TotalPrice;
-                    await _unitOfWork.Repository<Payment>().Update(mainPayment, mainPayment.PaymentId);
-                    await _unitOfWork.CommitAsync();
-                }
 
                 return await GetOrderByIdAsync(id);
             }

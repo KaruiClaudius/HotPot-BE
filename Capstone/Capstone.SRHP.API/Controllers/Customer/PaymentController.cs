@@ -35,6 +35,11 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var currentUserPhone = User.FindFirstValue("phone");
                 var currentUserName = User.FindFirstValue("name");
                 var userIdValue = User.FindFirstValue("id");
+                if (request.DiscountId <= 0)
+                {
+                    request.DiscountId = null;
+                }
+
                 if (userIdValue == null)
                 {
                     return BadRequest(new { message = "User ID not found" });
