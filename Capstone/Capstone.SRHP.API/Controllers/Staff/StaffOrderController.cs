@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using System.Security.Claims;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
@@ -26,15 +27,21 @@ namespace Capstone.HPTY.API.Controllers.Staff
             _logger = logger;
         }
 
-        [HttpGet("assigned/{staffId}")]
+        [HttpGet("assigned")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetAssignedOrders(int staffId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetAssignedOrders()
         {
+            var userIdClaim = User.FindFirstValue("id");
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+
+            {
+                return Unauthorized(new { message = "User ID not found in token" });
+            }
             try
             {
-                _logger.LogInformation("Staff {StaffId} retrieving assigned orders", staffId);
+                _logger.LogInformation("Staff {StaffId} retrieving assigned orders", userId);
 
-                var orders = await _staffOrderService.GetAssignedOrdersAsync(staffId);
+                var orders = await _staffOrderService.GetAssignedOrdersAsync(userId);
                 var orderDtos = orders.Select(MapToStaffOrderDto).ToList();
 
                 return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
@@ -46,7 +53,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving assigned orders for staff ID: {StaffId}", staffId);
+                _logger.LogError(ex, "Error retrieving assigned orders for staff ID: {StaffId}", userId);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
