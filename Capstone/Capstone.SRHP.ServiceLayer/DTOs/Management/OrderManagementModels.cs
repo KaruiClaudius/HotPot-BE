@@ -23,7 +23,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     {
         public bool IsDelivered { get; set; }
 
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class UpdateDeliveryTimeRequest
@@ -142,14 +142,16 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     }
     public class OrderStatusUpdateDTO
     {
-        public string OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public int OrderId { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 
     public class OrderDetailDTO
     {
-        public string OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public int OrderId { get; set; }
         public string Address { get; set; }
         public string Notes { get; set; }
         public decimal TotalPrice { get; set; }
@@ -180,7 +182,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     public class DeliveryStatusUpdateDTO
     {
         public int ShippingOrderId { get; set; }
-        public string OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public int OrderId { get; set; }
+
         public bool IsDelivered { get; set; }
         public DateTime? DeliveryTime { get; set; }
         public string DeliveryNotes { get; set; }
