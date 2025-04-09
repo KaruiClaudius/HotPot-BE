@@ -62,16 +62,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (order.HasRentItems)
                 {
-                    // Get current date without time component
-                    DateTime today = DateTime.UtcNow.Date.AddHours(7);
+                    // Get current time with offset (local current time)
+                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
 
-                    // Check if provided date is valid (in the future)
-                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value.Date <= today)
+                    // Check if provided date is valid (future compared to current time)
+                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
                     {
                         throw new ValidationException("Expected return date must be in the future");
                     }
                 }
-
                 // 3. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
