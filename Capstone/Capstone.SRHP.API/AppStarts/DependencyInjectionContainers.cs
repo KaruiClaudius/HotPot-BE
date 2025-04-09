@@ -2,12 +2,14 @@
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
@@ -29,7 +31,6 @@ using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Net.payOS;
 
 namespace Capstone.HPTY.API.AppStarts
@@ -128,6 +129,10 @@ namespace Capstone.HPTY.API.AppStarts
             // Email Service
             services.AddTransient<IEmailSender, EmailService>();
             services.AddScoped<EmailService>();
+
+
+            services.AddSingleton<IEventPublisher, EventPublisher>();
+            services.AddSingleton<IConnectionManager, ConnectionManager>();
 
             // External Services
             services.AddHttpClient();

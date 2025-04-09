@@ -2,6 +2,7 @@
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Microsoft.AspNetCore.SignalR;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,11 +12,13 @@ namespace Capstone.HPTY.API.Hubs
     public class ChatHub : Hub
     {
         private readonly IChatService _chatService;
-        private static Dictionary<int, string> _userConnections = new Dictionary<int, string>();
+        private readonly ILogger<ChatHub> _logger;
+        private static ConcurrentDictionary<int, string> _userConnections = new ConcurrentDictionary<int, string>();
 
-        public ChatHub(IChatService chatService)
+        public ChatHub(IChatService chatService, ILogger<ChatHub> logger)
         {
             _chatService = chatService;
+            _logger = logger;
         }
 
         public override async Task OnConnectedAsync()
@@ -29,39 +32,43 @@ namespace Capstone.HPTY.API.Hubs
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            Console.WriteLine($"Client disconnected: {Context.ConnectionId}");
+            _logger.LogInformation($"Client disconnected: {Context.ConnectionId}");
             if (exception != null)
             {
-                Console.WriteLine($"Disconnection reason: {exception.Message}");
-                Console.WriteLine(exception.StackTrace);
+                _logger.LogError(exception, "Disconnection error");
             }
 
             // Find and remove the disconnected user
             var userToRemove = _userConnections.FirstOrDefault(x => x.Value == Context.ConnectionId);
             if (userToRemove.Key != 0)
             {
-                _userConnections.Remove(userToRemove.Key);
-                await Clients.All.SendAsync("UserDisconnected", userToRemove.Key);
+                // This is the correct way to remove from a ConcurrentDictionary
+                if (_userConnections.TryRemove(userToRemove.Key, out _))
+                {
+                    await Clients.All.SendAsync("UserDisconnected", userToRemove.Key);
+                    _logger.LogInformation("User {UserId} disconnected and removed from connection tracking", userToRemove.Key);
+                }
             }
 
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task RegisterConnection()
+        public async Task RegisterUserConnection()
         {
             try
             {
                 // Extract userId from JWT claims
-                var userIdClaim = Context.User.FindFirst("uid");
+                var userIdClaim = Context.User.FindFirst("id");
 
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
+                    _logger.LogWarning("Failed connection attempt: User ID not found or invalid");
                     await Clients.Caller.SendAsync("ChatError", "User ID not found or invalid");
                     return;
                 }
 
                 // Store the connection ID with the user ID
-                _userConnections[userId] = Context.ConnectionId;
+                _userConnections.AddOrUpdate(userId, Context.ConnectionId, (_, _) => Context.ConnectionId);
 
                 // Get the user's role from the Context
                 var userRole = Context.User.FindFirst("role")?.Value ?? "Customer";
@@ -70,19 +77,22 @@ namespace Capstone.HPTY.API.Hubs
                 if (userRole.ToLower() == "manager" || userRole.ToLower() == "admin")
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
+                    _logger.LogInformation("Manager/Admin {UserId} connected with connection {ConnectionId}",
+                        userId, Context.ConnectionId);
                 }
                 else
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Customers");
+                    _logger.LogInformation("Customer {UserId} connected with connection {ConnectionId}",
+                        userId, Context.ConnectionId);
                 }
 
-                await Clients.Caller.SendAsync("ConnectionRegistered", userId);
+                await Clients.Caller.SendAsync("UserConnectionRegistered", userId);
             }
             catch (Exception ex)
             {
                 // Log the exception
-                Console.Error.WriteLine($"Error in RegisterConnection: {ex.Message}");
-                Console.Error.WriteLine(ex.StackTrace);
+                _logger.LogError(ex, "Error in RegisterConnection for connection {ConnectionId}", Context.ConnectionId);
 
                 // Send a more detailed error to the client
                 await Clients.Caller.SendAsync("ChatError", $"Registration error: {ex.Message}");

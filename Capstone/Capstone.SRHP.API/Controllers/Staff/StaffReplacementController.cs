@@ -5,6 +5,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.AspNetCore.Authorization;
@@ -21,16 +22,16 @@ namespace Capstone.HPTY.API.Controllers.Staff
     {
         private readonly IReplacementRequestService _replacementService;
         private readonly IUserService _userService;
-        private readonly IHubContext<EquipmentHub> _equipmentHubContext;
+        private readonly INotificationService _notificationService;
 
         public StaffReplacementController(
             IReplacementRequestService replacementService,
             IUserService userService,
-            IHubContext<EquipmentHub> equipmentHubContext)
+            INotificationService notificationService)
         {
             _replacementService = replacementService;
             _userService = userService;
-            _equipmentHubContext = equipmentHubContext;
+            _notificationService = notificationService;
         }
 
         #region Assigned Replacements
@@ -123,9 +124,10 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
         [HttpPost("{id}/verify")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> VerifyEquipmentFaulty(
             int id, [FromBody] VerifyEquipmentFaultyDto verifyDto)
         {
@@ -158,22 +160,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 var dto = MapToDetailDto(updatedRequest);
 
                 // Notify managers about the verification
-                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveEquipmentVerification",
-                    id,
-                    dto.EquipmentName,
-                    verifyDto.IsFaulty,
-                    verifyDto.VerificationNotes,
-                    staff.UserId,
-                    $"{staff.Name}");
+                await _notificationService.NotifyReplacementStatusChangeAsync(updatedRequest);
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0)
                 {
-                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveEquipmentVerification",
-                        id,
-                        dto.EquipmentName,
-                        verifyDto.IsFaulty,
-                        verifyDto.VerificationNotes);
+                    await _notificationService.NotifyCustomerAboutReplacementAsync(updatedRequest);
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
@@ -187,11 +179,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
         [HttpPut("{id}/complete")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> CompleteReplacement(
-            int id, [FromBody] CompleteReplacementDto completeDto)
+           int id, [FromBody] CompleteReplacementDto completeDto)
         {
             try
             {
@@ -229,20 +222,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 var dto = MapToDetailDto(updatedRequest);
 
                 // Notify managers about the completion
-                await _equipmentHubContext.Clients.Group("Managers").SendAsync("ReceiveReplacementComplete",
-                    id,
-                    dto.EquipmentName,
-                    completeDto.CompletionNotes,
-                    staff.UserId,
-                    $"{staff.Name}");
+                await _notificationService.NotifyReplacementStatusChangeAsync(updatedRequest);
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0)
                 {
-                    await _equipmentHubContext.Clients.User(dto.CustomerId.ToString()).SendAsync("ReceiveReplacementComplete",
-                        id,
-                        dto.EquipmentName,
-                        "Your equipment has been replaced successfully. " + completeDto.CompletionNotes);
+                    await _notificationService.NotifyCustomerAboutReplacementAsync(updatedRequest);
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(

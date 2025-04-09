@@ -1,17 +1,11 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
@@ -21,12 +15,14 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _managerFeedbackService;
-        private readonly IHubContext<FeedbackHub> _feedbackHubContext;
+        private readonly INotificationService _notificationService;
 
-        public ManagerFeedbackController(IFeedbackService managerFeedbackService, IHubContext<FeedbackHub> feedbackHubContext)
+        public ManagerFeedbackController(
+            IFeedbackService managerFeedbackService,
+            INotificationService notificationService)
         {
             _managerFeedbackService = managerFeedbackService;
-            _feedbackHubContext = feedbackHubContext;
+            _notificationService = notificationService;
         }
 
         [HttpGet]
@@ -108,13 +104,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var feedback = await _managerFeedbackService.RespondToFeedbackAsync(
                     id, request.ManagerId, request.Response);
 
-                // Notify the customer about the response via SignalR
-                await _feedbackHubContext.Clients.User(feedback.User.UserId.ToString()).SendAsync(
-                    "ReceiveFeedbackResponse",
+                // Notify the customer about the response via the new notification service
+                await _notificationService.NotifyFeedbackResponse(
+                    feedback.User.UserId,
                     feedback.FeedbackId,
                     feedback.Response,
-                    feedback.Manager?.Name ?? "Manager",
-                    feedback.ResponseDate);
+                    feedback.Manager?.Name ?? "Manager");
 
                 return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(
                     feedback, "Response added successfully"));

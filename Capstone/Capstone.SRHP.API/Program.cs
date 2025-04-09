@@ -41,11 +41,11 @@ builder.Services.AddSignalR(options => {
 });
 
 // Add logging
-//builder.Logging.AddConsole();
-//builder.Logging.AddDebug();
-//builder.Logging.SetMinimumLevel(LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
 
 
 // Add Email
@@ -100,7 +100,6 @@ else
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseStaticFiles();
@@ -114,12 +113,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-app.MapHub<EquipmentHub>("/equipmentHub");
-app.MapHub<FeedbackHub>("/feedbackHub");
-app.MapHub<ScheduleHub>("/scheduleHub");
-app.MapHub<EquipmentConditionHub>("/equipmentConditionHub");
-app.MapHub<EquipmentStockHub>("/equipmentStockHub");
 app.MapHub<NotificationHub>("/notificationHub");
+
+
+
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
 

@@ -1,11 +1,10 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
@@ -16,15 +15,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerEquipmentStockController : ControllerBase
     {
         private readonly IEquipmentStockService _equipmentStockService;
-        private readonly IHubContext<EquipmentStockHub> _hubContext;
+        private readonly INotificationService _notificationService;
         private const int DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
         public ManagerEquipmentStockController(
             IEquipmentStockService equipmentStockService,
-            IHubContext<EquipmentStockHub> hubContext)
+            INotificationService notificationService)
         {
             _equipmentStockService = equipmentStockService;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
         }
 
         #region HotPot Inventory Endpoints
@@ -70,14 +69,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 var result = await _equipmentStockService.UpdateHotPotInventoryAsync(id, request.HotpotStatus.Value, request.Reason);
 
-                // Notify administrators about the status change
-                await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
-                    "HotPot",
+                // Notify administrators about the status change using the new notification service
+                await _notificationService.NotifyEquipmentStatusChange(
                     id,
+                    "HotPot",
                     result.HotpotName ?? $"HotPot #{result.SeriesNumber}",
-                    result.Status, // Use the string status from the result
-                    request.Reason,
-                    DateTime.UtcNow);
+                    result.Status,
+                    request.Reason);
 
                 return Ok(ApiResponse<HotPotInventoryDetailDto>.SuccessResponse(result, "HotPot inventory status updated successfully"));
             }
@@ -136,24 +134,22 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Check if the quantity is below the threshold and notify administrators
                 if (result.Quantity <= DEFAULT_LOW_STOCK_THRESHOLD && result.Quantity > 0)
                 {
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveLowStockAlert",
+                    await _notificationService.NotifyLowStock(
                         "Utensil",
                         result.Name,
                         result.Quantity,
-                        DEFAULT_LOW_STOCK_THRESHOLD,
-                        DateTime.UtcNow);
+                        DEFAULT_LOW_STOCK_THRESHOLD);
                 }
 
                 // If quantity is 0, notify about out of stock
                 if (result.Quantity == 0)
                 {
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
-                        "Utensil",
+                    await _notificationService.NotifyEquipmentStatusChange(
                         id,
+                        "Utensil",
                         result.Name,
-                        false,
-                        "Out of stock",
-                        DateTime.UtcNow);
+                        "hết",
+                        "số lượng là 0");
                 }
 
                 return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil quantity updated successfully"));
@@ -182,13 +178,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _equipmentStockService.UpdateUtensilStatusAsync(id, request.IsAvailable.Value, request.Reason);
 
                 // Notify administrators about the status change
-                await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
-                    "Utensil",
+                await _notificationService.NotifyEquipmentStatusChange(
                     id,
+                    "Utensil",
                     result.Name,
-                    result.Status, // This is a bool
-                    request.Reason,
-                    DateTime.UtcNow);
+                    result.Status ? "Available" : "Unavailable",
+                    request.Reason);
 
                 return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil status updated successfully"));
             }
@@ -201,6 +196,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<UtensilDetailDto>.ErrorResponse(ex.Message));
             }
         }
+
 
         #endregion
 
@@ -232,23 +228,21 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (request.NotificationType == "LowStock")
                 {
                     // Notify administrators about low stock
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveLowStockAlert",
+                    await _notificationService.NotifyLowStock(
                         request.EquipmentType,
                         request.EquipmentName,
                         request.CurrentQuantity,
-                        request.Threshold,
-                        DateTime.UtcNow);
+                        request.Threshold);
                 }
                 else if (request.NotificationType == "StatusChange")
                 {
                     // Notify administrators about status change
-                    await _hubContext.Clients.Group("Administrators").SendAsync("ReceiveStatusChangeAlert",
-                        request.EquipmentType,
+                    await _notificationService.NotifyEquipmentStatusChange(
                         request.EquipmentId,
+                        request.EquipmentType,
                         request.EquipmentName,
-                        request.IsAvailable,
-                        request.Reason,
-                        DateTime.UtcNow);
+                        request.IsAvailable ? "Available" : "Unavailable",
+                        request.Reason);
                 }
                 else
                 {

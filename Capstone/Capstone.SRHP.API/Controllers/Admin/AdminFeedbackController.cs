@@ -5,6 +5,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,12 +22,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _feedbackService;
-        private readonly IHubContext<FeedbackHub> _feedbackHubContext;
+        private readonly INotificationService _notificationService;
 
-        public AdminFeedbackController(IFeedbackService feedbackService, IHubContext<FeedbackHub> feedbackHubContext)
+        public AdminFeedbackController(
+            IFeedbackService feedbackService,
+            INotificationService notificationService)
         {
             _feedbackService = feedbackService;
-            _feedbackHubContext = feedbackHubContext;
+            _notificationService = notificationService;
         }
 
         [HttpGet]
@@ -126,19 +129,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Get admin name for notification
                 string adminName = feedback.ApprovedByUserName ?? "Admin";
 
-                // Notify managers about the newly approved feedback via SignalR
-                await _feedbackHubContext.Clients.Group("Managers").SendAsync("ReceiveApprovedFeedback",
-                    feedback.FeedbackId,
-                    feedback.Title,
-                    feedback.UserId,
-                    feedback.UserName ?? "Customer",
-                    feedback.ApprovalDate);
-
-                // Notify the customer that their feedback was approved
-                await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("FeedbackApproved",
+                // Notify managers about the newly approved feedback
+                await _notificationService.NotifyFeedbackApproved(
                     feedback.FeedbackId,
                     adminName,
-                    feedback.ApprovalDate);
+                    feedback.Title);
+
+                // Notify the customer that their feedback was approved
+                if (feedback.UserId !=0)
+                {
+                    await _notificationService.NotifyFeedbackResponse(
+                        feedback.UserId,
+                        feedback.FeedbackId,
+                        "Your feedback has been approved and will be shared with our management team.",
+                        adminName);
+                }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback approved successfully"));
             }
@@ -166,11 +171,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 string adminName = feedback.ApprovedByUserName ?? "Admin";
 
                 // Notify the customer that their feedback was rejected
-                await _feedbackHubContext.Clients.User(feedback.UserId.ToString()).SendAsync("FeedbackRejected",
-                    feedback.FeedbackId,
-                    adminName,
-                    feedback.RejectionReason,
-                    feedback.ApprovalDate);
+                if (feedback.UserId != 0)
+                {
+                    await _notificationService.NotifyFeedbackResponse(
+                        feedback.UserId,
+                        feedback.FeedbackId,
+                        $"Your feedback was not approved. Reason: {request.RejectionReason}",
+                        adminName);
+                }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback rejected successfully"));
             }
