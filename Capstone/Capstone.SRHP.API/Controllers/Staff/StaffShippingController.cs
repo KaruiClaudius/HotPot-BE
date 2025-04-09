@@ -132,25 +132,71 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
 
-        /// Update delivery notes for a shipping order     
-        [HttpPut("{id}/notes")]
+        ///// Update delivery notes for a shipping order     
+        //[HttpPut("{id}/notes")]
+        //[ProducesResponseType(typeof(ApiResponse<ShippingListDto>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        //public async Task<ActionResult<ApiResponse<ShippingListDto>>> UpdateDeliveryNotes(
+        //    int id,
+        //    [FromBody] UpdateDeliveryNotesRequest request)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Staff updating delivery notes for shipping order ID: {ShippingOrderId}", id);
+
+        //        var updatedShippingOrder = await _staffShippingService.UpdateDeliveryNotesAsync(id, request.Notes);
+
+        //        return Ok(new ApiResponse<ShippingListDto>
+        //        {
+        //            Success = true,
+        //            Message = "Delivery notes updated successfully",
+        //            Data = updatedShippingOrder
+        //        });
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        _logger.LogWarning(ex, "Shipping order not found with ID: {ShippingOrderId}", id);
+
+        //        return NotFound(new ApiErrorResponse
+        //        {
+        //            Status = "Not Found",
+        //            Message = ex.Message
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error updating delivery notes for shipping order ID: {ShippingOrderId}", id);
+
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = "Failed to update delivery notes"
+        //        });
+        //    }
+        //}
+
+        /// <summary>
+        /// Update shipping order status to delivered and optionally update delivery notes
+        /// </summary>
+        [HttpPut("{id}/status")]
         [ProducesResponseType(typeof(ApiResponse<ShippingListDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingListDto>>> UpdateDeliveryNotes(
+        public async Task<ActionResult<ApiResponse<ShippingListDto>>> UpdateShippingStatus(
             int id,
-            [FromBody] UpdateDeliveryNotesRequest request)
+            [FromBody] UpdateShippingStatusRequest request)
         {
             try
             {
-                _logger.LogInformation("Staff updating delivery notes for shipping order ID: {ShippingOrderId}", id);
+                _logger.LogInformation("Staff updating shipping status for order ID: {ShippingOrderId}", id);
 
-                var updatedShippingOrder = await _staffShippingService.UpdateDeliveryNotesAsync(id, request.Notes);
+                var updatedShippingOrder = await _staffShippingService.UpdateShippingStatusAsync(id, request?.Notes);
 
                 return Ok(new ApiResponse<ShippingListDto>
                 {
                     Success = true,
-                    Message = "Delivery notes updated successfully",
+                    Message = "Shipping status updated successfully",
                     Data = updatedShippingOrder
                 });
             }
@@ -166,12 +212,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating delivery notes for shipping order ID: {ShippingOrderId}", id);
+                _logger.LogError(ex, "Error updating shipping status for order ID: {ShippingOrderId}", id);
 
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to update delivery notes"
+                    Message = "Failed to update shipping status"
                 });
             }
         }

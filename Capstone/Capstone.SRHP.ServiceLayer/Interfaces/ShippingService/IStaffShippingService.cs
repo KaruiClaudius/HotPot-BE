@@ -28,5 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
         /// Gets proof of delivery for a shipping order
         Task<ProofOfDeliveryDto> GetProofOfDeliveryAsync(int shippingOrderId);
 
+        Task<ShippingListDto> UpdateShippingStatusAsync(int shippingOrderId, string? notes = null);
+
     }
 }
