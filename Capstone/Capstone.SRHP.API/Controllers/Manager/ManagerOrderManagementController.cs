@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
@@ -11,7 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/order-management")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
     public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
@@ -106,9 +107,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var order = await _orderManagementService.GetOrderWithDetails(orderId);
                 return Ok(ApiResponse<OrderDetailDTO>.SuccessResponse(order, "Order details retrieved successfully"));
             }
-            catch (KeyNotFoundException ex)
+            catch (NotFoundException ex)
             {
-                return NotFound(ApiResponse<Order>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<OrderDetailDTO>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<OrderDetailDTO>.ErrorResponse($"An error occurred: {ex.Message}"));
             }
         }
 

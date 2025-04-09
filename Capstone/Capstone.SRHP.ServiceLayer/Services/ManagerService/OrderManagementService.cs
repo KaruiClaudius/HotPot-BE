@@ -115,7 +115,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return new ShippingOrderAllocationDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.OrderId,
+                    OrderId = shippingOrder.Order.OrderCode,
                     StaffId = shippingOrder.StaffId,
                     StaffName = staff.Name,
                     IsDelivered = shippingOrder.IsDelivered,
@@ -158,7 +158,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return shippingOrders.Select(so => new StaffShippingOrderDTO
                 {
                     ShippingOrderId = so.ShippingOrderId,
-                    OrderId = so.OrderId,
+                    OrderId = so.Order.OrderCode,
                     DeliveryTime = so.DeliveryTime,
                     DeliveryNotes = so.DeliveryNotes,
                     IsDelivered = so.IsDelivered,
@@ -249,7 +249,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Map to DTO
                 var orderDetailDTO = new OrderDetailDTO
                 {
-                    OrderId = order.OrderId,
+                    OrderId = order.OrderCode,
                     Address = order.Address,
                     Notes = order.Notes ?? string.Empty,
                     TotalPrice = order.TotalPrice,
@@ -324,7 +324,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return new DeliveryStatusUpdateDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.OrderId,
+                    OrderId = shippingOrder.Order.OrderCode,
                     IsDelivered = shippingOrder.IsDelivered,
                     DeliveryTime = shippingOrder.DeliveryTime,
                     DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
@@ -359,7 +359,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return new DeliveryTimeUpdateDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.OrderId,
+                    OrderId = shippingOrder.Order.OrderCode,
                     DeliveryTime = shippingOrder.DeliveryTime ?? DateTime.UtcNow,
                     UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
                 };
@@ -409,7 +409,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 {
                     Items = pagedResult.Items.Select(o => new UnallocatedOrderDTO
                     {
-                        OrderId = o.OrderId,
+                        OrderId = o.OrderCode,
                         Address = o.Address,
                         Notes = o.Notes ?? string.Empty,
                         TotalPrice = o.TotalPrice,
@@ -460,7 +460,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Items = pagedResult.Items.Select(so => new PendingDeliveryDTO
                     {
                         ShippingOrderId = so.ShippingOrderId,
-                        OrderId = so.OrderId,
+                        OrderId = so.Order.OrderCode,
                         DeliveryTime = so.DeliveryTime,
                         DeliveryNotes = so.DeliveryNotes ?? string.Empty,
 
@@ -519,7 +519,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 {
                     Items = pagedResult.Items.Select(o => new OrderWithDetailsDTO
                     {
-                        OrderId = o.OrderId,
+                        OrderId = o.OrderCode,
                         Address = o.Address,
                         Notes = o.Notes ?? string.Empty,
                         TotalPrice = o.TotalPrice,
