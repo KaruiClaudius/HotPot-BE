@@ -115,7 +115,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return new ShippingOrderAllocationDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.Order.OrderCode,
+                    OrderId = shippingOrder.OrderId,
+                    OrderCode = shippingOrder.Order.OrderCode,
                     StaffId = shippingOrder.StaffId,
                     StaffName = staff.Name,
                     IsDelivered = shippingOrder.IsDelivered,
@@ -344,8 +345,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 _logger.LogInformation("Updating delivery time for shipping order {ShippingOrderId} to {DeliveryTime}", shippingOrderId, deliveryTime);
 
+                // Use AsQueryable and Include to load the Order navigation property
                 var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                    .FindAsync(so => so.ShippingOrderId == shippingOrderId && !so.IsDelete);
+                    .AsQueryable()
+                    .Where(so => so.ShippingOrderId == shippingOrderId && !so.IsDelete)
+                    .Include(so => so.Order)  // Include the Order navigation property
+                    .FirstOrDefaultAsync();
 
                 if (shippingOrder == null)
                     throw new NotFoundException($"Shipping Order with ID {shippingOrderId} not found");
@@ -355,11 +360,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 await _unitOfWork.CommitAsync();
 
+                // Check if Order is null before accessing its properties
+                string orderCode = shippingOrder.Order?.OrderCode ?? "N/A";
+
                 // Map to DTO
                 return new DeliveryTimeUpdateDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.Order.OrderCode,
+                    OrderId = shippingOrder.OrderId,
+                    OrderCode = orderCode,
                     DeliveryTime = shippingOrder.DeliveryTime ?? DateTime.UtcNow,
                     UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
                 };
@@ -409,7 +418,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 {
                     Items = pagedResult.Items.Select(o => new UnallocatedOrderDTO
                     {
-                        OrderId = o.OrderCode,
+                        OrderId = o.OrderId,
+                        OrderCode= o.OrderCode,
                         Address = o.Address,
                         Notes = o.Notes ?? string.Empty,
                         TotalPrice = o.TotalPrice,
