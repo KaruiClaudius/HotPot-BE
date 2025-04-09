@@ -207,7 +207,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Map to DTO
                 return new OrderStatusUpdateDTO
                 {
-                    OrderId = order.OrderCode,
+                    OrderCode = order.OrderCode,
+                    OrderId = order.OrderId,
                     Status = order.Status,
                     UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow
                 };
@@ -250,7 +251,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Map to DTO
                 var orderDetailDTO = new OrderDetailDTO
                 {
-                    OrderId = order.OrderCode,
+                    OrderCode = order.OrderCode,
+                    OrderId = order.OrderId,
                     Address = order.Address,
                     Notes = order.Notes ?? string.Empty,
                     TotalPrice = order.TotalPrice,
@@ -325,7 +327,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 return new DeliveryStatusUpdateDTO
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.Order.OrderCode,
+                    OrderCode = shippingOrder.Order.OrderCode,
+                    OrderId = shippingOrder.OrderId,
                     IsDelivered = shippingOrder.IsDelivered,
                     DeliveryTime = shippingOrder.DeliveryTime,
                     DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
