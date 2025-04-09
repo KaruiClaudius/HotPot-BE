@@ -15,6 +15,9 @@ using Microsoft.Extensions.Logging;
 
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
+using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -24,21 +27,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<PaymentService> _logger;
         private readonly IDiscountService _discountService;
+        private readonly IIngredientService _ingredientService;
+        private readonly IUtensilService _utensilService;
 
-
-        public PaymentService(PayOS payOS, IUnitOfWork unitOfWork, ILogger<PaymentService> logger, IDiscountService discountService)
+        public PaymentService(
+            PayOS payOS,
+            IUnitOfWork unitOfWork,
+            ILogger<PaymentService> logger,
+            IDiscountService discountService,
+            IIngredientService ingredientService,
+            IUtensilService utensilService)
         {
             _payOS = payOS;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _discountService = discountService;
+            _ingredientService = ingredientService;
+            _utensilService = utensilService;
         }
 
         public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId, DateTime? expectedReturnDate, CreatePaymentLinkRequest paymentRequest, int userId)
         {
             try
             {
-                // 1. Update the order details
+                // 1. Get the order with all details
+                var order = await GetOrderByIdAsync(orderId);
+
+                // 2. Verify inventory availability
+                var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
+                if (!verificationResults.AllItemsAvailable)
+                {
+                    return new Response(-1, $"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}", null);
+                }
+
+                // 3. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
                     Address = address,
@@ -49,17 +71,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 await OrderUpdateAsync(orderId, updateRequest);
 
-                // 2. Get user information
+                // 4. Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
                 if (user == null)
                 {
                     return new Response(-1, "User not found", null);
                 }
 
-                // 3. Generate transaction code
+                // 5. Generate transaction code
                 int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
 
-                // 4. Create payment data
+                // 6. Create payment data
                 ItemData item = new ItemData(paymentRequest.productName, 1, paymentRequest.price);
                 List<ItemData> items = new List<ItemData> { item };
 
@@ -86,10 +108,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     buyerPhone
                 );
 
-                // 5. Create payment link
+                // 7. Create payment link
                 CreatePaymentResult createPayment = await _payOS.createPaymentLink(paymentData);
 
-                // 6. Create payment record
+                // 8. Create payment record
                 var paymentTransaction = new Payment
                 {
                     TransactionCode = orderCode,
@@ -128,7 +150,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                // 1. Update the order details
+                // 1. Get the order with all details
+                var order = await GetOrderByIdAsync(orderId);
+
+                // 2. Verify inventory availability
+                var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
+                if (!verificationResults.AllItemsAvailable)
+                {
+                    throw new ValidationException($"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}");
+                }
+
+                // 3. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
                     Address = address,
@@ -137,9 +169,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     ExpectedReturnDate = expectedReturnDate
                 };
 
-                var order = await OrderUpdateAsync(orderId, updateRequest);
+                order = await OrderUpdateAsync(orderId, updateRequest);
 
-                // 2. Create payment record
+                // 4. Create payment record
                 var payment = new Payment
                 {
                     TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
@@ -152,6 +184,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 };
 
                 await _unitOfWork.Repository<Payment>().InsertAsync(payment);
+
+                // 5. Finalize inventory deduction for cash payments
+                await FinalizeInventoryDeduction(order);
+
+                // 6. Update order status to Processing
+                order.Status = OrderStatus.Processing;
+                order.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(order, orderId);
+
                 await _unitOfWork.CommitAsync();
 
                 return payment;
@@ -196,7 +237,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return new Response(-1, "Fail", null);
             }
         }
-
         public async Task<Response> CancelOrder(int orderCode, string reason)
         {
             try
@@ -209,11 +249,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Transaction not found", null);
                 }
 
+                // Get the order
+                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
+
+                // Update payment status
                 paymentTransaction.Status = PaymentStatus.Cancelled;
                 paymentTransaction.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
+
+                // Release inventory reservations
+                await ReleaseInventoryReservation(order);
+
                 await _unitOfWork.CommitAsync();
 
+                // Cancel the payment link in PayOS
                 PaymentLinkInformation paymentLinkInformation = await _payOS.cancelPaymentLink(orderCode, reason);
 
                 return new Response(0, "Ok", paymentLinkInformation);
@@ -257,20 +306,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Payment information not found", null);
                 }
 
-                if (paymentLinkInformation.status == "PAID")
+                var paymentTransaction = (await _unitOfWork.Repository<Payment>()
+                    .GetWhere(pt => pt.TransactionCode == request.OrderCode)).SingleOrDefault();
+
+                if (paymentTransaction == null)
                 {
-                    var paymentTransaction = (await _unitOfWork.Repository<Payment>()
-                        .GetWhere(pt => pt.TransactionCode == request.OrderCode)).SingleOrDefault();
+                    return new Response(-1, "Transaction not found", null);
+                }
 
-                    if (paymentTransaction == null)
-                    {
-                        return new Response(-1, "Transaction not found", null);
-                    }
+                // Get the order
+                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
 
+                if (paymentLinkInformation.status == "PAID" && paymentTransaction.Status != PaymentStatus.Success)
+                {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Success;
                     paymentTransaction.UpdatedAt = DateTime.UtcNow;
                     await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
+
+                    // Finalize inventory deduction
+                    await FinalizeInventoryDeduction(order);
+
+                    // Update order status to Processing
+                    order.Status = OrderStatus.Processing;
+                    order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
+
                     await _unitOfWork.CommitAsync();
 
                     var updatedUserInfo = new
@@ -283,20 +344,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(0, "Transaction Complete",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
                 }
-                else if (paymentLinkInformation.status == "CANCELLED")
+                else if (paymentLinkInformation.status == "CANCELLED" && paymentTransaction.Status != PaymentStatus.Cancelled)
                 {
-                    var paymentTransaction = (await _unitOfWork.Repository<Payment>()
-                        .GetWhere(pt => pt.TransactionCode == request.OrderCode)).SingleOrDefault();
-
-                    if (paymentTransaction == null)
-                    {
-                        return new Response(-1, "Transaction not found", null);
-                    }
-
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Cancelled;
                     paymentTransaction.UpdatedAt = DateTime.UtcNow;
                     await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
+
+                    // Release inventory reservations
+                    await ReleaseInventoryReservation(order);
+
                     await _unitOfWork.CommitAsync();
 
                     var updatedUserInfo = new
@@ -600,6 +657,696 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        public async Task<Response> VerifyCartBeforePaymentAsync(int orderId)
+        {
+            try
+            {
+                var order = await GetOrderByIdAsync(orderId);
+
+                // Verify inventory availability
+                var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
+                if (!verificationResults.AllItemsAvailable)
+                {
+                    return new Response(-1, "Some items in your cart are no longer available",
+                        new { UnavailableItems = verificationResults.UnavailableItems });
+                }
+
+                return new Response(0, "Cart is valid for payment", null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying cart before payment for order {OrderId}", orderId);
+                return new Response(-1, "Error verifying cart", null);
+            }
+        }
+
+        public async Task<Response> HandlePaymentWebhook(PaymentWebhookRequest webhookData)
+        {
+            try
+            {
+                // Validate the webhook data
+                if (webhookData == null || webhookData.Data == null || webhookData.Data.OrderCode <= 0)
+                {
+                    return new Response(-1, "Invalid webhook data", null);
+                }
+
+                int orderCode = webhookData.Data.OrderCode;
+                string paymentStatus = webhookData.Data.Status;
+
+                // Find the payment transaction
+                var paymentTransaction = (await _unitOfWork.Repository<Payment>()
+                    .GetWhere(pt => pt.TransactionCode == orderCode)).SingleOrDefault();
+
+                if (paymentTransaction == null)
+                {
+                    return new Response(-1, "Transaction not found", null);
+                }
+
+                // Get the order
+                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
+
+                // Process based on payment status
+                if (paymentStatus == "PAID" && paymentTransaction.Status != PaymentStatus.Success)
+                {
+                    // Update transaction
+                    paymentTransaction.Status = PaymentStatus.Success;
+                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
+
+                    // Finalize inventory deduction
+                    await FinalizeInventoryDeduction(order);
+
+                    // Update order status to Processing
+                    order.Status = OrderStatus.Processing;
+                    order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
+
+                    await _unitOfWork.CommitAsync();
+
+                    return new Response(0, "Payment processed successfully", null);
+                }
+                else if (paymentStatus == "CANCELLED" && paymentTransaction.Status != PaymentStatus.Cancelled)
+                {
+                    // Update transaction
+                    paymentTransaction.Status = PaymentStatus.Cancelled;
+                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
+
+                    // Release inventory reservations
+                    await ReleaseInventoryReservation(order);
+
+                    await _unitOfWork.CommitAsync();
+
+                    return new Response(0, "Payment cancelled successfully", null);
+                }
+                else
+                {
+                    // No change needed
+                    return new Response(0, "No action required", null);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error handling payment webhook");
+                return new Response(-1, "fail", null);
+            }
+        }
+
+        public class PaymentWebhookRequest
+        {
+            public string Event { get; set; }
+            public WebhookData Data { get; set; }
+        }
+
+        public class WebhookData
+        {
+            public int OrderCode { get; set; }
+            public string Status { get; set; }
+            public decimal Amount { get; set; }
+            // Add other properties as needed
+        }
+
+        public async Task<Payment> UpdatePaymentStatusManuallyAsync(int paymentId, PaymentStatus newStatus)
+        {
+            try
+            {
+                var payment = await _unitOfWork.Repository<Payment>().FindAsync(p => p.PaymentId == paymentId);
+                if (payment == null)
+                {
+                    throw new NotFoundException($"Payment with ID {paymentId} not found");
+                }
+
+                // Get the order
+                var order = await GetOrderByIdAsync(payment.OrderId.Value);
+
+                // Only allow certain status transitions
+                if (payment.Status == PaymentStatus.Success)
+                {
+                    throw new ValidationException("Cannot change status of a successful payment");
+                }
+
+                // Update payment status
+                payment.Status = newStatus;
+                payment.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.Repository<Payment>().Update(payment, paymentId);
+
+                // Handle inventory based on new status
+                if (newStatus == PaymentStatus.Success && order.Status == OrderStatus.Pending)
+                {
+                    // Finalize inventory deduction
+                    await FinalizeInventoryDeduction(order);
+
+                    // Update order status to Processing
+                    order.Status = OrderStatus.Processing;
+                    order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
+                }
+                else if (newStatus == PaymentStatus.Cancelled && payment.Purpose == PaymentPurpose.OrderPayment)
+                {
+                    // Release inventory reservations
+                    await ReleaseInventoryReservation(order);
+                }
+
+                await _unitOfWork.CommitAsync();
+
+                return payment;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating payment status manually for payment {PaymentId}", paymentId);
+                throw;
+            }
+        }
+
+        public async Task<Response> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
+        {
+            try
+            {
+                var payment = await _unitOfWork.Repository<Payment>().FindAsync(p => p.PaymentId == paymentId);
+                if (payment == null)
+                {
+                    return new Response(-1, "Payment not found", null);
+                }
+
+                // Validate refund amount
+                if (refundAmount <= 0 || refundAmount > payment.Price)
+                {
+                    return new Response(-1, "Invalid refund amount", null);
+                }
+
+                // Create refund record
+                var refund = new Payment
+                {
+                    TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
+                    UserId = payment.UserId,
+                    OrderId = payment.OrderId,
+                    Price = -refundAmount, // Negative amount for refunds
+                    Type = payment.Type,
+                    Status = PaymentStatus.Refunded, // Assume refund is processed immediately
+                    Purpose = PaymentPurpose.DepositRefund,
+                };
+
+                await _unitOfWork.Repository<Payment>().InsertAsync(refund);
+
+                // If this is a full refund and it's for the main order payment
+                if (refundAmount == payment.Price && payment.Purpose == PaymentPurpose.OrderPayment)
+                {
+                    // Get the order
+                    var order = await GetOrderByIdAsync(payment.OrderId.Value);
+
+                    // Only allow refunds for certain order statuses
+                    if (order.Status != OrderStatus.Cancelled && order.Status != OrderStatus.Completed &&
+                        order.Status != OrderStatus.Returning)
+                    {
+                        // Update order status to Cancelled
+                        order.Status = OrderStatus.Cancelled;
+                        order.SetUpdateDate();
+                        await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
+
+                        // If the order has already been processed (items shipped), we can't return inventory
+                        if (order.Status == OrderStatus.Processing)
+                        {
+                            // Return inventory for sell items
+                            if (order.SellOrder != null)
+                            {
+                                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                                {
+                                    if (detail.IngredientId.HasValue)
+                                    {
+                                        await _ingredientService.UpdateIngredientQuantityAsync(
+                                            detail.IngredientId.Value, detail.Quantity);
+                                    }
+                                    else if (detail.UtensilId.HasValue)
+                                    {
+                                        await _utensilService.UpdateUtensilQuantityAsync(
+                                            detail.UtensilId.Value, detail.Quantity);
+                                    }
+                                }
+                            }
+
+                            // Return hotpots to available
+                            if (order.RentOrder != null)
+                            {
+                                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                                {
+                                    if (detail.HotpotInventoryId.HasValue)
+                                    {
+                                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                            .GetById(detail.HotpotInventoryId.Value);
+
+                                        if (hotpotInventory != null)
+                                        {
+                                            hotpotInventory.Status = HotpotStatus.Available;
+                                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                await _unitOfWork.CommitAsync();
+
+                // If it's an online payment, we might need to process the refund through PayOS
+                if (payment.Type == PaymentType.Online)
+                {
+                    // This would depend on PayOS's refund API
+                    // await _payOS.processRefund(payment.TransactionCode, refundAmount, reason);
+                }
+
+                return new Response(0, "Refund processed successfully", refund);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing refund for payment {PaymentId}", paymentId);
+                return new Response(-1, "Error processing refund", null);
+            }
+        }
+
+        private async Task<CartVerificationResult> VerifyCartItemsAvailabilityAsync(Order order)
+        {
+            var result = new CartVerificationResult
+            {
+                AllItemsAvailable = true,
+                UnavailableItems = new List<string>()
+            };
+
+            // Check sell items
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.IngredientId.HasValue)
+                    {
+                        var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
+                        if (ingredient.Quantity < detail.Quantity)
+                        {
+                            result.AllItemsAvailable = false;
+                            result.UnavailableItems.Add($"{ingredient.Name} (only {ingredient.Quantity} available)");
+                        }
+                    }
+                    else if (detail.UtensilId.HasValue)
+                    {
+                        var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+                        if (utensil.Quantity < detail.Quantity)
+                        {
+                            result.AllItemsAvailable = false;
+                            result.UnavailableItems.Add($"{utensil.Name} (only {utensil.Quantity} available)");
+                        }
+                    }
+                }
+            }
+
+            // Check rent items (hotpots)
+            if (order.RentOrder != null)
+            {
+                // Group hotpots by type to check total availability
+                var hotpotCounts = new Dictionary<int, int>(); // HotpotId -> Count
+
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                {
+                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                        .IncludeNested(query => query.Include(h => h.Hotpot))
+                        .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
+
+                    if (hotpotInventory?.Hotpot != null)
+                    {
+                        int hotpotId = hotpotInventory.Hotpot.HotpotId;
+
+                        if (!hotpotCounts.ContainsKey(hotpotId))
+                        {
+                            hotpotCounts[hotpotId] = 0;
+                        }
+
+                        hotpotCounts[hotpotId]++;
+                    }
+                }
+
+                // Check availability for each hotpot type
+                foreach (var kvp in hotpotCounts)
+                {
+                    int hotpotId = kvp.Key;
+                    int requiredCount = kvp.Value;
+
+                    // Get the hotpot
+                    var hotpot = await _unitOfWork.Repository<Hotpot>().GetById(hotpotId);
+                    if (hotpot == null)
+                    {
+                        result.AllItemsAvailable = false;
+                        result.UnavailableItems.Add($"Hotpot ID {hotpotId} is no longer available");
+                        continue;
+                    }
+
+                    // Count available hotpots of this type
+                    var availableCount = await _unitOfWork.Repository<HotPotInventory>()
+                        .CountAsync(h => h.HotpotId == hotpotId &&
+                                        (h.Status == HotpotStatus.Available ||
+                                         (h.Status == HotpotStatus.Reserved &&
+                                          order.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId == h.HotPotInventoryId))) &&
+                                        !h.IsDelete);
+
+                    if (availableCount < requiredCount)
+                    {
+                        result.AllItemsAvailable = false;
+                        result.UnavailableItems.Add($"{hotpot.Name} (only {availableCount} available)");
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private async Task FinalizeInventoryDeduction(Order order)
+        {
+            // This method actually deducts inventory quantities after payment is confirmed
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.IngredientId.HasValue)
+                    {
+                        await _ingredientService.UpdateIngredientQuantityAsync(
+                            detail.IngredientId.Value, -detail.Quantity);
+                    }
+                    else if (detail.UtensilId.HasValue)
+                    {
+                        await _utensilService.UpdateUtensilQuantityAsync(
+                            detail.UtensilId.Value, -detail.Quantity);
+                    }
+                }
+            }
+
+            // For hotpots, we just need to update their status to Rented
+            if (order.RentOrder != null)
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventoryId.HasValue)
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Rented;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task ReleaseInventoryReservation(Order order)
+        {
+            // This method releases all reservations for an order
+            // For hotpots, we need to update their status back to Available
+            if (order.RentOrder != null)
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventoryId.HasValue)
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null && hotpotInventory.Status == HotpotStatus.Reserved)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Available;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+            }
+
+            // For ingredients and utensils, we don't need to do anything since we didn't deduct them yet
+        }
+
+        public async Task<Response> ProcessDepositRefundAsync(int orderId, decimal refundAmount, string notes)
+        {
+            try
+            {
+                var order = await GetOrderByIdAsync(orderId);
+
+                // Validate order has rental items
+                if (order.RentOrder == null)
+                {
+                    return new Response(-1, "Order does not have rental items", null);
+                }
+
+                // Validate order status
+                if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Returning)
+                {
+                    return new Response(-1, "Cannot process deposit refund for orders that are not completed or returned", null);
+                }
+
+                // Calculate the deposit amount (70% of rental price)
+                decimal totalRentalPrice = order.RentOrder.SubTotal;
+                decimal depositAmount = totalRentalPrice * 0.7m;
+
+                // Validate refund amount
+                if (refundAmount <= 0 || refundAmount > depositAmount)
+                {
+                    return new Response(-1, $"Invalid refund amount. Maximum refundable deposit is ${depositAmount}", null);
+                }
+
+                // Get the main payment
+                var mainPayment = await GetMainPaymentForOrderAsync(orderId);
+                if (mainPayment == null)
+                {
+                    return new Response(-1, "Main payment not found", null);
+                }
+
+                // Create refund record
+                var refund = new Payment
+                {
+                    TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
+                    UserId = order.UserId,
+                    OrderId = orderId,
+                    Price = -refundAmount, // Negative amount for refunds
+                    Type = mainPayment.Type,
+                    Status = PaymentStatus.Success, // Assume refund is processed immediately
+                    Purpose = PaymentPurpose.DepositRefund,
+                };
+
+                await _unitOfWork.Repository<Payment>().InsertAsync(refund);
+                await _unitOfWork.CommitAsync();
+
+                // If it's an online payment, we might need to process the refund through PayOS
+                if (mainPayment.Type == PaymentType.Online)
+                {
+                    // This would depend on PayOS's refund API
+                    // await _payOS.processRefund(mainPayment.TransactionCode, refundAmount, notes);
+                }
+
+                return new Response(0, "Deposit refund processed successfully", refund);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing deposit refund for order {OrderId}", orderId);
+                return new Response(-1, "Error processing deposit refund", null);
+            }
+        }
+
+        public async Task<Response> GetPaymentSummaryAsync(int orderId)
+        {
+            try
+            {
+                var order = await GetOrderByIdAsync(orderId);
+                var payments = await GetListPaymentByOrderIdAsync(orderId);
+
+                // Calculate totals
+                decimal totalPaid = payments
+                    .Where(p => p.Status == PaymentStatus.Success && p.Price > 0)
+                    .Sum(p => p.Price);
+
+                decimal totalRefunded = payments
+                    .Where(p => p.Status == PaymentStatus.Success && p.Price < 0)
+                    .Sum(p => -p.Price);
+
+                decimal totalFees = payments
+                    .Where(p => p.Status == PaymentStatus.Success &&
+                           (p.Purpose == PaymentPurpose.LateFee || p.Purpose == PaymentPurpose.DamageFee))
+                    .Sum(p => p.Price);
+
+                // Calculate deposit amount if rental
+                decimal depositAmount = 0;
+                decimal depositRefunded = 0;
+
+                if (order.RentOrder != null)
+                {
+                    depositAmount = order.RentOrder.SubTotal * 0.7m;
+
+                    depositRefunded = payments
+                        .Where(p => p.Status == PaymentStatus.Success && p.Purpose == PaymentPurpose.DepositRefund)
+                        .Sum(p => -p.Price);
+                }
+
+                // Create summary
+                var summary = new PaymentSummary
+                {
+                    OrderId = orderId,
+                    OrderStatus = order.Status,
+                    TotalOrderAmount = order.TotalPrice,
+                    TotalPaid = totalPaid,
+                    TotalRefunded = totalRefunded,
+                    TotalFees = totalFees,
+                    DepositAmount = depositAmount,
+                    DepositRefunded = depositRefunded,
+                    RemainingDepositToRefund = depositAmount - depositRefunded,
+                    Payments = payments.ToList()
+                };
+
+                return new Response(0, "Payment summary retrieved successfully", summary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting payment summary for order {OrderId}", orderId);
+                return new Response(-1, "Error getting payment summary", null);
+            }
+        }
+
+        public async Task<Response> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
+        {
+            try
+            {
+                var order = await GetOrderByIdAsync(orderId);
+
+                // Validate status transition
+                if (!IsValidStatusTransition(order.Status, newStatus))
+                {
+                    return new Response(-1, $"Invalid status transition from {order.Status} to {newStatus}", null);
+                }
+
+                // Handle inventory based on status change
+                if (newStatus == OrderStatus.Delivered && order.RentOrder != null)
+                {
+                    // Update hotpot inventory status to Rented
+                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Rented;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+                else if (newStatus == OrderStatus.Returning && order.RentOrder != null)
+                {
+                    // Update hotpot inventory status to Maintenance
+                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Preparing;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+                else if (newStatus == OrderStatus.Completed && order.RentOrder != null)
+                {
+                    // Update hotpot inventory status to Available
+                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Available;
+
+                            // Update last maintain date on the hotpot itself
+                            if (hotpotInventory.Hotpot != null)
+                            {
+                                hotpotInventory.Hotpot.LastMaintainDate = DateTime.Now;
+                                await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
+                            }
+
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+                else if (newStatus == OrderStatus.Cancelled)
+                {
+                    // Get the main payment
+                    var mainPayment = await GetMainPaymentForOrderAsync(orderId);
+
+                    // If payment was successful, we need to handle refunds and inventory
+                    if (mainPayment != null && mainPayment.Status == PaymentStatus.Success)
+                    {
+                        // For now, just update the order status
+                        // In a real system, you might want to create a refund record
+                    }
+                    else
+                    {
+                        // Release inventory reservations
+                        await ReleaseInventoryReservation(order);
+
+                        // Cancel any pending payments
+                        var pendingPayments = (await GetListPaymentByOrderIdAsync(orderId))
+                            .Where(p => p.Status == PaymentStatus.Pending)
+                            .ToList();
+
+                        foreach (var payment in pendingPayments)
+                        {
+                            payment.Status = PaymentStatus.Cancelled;
+                            payment.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+
+                            // If it's an online payment, cancel in PayOS
+                            if (payment.Type == PaymentType.Online)
+                            {
+                                await _payOS.cancelPaymentLink(payment.TransactionCode, "Order cancelled");
+                            }
+                        }
+                    }
+                }
+
+                // Update order status
+                order.Status = newStatus;
+                order.SetUpdateDate();
+                await _unitOfWork.Repository<Order>().Update(order, orderId);
+                await _unitOfWork.CommitAsync();
+
+                return new Response(0, "Order status updated successfully", order);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating order status for order {OrderId}", orderId);
+                return new Response(-1, "Error updating order status", null);
+            }
+        }
+
+        private bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
+        {
+            switch (currentStatus)
+            {
+                case OrderStatus.Pending:
+                    return newStatus == OrderStatus.Processing || newStatus == OrderStatus.Cancelled;
+                case OrderStatus.Processing:
+                    return newStatus == OrderStatus.Shipping || newStatus == OrderStatus.Cancelled;
+                case OrderStatus.Shipping:
+                    return newStatus == OrderStatus.Delivered || newStatus == OrderStatus.Cancelled;
+                case OrderStatus.Delivered:
+                    return newStatus == OrderStatus.Returning || newStatus == OrderStatus.Completed;
+                case OrderStatus.Returning:
+                    return newStatus == OrderStatus.Completed;
+                case OrderStatus.Completed:
+                    return false; 
+                case OrderStatus.Cancelled:
+                    return false; 
+                default:
+                    return false;
+            }
+        }
+
+
         private async Task<Order> OrderUpdateAsync(int id, UpdateOrderRequest request)
         {
             try
@@ -723,8 +1470,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrder)
-                        .ThenInclude(ro => ro.RentOrderDetails)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Utensil)
                     .Include(o => o.RentOrder)
                         .ThenInclude(ro => ro.RentOrderDetails)

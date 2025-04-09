@@ -73,7 +73,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         .ThenInclude(o => o.SellOrder.SellOrderDetails)
                             .ThenInclude(od => od.Combo)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
+                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
                             .ThenInclude(rd => rd.Utensil)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.RentOrder.RentOrderDetails)
@@ -186,6 +186,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
                     }
+                    else if (detail.Utensil != null)
+                    {
+                        itemName = detail.Utensil.Name;
+                        itemType = "Utensil";
+                    }
                     else if (detail.Customization != null)
                     {
                         itemName = detail.Customization.Name;
@@ -216,12 +221,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     string itemName = "Unknown";
                     string itemType = "Rental";
 
-                    if (rental.Utensil != null)
-                    {
-                        itemName = rental.Utensil.Name;
-                        itemType = "Utensil Rental";
-                    }
-                    else if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
+                    // Only hotpots should be in rent order details
+                    if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
                     {
                         itemName = rental.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot Rental";

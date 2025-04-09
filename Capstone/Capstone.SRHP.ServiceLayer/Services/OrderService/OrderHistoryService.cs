@@ -73,7 +73,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
                     .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
@@ -128,7 +128,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Combo)
-                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(rd => rd.Utensil)
                     .Include(o => o.RentOrder.RentOrderDetails)
                         .ThenInclude(rd => rd.HotpotInventory)
@@ -222,22 +222,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     string itemName = "Unknown";
                     string itemType = "Unknown";
-                    decimal price = detail.UnitPrice;
+                    decimal price = 0;
 
                     if (detail.Ingredient != null)
                     {
                         itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
+                    }
+                    else if (detail.Utensil != null)
+                    {
+                        itemName = detail.Utensil.Name;
+                        itemType = "Utensil";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
                     }
                     else if (detail.Customization != null)
                     {
                         itemName = detail.Customization.Name;
                         itemType = "Customization";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
                     }
                     else if (detail.Combo != null)
                     {
                         itemName = detail.Combo.Name;
                         itemType = "Combo";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
                     }
 
                     dto.Items.Add(new OrderItemDto
@@ -247,45 +256,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         ItemType = itemType,
                         Quantity = detail.Quantity,
                         Price = price,
-                        IsRental = false
                     });
                 }
             }
 
-            // Map rental order details to order items
+            // Map rent order details to order items
             if (order.RentOrder.RentOrderDetails != null && order.RentOrder.RentOrderDetails.Any())
             {
-                foreach (var rental in order.RentOrder.RentOrderDetails)
+                foreach (var detail in order.RentOrder.RentOrderDetails)
                 {
                     string itemName = "Unknown";
-                    string itemType = "Rental";
+                    string itemType = "Unknown";
+                    decimal price = 0;
 
-                    if (rental.Utensil != null)
+                    // Removed the Utensil check here since utensils are in sell order
+                    if (detail.HotpotInventory != null && detail.HotpotInventory.Hotpot != null)
                     {
-                        itemName = rental.Utensil.Name;
-                        itemType = "Utensil Rental";
-                    }
-                    else if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
-                    {
-                        itemName = rental.HotpotInventory.Hotpot.Name;
-                        itemType = "Hotpot Rental";
+                        itemName = detail.HotpotInventory.Hotpot.Name;
+                        itemType = "Hotpot";
+                        price = detail.RentalPrice; // Use the UnitPrice from the order detail
                     }
 
                     dto.Items.Add(new OrderItemDto
                     {
-                        OrderDetailId = rental.RentOrderDetailId,
+                        OrderDetailId = detail.RentOrderDetailId,
                         ItemName = itemName,
                         ItemType = itemType,
-                        Quantity = rental.Quantity,
-                        Price = rental.RentalPrice,
-                        IsRental = true,
-                        RentalStartDate = rental.RentOrder.RentalStartDate,
-                        ExpectedReturnDate = rental.RentOrder.ExpectedReturnDate,
-                        ActualReturnDate = rental.RentOrder.ActualReturnDate,
-                        LateFee = rental.RentOrder.LateFee,
-                        DamageFee = rental.RentOrder.DamageFee,
-                        RentalNotes = rental.RentOrder.RentalNotes,
-                        ReturnCondition = rental.RentOrder.ReturnCondition
+                        Quantity = detail.Quantity,
+                        Price = price,
+                        RentalStartDate = detail.RentOrder.RentalStartDate,
+                        RentalEndDate = detail.RentOrder.ExpectedReturnDate
                     });
                 }
             }

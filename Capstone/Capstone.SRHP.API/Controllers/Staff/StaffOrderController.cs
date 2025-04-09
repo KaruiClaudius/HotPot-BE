@@ -132,15 +132,15 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                _logger.LogInformation("Staff updating order {OrderId} status to {NewStatus}", id, request.NewStatus);
+                _logger.LogInformation("Staff updating order {OrderId} status to {NewStatus}", id, request.Status);
 
-                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.NewStatus, request.Notes);
+                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, request.Notes);
                 var orderDto = MapToStaffOrderDto(updatedOrder);
 
                 return Ok(new ApiResponse<StaffOrderDto>
                 {
                     Success = true,
-                    Message = $"Order status updated to {request.NewStatus} successfully",
+                    Message = $"Order status updated to {request.Status} successfully",
                     Data = orderDto
                 });
             }

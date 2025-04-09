@@ -111,24 +111,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpGet("equipment/{utensilId}")]
-        public async Task<IActionResult> GetRentalHistoryByUtensil(int? utensilId = null)
-        {
-            try
-            {
-                var rentalHistory = await _rentOrderService.GetRentalHistoryByEquipmentAsync(utensilId: utensilId);
-                return Ok(rentalHistory);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
         [HttpGet("hotpot/{hotpotInventoryId}")]
         public async Task<IActionResult> GetRentalHistoryByHotpot(int? hotpotInventoryId = null)
         {

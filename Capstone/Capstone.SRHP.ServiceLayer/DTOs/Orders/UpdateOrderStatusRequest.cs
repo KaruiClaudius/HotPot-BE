@@ -11,7 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     public class UpdateOrderStatusRequest
     {
         [Required]
-        public OrderStatus NewStatus { get; set; }
+        public OrderStatus Status { get; set; }
 
         public string Notes { get; set; }
     }

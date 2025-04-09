@@ -30,13 +30,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
 
         public async Task<ConsolidatedDashboardResponse> GetConsolidatedDashboardDataAsync(
-       DateTime fromDate,
-       DateTime toDate,
-       string status = null,
-       string productType = null,
-       bool? hasHotpot = null,
-       string paymentStatus = null,
-       int topProductsLimit = 5)
+            DateTime fromDate,
+            DateTime toDate,
+            string status = null,
+            string productType = null,
+            bool? hasHotpot = null,
+            string paymentStatus = null,
+            int topProductsLimit = 5)
         {
             try
             {
@@ -103,8 +103,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 o.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId.HasValue && !d.IsDelete));
                             break;
                         case "utensil":
-                            query = query.Where(o => o.RentOrder != null &&
-                                o.RentOrder.RentOrderDetails.Any(d => d.UtensilId.HasValue && !d.IsDelete));
+                            query = query.Where(o => o.SellOrder != null &&
+                                o.SellOrder.SellOrderDetails.Any(d => d.UtensilId.HasValue && !d.IsDelete));
                             break;
                     }
                 }
@@ -123,8 +123,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so != null ? so.SellOrderDetails : null)
                             .ThenInclude(d => d.Customization)
-                    .Include(o => o.RentOrder)
-                        .ThenInclude(ro => ro != null ? ro.RentOrderDetails : null)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so != null ? so.SellOrderDetails : null)
                             .ThenInclude(d => d.Utensil)
                     .Include(o => o.RentOrder)
                         .ThenInclude(ro => ro != null ? ro.RentOrderDetails : null)
@@ -203,6 +203,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         revenueByType.Customizations += itemRevenue;
                     }
+                    else if (detail.UtensilId.HasValue)
+                    {
+                        revenueByType.Utensils += itemRevenue;
+                    }
                 }
             }
 
@@ -213,11 +217,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     decimal itemRevenue = detail.RentalPrice * detail.Quantity;
 
-                    if (detail.UtensilId.HasValue)
-                    {
-                        revenueByType.Utensils += itemRevenue;
-                    }
-                    else if (detail.HotpotInventoryId.HasValue)
+                    if (detail.HotpotInventoryId.HasValue)
                     {
                         revenueByType.Hotpots += itemRevenue;
                     }
@@ -449,16 +449,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         customizationSales[id].QuantitySold += detail.Quantity;
                         customizationSales[id].Revenue += detail.UnitPrice * detail.Quantity;
                     }
-                }
-            }
-
-            // Process rent order details
-            foreach (var order in orders.Where(o => o.RentOrder?.RentOrderDetails != null))
-            {
-                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
-                {
                     // Process utensils
-                    if (detail.UtensilId.HasValue && detail.Utensil != null)
+                    else if (detail.UtensilId.HasValue && detail.Utensil != null)
                     {
                         int id = detail.UtensilId.Value;
                         if (!utensilSales.ContainsKey(id))
@@ -471,15 +463,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 ImageUrl = detail.Utensil.ImageURL,
                                 QuantitySold = 0,
                                 Revenue = 0,
-                                AveragePrice = detail.RentalPrice
+                                AveragePrice = detail.UnitPrice
                             };
                         }
-
                         utensilSales[id].QuantitySold += detail.Quantity;
-                        utensilSales[id].Revenue += detail.RentalPrice * detail.Quantity;
+                        utensilSales[id].Revenue += detail.UnitPrice * detail.Quantity;
                     }
+                }
+            }
+
+            // Process rent order details
+            foreach (var order in orders.Where(o => o.RentOrder?.RentOrderDetails != null))
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {         
                     // Process hotpots
-                    else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                    if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
                     {
                         int id = detail.HotpotInventory.HotpotId;
                         if (!hotpotSales.ContainsKey(id))
@@ -554,6 +553,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         private OrderResponse MapOrderToResponse(Order order)
         {
+            // Keep the existing mapping method as is
+            // This method is already well-implemented
             if (order == null) return null;
 
             var response = new OrderResponse
@@ -598,6 +599,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // Map sell order details
+            // Map sell order details
             if (order.SellOrder?.SellOrderDetails != null)
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
@@ -620,6 +622,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
+                    }
+                    else if (detail.UtensilId.HasValue && detail.Utensil != null)
+                    {
+                        itemType = "Utensil";
+                        itemName = detail.Utensil.Name;
+                        imageUrl = detail.Utensil.ImageURL;
+                        itemId = detail.UtensilId;
                     }
                     else if (detail.CustomizationId.HasValue && detail.Customization != null)
                     {
@@ -650,6 +659,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
             }
 
+            // Group hotpot items by hotpot type
+            var hotpotGroups = new Dictionary<int, List<RentOrderDetail>>();
+            var nonHotpotItems = new List<RentOrderDetail>();
+
             // Map rent order details
             if (order.RentOrder?.RentOrderDetails != null)
             {
@@ -662,25 +675,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         continue;
                     }
 
-                    string itemType = "";
-                    string itemName = "Unknown";
+                    // Separate hotpot items from other rental items
+                    if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
+                    {
+                        int hotpotId = detail.HotpotInventory.HotpotId;
+
+                        if (!hotpotGroups.ContainsKey(hotpotId))
+                        {
+                            hotpotGroups[hotpotId] = new List<RentOrderDetail>();
+                        }
+
+                        hotpotGroups[hotpotId].Add(detail);
+                    }
+                    else
+                    {
+                        nonHotpotItems.Add(detail);
+                    }
+                }
+
+                // Process non-hotpot rental items (this should be empty now that utensils are in sell order)
+                foreach (var detail in nonHotpotItems)
+                {
+                    string itemType = "Unknown";
+                    string itemName = "Unknown Rental Item";
                     string imageUrl = null;
                     int? itemId = null;
-
-                    if (detail.UtensilId.HasValue && detail.Utensil != null)
-                    {
-                        itemType = "Utensil";
-                        itemName = detail.Utensil.Name;
-                        imageUrl = detail.Utensil.ImageURL;
-                        itemId = detail.UtensilId;
-                    }
-                    else if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
-                    {
-                        itemType = "Hotpot";
-                        itemName = detail.HotpotInventory.Hotpot.Name;
-                        imageUrl = detail.HotpotInventory.Hotpot.ImageURLs?.FirstOrDefault();
-                        itemId = detail.HotpotInventory.HotpotId;
-                    }
 
                     response.Items.Add(new OrderItemResponse
                     {
@@ -694,6 +713,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         ItemId = itemId,
                         IsSellable = false
                     });
+                }
+
+                // Process grouped hotpot items
+                foreach (var group in hotpotGroups)
+                {
+                    var details = group.Value;
+                    if (details.Count == 0) continue;
+
+                    // Get the first detail to extract common information
+                    var firstDetail = details.First();
+                    var hotpot = firstDetail.HotpotInventory.Hotpot;
+
+                    // Create a grouped item response
+                    var groupedItem = new OrderItemResponse
+                    {
+                        // Use the first detail's ID as the primary ID
+                        OrderDetailId = firstDetail.RentOrderDetailId,
+                        // Set quantity to the number of items in the group
+                        Quantity = details.Count,
+                        // Use the rental price from the first item
+                        UnitPrice = firstDetail.RentalPrice,
+                        // Calculate total price for all items
+                        TotalPrice = firstDetail.RentalPrice * details.Count,
+                        ItemType = "Hotpot",
+                        ItemName = hotpot.Name,
+                        ImageUrl = hotpot.ImageURLs?.FirstOrDefault(),
+                        ItemId = hotpot.HotpotId,
+                        IsSellable = false,
+                        // Add a list of all detail IDs in this group
+                        RelatedDetailIds = details.Select(d => d.RentOrderDetailId).ToList(),
+                        // Add a list of all inventory IDs (serial numbers) in this group
+                        SerialNumbers = details.Select(d => d.HotpotInventory.SeriesNumber).ToList()
+                    };
+
+                    response.Items.Add(groupedItem);
                 }
             }
 

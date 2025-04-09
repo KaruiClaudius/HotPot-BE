@@ -225,6 +225,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
+
         [HttpPut("{id}")]
         public async Task<ActionResult<OrderResponse>> UpdateOrder(int id, [FromBody] UpdateOrderRequest request)
         {
@@ -350,6 +351,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
         // Helper methods
         private OrderResponse MapOrderToResponse(Order order)
         {
+            // Keep the existing mapping method as is
+            // This method is already well-implemented
             if (order == null) return null;
 
             var response = new OrderResponse
@@ -394,6 +397,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
 
             // Map sell order details
+            // Map sell order details
             if (order.SellOrder?.SellOrderDetails != null)
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
@@ -416,6 +420,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
+                    }
+                    else if (detail.UtensilId.HasValue && detail.Utensil != null)
+                    {
+                        itemType = "Utensil";
+                        itemName = detail.Utensil.Name;
+                        imageUrl = detail.Utensil.ImageURL;
+                        itemId = detail.UtensilId;
                     }
                     else if (detail.CustomizationId.HasValue && detail.Customization != null)
                     {
@@ -480,21 +491,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     }
                 }
 
-                // Process non-hotpot rental items
+                // Process non-hotpot rental items (this should be empty now that utensils are in sell order)
                 foreach (var detail in nonHotpotItems)
                 {
-                    string itemType = "";
-                    string itemName = "Unknown";
+                    string itemType = "Unknown";
+                    string itemName = "Unknown Rental Item";
                     string imageUrl = null;
                     int? itemId = null;
-
-                    if (detail.UtensilId.HasValue && detail.Utensil != null)
-                    {
-                        itemType = "Utensil";
-                        itemName = detail.Utensil.Name;
-                        imageUrl = detail.Utensil.ImageURL;
-                        itemId = detail.UtensilId;
-                    }
 
                     response.Items.Add(new OrderItemResponse
                     {

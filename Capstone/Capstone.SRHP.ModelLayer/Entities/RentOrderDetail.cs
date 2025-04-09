@@ -25,14 +25,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [ForeignKey("RentOrder")]
         public int OrderId { get; set; }
-
-        public int? UtensilId { get; set; }
         public int? HotpotInventoryId { get; set; }
 
-        public virtual RentOrder RentOrder { get; set; } = null!;
 
-        [ForeignKey(nameof(UtensilId))]
-        public virtual Utensil? Utensil { get; set; }
+        public virtual RentOrder RentOrder { get; set; } = null!;
 
         [ForeignKey(nameof(HotpotInventoryId))]
         public virtual HotPotInventory? HotpotInventory { get; set; }

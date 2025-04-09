@@ -24,8 +24,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     {
         public int RentOrderDetailId { get; set; }
         public int OrderId { get; set; }
-        public int? UtensilId { get; set; }
-        public string UtensilName { get; set; }
         public int? HotpotInventoryId { get; set; }
         public string HotpotName { get; set; }
         public int Quantity { get; set; }

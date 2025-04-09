@@ -74,7 +74,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Utensil)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
@@ -136,7 +136,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
-                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Utensil)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Ingredient)
@@ -243,6 +243,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         itemType = "Ingredient";
                         price = detail.UnitPrice; // Use the UnitPrice from the order detail
                     }
+                    else if (detail.Utensil != null)
+                    {
+                        itemName = detail.Utensil.Name;
+                        itemType = "Utensil";
+                        price = detail.UnitPrice; // Use the UnitPrice from the order detail
+                    }
                     else if (detail.Customization != null)
                     {
                         itemName = detail.Customization.Name;
@@ -276,13 +282,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     string itemType = "Unknown";
                     decimal price = 0;
 
-                    if (detail.Utensil != null)
-                    {
-                        itemName = detail.Utensil.Name;
-                        itemType = "Utensil";
-                        price = detail.RentalPrice; // Use the UnitPrice from the order detail
-                    }
-                    else if (detail.HotpotInventory != null && detail.HotpotInventory.Hotpot != null)
+                    // Removed the Utensil check here since utensils are in sell order
+                    if (detail.HotpotInventory != null && detail.HotpotInventory.Hotpot != null)
                     {
                         itemName = detail.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot";

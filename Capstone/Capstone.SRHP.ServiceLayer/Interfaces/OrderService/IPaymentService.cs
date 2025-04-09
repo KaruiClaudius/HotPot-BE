@@ -28,5 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<Payment> GetMainPaymentForOrderAsync(int orderId);
         Task<IEnumerable<Payment>> GetListPaymentByOrderIdAsync(int orderId);
 
+        Task<Response> VerifyCartBeforePaymentAsync(int orderId);
+
     }
 }
