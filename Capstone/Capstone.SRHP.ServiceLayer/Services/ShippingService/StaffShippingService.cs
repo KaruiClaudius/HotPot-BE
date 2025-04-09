@@ -174,10 +174,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             };
 
             // Map sell order details to shipping items
-            if (shippingOrder.Order?.SellOrder.SellOrderDetails != null)
+            if (shippingOrder.Order?.SellOrder?.SellOrderDetails != null)
             {
                 foreach (var detail in shippingOrder.Order.SellOrder.SellOrderDetails)
                 {
+                    if (detail == null) continue;
+
                     string itemName = "Unknown";
                     string itemType = "Unknown";
 
@@ -214,15 +216,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             }
 
             // Map rental order details to shipping items
-            if (shippingOrder.Order?.RentOrder.RentOrderDetails != null)
+            if (shippingOrder.Order?.RentOrder?.RentOrderDetails != null)
             {
                 foreach (var rental in shippingOrder.Order.RentOrder.RentOrderDetails)
                 {
+                    if (rental == null) continue;
+
                     string itemName = "Unknown";
                     string itemType = "Rental";
 
                     // Only hotpots should be in rent order details
-                    if (rental.HotpotInventory != null && rental.HotpotInventory.Hotpot != null)
+                    if (rental.HotpotInventory?.Hotpot != null)
                     {
                         itemName = rental.HotpotInventory.Hotpot.Name;
                         itemType = "Hotpot Rental";
@@ -235,8 +239,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         ItemType = itemType,
                         Quantity = rental.Quantity,
                         IsRental = true,
-                        RentalStartDate = rental.RentOrder.RentalStartDate,
-                        ExpectedReturnDate = rental.RentOrder.ExpectedReturnDate
+                        RentalStartDate = rental.RentOrder?.RentalStartDate,
+                        ExpectedReturnDate = rental.RentOrder?.ExpectedReturnDate
                     });
                 }
             }
