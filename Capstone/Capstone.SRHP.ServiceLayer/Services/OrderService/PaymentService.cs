@@ -1381,7 +1381,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     DateTime today = DateTime.UtcNow.AddHours(7);
                     order.RentOrder.RentalStartDate = today;
-                    DateTime expectedReturnDate = request.ExpectedReturnDate.Value.Date;
+                    DateTime expectedReturnDate = request.ExpectedReturnDate.Value;
 
                     // Validate expected return date is after rental start date
                     if (expectedReturnDate <= today)
@@ -1390,7 +1390,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     if (request.ExpectedReturnDate.HasValue &&
-                        request.ExpectedReturnDate.Value.Date <= order.RentOrder.RentalStartDate.Date)
+                        request.ExpectedReturnDate.Value <= order.RentOrder.RentalStartDate)
                     {
                         throw new ValidationException("Expected return date must be at least one day after rental start date");
                     }
