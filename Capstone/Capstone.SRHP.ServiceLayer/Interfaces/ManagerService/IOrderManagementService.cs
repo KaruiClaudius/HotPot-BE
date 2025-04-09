@@ -16,7 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<IEnumerable<StaffShippingOrderDTO>> GetOrdersByStaff(int staffId);
 
         // Order status tracking
-        Task<OrderStatusUpdateDTO> UpdateOrderStatus(int orderId, OrderStatus status);
+        Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderId, OrderStatus status);
         Task<OrderDetailDTO> GetOrderWithDetails(string orderId);
         Task<PagedResult<OrderWithDetailsDTO>> GetOrdersByStatusPaged(OrderQueryParams queryParams);
 

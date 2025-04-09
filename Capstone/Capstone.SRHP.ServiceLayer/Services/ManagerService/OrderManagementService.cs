@@ -186,14 +186,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         }
 
         // Order status tracking
-        public async Task<OrderStatusUpdateDTO> UpdateOrderStatus(int orderId, OrderStatus status)
+        public async Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderId, OrderStatus status)
         {
             try
             {
                 _logger.LogInformation("Updating order {OrderId} status to {Status}", orderId, status);
 
                 var order = await _unitOfWork.Repository<Order>()
-                    .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
+                    .FindAsync(o => o.OrderCode.Equals(orderId) && !o.IsDelete);
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
@@ -206,7 +206,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Map to DTO
                 return new OrderStatusUpdateDTO
                 {
-                    OrderId = order.OrderId,
+                    OrderId = order.OrderCode,
                     Status = order.Status,
                     UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow
                 };

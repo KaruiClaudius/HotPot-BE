@@ -139,7 +139,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     }
     public class OrderStatusUpdateDTO
     {
-        public int OrderId { get; set; }
+        public string OrderId { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

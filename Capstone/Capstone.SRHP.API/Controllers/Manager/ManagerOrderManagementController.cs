@@ -80,7 +80,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<OrderStatusUpdateDTO>>> UpdateOrderStatus(int orderId, [FromBody] ManagerOrderStatusUpdateRequest request)
+        public async Task<ActionResult<ApiResponse<OrderStatusUpdateDTO>>> UpdateOrderStatus(string orderId, [FromBody] ManagerOrderStatusUpdateRequest request)
         {
             try
             {
