@@ -65,7 +65,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
         }
 
-        public async Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string notes)
+        public async Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
         {
             var order = await _orderService.GetByIdAsync(orderId);
 
@@ -75,15 +75,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             // Update status
             await _orderService.UpdateStatusAsync(orderId, newStatus);
 
-            // Update notes if provided
-            if (!string.IsNullOrWhiteSpace(notes))
-            {
-                order.Notes = string.IsNullOrWhiteSpace(order.Notes)
-                    ? notes
-                    : $"{order.Notes}\n\nStaff update ({DateTime.UtcNow:g}): {notes}";
-
-                await _orderService.UpdateAsync(orderId, order);
-            }
 
             return await _orderService.GetByIdAsync(orderId);
         }

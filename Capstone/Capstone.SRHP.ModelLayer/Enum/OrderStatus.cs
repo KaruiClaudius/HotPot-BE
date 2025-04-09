@@ -8,6 +8,7 @@ namespace Capstone.HPTY.ModelLayer.Enum
 {
     public enum OrderStatus
     {
+        Cart = 0,
         Pending = 1,
         Processing = 2,
         Shipping = 3,

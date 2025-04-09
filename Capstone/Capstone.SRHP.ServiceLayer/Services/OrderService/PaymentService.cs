@@ -62,16 +62,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (order.HasRentItems)
                 {
-                    // Get current date without time component
-                    DateTime today = DateTime.UtcNow.Date.AddHours(7);
+                    // Get current time with offset (local current time)
+                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
 
-                    // Check if provided date is valid (in the future)
-                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value.Date <= today)
+                    // Check if provided date is valid (future compared to current time)
+                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
                     {
                         throw new ValidationException("Expected return date must be in the future");
                     }
                 }
-
                 // 3. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
@@ -318,16 +317,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "User not found", null);
                 }
 
-                PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
 
+                PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
                 if (paymentLinkInformation == null)
                 {
                     return new Response(-1, "Payment information not found", null);
                 }
 
+
                 var paymentTransaction = (await _unitOfWork.Repository<Payment>()
                     .GetWhere(pt => pt.TransactionCode == request.OrderCode)).SingleOrDefault();
-
                 if (paymentTransaction == null)
                 {
                     return new Response(-1, "Transaction not found", null);
@@ -336,7 +335,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Get the order
                 var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
 
-                if (paymentLinkInformation.status == "PAID" && paymentTransaction.Status != PaymentStatus.Success)
+
+                if (paymentLinkInformation.status == "PAID" && paymentTransaction.Status == PaymentStatus.Pending)
                 {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Success;
@@ -363,7 +363,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(0, "Transaction Complete",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
                 }
-                else if (paymentLinkInformation.status == "CANCELLED" && paymentTransaction.Status != PaymentStatus.Cancelled)
+                else if (paymentLinkInformation.status == "CANCELLED")
                 {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Cancelled;
@@ -541,6 +541,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     throw new ValidationException("Order does not have any hotpot items");
                 }
 
+                // Track which hotpot types need quantity updates
+                var hotpotIdsToUpdate = new HashSet<int>();
+
+                // Update hotpot inventory status to Available
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                {
+                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                        .IncludeNested(query => query.Include(h => h.Hotpot))
+                        .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
+
+                    if (hotpotInventory != null)
+                    {
+                        hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+                        hotpotInventory.Status = HotpotStatus.Available;
+                        await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                    }
+                }
+
                 // Set the actual return date
                 order.RentOrder.ActualReturnDate = DateTime.UtcNow;
 
@@ -604,6 +622,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update the order
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
+
+                // Update the quantity for each affected hotpot type
+                foreach (var hotpotId in hotpotIdsToUpdate)
+                {
+                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                }
+
                 await _unitOfWork.CommitAsync();
 
                 return await GetOrderByIdAsync(orderId);
@@ -699,143 +724,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<Response> HandlePaymentWebhook(PaymentWebhookRequest webhookData)
-        {
-            try
-            {
-                // Validate the webhook data
-                if (webhookData == null || webhookData.Data == null || webhookData.Data.OrderCode <= 0)
-                {
-                    return new Response(-1, "Invalid webhook data", null);
-                }
-
-                int orderCode = webhookData.Data.OrderCode;
-                string paymentStatus = webhookData.Data.Status;
-
-                // Find the payment transaction
-                var paymentTransaction = (await _unitOfWork.Repository<Payment>()
-                    .GetWhere(pt => pt.TransactionCode == orderCode)).SingleOrDefault();
-
-                if (paymentTransaction == null)
-                {
-                    return new Response(-1, "Transaction not found", null);
-                }
-
-                // Get the order
-                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
-
-                // Process based on payment status
-                if (paymentStatus == "PAID" && paymentTransaction.Status != PaymentStatus.Success)
-                {
-                    // Update transaction
-                    paymentTransaction.Status = PaymentStatus.Success;
-                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
-                    await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
-
-                    // Finalize inventory deduction
-                    await FinalizeInventoryDeduction(order);
-
-                    // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
-                    order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
-
-                    await _unitOfWork.CommitAsync();
-
-                    return new Response(0, "Payment processed successfully", null);
-                }
-                else if (paymentStatus == "CANCELLED" && paymentTransaction.Status != PaymentStatus.Cancelled)
-                {
-                    // Update transaction
-                    paymentTransaction.Status = PaymentStatus.Cancelled;
-                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
-                    await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
-
-                    // Release inventory reservations
-                    await ReleaseInventoryReservation(order);
-
-                    await _unitOfWork.CommitAsync();
-
-                    return new Response(0, "Payment cancelled successfully", null);
-                }
-                else
-                {
-                    // No change needed
-                    return new Response(0, "No action required", null);
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error handling payment webhook");
-                return new Response(-1, "fail", null);
-            }
-        }
-
-        public class PaymentWebhookRequest
-        {
-            public string Event { get; set; }
-            public WebhookData Data { get; set; }
-        }
-
-        public class WebhookData
-        {
-            public int OrderCode { get; set; }
-            public string Status { get; set; }
-            public decimal Amount { get; set; }
-            // Add other properties as needed
-        }
-
-        public async Task<Payment> UpdatePaymentStatusManuallyAsync(int paymentId, PaymentStatus newStatus)
-        {
-            try
-            {
-                var payment = await _unitOfWork.Repository<Payment>().FindAsync(p => p.PaymentId == paymentId);
-                if (payment == null)
-                {
-                    throw new NotFoundException($"Payment with ID {paymentId} not found");
-                }
-
-                // Get the order
-                var order = await GetOrderByIdAsync(payment.OrderId.Value);
-
-                // Only allow certain status transitions
-                if (payment.Status == PaymentStatus.Success)
-                {
-                    throw new ValidationException("Cannot change status of a successful payment");
-                }
-
-                // Update payment status
-                payment.Status = newStatus;
-                payment.UpdatedAt = DateTime.UtcNow;
-                await _unitOfWork.Repository<Payment>().Update(payment, paymentId);
-
-                // Handle inventory based on new status
-                if (newStatus == PaymentStatus.Success && order.Status == OrderStatus.Pending)
-                {
-                    // Finalize inventory deduction
-                    await FinalizeInventoryDeduction(order);
-
-                    // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
-                    order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
-                }
-                else if (newStatus == PaymentStatus.Cancelled && payment.Purpose == PaymentPurpose.OrderPayment)
-                {
-                    // Release inventory reservations
-                    await ReleaseInventoryReservation(order);
-                }
-
-                await _unitOfWork.CommitAsync();
-
-                return payment;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating payment status manually for payment {PaymentId}", paymentId);
-                throw;
-            }
-        }
 
         public async Task<Response> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
         {
@@ -943,6 +831,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        public async Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId)
+        {
+            try
+            {
+                // Get the hotpot
+                var hotpot = await _unitOfWork.Repository<Hotpot>().GetById(hotpotId);
+                if (hotpot == null)
+                {
+                    _logger.LogWarning("Cannot update quantity for non-existent hotpot ID {HotpotId}", hotpotId);
+                    return false;
+                }
+
+                // Count available inventory
+                int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
+                    new List<HotpotStatus> { HotpotStatus.Available });
+
+                // Update hotpot quantity
+                hotpot.Quantity = availableCount;
+                hotpot.SetUpdateDate();
+
+                await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
+
+                _logger.LogInformation("Updated hotpot {HotpotId} quantity to {Quantity} based on inventory count",
+                    hotpotId, availableCount);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating hotpot quantity from inventory for hotpot ID {HotpotId}", hotpotId);
+                return false;
+            }
+        }
+
         private async Task<CartVerificationResult> VerifyCartItemsAvailabilityAsync(Order order)
         {
             var result = new CartVerificationResult
@@ -980,14 +901,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Check rent items (hotpots)
             if (order.RentOrder != null)
             {
+                // Extract hotpot inventory IDs from the order
+                var hotpotInventoryIds = order.RentOrder.RentOrderDetails
+                    .Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue)
+                    .Select(d => d.HotpotInventoryId.Value)
+                    .ToList();
+
+                // Fetch all relevant hotpot inventories in a single query
+                var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
+                    .IncludeNested(query => query.Include(h => h.Hotpot))
+                    .Where(h => hotpotInventoryIds.Contains(h.HotPotInventoryId)).ToListAsync();
+
                 // Group hotpots by type to check total availability
                 var hotpotCounts = new Dictionary<int, int>(); // HotpotId -> Count
 
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                 {
-                    var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                        .IncludeNested(query => query.Include(h => h.Hotpot))
-                        .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
+                    var hotpotInventory = hotpotInventories.FirstOrDefault(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
                     if (hotpotInventory?.Hotpot != null)
                     {
@@ -1018,12 +948,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     // Count available hotpots of this type
-                    var availableCount = await _unitOfWork.Repository<HotPotInventory>()
-                        .CountAsync(h => h.HotpotId == hotpotId &&
-                                        (h.Status == HotpotStatus.Available ||
-                                         (h.Status == HotpotStatus.Reserved &&
-                                          order.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId == h.HotPotInventoryId))) &&
-                                        !h.IsDelete);
+                    var availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
+                        new List<HotpotStatus> { HotpotStatus.Available });
 
                     if (availableCount < requiredCount)
                     {
@@ -1059,20 +985,53 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // For hotpots, we just need to update their status to Rented
             if (order.RentOrder != null)
             {
+                // Track which hotpot types need quantity updates
+                var hotpotIdsToUpdate = new HashSet<int>();
+
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
                     if (detail.HotpotInventoryId.HasValue)
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryId.Value);
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
                         if (hotpotInventory != null)
                         {
+                            // Add the hotpot ID to the set of IDs to update
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+
+                            // Update the inventory status
                             hotpotInventory.Status = HotpotStatus.Rented;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                         }
                     }
                 }
+
+                // Update the quantity for each affected hotpot type
+                foreach (var hotpotId in hotpotIdsToUpdate)
+                {
+                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                }
+            }
+        }
+
+        private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
+        {
+            try
+            {
+                // Query for the specific hotpot type with the given statuses
+                var count = await _unitOfWork.Repository<HotPotInventory>()
+                    .CountAsync(h => h.HotpotId == hotpotId &&
+                                   statuses.Contains(h.Status) &&
+                                   !h.IsDelete);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting hotpot inventory for hotpot ID {HotpotId}", hotpotId);
+                return 0; // Return 0 on error to be safe
             }
         }
 
@@ -1082,19 +1041,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // For hotpots, we need to update their status back to Available
             if (order.RentOrder != null)
             {
+                // Track which hotpot types need quantity updates
+                var hotpotIdsToUpdate = new HashSet<int>();
+
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {
                     if (detail.HotpotInventoryId.HasValue)
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryId.Value);
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
-                        if (hotpotInventory != null && hotpotInventory.Status == HotpotStatus.Reserved)
+                        if (hotpotInventory != null &&
+                            (hotpotInventory.Status == HotpotStatus.Reserved || hotpotInventory.Status == HotpotStatus.Rented))
                         {
+                            // Add the hotpot ID to the set of IDs to update
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+
+                            // Update the inventory status
                             hotpotInventory.Status = HotpotStatus.Available;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                         }
                     }
+                }
+
+                // Update the quantity for each affected hotpot type
+                foreach (var hotpotId in hotpotIdsToUpdate)
+                {
+                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
                 }
             }
 
@@ -1237,6 +1211,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, $"Invalid status transition from {order.Status} to {newStatus}", null);
                 }
 
+                // Track which hotpot types need quantity updates
+                var hotpotIdsToUpdate = new HashSet<int>();
+
                 // Handle inventory based on status change
                 if (newStatus == OrderStatus.Delivered && order.RentOrder != null)
                 {
@@ -1244,10 +1221,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryId.Value);
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
                         if (hotpotInventory != null)
                         {
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
                             hotpotInventory.Status = HotpotStatus.Rented;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                         }
@@ -1255,14 +1234,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
                 else if (newStatus == OrderStatus.Returning && order.RentOrder != null)
                 {
-                    // Update hotpot inventory status to Maintenance
+                    // Update hotpot inventory status to Preparing
                     foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryId.Value);
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
                         if (hotpotInventory != null)
                         {
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
                             hotpotInventory.Status = HotpotStatus.Preparing;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                         }
@@ -1274,10 +1255,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                     {
                         var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .GetById(detail.HotpotInventoryId.Value);
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
                         if (hotpotInventory != null)
                         {
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
                             hotpotInventory.Status = HotpotStatus.Available;
 
                             // Update last maintain date on the hotpot itself
@@ -1307,6 +1290,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         // Release inventory reservations
                         await ReleaseInventoryReservation(order);
 
+                        // We don't need to update hotpot quantities here since ReleaseInventoryReservation already does it
+
                         // Cancel any pending payments
                         var pendingPayments = (await GetListPaymentByOrderIdAsync(orderId))
                             .Where(p => p.Status == PaymentStatus.Pending)
@@ -1331,6 +1316,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 order.Status = newStatus;
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
+
+                // Update the quantity for each affected hotpot type
+                foreach (var hotpotId in hotpotIdsToUpdate)
+                {
+                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                }
+
                 await _unitOfWork.CommitAsync();
 
                 return new Response(0, "Order status updated successfully", order);
@@ -1389,7 +1381,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     DateTime today = DateTime.UtcNow.AddHours(7);
                     order.RentOrder.RentalStartDate = today;
-                    DateTime expectedReturnDate = request.ExpectedReturnDate.Value.Date;
+                    DateTime expectedReturnDate = request.ExpectedReturnDate.Value;
 
                     // Validate expected return date is after rental start date
                     if (expectedReturnDate <= today)
@@ -1398,7 +1390,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     if (request.ExpectedReturnDate.HasValue &&
-                        request.ExpectedReturnDate.Value.Date <= order.RentOrder.RentalStartDate.Date)
+                        request.ExpectedReturnDate.Value <= order.RentOrder.RentalStartDate)
                     {
                         throw new ValidationException("Expected return date must be at least one day after rental start date");
                     }

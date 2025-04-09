@@ -90,78 +90,128 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
         public async Task<bool> ProcessEquipmentReturnAsync(EquipmentReturnRequest request)
         {
             if (!request.RentOrderId.HasValue)
-                throw new ValidationException("RentOrderDetailId is required");
+                throw new ValidationException("RentOrderId is required");
 
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
-                await ProcessEquipmentReturnInternalAsync(
-                    request.RentOrderId.Value, request);
+                _logger.LogInformation("Processing equipment return request for rent order ID: {RentOrderId}", request.RentOrderId.Value);
 
-                // Send notification to the customer
-                var rentOrder = await GetRentOrderAsync(request.RentOrderId.Value);
-                if (rentOrder.Order?.UserId != null)
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    await _notificationService.NotifyCustomerRentalReturnedAsync(
-                        rentOrder.Order.UserId,
-                        request.RentOrderId.Value);
-                }
+                    await ProcessEquipmentReturnInternalAsync(
+                        request.RentOrderId.Value, request);
 
-                return true;
-            });
+                    // Send notification to the customer
+                    var rentOrder = await GetRentOrderAsync(request.RentOrderId.Value);
+                    if (rentOrder.Order?.UserId != null)
+                    {
+                        await _notificationService.NotifyCustomerRentalReturnedAsync(
+                            rentOrder.Order.UserId,
+                            request.RentOrderId.Value);
+                    }
+
+                    _logger.LogInformation("Equipment return processed successfully for rent order ID: {RentOrderId}", request.RentOrderId.Value);
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ProcessEquipmentReturnAsync for rent order ID: {RentOrderId}", request.RentOrderId.Value);
+                throw;
+            }
         }
 
         private async Task ProcessEquipmentReturnInternalAsync(
             int rentOrderId,
             EquipmentReturnRequest request)
         {
-            // Get the rent order
-            var rentOrder = await GetRentOrderAsync(rentOrderId);
-
-            // Validate request
-            if (request.ReturnDate < rentOrder.RentalStartDate)
-                throw new ValidationException("Return date cannot be earlier than rental start date");
-
-            // Update rent order detail
-            rentOrder.ActualReturnDate = request.ReturnDate;
-            rentOrder.ReturnCondition = request.ReturnCondition;
-
-            // Calculate late fee if applicable
-            if (request.ReturnDate > rentOrder.ExpectedReturnDate)
+            try
             {
-                var daysLate = (request.ReturnDate - rentOrder.ExpectedReturnDate).Days;
+                _logger.LogInformation("Processing equipment return for rent order ID: {RentOrderId}", rentOrderId);
 
-                // Calculate late fee based on the total rental price of all items
-                decimal totalRentalPrice = rentOrder.RentOrderDetails
-                    .Where(d => !d.IsDelete)
-                    .Sum(d => d.RentalPrice * d.Quantity);
+                // Get the rent order with tracking enabled
+                var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                    .AsQueryable()
+                    .Include(ro => ro.Order)
+                    .Include(ro => ro.RentOrderDetails)
+                    .FirstOrDefaultAsync(ro => ro.OrderId == rentOrderId && !ro.IsDelete);
 
-                rentOrder.LateFee = daysLate * (totalRentalPrice * 0.1m); // 10% of rental price per day
+                if (rentOrder == null)
+                    throw new NotFoundException($"Rent order with ID {rentOrderId} not found");
+
+                _logger.LogInformation("Found rent order: StartDate={StartDate}, ExpectedReturn={ExpectedReturn}, ActualReturn={ActualReturn}",
+                    rentOrder.RentalStartDate, rentOrder.ExpectedReturnDate, rentOrder.ActualReturnDate);
+
+                // Validate request
+                if (request.ReturnDate < rentOrder.RentalStartDate)
+                    throw new ValidationException("Return date cannot be earlier than rental start date");
+
+                // Update rent order detail
+                rentOrder.ActualReturnDate = request.ReturnDate;
+                rentOrder.ReturnCondition = request.ReturnCondition;
+
+                _logger.LogInformation("Updated return date to {ReturnDate} and condition to {Condition}",
+                    request.ReturnDate, request.ReturnCondition);
+
+                // Calculate late fee if applicable
+                if (request.ReturnDate > rentOrder.ExpectedReturnDate)
+                {
+                    var daysLate = (request.ReturnDate - rentOrder.ExpectedReturnDate).Days;
+
+                    // Calculate late fee based on the total rental price of all items
+                    decimal totalRentalPrice = rentOrder.RentOrderDetails
+                        .Where(d => !d.IsDelete)
+                        .Sum(d => d.RentalPrice * d.Quantity);
+
+                    rentOrder.LateFee = daysLate * (totalRentalPrice * 0.1m); // 10% of rental price per day
+                    _logger.LogInformation("Calculated late fee: {LateFee} for {DaysLate} days late", rentOrder.LateFee, daysLate);
+                }
+
+                // Set damage fee if applicable
+                if (!string.IsNullOrEmpty(request.ReturnCondition) && request.DamageFee.HasValue)
+                {
+                    rentOrder.DamageFee = request.DamageFee;
+                    _logger.LogInformation("Set damage fee to {DamageFee}", request.DamageFee);
+                }
+
+                // Update notes
+                if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    rentOrder.RentalNotes = string.IsNullOrEmpty(rentOrder.RentalNotes)
+                        ? request.Notes
+                        : $"{rentOrder.RentalNotes}\n{request.Notes}";
+
+                    _logger.LogInformation("Updated rental notes");
+                }
+
+                rentOrder.SetUpdateDate();
+
+                // Use Update instead of UpdateDetached to ensure the entity is tracked
+                await _unitOfWork.Repository<RentOrder>().Update(rentOrder, rentOrderId);
+
+                // Explicitly commit the changes
+                await _unitOfWork.CommitAsync();
+
+                _logger.LogInformation("Rent order updated successfully");
+
+                // Update order status
+                await UpdateOrderStatusIfAllReturned(rentOrderId);
+
+                // Update inventory status for all items in the order
+                foreach (var detail in rentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    await UpdateInventoryStatus(detail);
+                }
+
+                // Commit again after all updates
+                await _unitOfWork.CommitAsync();
+
+                _logger.LogInformation("Equipment return process completed successfully");
             }
-
-            // Set damage fee if applicable
-            if (!string.IsNullOrEmpty(request.ReturnCondition) && request.DamageFee.HasValue)
+            catch (Exception ex)
             {
-                rentOrder.DamageFee = request.DamageFee;
-            }
-
-            // Update notes
-            if (!string.IsNullOrEmpty(request.Notes))
-            {
-                rentOrder.RentalNotes = string.IsNullOrEmpty(rentOrder.RentalNotes)
-                    ? request.Notes
-                    : $"{rentOrder.RentalNotes}\n{request.Notes}";
-            }
-
-            rentOrder.SetUpdateDate();
-            await _unitOfWork.Repository<RentOrder>().UpdateDetached(rentOrder);
-
-            // Update order status
-            await UpdateOrderStatusIfAllReturned(rentOrderId);
-
-            // Update inventory status for all items in the order
-            foreach (var detail in rentOrder.RentOrderDetails.Where(d => !d.IsDelete))
-            {
-                await UpdateInventoryStatus(detail);
+                _logger.LogError(ex, "Error processing equipment return for rent order ID: {RentOrderId}", rentOrderId);
+                throw;
             }
         }
 

@@ -40,4 +40,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
     {
         public string Notes { get; set; }
     }
+
+    public class UpdateShippingStatusRequest
+    {
+        public string? Notes { get; set; }
+    }
 }

@@ -294,11 +294,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (!string.IsNullOrEmpty(request.Name))
                     existingIngredient.Name = request.Name;
 
-                // Description can be null
-                existingIngredient.Description = request.Description;
+                if (!string.IsNullOrEmpty(request.Description))
+                    existingIngredient.Description = request.Description;
 
-                // ImageURL can be null
-                existingIngredient.ImageURL = request.ImageURL;
+                if (!string.IsNullOrEmpty(request.ImageURL))
+                    existingIngredient.ImageURL = request.ImageURL;
 
                 if (request.MinStockLevel.HasValue)
                     existingIngredient.MinStockLevel = request.MinStockLevel.Value;

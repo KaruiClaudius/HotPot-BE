@@ -78,7 +78,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 {
                     if (effectivePageNumber < 1) effectivePageNumber = 1;
                     if (effectivePageSize < 1) effectivePageSize = 10;
-                    if (effectivePageSize > 50) effectivePageSize = 50;
                 }
 
                 // Use the GetOrdersAsync method with all parameters
