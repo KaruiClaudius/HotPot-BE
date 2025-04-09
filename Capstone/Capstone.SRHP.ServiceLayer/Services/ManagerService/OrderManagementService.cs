@@ -37,7 +37,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 // Check if order exists
                 var order = await _unitOfWork.Repository<Order>()
-                    .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
+                    .AsQueryable()
+                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .FirstOrDefaultAsync();
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
@@ -84,7 +86,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     // Update existing shipping order
                     existingShippingOrder.StaffId = staffId;
                     existingShippingOrder.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
                     shippingOrder = existingShippingOrder;
                 }
                 else
@@ -101,8 +102,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     };
 
                     _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
-                    await _unitOfWork.CommitAsync();
                 }
+
+                // Update order status to Processing
+                order.Status = OrderStatus.Processing;
+                order.SetUpdateDate();
+
+                // Save all changes
+                await _unitOfWork.CommitAsync();
 
                 // Map to DTO
                 return new ShippingOrderAllocationDTO
