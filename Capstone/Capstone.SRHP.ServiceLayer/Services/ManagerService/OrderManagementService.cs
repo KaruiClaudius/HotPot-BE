@@ -218,7 +218,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
-        public async Task<OrderDetailDTO> GetOrderWithDetails(int orderId)
+        public async Task<OrderDetailDTO> GetOrderWithDetails(string orderId)
         {
             try
             {
@@ -226,7 +226,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
-                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
