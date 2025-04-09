@@ -258,7 +258,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "Admin,Staff")]
+        
         public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
         {
             try
