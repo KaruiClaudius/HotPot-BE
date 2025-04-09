@@ -66,34 +66,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .Include(u => u.StaffWorkShifts)
                     .ToListAsync();
 
+                // Get all active assignments in a single query
+                var allActiveAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
+                    .AsQueryable(a => a.CompletedDate == null)
+                    .Select(a => new { a.StaffId, a.AssignedDate })
+                    .ToListAsync();
+
+                // Group assignments by staff ID
+                var assignmentsByStaff = allActiveAssignments
+                    .GroupBy(a => a.StaffId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => new {
+                            Count = g.Count(),
+                            HasActiveOrder = g.Any(a => a.AssignedDate != null)
+                        }
+                    );
+
                 // Map to DTOs and determine availability
                 var staffDtos = new List<StaffAvailableDto>();
                 foreach (var staff in staffUsers)
                 {
                     // Check if staff is scheduled to work today
-                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay );
+                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
 
-                    // Check if staff has too many active assignments
-                    if (isAvailable)
-                    {
-                        var activeAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
-                            .CountAsync(a => a.StaffId == staff.UserId && a.CompletedDate == null);
+                    // Get assignment info for this staff
+                    assignmentsByStaff.TryGetValue(staff.UserId, out var assignmentInfo);
+                    int activeAssignments = assignmentInfo?.Count ?? 0;
+                    bool hasActiveOrder = assignmentInfo?.HasActiveOrder ?? false;
 
-                        // Define a threshold for maximum assignments (e.g., 5)
-                        isAvailable = activeAssignments < 5;
-                    }
+                    // Define a threshold for maximum assignments (e.g., 5)
+                    isAvailable = isAvailable && (activeAssignments < 5);
 
-                    // Check if staff currently has an active order in progress
-                    if (isAvailable)
-                    {
-                        var currentlyActiveOrder = await _unitOfWork.Repository<StaffPickupAssignment>()
-                            .AnyAsync(a => a.StaffId == staff.UserId &&
-                                          a.CompletedDate == null &&
-                                          a.AssignedDate != null);
-
-                        // Staff is not available if they're currently working on an order
-                        isAvailable = !currentlyActiveOrder;
-                    }
+                    // Staff is not available if they're currently working on an order
+                    isAvailable = isAvailable && !hasActiveOrder;
 
                     staffDtos.Add(new StaffAvailableDto
                     {
@@ -101,7 +107,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         Name = staff.Name,
                         Email = staff.Email ?? string.Empty,
                         Phone = staff.PhoneNumber ?? string.Empty,
-                        IsAvailable = isAvailable
+                        IsAvailable = isAvailable,
+                        AssignmentCount = activeAssignments
                     });
                 }
 

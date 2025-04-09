@@ -34,7 +34,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
     public class UnallocatedOrderDTO
     {
-        public string OrderId { get; set; }
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
         public string Address { get; set; }
         public string Notes { get; set; }
         public decimal TotalPrice { get; set; }
@@ -105,7 +106,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     public class ShippingOrderAllocationDTO
     {
         public int ShippingOrderId { get; set; }
-        public string OrderId { get; set; }
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
+
         public int StaffId { get; set; }
         public string StaffName { get; set; }
         public bool IsDelivered { get; set; }
@@ -139,7 +142,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     }
     public class OrderStatusUpdateDTO
     {
-        public int OrderId { get; set; }
+        public string OrderId { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
@@ -187,7 +190,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     public class DeliveryTimeUpdateDTO
     {
         public int ShippingOrderId { get; set; }
-        public string OrderId { get; set; }
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
         public DateTime DeliveryTime { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
