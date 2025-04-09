@@ -179,6 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 });
             }
         }
+
         [HttpPut("{id}/cancel")]
         [ProducesResponseType(typeof(ApiResponse<StaffOrderDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]

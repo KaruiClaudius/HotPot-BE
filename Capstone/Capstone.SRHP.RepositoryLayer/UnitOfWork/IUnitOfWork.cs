@@ -26,5 +26,6 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
         Task ExecuteInTransactionAsync(Func<Task> operation, Action<Exception> exceptionHandler = null);
         Task<TResult> ExecuteInTransactionAsync<TResult>(Func<Task<TResult>> operation, Action<Exception> exceptionHandler = null);
 
+
     }
 }

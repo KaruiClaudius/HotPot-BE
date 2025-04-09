@@ -16,7 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string StaffName { get; set; }
         public DateTime AssignedDate { get; set; }
         public DateTime? CompletedDate { get; set; }
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
         public string CustomerName { get; set; }
         public string CustomerAddress { get; set; }
         public string CustomerPhone { get; set; }
