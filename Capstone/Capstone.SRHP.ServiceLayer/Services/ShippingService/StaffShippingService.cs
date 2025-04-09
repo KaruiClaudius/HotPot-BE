@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
@@ -105,7 +106,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 // Use the generic repository through unit of work to query pending shipping orders
                 var pendingShippingOrdersQuery = _unitOfWork.Repository<ShippingOrder>()
                     .AsQueryable()
-                    .Where(so => so.StaffId == staffId && !so.IsDelivered)
+                    .Where(so => so.StaffId == staffId &&
+                                 !so.IsDelivered &&
+                                 so.Order.Status == OrderStatus.Shipping)
                     .Include(so => so.Order)
                         .ThenInclude(o => o.User)
                     .Include(so => so.Order)
