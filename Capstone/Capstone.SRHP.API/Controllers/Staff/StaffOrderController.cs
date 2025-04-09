@@ -141,7 +141,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 _logger.LogInformation("Staff updating order {OrderId} status to {NewStatus}", id, request.Status);
 
-                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, request.Notes);
+                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status);
                 var orderDto = MapToStaffOrderDto(updatedOrder);
 
                 return Ok(new ApiResponse<StaffOrderDto>

@@ -13,7 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
     {
         Task<IEnumerable<Order>> GetAssignedOrdersAsync(int staffId);
         Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status);
-        Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string notes);
+        Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus);
         Task<Order> CancelOrderAsync(int orderId, string cancellationReason);
         Task<PagedResult<Order>> GetOrderHistoryAsync(
             int pageNumber,
