@@ -12,7 +12,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 {
     [Route("api/manager/order-management")]
     [ApiController]
-    //[Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager")]
     public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
@@ -100,7 +100,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("details/{orderId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<OrderDetailDTO>>> GetOrderWithDetails(int orderId)
+        public async Task<ActionResult<ApiResponse<OrderDetailDTO>>> GetOrderWithDetails(string orderId)
         {
             try
             {
