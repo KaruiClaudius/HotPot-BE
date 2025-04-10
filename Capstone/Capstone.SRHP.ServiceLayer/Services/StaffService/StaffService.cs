@@ -166,7 +166,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         }
 
         // Pickup Service Methods
-     
+
 
         public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
         {
@@ -183,16 +183,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 if (staff == null)
                     throw new NotFoundException($"Staff with ID {staffId} not found");
 
-                // Verify the rent order detail exists
+                // Verify the rent order detail exists and get its OrderId
                 var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
                     .GetById(rentOrderDetailId);
 
                 if (rentOrderDetail == null)
                     throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
 
+                // Get the OrderId from the RentOrderDetail
+                int orderId = rentOrderDetail.OrderId;
+
                 // Check if this rental is already assigned
                 var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .FindAsync(a => a.OrderId == rentOrderDetailId && a.CompletedDate == null);
+                    .FindAsync(a => a.OrderId == orderId && a.CompletedDate == null);
 
                 if (existingAssignment != null)
                 {
@@ -209,7 +212,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Create new assignment
                     var assignment = new StaffPickupAssignment
                     {
-                        OrderId = rentOrderDetailId,
+                        OrderId = orderId, // Use the OrderId from RentOrderDetail
                         StaffId = staffId,
                         AssignedDate = DateTime.UtcNow,
                         Notes = notes
@@ -245,24 +248,58 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
 
             // Map to DTOs
-            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            var assignmentDtos = new List<StaffPickupAssignmentDto>();
+
+            foreach (var assignment in assignments)
             {
-                AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
-                StaffId = a.StaffId,
-                StaffName = a.Staff?.Name,
-                AssignedDate = a.AssignedDate,
-                CompletedDate = a.CompletedDate,
-                Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                // Get equipment summary from all details
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
-            }).ToList();
+                // Get the RentOrderDetails for this assignment
+                var rentOrderDetails = assignment.RentOrder?.RentOrderDetails?.ToList() ?? new List<RentOrderDetail>();
+
+                // If there are no details, create one assignment DTO with the RentOrder info
+                if (!rentOrderDetails.Any())
+                {
+                    assignmentDtos.Add(new StaffPickupAssignmentDto
+                    {
+                        AssignmentId = assignment.AssignmentId,
+                        OrderId = assignment.OrderId, // This is RentOrder.OrderId
+                        StaffId = assignment.StaffId,
+                        StaffName = assignment.Staff?.Name,
+                        AssignedDate = assignment.AssignedDate,
+                        CompletedDate = assignment.CompletedDate,
+                        Notes = assignment.Notes,
+                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
+                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
+                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
+                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
+                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
+                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
+                        EquipmentSummary = "No equipment details"
+                    });
+                    continue;
+                }
+
+                // Create one assignment DTO for each RentOrderDetail
+                foreach (var detail in rentOrderDetails)
+                {
+                    assignmentDtos.Add(new StaffPickupAssignmentDto
+                    {
+                        AssignmentId = assignment.AssignmentId,
+                        OrderId = detail.RentOrderDetailId, // Use RentOrderDetailId instead of RentOrder.OrderId
+                        StaffId = assignment.StaffId,
+                        StaffName = assignment.Staff?.Name,
+                        AssignedDate = assignment.AssignedDate,
+                        CompletedDate = assignment.CompletedDate,
+                        Notes = assignment.Notes,
+                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
+                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
+                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
+                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
+                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
+                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
+                        EquipmentSummary = GetEquipmentSummary(new List<RentOrderDetail> { detail })
+                    });
+                }
+            }
 
             return assignmentDtos;
         }
