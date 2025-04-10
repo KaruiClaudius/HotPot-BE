@@ -9,19 +9,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
     public class UpdateComboRequest
     {
-        [Required]
+
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(1000)]
         public string? Description { get; set; }
 
-        [Required]
-        [Range(1, int.MaxValue)]
-        public int Size { get; set; }
 
-        [Required]
-        public int HotpotBrothID { get; set; }
+        [Range(1, int.MaxValue)]
+        public int? Size { get; set; }
+
+
+        public int? HotpotBrothID { get; set; }
 
         public string[]? ImageURLs { get; set; }
 

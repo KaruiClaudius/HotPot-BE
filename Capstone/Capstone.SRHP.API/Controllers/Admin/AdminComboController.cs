@@ -207,12 +207,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 if (request.Size > 0)
                 {
-                    existingCombo.Size = request.Size;
+                    existingCombo.Size = request.Size.Value;
                 }
 
                 if (request.HotpotBrothID > 0)
                 {
-                    existingCombo.HotpotBrothId = request.HotpotBrothID;
+                    existingCombo.HotpotBrothId = request.HotpotBrothID.Value;
                 }
 
                 if (request.ImageURLs != null) // This allows explicitly setting to null or a new array
