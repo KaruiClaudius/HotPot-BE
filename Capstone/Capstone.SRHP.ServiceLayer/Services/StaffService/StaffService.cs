@@ -13,6 +13,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 {
@@ -165,7 +166,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         }
 
         // Pickup Service Methods
-     
+
 
         public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
         {
@@ -182,16 +183,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 if (staff == null)
                     throw new NotFoundException($"Staff with ID {staffId} not found");
 
-                // Verify the rent order detail exists
+                // Verify the rent order detail exists and get its OrderId
                 var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
                     .GetById(rentOrderDetailId);
 
                 if (rentOrderDetail == null)
                     throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
 
+                // Get the OrderId from the RentOrderDetail
+                int orderId = rentOrderDetail.OrderId;
+
                 // Check if this rental is already assigned
                 var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .FindAsync(a => a.OrderId == rentOrderDetailId && a.CompletedDate == null);
+                    .FindAsync(a => a.OrderId == orderId && a.CompletedDate == null);
 
                 if (existingAssignment != null)
                 {
@@ -208,7 +212,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Create new assignment
                     var assignment = new StaffPickupAssignment
                     {
-                        OrderId = rentOrderDetailId,
+                        OrderId = orderId, // Use the OrderId from RentOrderDetail
                         StaffId = staffId,
                         AssignedDate = DateTime.UtcNow,
                         Notes = notes
@@ -244,24 +248,58 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
 
             // Map to DTOs
-            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            var assignmentDtos = new List<StaffPickupAssignmentDto>();
+
+            foreach (var assignment in assignments)
             {
-                AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
-                StaffId = a.StaffId,
-                StaffName = a.Staff?.Name,
-                AssignedDate = a.AssignedDate,
-                CompletedDate = a.CompletedDate,
-                Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                // Get equipment summary from all details
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
-            }).ToList();
+                // Get the RentOrderDetails for this assignment
+                var rentOrderDetails = assignment.RentOrder?.RentOrderDetails?.ToList() ?? new List<RentOrderDetail>();
+
+                // If there are no details, create one assignment DTO with the RentOrder info
+                if (!rentOrderDetails.Any())
+                {
+                    assignmentDtos.Add(new StaffPickupAssignmentDto
+                    {
+                        AssignmentId = assignment.AssignmentId,
+                        OrderId = assignment.OrderId, // This is RentOrder.OrderId
+                        StaffId = assignment.StaffId,
+                        StaffName = assignment.Staff?.Name,
+                        AssignedDate = assignment.AssignedDate,
+                        CompletedDate = assignment.CompletedDate,
+                        Notes = assignment.Notes,
+                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
+                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
+                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
+                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
+                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
+                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
+                        EquipmentSummary = "No equipment details"
+                    });
+                    continue;
+                }
+
+                // Create one assignment DTO for each RentOrderDetail
+                foreach (var detail in rentOrderDetails)
+                {
+                    assignmentDtos.Add(new StaffPickupAssignmentDto
+                    {
+                        AssignmentId = assignment.AssignmentId,
+                        OrderId = detail.RentOrderDetailId, // Use RentOrderDetailId instead of RentOrder.OrderId
+                        StaffId = assignment.StaffId,
+                        StaffName = assignment.Staff?.Name,
+                        AssignedDate = assignment.AssignedDate,
+                        CompletedDate = assignment.CompletedDate,
+                        Notes = assignment.Notes,
+                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
+                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
+                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
+                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
+                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
+                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
+                        EquipmentSummary = GetEquipmentSummary(new List<RentOrderDetail> { detail })
+                    });
+                }
+            }
 
             return assignmentDtos;
         }
@@ -287,38 +325,105 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             // Get total count before pagination
             var totalCount = await query.CountAsync();
 
-            // Apply pagination
-            var assignments = await query
+            // Get basic assignments first (without includes)
+            var basicAssignments = await query
                 .OrderBy(a => a.AssignedDate)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Include(a => a.Staff)
-                .Include(a => a.RentOrder)
-                    .ThenInclude(r => r.Order)
-                        .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.HotpotInventory)
-                        .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
 
             // Map to DTOs
-            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            var assignmentDtos = new List<StaffPickupAssignmentDto>();
+
+            foreach (var a in basicAssignments)
             {
-                AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
-                StaffId = a.StaffId,
-                StaffName = a.Staff?.Name,
-                AssignedDate = a.AssignedDate,
-                CompletedDate = a.CompletedDate,
-                Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
-            }).ToList();
+                // Create basic DTO
+                var dto = new StaffPickupAssignmentDto
+                {
+                    AssignmentId = a.AssignmentId,
+                    OrderId = a.OrderId,
+                    StaffId = a.StaffId,
+                    AssignedDate = a.AssignedDate,
+                    CompletedDate = a.CompletedDate,
+                    Notes = a.Notes,
+                    EquipmentSummary = "Order details not available"
+                };
+
+                // Try to load staff
+                var staffMember = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.UserId == a.StaffId && !u.IsDelete);
+
+                if (staffMember != null)
+                {
+                    dto.StaffName = staffMember.Name;
+                }
+
+                // Try to load rent order and related entities
+                var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                    .FindAsync(r => r.OrderId == a.OrderId && !r.IsDelete);
+
+                if (rentOrder != null)
+                {
+                    dto.RentalStartDate = rentOrder.RentalStartDate;
+                    dto.ExpectedReturnDate = rentOrder.ExpectedReturnDate;
+
+                    // Try to load order
+                    var order = await _unitOfWork.Repository<Order>()
+                        .FindAsync(o => o.OrderId == rentOrder.OrderId && !o.IsDelete);
+
+                    if (order != null)
+                    {
+                        dto.OrderCode = order.OrderCode;
+
+                        // Try to load user
+                        var user = await _unitOfWork.Repository<User>()
+                            .FindAsync(u => u.UserId == order.UserId && !u.IsDelete);
+
+                        if (user != null)
+                        {
+                            dto.CustomerName = user.Name;
+                            dto.CustomerAddress = user.Address;
+                            dto.CustomerPhone = user.PhoneNumber;
+                        }
+                    }
+
+                    // Try to load rent order details using AsQueryable
+                    var detailsQuery = _unitOfWork.Repository<RentOrderDetail>()
+                        .AsQueryable(d => d.OrderId == rentOrder.OrderId && !d.IsDelete);
+
+                    var details = await detailsQuery.ToListAsync();
+
+                    if (details != null && details.Any())
+                    {
+                        // Load hotpot inventory and hotpot for each detail
+                        foreach (var detail in details)
+                        {
+                            if (detail.HotpotInventoryId.HasValue)
+                            {
+                                var inventory = await _unitOfWork.Repository<HotPotInventory>()
+                                    .FindAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
+
+                                if (inventory != null)
+                                {
+                                    detail.HotpotInventory = inventory;
+
+                                    var hotpot = await _unitOfWork.Repository<Hotpot>()
+                                        .FindAsync(h => h.HotpotId == inventory.HotpotId && !h.IsDelete);
+
+                                    if (hotpot != null)
+                                    {
+                                        inventory.Hotpot = hotpot;
+                                    }
+                                }
+                            }
+                        }
+
+                        dto.EquipmentSummary = GetEquipmentSummary(details);
+                    }
+                }
+
+                assignmentDtos.Add(dto);
+            }
 
             return new PagedResult<StaffPickupAssignmentDto>
             {
@@ -331,10 +436,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
         {
+            // Log input parameters
+            Console.WriteLine($"Requested page: {pageNumber}, page size: {pageSize}");
+
             // Get all current assignments (not completed)
             var query = _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.CompletedDate == null && !a.IsDelete)
-                .Include(a => a.Staff)
+                .AsQueryable(a => a.CompletedDate == null && !a.IsDelete);
+
+            // Check basic count before includes
+            var basicCount = await query.CountAsync();
+            Console.WriteLine($"Basic count before includes: {basicCount}");
+
+            // Add includes
+            query = query.Include(a => a.Staff)
                 .Include(a => a.RentOrder)
                     .ThenInclude(r => r.Order)
                         .ThenInclude(o => o.User)
@@ -342,17 +456,33 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .ThenInclude(d => d.HotpotInventory)
                         .ThenInclude(h => h != null ? h.Hotpot : null);
 
-            // Get total count before pagination
+            // Get total count after includes
             var totalCount = await query.CountAsync();
+            Console.WriteLine($"Total count after includes: {totalCount}");
 
-            // Apply pagination
+            // Check if pagination parameters are valid
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            Console.WriteLine($"Total pages: {totalPages}, requested page: {pageNumber}");
+
+            if (pageNumber > totalPages && totalCount > 0)
+            {
+                Console.WriteLine("Warning: Requested page exceeds available pages");
+                // Option 1: Return empty result with correct metadata
+                // Option 2: Reset to page 1 (implemented below)
+                pageNumber = 1;
+            }
+
+            // Apply pagination with detailed logging
+            Console.WriteLine($"Applying pagination: Skip {(pageNumber - 1) * pageSize}, Take {pageSize}");
             var assignments = await query
                 .OrderBy(a => a.AssignedDate)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            // Map to DTOs
+            Console.WriteLine($"Retrieved {assignments.Count} assignments after pagination");
+
+            // Map to DTOs with null checks
             var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
             {
                 AssignmentId = a.AssignmentId,
@@ -368,9 +498,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 OrderCode = a.RentOrder?.Order?.OrderCode,
                 RentalStartDate = a.RentOrder?.RentalStartDate,
                 ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                // Get equipment summary from all details
                 EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
             }).ToList();
+
+            Console.WriteLine($"Mapped {assignmentDtos.Count} DTOs");
 
             return new PagedResult<StaffPickupAssignmentDto>
             {
@@ -378,43 +509,76 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 TotalCount = totalCount,
                 PageNumber = pageNumber,
                 PageSize = pageSize
+                // TotalPages is calculated automatically
             };
         }
 
         private string GetEquipmentSummary(ICollection<RentOrderDetail> details)
         {
-            if (details == null || !details.Any())
-                return "No equipment";
+            Console.WriteLine("GetEquipmentSummary called");
 
+            if (details == null)
+            {
+                Console.WriteLine("  Details collection is NULL");
+                return "No equipment";
+            }
+
+            if (!details.Any())
+            {
+                Console.WriteLine("  Details collection is empty");
+                return "No equipment";
+            }
+
+            Console.WriteLine($"  Processing {details.Count} details");
             var equipmentCounts = new Dictionary<string, int>();
+            var skippedDetails = 0;
 
             foreach (var detail in details.Where(d => !d.IsDelete))
             {
+                Console.WriteLine($"  Detail {detail.RentOrderDetailId}: HotpotInventoryId={detail.HotpotInventoryId}");
+
                 string name;
                 if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
                 {
                     name = detail.HotpotInventory.Hotpot.Name;
+                    Console.WriteLine($"    Found hotpot name: {name}");
                 }
                 else
                 {
+                    if (!detail.HotpotInventoryId.HasValue)
+                        Console.WriteLine("    Skipped: HotpotInventoryId is null");
+                    else if (detail.HotpotInventory == null)
+                        Console.WriteLine("    Skipped: HotpotInventory is null");
+                    else if (detail.HotpotInventory.Hotpot == null)
+                        Console.WriteLine("    Skipped: Hotpot is null");
+
+                    skippedDetails++;
                     continue;
                 }
 
                 if (equipmentCounts.ContainsKey(name))
                 {
                     equipmentCounts[name] += detail.Quantity;
+                    Console.WriteLine($"    Updated count for {name}: {equipmentCounts[name]}");
                 }
                 else
                 {
                     equipmentCounts[name] = detail.Quantity;
+                    Console.WriteLine($"    Added new entry for {name}: {detail.Quantity}");
                 }
             }
 
             // Create a summary string
             var summary = string.Join(", ", equipmentCounts.Select(kv => $"{kv.Value}x {kv.Key}"));
+
+            if (skippedDetails > 0)
+            {
+                Console.WriteLine($"  WARNING: Skipped {skippedDetails} details due to missing data");
+            }
+
+            Console.WriteLine($"  Final summary: {(string.IsNullOrEmpty(summary) ? "No equipment" : summary)}");
             return string.IsNullOrEmpty(summary) ? "No equipment" : summary;
         }
-
 
         private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
         {
