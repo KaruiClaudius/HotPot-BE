@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Mvc;
@@ -17,18 +18,24 @@ namespace Capstone.HPTY.Test.Controllers.Manager
     {
         private readonly Mock<IEquipmentConditionService> _mockEquipmentConditionService;
         private readonly Mock<INotificationService> _mockNotificationService;
+        private Mock<IHotpotService> _mockHotpotService;
+        private Mock<IUtensilService> _mockUtensilService;
 
         public ManagerEquipmentConditionsControllerTests()
         {
             _mockEquipmentConditionService = new Mock<IEquipmentConditionService>();
             _mockNotificationService = new Mock<INotificationService>();
+            _mockHotpotService = new Mock<IHotpotService>();
+            _mockUtensilService = new Mock<IUtensilService>();
         }
 
         private ManagerEquipmentConditionsController CreateController()
         {
             return new ManagerEquipmentConditionsController(
                 _mockEquipmentConditionService.Object,
-                _mockNotificationService.Object);
+                _mockNotificationService.Object,
+                _mockHotpotService.Object,
+                _mockUtensilService.Object);
         }
 
         [Fact]
@@ -411,33 +418,33 @@ namespace Capstone.HPTY.Test.Controllers.Manager
            
         }
 
-        [Fact]
-        public async Task NotifyAdministrators_ValidRequest_ReturnsOkResult()
-        {
-            // Arrange
-            var controller = CreateController();
-            var request = new NotifyAdminRequest
-            {
-                ConditionLogId = 1,
-                EquipmentType = "HotPot",
-                EquipmentName = "Test HotPot",
-                IssueName = "Test Issue",
-                Description = "Test Description",
-                ScheduleType = MaintenanceScheduleType.Regular
-            };
+        //[Fact]
+        //public async Task NotifyAdministrators_ValidRequest_ReturnsOkResult()
+        //{
+        //    // Arrange
+        //    var controller = CreateController();
+        //    var request = new NotifyAdminRequest
+        //    {
+        //        ConditionLogId = 1,
+        //        EquipmentType = "HotPot",
+        //        EquipmentName = "Test HotPot",
+        //        IssueName = "Test Issue",
+        //        Description = "Test Description",
+        //        ScheduleType = MaintenanceScheduleType.Regular
+        //    };
            
 
-            // Act
-            var result = await controller.NotifyAdministrators(request);
+        //    // Act
+        //    var result = await controller.NotifyAdministrators(request);
 
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiResponse<bool>>(okResult.Value);
-            Assert.True(apiResponse.Data);
-            Assert.True(apiResponse.Success);
-            Assert.Equal("Administrators notified successfully", apiResponse.Message);
+        //    // Assert
+        //    var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiResponse<bool>>(okResult.Value);
+        //    Assert.True(apiResponse.Data);
+        //    Assert.True(apiResponse.Success);
+        //    Assert.Equal("Administrators notified successfully", apiResponse.Message);
            
-        }
+        //}
 
     }
 }

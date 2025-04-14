@@ -7,6 +7,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Microsoft.EntityFrameworkCore;
@@ -162,10 +163,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             {
                 _logger.LogInformation("Updating shipping status for order ID: {ShippingOrderId}", shippingOrderId);
 
-                // Find the shipping order with its associated order
+                // Find the shipping order with its associated order and vehicle
                 var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                    .IncludeNested(query => query.Include(so => so.Order))
-                    .FirstOrDefaultAsync(so => so.ShippingOrderId == shippingOrderId);
+                    .AsQueryable()
+                    .Where(so => so.ShippingOrderId == shippingOrderId)
+                    .Include(so => so.Order)
+                    .Include(so => so.Vehicle)
+                    .FirstOrDefaultAsync();
 
                 if (shippingOrder == null)
                 {
@@ -192,11 +196,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 {
                     shippingOrder.Order.Status = OrderStatus.Delivered;
                     shippingOrder.Order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(shippingOrder.Order, shippingOrder.OrderId);
+                }
+
+                // Update vehicle status back to Available
+                if (shippingOrder.Vehicle != null)
+                {
+                    shippingOrder.Vehicle.Status = VehicleStatus.Available;
+                    shippingOrder.Vehicle.SetUpdateDate();
                 }
 
                 // Save changes
-                await _unitOfWork.Repository<ShippingOrder>().Update(shippingOrder, shippingOrderId);
                 await _unitOfWork.CommitAsync();
 
                 // Fetch the updated shipping order with all details
@@ -208,8 +217,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 throw;
             }
         }
-
-
 
 
         // Helper method to map ShippingOrder entity to ShippingListDto
@@ -229,7 +236,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 CustomerPhone = shippingOrder.Order?.User?.PhoneNumber ?? "Unknown",
                 OrderStatus = shippingOrder.Order?.Status.ToString() ?? "Unknown",
                 TotalPrice = shippingOrder.Order?.TotalPrice ?? 0,
-                Items = new List<ShippingItemDto>()
+                Items = new List<ShippingItemDto>(),
+                VehicleId = shippingOrder.VehicleId,
+                VehicleName = shippingOrder.Vehicle?.Name ?? string.Empty,
+                VehicleType = shippingOrder.Vehicle?.Type ?? VehicleType.Scooter,
+                OrderSize = shippingOrder.OrderSize
             };
 
             // Map sell order details to shipping items
@@ -429,6 +440,44 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+                throw;
+            }
+        }
+
+        public async Task<VehicleInfoDto> GetVehicleInfoAsync(int shippingOrderId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting vehicle information for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+                var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .AsQueryable()
+                    .Where(so => so.ShippingOrderId == shippingOrderId)
+                    .Include(so => so.Vehicle)
+                    .FirstOrDefaultAsync();
+
+                if (shippingOrder == null)
+                {
+                    throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+                }
+
+                if (shippingOrder.Vehicle == null)
+                {
+                    throw new NotFoundException($"No vehicle assigned to shipping order with ID {shippingOrderId}");
+                }
+
+                return new VehicleInfoDto
+                {
+                    VehicleId = shippingOrder.VehicleId,
+                    VehicleName = shippingOrder.Vehicle.Name,
+                    LicensePlate = shippingOrder.Vehicle.LicensePlate,
+                    VehicleType = shippingOrder.Vehicle.Type,
+                    OrderSize = shippingOrder.OrderSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle information for shipping order ID: {ShippingOrderId}", shippingOrderId);
                 throw;
             }
         }

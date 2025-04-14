@@ -615,5 +615,226 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
+        public async Task<OrderSize> EstimateOrderSizeAsync(int orderId)
+        {
+            try
+            {
+                _logger.LogInformation("Estimating size for order {OrderId}", orderId);
+
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .Include(o => o.SellOrder.SellOrderDetails)
+                    .Include(o => o.RentOrder.RentOrderDetails)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderId} not found");
+
+                // Define business rules for order size estimation
+                bool isLarge = false;
+
+                // Rule 1: If order has rental items, it's considered large
+                if (order.HasRentItems && order.RentOrder?.RentOrderDetails?.Any() == true)
+                {
+                    isLarge = true;
+                }
+
+                // Rule 2: If order has more than X sell items, it's considered large
+                const int LARGE_ORDER_ITEM_THRESHOLD = 10; // Adjust based on business needs
+                if (order.HasSellItems &&
+                    order.SellOrder?.SellOrderDetails?.Sum(d => d.Quantity) >= LARGE_ORDER_ITEM_THRESHOLD)
+                {
+                    isLarge = true;
+                }
+
+                //// Rule 3: If total price exceeds a threshold, consider it large
+                //const decimal LARGE_ORDER_PRICE_THRESHOLD = 500; // Adjust based on business needs
+                //if (order.TotalPrice >= LARGE_ORDER_PRICE_THRESHOLD)
+                //{
+                //    isLarge = true;
+                //}
+
+                return isLarge ? OrderSize.Large : OrderSize.Small;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderId);
+                throw;
+            }
+        }
+
+        public async Task<VehicleType> SuggestVehicleTypeAsync(int orderId)
+        {
+            try
+            {
+                _logger.LogInformation("Suggesting vehicle type for order {OrderId}", orderId);
+
+                // Estimate order size
+                var orderSize = await EstimateOrderSizeAsync(orderId);
+
+                // Suggest vehicle type based on order size
+                return orderSize == OrderSize.Large ? VehicleType.Car : VehicleType.Scooter;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error suggesting vehicle type for order {OrderId}", orderId);
+                throw;
+            }
+        }
+
+        public async Task<ShippingOrderAllocationDTO> AllocateOrderToStaffWithVehicle(int orderId, int staffId, int? vehicleId = null)
+        {
+            try
+            {
+                _logger.LogInformation("Allocating order {OrderId} to staff {StaffId} with vehicle {VehicleId}",
+                    orderId, staffId, vehicleId);
+
+                // Check if order exists
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderId} not found");
+
+                // Check if staff exists (user with staff role)
+                var staff = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (staff == null)
+                    throw new NotFoundException($"Staff with ID {staffId} not found");
+
+                // Estimate order size
+                var orderSize = await EstimateOrderSizeAsync(orderId);
+
+                // If no vehicle ID is provided, suggest one based on order size
+                if (!vehicleId.HasValue)
+                {
+                    var suggestedVehicleType = await SuggestVehicleTypeAsync(orderId);
+
+                    // Find an available vehicle of the suggested type
+                    var availableVehicle = await _unitOfWork.Repository<Vehicle>()
+                        .AsQueryable()
+                        .Where(v => v.Type == suggestedVehicleType && v.Status == VehicleStatus.Available && !v.IsDelete)
+                        .FirstOrDefaultAsync();
+
+                    if (availableVehicle == null)
+                    {
+                        // If no vehicle of suggested type is available, try any available vehicle
+                        availableVehicle = await _unitOfWork.Repository<Vehicle>()
+                            .AsQueryable()
+                            .Where(v => v.Status == VehicleStatus.Available && !v.IsDelete)
+                            .FirstOrDefaultAsync();
+
+                        if (availableVehicle == null)
+                            throw new ValidationException("No vehicles are currently available for delivery");
+                    }
+                    vehicleId = availableVehicle.VehicleId;
+                }
+                else
+                {
+                    // If a specific vehicle ID is provided, check if it exists and is available
+                    var vehicle = await _unitOfWork.Repository<Vehicle>()
+                        .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
+
+                    if (vehicle == null)
+                        throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+
+                    if (vehicle.Status != VehicleStatus.Available)
+                        throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
+                }
+
+                // Check if shipping order already exists
+                var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
+
+                ShippingOrder shippingOrder;
+
+                if (existingShippingOrder != null)
+                {
+                    _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
+                        existingShippingOrder.ShippingOrderId, orderId);
+
+                    // Update existing shipping order
+                    existingShippingOrder.StaffId = staffId;
+                    existingShippingOrder.VehicleId = vehicleId;
+                    existingShippingOrder.OrderSize = orderSize;
+                    existingShippingOrder.SetUpdateDate();
+                    shippingOrder = existingShippingOrder;
+                }
+                else
+                {
+                    _logger.LogInformation("Creating new shipping order for order {OrderId}", orderId);
+
+                    // Create new shipping order
+                    shippingOrder = new ShippingOrder
+                    {
+                        OrderId = orderId,
+                        StaffId = staffId,
+                        VehicleId = vehicleId,
+                        OrderSize = orderSize,
+                        IsDelivered = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
+                }
+
+                // Update order status to Processing
+                order.Status = OrderStatus.Processing;
+                order.SetUpdateDate();
+
+                // Update vehicle status to InUse
+                if (vehicleId.HasValue)
+                {
+                    var vehicle = await _unitOfWork.Repository<Vehicle>()
+                        .FindAsync(v => v.VehicleId == vehicleId.Value);
+
+                    if (vehicle != null)
+                    {
+                        vehicle.Status = VehicleStatus.InUse;
+                        vehicle.SetUpdateDate();
+                    }
+                }
+
+                // Save all changes
+                await _unitOfWork.CommitAsync();
+
+                // Get staff and vehicle details for the response
+                var staffDetails = await _unitOfWork.Repository<User>()
+                    .FindAsync(u => u.UserId == staffId);
+
+                var vehicleDetails = vehicleId.HasValue
+                    ? await _unitOfWork.Repository<Vehicle>().FindAsync(v => v.VehicleId == vehicleId.Value)
+                    : null;
+
+                // Map to DTO
+                return new ShippingOrderAllocationDTO
+                {
+                    ShippingOrderId = shippingOrder.ShippingOrderId,
+                    OrderId = shippingOrder.OrderId,
+                    OrderCode = order.OrderCode,
+                    StaffId = shippingOrder.StaffId,
+                    StaffName = staffDetails?.Name ?? string.Empty,
+                    VehicleId = shippingOrder.VehicleId,
+                    VehicleName = vehicleDetails?.Name ?? string.Empty,
+                    VehicleType = vehicleDetails?.Type ?? VehicleType.Scooter,
+                    OrderSize = shippingOrder.OrderSize,
+                    IsDelivered = shippingOrder.IsDelivered,
+                    CreatedAt = shippingOrder.CreatedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error allocating order {OrderId} to staff {StaffId} with vehicle {VehicleId}",
+                    orderId, staffId, vehicleId);
+                throw;
+            }
+        }
+
     }
 }

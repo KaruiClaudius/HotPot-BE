@@ -25,31 +25,59 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             _orderService = orderService;
         }
 
+        //public async Task<IEnumerable<Order>> GetAssignedOrdersAsync(int staffId)
+        //{
+        //    // In a real system, you'd have a way to assign orders to staff
+        //    // For now, we'll just return orders with Processing status
+        //    return await _unitOfWork.Repository<Order>()
+        //        .Include(o => o.User)
+        //        .Include(o => o.SellOrder.SellOrderDetails)
+        //            .ThenInclude(od => od.Ingredient)
+        //        .Include(o => o.SellOrder.SellOrderDetails)
+        //            .ThenInclude(od => od.Customization)
+        //        .Include(o => o.SellOrder.SellOrderDetails)
+        //            .ThenInclude(od => od.Combo)
+        //        .Include(o => o.SellOrder.SellOrderDetails)
+        //            .ThenInclude(rd => rd.Utensil)
+        //        .Include(o => o.RentOrder.RentOrderDetails)
+        //            .ThenInclude(rd => rd.HotpotInventory)
+        //                .ThenInclude(hi => hi != null ? hi.Hotpot : null)
+        //        .Where(o => o.Status == OrderStatus.Processing && !o.IsDelete)
+        //        .ToListAsync();
+        //}
         public async Task<IEnumerable<Order>> GetAssignedOrdersAsync(int staffId)
         {
-            // In a real system, you'd have a way to assign orders to staff
-            // For now, we'll just return orders with Processing status
-            return await _unitOfWork.Repository<Order>()
-                .Include(o => o.User)
-                .Include(o => o.SellOrder.SellOrderDetails)
+            // Get orders assigned to this staff member through ShippingOrder
+            return await _unitOfWork.Repository<ShippingOrder>()
+                .AsQueryable()
+                .Where(so => so.StaffId == staffId && !so.IsDelivered && !so.IsDelete)
+                .Include(so => so.Order)
+                    .ThenInclude(o => o.User)
+                .Include(so => so.Order.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
-                .Include(o => o.SellOrder.SellOrderDetails)
+                .Include(so => so.Order.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Customization)
-                .Include(o => o.SellOrder.SellOrderDetails)
+                .Include(so => so.Order.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Combo)
-                .Include(o => o.SellOrder.SellOrderDetails)
+                .Include(so => so.Order.SellOrder.SellOrderDetails)
                     .ThenInclude(rd => rd.Utensil)
-                .Include(o => o.RentOrder.RentOrderDetails)
+                .Include(so => so.Order.RentOrder.RentOrderDetails)
                     .ThenInclude(rd => rd.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                .Where(o => o.Status == OrderStatus.Processing && !o.IsDelete)
+                // Include vehicle information
+                .Include(so => so.Vehicle)
+                .Select(so => so.Order)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status)
         {
             return await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Where(o => o.Status == status && !o.IsDelete)
                 .Include(o => o.User)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so.Vehicle)
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
                 .Include(o => o.SellOrder.SellOrderDetails)
@@ -61,7 +89,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(o => o.RentOrder.RentOrderDetails)
                     .ThenInclude(rd => rd.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                .Where(o => o.Status == status && !o.IsDelete)
                 .ToListAsync();
         }
 
@@ -107,15 +134,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         }
 
         public async Task<PagedResult<Order>> GetOrderHistoryAsync(
-            int pageNumber,
-            int pageSize,
-            OrderStatus? status = null,
-            DateTime? startDate = null,
-            DateTime? endDate = null)
+    int pageNumber,
+    int pageSize,
+    OrderStatus? status = null,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
         {
             var query = _unitOfWork.Repository<Order>()
                 .AsQueryable()
                 .Include(o => o.User)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so.Vehicle)
                 .Include(o => o.SellOrder.SellOrderDetails)
                 .Include(o => o.RentOrder.RentOrderDetails)
                 .Where(o => !o.IsDelete);
@@ -156,6 +185,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             var order = await _unitOfWork.Repository<Order>()
                 .AsQueryable()
                 .Include(o => o.User)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so.Vehicle)
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
                 .Include(o => o.SellOrder.SellOrderDetails)
@@ -176,6 +207,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
             return order;
         }
+
 
         // New method to efficiently update order properties using EF Core's SetValues
         public async Task<Order> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate)

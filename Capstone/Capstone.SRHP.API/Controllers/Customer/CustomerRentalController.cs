@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Exceptions;
+﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
@@ -164,13 +165,29 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     return Forbid();
                 }
 
+                // Get the original return date for the notification
+                DateTime originalReturnDate = rentOrder.ExpectedReturnDate;
+
                 var result = await _rentOrderService.ExtendRentalPeriodAsync(id, request.NewExpectedReturnDate);
 
+                // Get equipment summary for more detailed notification
+                string equipmentSummary = await GetEquipmentSummaryForRental(rentOrder);
+
                 // Send notification to the customer about the extension
-                await _notificationService.NotifyCustomerRentalExtendedAsync(
+                await _notificationService.NotifyUser(
                     userId,
-                    id,
-                    request.NewExpectedReturnDate);
+                    "RentalExtended",
+                    "Rental Period Extended",
+                    $"Your rental period has been extended to {request.NewExpectedReturnDate.ToShortDateString()}",
+                    new Dictionary<string, object>
+                    {
+                { "RentalId", id },
+                { "OriginalReturnDate", originalReturnDate },
+                { "NewReturnDate", request.NewExpectedReturnDate },
+                { "ExtensionDays", (request.NewExpectedReturnDate - originalReturnDate).Days },
+                { "EquipmentSummary", equipmentSummary },
+                { "ExtensionDate", DateTime.UtcNow }
+                    });
 
                 return Ok(ApiResponse<bool>.SuccessResponse(true, "Rental period extended successfully"));
             }
@@ -185,6 +202,52 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
+            }
+        }
+
+        // Helper method to get a summary of equipment in a rental
+        private async Task<string> GetEquipmentSummaryForRental(RentOrder rentOrder)
+        {
+            try
+            {
+                // Build a summary of the equipment in the order
+                var equipmentItems = new List<string>();
+
+                // Filter for hotpot rentals from RentOrderDetails
+                var hotpotRentals = rentOrder.RentOrderDetails
+                    .Where(d => d.HotpotInventory != null && d.HotpotInventory.Hotpot != null)
+                    .ToList();
+
+                if (hotpotRentals.Any())
+                {
+                    var hotpotCount = hotpotRentals.Count;
+                    equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
+                }
+
+                // Group hotpots by type if you want more detailed information
+                // This assumes Hotpot has a Type or Category property
+                // If it doesn't, you can remove this section
+                var hotpotGroups = hotpotRentals
+                    .GroupBy(d => d.HotpotInventory?.Hotpot?.GetType().Name ?? "Other Hotpots")
+                    .Where(g => g.Key != "Other Hotpots" || g.Any())
+                    .Select(g => $"{g.Count()} {g.Key}");
+
+                if (hotpotGroups.Any())
+                {
+                    equipmentItems.AddRange(hotpotGroups);
+                }
+
+                // Since your model doesn't have UtensilRentals, we'll skip that part
+                // If you add utensil support in the future, you can uncomment and adapt this section
+
+                return equipmentItems.Any()
+                    ? string.Join(", ", equipmentItems)
+                    : "equipment";
+            }
+            catch (Exception)
+            {
+                // If there's any error getting the equipment summary, return a generic message
+                return "equipment";
             }
         }
     }

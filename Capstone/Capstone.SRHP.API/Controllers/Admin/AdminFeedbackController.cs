@@ -130,19 +130,37 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 string adminName = feedback.ApprovedByUserName ?? "Admin";
 
                 // Notify managers about the newly approved feedback
-                await _notificationService.NotifyFeedbackApproved(
-                    feedback.FeedbackId,
-                    adminName,
-                    feedback.Title);
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "FeedbackApproved",
+                    "Feedback Approved",
+                    $"Feedback '{feedback.Title}' has been approved by {adminName}",
+                    new Dictionary<string, object>
+                    {
+                { "FeedbackId", feedback.FeedbackId },
+                { "Title", feedback.Title },
+                { "AdminName", adminName },
+                { "AdminId", request.AdminUserId },
+                { "ApprovalDate", DateTime.UtcNow },
+                { "CustomerName", feedback.UserName ?? "Anonymous" }
+                    });
 
                 // Notify the customer that their feedback was approved
-                if (feedback.UserId !=0)
+                if (feedback.UserId != 0)
                 {
-                    await _notificationService.NotifyFeedbackResponse(
+                    await _notificationService.NotifyUser(
                         feedback.UserId,
-                        feedback.FeedbackId,
+                        "FeedbackResponse",
+                        "Feedback Approved",
                         "Your feedback has been approved and will be shared with our management team.",
-                        adminName);
+                        new Dictionary<string, object>
+                        {
+                    { "FeedbackId", feedback.FeedbackId },
+                    { "Title", feedback.Title },
+                    { "ResponseMessage", "Your feedback has been approved and will be shared with our management team." },
+                    { "ResponderName", adminName },
+                    { "ResponseDate", DateTime.UtcNow }
+                        });
                 }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback approved successfully"));
@@ -173,11 +191,20 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Notify the customer that their feedback was rejected
                 if (feedback.UserId != 0)
                 {
-                    await _notificationService.NotifyFeedbackResponse(
+                    await _notificationService.NotifyUser(
                         feedback.UserId,
-                        feedback.FeedbackId,
+                        "FeedbackResponse",
+                        "Feedback Not Approved",
                         $"Your feedback was not approved. Reason: {request.RejectionReason}",
-                        adminName);
+                        new Dictionary<string, object>
+                        {
+                    { "FeedbackId", feedback.FeedbackId },
+                    { "Title", feedback.Title },
+                    { "ResponseMessage", $"Your feedback was not approved. Reason: {request.RejectionReason}" },
+                    { "ResponderName", adminName },
+                    { "ResponseDate", DateTime.UtcNow },
+                    { "RejectionReason", request.RejectionReason }
+                        });
                 }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback rejected successfully"));

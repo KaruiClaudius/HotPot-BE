@@ -6,30 +6,13 @@ namespace Capstone.HPTY.API.Hubs
 {
     public interface INotificationClient
     {
-        // Equipment notifications
-        Task ReceiveConditionAlert(EquipmentAlertDto alert);
-        Task ReceiveLowStockAlert(StockAlertDto alert);
-        Task ReceiveStatusChangeAlert(EquipmentStatusDto status);
-        Task ReceiveStatusUpdate(EquipmentStatusUpdateDto statusUpdate);
+        // Generic notification method
+        Task ReceiveNotification(NotificationDto notification);
 
-        // Feedback notifications
-        Task ReceiveFeedbackResponse(FeedbackResponseDto response);
-        Task ReceiveNewFeedback(int feedbackId, string customerName, string feedbackTitle, DateTime timestamp);
-        Task ReceiveApprovedFeedback(int feedbackId, string feedbackTitle, string adminName, DateTime timestamp);
-
-        // Schedule notifications
-        Task ReceiveScheduleUpdate(ScheduleUpdateDto update);
-        Task ReceiveAllScheduleUpdates();
-
-        // Resolution notifications
-        Task ReceiveResolutionUpdate(int conditionLogId, string status, DateTime estimatedResolutionTime, string message);
-        Task ReceiveEquipmentUpdate(int conditionLogId, string equipmentName, string status, DateTime estimatedResolutionTime, string message);
-
-        // Rental notifications
+        // Category-specific methods (optional, for backward compatibility)
+        Task ReceiveEquipmentNotification(NotificationDto notification);
+        Task ReceiveFeedbackNotification(NotificationDto notification);
+        Task ReceiveScheduleNotification(NotificationDto notification);
         Task ReceiveRentalNotification(NotificationDto notification);
-
-        // Replacement notifications
-        Task ReceiveReplacementNotification(NotificationDto notification);
-        Task ReceiveDirectNotification(CustomerDirectNotificationDto notification);
     }
 }

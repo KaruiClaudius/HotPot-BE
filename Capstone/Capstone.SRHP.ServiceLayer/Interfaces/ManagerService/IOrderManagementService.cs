@@ -27,5 +27,9 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<DeliveryTimeUpdateDTO> UpdateDeliveryTime(int shippingOrderId, DateTime deliveryTime);
         Task<PagedResult<PendingDeliveryDTO>> GetPendingDeliveriesPaged(ShippingOrderQueryParams queryParams);
 
+        // Vehicle related 
+        Task<OrderSize> EstimateOrderSizeAsync(int orderId);
+        Task<VehicleType> SuggestVehicleTypeAsync(int orderId);
+        Task<ShippingOrderAllocationDTO> AllocateOrderToStaffWithVehicle(int orderId, int staffId, int? vehicleId = null);
     }
 }

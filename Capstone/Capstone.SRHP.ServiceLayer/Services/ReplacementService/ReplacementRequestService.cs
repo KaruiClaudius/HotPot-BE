@@ -121,10 +121,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
             }
 
             // Notify customer about the review decision
-            await _notificationService.NotifyCustomerAboutReplacementAsync(request);
+            if (request.CustomerId.HasValue)
+            {
+                string equipmentName = GetEquipmentName(request);
+                string statusMessage = GetCustomerFriendlyStatusMessage(request.Status);
+
+                await _notificationService.NotifyUser(
+                    request.CustomerId.Value,
+                    "ReplacementStatusUpdate",
+                    "Replacement Request Update",
+                    $"Your replacement request for {equipmentName} is now {statusMessage}",
+                    new Dictionary<string, object>
+                    {
+                        { "ReplacementRequestId", request.ReplacementRequestId },
+                        { "EquipmentName", equipmentName },
+                        { "Status", request.Status.ToString() },
+                        { "StatusMessage", statusMessage },
+                        { "ReviewNotes", request.ReviewNotes ?? "Your request has been reviewed." }
+                    });
+            }
 
             // Notify managers about the status change
-            await _notificationService.NotifyReplacementStatusChangeAsync(request);
+            await _notificationService.NotifyRole(
+                "Managers",
+                "ReplacementStatusUpdate",
+                "Replacement Status Update",
+                $"Replacement request #{request.ReplacementRequestId} is now {request.Status}",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentType", request.EquipmentType.ToString() },
+                    { "EquipmentName", GetEquipmentName(request) },
+                    { "Status", request.Status.ToString() },
+                    { "ReviewNotes", request.ReviewNotes },
+                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                });
 
             return request;
         }
@@ -182,11 +213,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     .FirstOrDefaultAsync();
             }
 
-            // Notify customer about the assignment
-            await _notificationService.NotifyCustomerAboutReplacementAsync(request);
+            string equipmentName = GetEquipmentName(request);
 
-            // Notify managers about the status change
-            await _notificationService.NotifyReplacementStatusChangeAsync(request);
+            // Notify customer about the assignment
+            if (request.CustomerId.HasValue)
+            {
+                await _notificationService.NotifyUser(
+                    request.CustomerId.Value,
+                    "ReplacementStatusUpdate",
+                    "Replacement Request Update",
+                    $"Your replacement request for {equipmentName} is now being processed",
+                    new Dictionary<string, object>
+                    {
+                        { "ReplacementRequestId", request.ReplacementRequestId },
+                        { "EquipmentName", equipmentName },
+                        { "Status", request.Status.ToString() },
+                        { "StaffName", staff.Name },
+                        { "Message", "A staff member has been assigned to handle your replacement request." }
+                    });
+            }
+
+            // Notify staff about the assignment
+            await _notificationService.NotifyUser(
+                staffId,
+                "StaffReplacementAssignment",
+                "New Replacement Assignment",
+                $"You have been assigned to handle a replacement for {equipmentName}",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "RequestReason", request.RequestReason },
+                    { "Status", request.Status.ToString() },
+                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                });
 
             return request;
         }
@@ -194,7 +254,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
         public async Task<ReplacementRequest> MarkReplacementAsCompletedAsync(int requestId, string completionNotes)
         {
             var request = await _unitOfWork.Repository<ReplacementRequest>()
-        .FindAsync(r => r.ReplacementRequestId == requestId);
+                .FindAsync(r => r.ReplacementRequestId == requestId);
 
             if (request == null)
                 throw new NotFoundException($"Replacement request with ID {requestId} not found");
@@ -270,11 +330,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     .FirstOrDefaultAsync();
             }
 
+            string equipmentName = GetEquipmentName(request);
+
             // Notify customer about completion
-            await _notificationService.NotifyCustomerAboutReplacementAsync(request);
+            if (request.CustomerId.HasValue)
+            {
+                await _notificationService.NotifyUser(
+                    request.CustomerId.Value,
+                    "ReplacementCompleted",
+                    "Replacement Request Completed",
+                    $"Your replacement request for {equipmentName} has been completed",
+                    new Dictionary<string, object>
+                    {
+                        { "ReplacementRequestId", request.ReplacementRequestId },
+                        { "EquipmentName", equipmentName },
+                        { "CompletionNotes", completionNotes },
+                        { "CompletionDate", request.CompletionDate }
+                    });
+            }
 
             // Notify managers about the status change
-            await _notificationService.NotifyReplacementStatusChangeAsync(request);
+            await _notificationService.NotifyRole(
+                "Managers",
+                "ReplacementCompleted",
+                "Replacement Request Completed",
+                $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been completed",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "CompletionNotes", completionNotes },
+                    { "CompletionDate", request.CompletionDate },
+                    { "StaffName", request.AssignedStaff?.Name ?? "Unknown Staff" },
+                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                });
 
             return request;
         }
@@ -296,7 +385,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 .GetAll(r => r.AssignedStaffId == staffId
                           && r.CustomerId != null  // Only include requests with a customer
                           && r.Status == ReplacementRequestStatus.Approved
-                          || r.Status == ReplacementRequestStatus.InProgress) 
+                          || r.Status == ReplacementRequestStatus.InProgress)
                 .Include(r => r.Customer)
                 .Include(r => r.ConditionLog)
                 .Include(r => r.HotPotInventory)
@@ -378,11 +467,63 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     .FirstOrDefaultAsync();
             }
 
+            if (request.HotPotInventoryId.HasValue)
+            {
+                request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .Include(h => h.Hotpot)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (request.UtensilId.HasValue)
+            {
+                request.Utensil = await _unitOfWork.Repository<Utensil>()
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
+                    .Include(u => u.UtensilType)
+                    .FirstOrDefaultAsync();
+            }
+
+            string equipmentName = GetEquipmentName(request);
+            string statusMessage = isFaulty ?
+                "verified as faulty and will be replaced" :
+                "verified as working properly and will not be replaced";
+
             // Notify customer about verification
-            await _notificationService.NotifyCustomerAboutReplacementAsync(request);
+            if (request.CustomerId.HasValue)
+            {
+                await _notificationService.NotifyUser(
+                    request.CustomerId.Value,
+                    "EquipmentVerification",
+                    "Equipment Verification Result",
+                    $"Your {equipmentName} has been {statusMessage}",
+                    new Dictionary<string, object>
+                    {
+                        { "ReplacementRequestId", request.ReplacementRequestId },
+                        { "EquipmentName", equipmentName },
+                        { "IsFaulty", isFaulty },
+                        { "Status", request.Status.ToString() },
+                        { "VerificationNotes", verificationNotes }
+                    });
+            }
 
             // Notify managers about the status change
-            await _notificationService.NotifyReplacementStatusChangeAsync(request);
+            await _notificationService.NotifyRole(
+                "Managers",
+                "EquipmentVerification",
+                "Equipment Verification Result",
+                $"Equipment for replacement request #{request.ReplacementRequestId} has been {(isFaulty ? "confirmed faulty" : "found working properly")}",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "IsFaulty", isFaulty },
+                    { "Status", request.Status.ToString() },
+                    { "VerificationNotes", verificationNotes },
+                    { "StaffName", staffId.ToString() }, // We should load staff name here
+                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                });
 
             return request;
         }
@@ -436,8 +577,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     .FirstOrDefaultAsync();
             }
 
+            string equipmentName = GetEquipmentName(request);
+
             // Notify managers about the new request
-            await _notificationService.NotifyNewReplacementRequestAsync(request);
+            await _notificationService.NotifyRole(
+                "Managers",
+                "NewReplacementRequest",
+                "New Replacement Request",
+                $"New replacement request for {equipmentName} from {customer.Name}",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentType", request.EquipmentType.ToString() },
+                    { "EquipmentName", equipmentName },
+                    { "RequestReason", request.RequestReason },
+                    { "CustomerName", customer.Name },
+                    { "CustomerId", customer.UserId },
+                    { "RequestDate", request.RequestDate }
+                });
 
             return request;
         }
@@ -487,9 +644,74 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
             await _unitOfWork.CommitAsync();
 
+            // Load related entities for notification
+            if (request.HotPotInventoryId.HasValue)
+            {
+                request.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .Where(h => h.HotPotInventoryId == request.HotPotInventoryId.Value)
+                    .Include(h => h.Hotpot)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (request.UtensilId.HasValue)
+            {
+                request.Utensil = await _unitOfWork.Repository<Utensil>()
+                    .AsQueryable()
+                    .Where(u => u.UtensilId == request.UtensilId.Value)
+                    .Include(u => u.UtensilType)
+                    .FirstOrDefaultAsync();
+            }
+
+            string equipmentName = GetEquipmentName(request);
+
+            // Notify managers about the cancellation
+            await _notificationService.NotifyRole(
+                "Managers",
+                "ReplacementCancelled",
+                "Replacement Request Cancelled",
+                $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been cancelled by the customer",
+                new Dictionary<string, object>
+                {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "CustomerName", customer.Name },
+                    { "CustomerId", customer.UserId },
+                    { "CancellationDate", DateTime.UtcNow }
+                });
+
             return request;
         }
         #endregion
 
+        #region Helper Methods
+        private string GetEquipmentName(ReplacementRequest request)
+        {
+            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+            {
+                return request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
+            }
+            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
+            {
+                return request.Utensil.Name;
+            }
+
+            return $"{request.EquipmentType} (Unknown)";
+        }
+
+        private string GetCustomerFriendlyStatusMessage(ReplacementRequestStatus status)
+        {
+            return status switch
+            {
+                ReplacementRequestStatus.Pending => "pending review",
+                ReplacementRequestStatus.Approved => "approved and will be processed soon",
+                ReplacementRequestStatus.Rejected => "rejected",
+                ReplacementRequestStatus.InProgress => "being processed",
+                ReplacementRequestStatus.Completed => "completed",
+                ReplacementRequestStatus.Cancelled => "cancelled",
+                _ => status.ToString().ToLower()
+            };
+        }
+        #endregion
     }
 }

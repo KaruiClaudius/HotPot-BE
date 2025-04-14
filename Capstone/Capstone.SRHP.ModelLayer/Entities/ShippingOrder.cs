@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -22,6 +23,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [ForeignKey("Staff")]
         public int StaffId { get; set; }
+
+        [ForeignKey("Vehicle")]
+        public int? VehicleId { get; set; }
 
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
         public DateTime? DeliveryTime { get; set; }
@@ -41,7 +45,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
         public DateTime? ProofTimestamp { get; set; }
-
+        public OrderSize OrderSize { get; set; } = OrderSize.Small;
+        public virtual Vehicle? Vehicle { get; set; }
 
         public virtual Order? Order { get; set; }
         public virtual User? Staff { get; set; }

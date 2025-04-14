@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Microsoft.AspNetCore.Authorization;
@@ -225,6 +226,43 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 {
                     Status = "Error",
                     Message = "Failed to update shipping status"
+                });
+            }
+        }
+
+
+        [HttpGet("vehicle-info/{shippingOrderId}")]
+        [ProducesResponseType(typeof(ApiResponse<VehicleInfoDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<VehicleInfoDto>>> GetVehicleInfo(int shippingOrderId)
+        {
+            try
+            {
+                var vehicleInfo = await _staffShippingService.GetVehicleInfoAsync(shippingOrderId);
+
+                return Ok(new ApiResponse<VehicleInfoDto>
+                {
+                    Success = true,
+                    Message = "Vehicle information retrieved successfully",
+                    Data = vehicleInfo
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Not Found",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving vehicle information for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve vehicle information"
                 });
             }
         }

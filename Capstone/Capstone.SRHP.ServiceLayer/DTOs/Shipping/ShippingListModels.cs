@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
 {
@@ -20,6 +21,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string CustomerPhone { get; set; }
         public string OrderStatus { get; set; }
         public decimal TotalPrice { get; set; }
+
+        // Vehicle information
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public VehicleType VehicleType { get; set; }
+        public OrderSize OrderSize { get; set; }
+
         public List<ShippingItemDto> Items { get; set; } = new List<ShippingItemDto>();
     }
 

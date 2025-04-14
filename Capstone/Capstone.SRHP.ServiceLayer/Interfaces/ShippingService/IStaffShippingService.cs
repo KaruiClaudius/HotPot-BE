@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
@@ -30,5 +31,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
 
         Task<ShippingListDto> UpdateShippingStatusAsync(int shippingOrderId, string? notes = null);
 
+        Task<VehicleInfoDto> GetVehicleInfoAsync(int shippingOrderId);
     }
 }

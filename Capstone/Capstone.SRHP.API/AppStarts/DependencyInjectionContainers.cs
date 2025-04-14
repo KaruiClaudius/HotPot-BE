@@ -130,9 +130,14 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddTransient<IEmailSender, EmailService>();
             services.AddScoped<EmailService>();
 
+            // Vehicle Services
+            services.AddScoped<IVehicleManagementService, VehicleManagementService>();
+
 
             services.AddSingleton<IEventPublisher, EventPublisher>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
+            services.AddSingleton<SocketIOClientService>();
+
 
             // External Services
             services.AddHttpClient();
