@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Management
@@ -171,6 +172,33 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public ShippingDetailDTO ShippingInfo { get; set; }
 
         // Order details    
+        public bool HasSellItems { get; set; }
+        public bool HasRentItems { get; set; }
+        public List<OrderItemDTO> OrderItems { get; set; } = new List<OrderItemDTO>();
+
+        public RentalInfoDTO RentalInfo { get; set; }
+    }
+
+    public class OrderItemDTO
+    {
+        public int OrderDetailId { get; set; }
+        public int Quantity { get; set; }
+        //public decimal UnitPrice { get; set; }
+        //public decimal TotalPrice { get; set; }
+        public string ItemType { get; set; }
+        public string ItemName { get; set; }
+        public int? ItemId { get; set; }
+    }
+
+    public class RentalInfoDTO
+    {
+        public DateTime RentalStartDate { get; set; }
+        public DateTime ExpectedReturnDate { get; set; }
+        public DateTime? ActualReturnDate { get; set; }
+        public decimal? LateFee { get; set; }
+        public decimal? DamageFee { get; set; }
+        public string RentalNotes { get; set; }
+        public string ReturnCondition { get; set; }
     }
 
     public class ShippingDetailDTO

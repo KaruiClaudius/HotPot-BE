@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 {
-    public class OrderManagementService : IOrderManagementService
+    public class OrderManagementService : IOrderManagementService   
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<OrderManagementService> _logger;
@@ -226,24 +226,60 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 _logger.LogInformation("Getting order details for order {OrderId}", orderId);
 
+                //var order = await _unitOfWork.Repository<Order>()
+                //    .AsQueryable()
+                //    .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
+                //    .Include(o => o.User)
+                //    .Include(o => o.ShippingOrder)
+                //        .ThenInclude(so => so.Staff)
+                //    .Include(o => o.SellOrder.SellOrderDetails)
+                //        .ThenInclude(od => od.Ingredient)
+                //    .Include(o => o.SellOrder.SellOrderDetails)
+                //        .ThenInclude(od => od.Customization)
+                //    .Include(o => o.SellOrder.SellOrderDetails)
+                //        .ThenInclude(od => od.Combo)
+                //    .Include(o => o.SellOrder.SellOrderDetails)
+                //        .ThenInclude(rd => rd.Utensil)
+                //    .Include(o => o.RentOrder.RentOrderDetails)
+                //        .ThenInclude(rd => rd.HotpotInventory)
+                //            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
+                //    .FirstOrDefaultAsync();
+
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
                     .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrder.RentOrderDetails)
-                        .ThenInclude(rd => rd.HotpotInventory)
-                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                    .Include(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails)
+                    .AsSplitQuery() // This can help with large object graphs
                     .FirstOrDefaultAsync();
+
+                // Then load the details separately if needed
+                if (order?.SellOrder != null)
+                {
+                    await _unitOfWork.Repository<SellOrderDetail>()
+                        .AsQueryable()
+                        .Where(d => d.OrderId == order.OrderId)
+                        .Include(d => d.Ingredient)
+                        .Include(d => d.Customization)
+                        .Include(d => d.Combo)
+                        .Include(d => d.Utensil)
+                        .LoadAsync();
+                }
+
+                if (order?.RentOrder != null)
+                {
+                    await _unitOfWork.Repository<RentOrderDetail>()
+                        .AsQueryable()
+                        .Where(d => d.OrderId == order.OrderId)
+                        .Include(d => d.HotpotInventory)
+                            .ThenInclude(hi => hi.Hotpot)
+                        .LoadAsync();
+                }
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
@@ -259,6 +295,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Status = order.Status,
                     CreatedAt = order.CreatedAt,
                     UpdatedAt = order.UpdatedAt,
+                    HasSellItems = order.HasSellItems,
+                    HasRentItems = order.HasRentItems,
 
                     // User information
                     UserId = order.UserId,
@@ -273,8 +311,89 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         DeliveryTime = order.ShippingOrder.DeliveryTime,
                         DeliveryNotes = order.ShippingOrder.DeliveryNotes ?? string.Empty,
                         IsDelivered = order.ShippingOrder.IsDelivered
-                    } : null,                   
+                    } : null,
+
+                    // Order items
+                    OrderItems = new List<OrderItemDTO>()
                 };
+
+                // Add sell order items if they exist
+                if (order.SellOrder != null && order.SellOrder.SellOrderDetails.Any())
+                {
+                    foreach (var detail in order.SellOrder.SellOrderDetails)
+                    {
+                        var orderItem = new OrderItemDTO
+                        {
+                            OrderDetailId = detail.SellOrderDetailId,
+                            Quantity = detail.Quantity,
+                            //UnitPrice = detail.UnitPrice,
+                            //TotalPrice = detail.UnitPrice * detail.Quantity
+                        };
+
+                        // Determine item type and set properties accordingly
+                        if (detail.Ingredient != null)
+                        {
+                            orderItem.ItemType = "Ingredient";
+                            orderItem.ItemName = detail.Ingredient.Name;
+                            orderItem.ItemId = detail.IngredientId;
+                        }
+                        else if (detail.Customization != null)
+                        {
+                            orderItem.ItemType = "Customization";
+                            orderItem.ItemName = detail.Customization.Name;
+                            orderItem.ItemId = detail.CustomizationId;
+                        }
+                        else if (detail.Combo != null)
+                        {
+                            orderItem.ItemType = "Combo";
+                            orderItem.ItemName = detail.Combo.Name;
+                            orderItem.ItemId = detail.ComboId;
+                        }
+                        else if (detail.Utensil != null)
+                        {
+                            orderItem.ItemType = "Utensil";
+                            orderItem.ItemName = detail.Utensil.Name;
+                            orderItem.ItemId = detail.UtensilId;
+                        }
+
+                        orderDetailDTO.OrderItems.Add(orderItem);
+                    }
+                }
+
+                // Add rent order items if they exist
+                if (order.RentOrder != null && order.RentOrder.RentOrderDetails.Any())
+                {
+                    // Add rental information
+                    orderDetailDTO.RentalInfo = new RentalInfoDTO
+                    {
+                        RentalStartDate = order.RentOrder.RentalStartDate,
+                        ExpectedReturnDate = order.RentOrder.ExpectedReturnDate,
+                        ActualReturnDate = order.RentOrder.ActualReturnDate,
+                        LateFee = order.RentOrder.LateFee,
+                        DamageFee = order.RentOrder.DamageFee,
+                        RentalNotes = order.RentOrder.RentalNotes,
+                        ReturnCondition = order.RentOrder.ReturnCondition
+                    };
+
+                    foreach (var detail in order.RentOrder.RentOrderDetails)
+                    {
+                        if (detail.HotpotInventory != null)
+                        {
+                            var orderItem = new OrderItemDTO
+                            {
+                                OrderDetailId = detail.RentOrderDetailId,
+                                Quantity = detail.Quantity,
+                                //UnitPrice = detail.RentalPrice,
+                                //TotalPrice = detail.RentalPrice * detail.Quantity,
+                                ItemType = "Hotpot",
+                                ItemName = detail.HotpotInventory.Hotpot?.Name ?? "Unknown Hotpot",
+                                ItemId = detail.HotpotInventoryId
+                            };
+
+                            orderDetailDTO.OrderItems.Add(orderItem);
+                        }
+                    }
+                }
 
                 return orderDetailDTO;
             }
