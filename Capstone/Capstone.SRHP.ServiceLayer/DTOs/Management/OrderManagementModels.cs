@@ -68,6 +68,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         // Customer information
         public int UserId { get; set; }
         public string UserName { get; set; }
+
+        // Vehicle information
+        public VehicleInfoDto VehicleInfo { get; set; }
+
     }
 
     public class OrderWithDetailsDTO
@@ -86,6 +90,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
         // Shipping information (if available)
         public ShippingInfoDTO ShippingInfo { get; set; }
+
+        // Vehicle Information
+        public VehicleInfoDto VehicleInfo { get; set; }
 
     }
 
@@ -115,9 +122,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public bool IsDelivered { get; set; }
         public DateTime CreatedAt { get; set; }
         public int? VehicleId { get; set; }
-        public string VehicleName { get; set; }
-        public VehicleType VehicleType { get; set; }
-        public OrderSize OrderSize { get; set; }
+        public string? VehicleName { get; set; }
+        public VehicleType? VehicleType { get; set; }
+        public OrderSize? OrderSize { get; set; }
     }
 
     public class StaffShippingOrderDTO
@@ -177,14 +184,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public List<OrderItemDTO> OrderItems { get; set; } = new List<OrderItemDTO>();
 
         public RentalInfoDTO RentalInfo { get; set; }
+        public VehicleInfoDto VehicleInfo { get; set; }
     }
 
     public class OrderItemDTO
     {
         public int OrderDetailId { get; set; }
         public int Quantity { get; set; }
-        //public decimal UnitPrice { get; set; }
-        //public decimal TotalPrice { get; set; }
         public string ItemType { get; set; }
         public string ItemName { get; set; }
         public int? ItemId { get; set; }
@@ -194,11 +200,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     {
         public DateTime RentalStartDate { get; set; }
         public DateTime ExpectedReturnDate { get; set; }
-        public DateTime? ActualReturnDate { get; set; }
-        public decimal? LateFee { get; set; }
-        public decimal? DamageFee { get; set; }
-        public string RentalNotes { get; set; }
-        public string ReturnCondition { get; set; }
     }
 
     public class ShippingDetailDTO

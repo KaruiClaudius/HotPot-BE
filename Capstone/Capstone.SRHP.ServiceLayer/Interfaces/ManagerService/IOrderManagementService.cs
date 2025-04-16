@@ -20,8 +20,6 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<OrderDetailDTO> GetOrderWithDetails(string orderId);
         Task<PagedResult<OrderWithDetailsDTO>> GetOrdersByStatusPaged(OrderQueryParams queryParams);
 
-        Task<OrderCountsDTO> GetOrderCountsByStatus();
-
         // Delivery progress monitoring
         Task<DeliveryStatusUpdateDTO> UpdateDeliveryStatus(int shippingOrderId, bool isDelivered, string notes = null);
         Task<DeliveryTimeUpdateDTO> UpdateDeliveryTime(int shippingOrderId, DateTime deliveryTime);

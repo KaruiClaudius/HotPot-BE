@@ -226,31 +226,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 _logger.LogInformation("Getting order details for order {OrderId}", orderId);
 
-                //var order = await _unitOfWork.Repository<Order>()
-                //    .AsQueryable()
-                //    .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
-                //    .Include(o => o.User)
-                //    .Include(o => o.ShippingOrder)
-                //        .ThenInclude(so => so.Staff)
-                //    .Include(o => o.SellOrder.SellOrderDetails)
-                //        .ThenInclude(od => od.Ingredient)
-                //    .Include(o => o.SellOrder.SellOrderDetails)
-                //        .ThenInclude(od => od.Customization)
-                //    .Include(o => o.SellOrder.SellOrderDetails)
-                //        .ThenInclude(od => od.Combo)
-                //    .Include(o => o.SellOrder.SellOrderDetails)
-                //        .ThenInclude(rd => rd.Utensil)
-                //    .Include(o => o.RentOrder.RentOrderDetails)
-                //        .ThenInclude(rd => rd.HotpotInventory)
-                //            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                //    .FirstOrDefaultAsync();
-
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
                     .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
+                    .Include(o => o.ShippingOrder)
+                        .ThenInclude(so => so.Vehicle) // Add this to include vehicle information
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                     .Include(o => o.RentOrder)
@@ -313,6 +296,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         IsDelivered = order.ShippingOrder.IsDelivered
                     } : null,
 
+                    // Vehicle information
+                    VehicleInfo = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                    {
+                        VehicleId = order.ShippingOrder.Vehicle.VehicleId,
+                        VehicleName = order.ShippingOrder.Vehicle.Name,
+                        LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                        VehicleType = order.ShippingOrder.Vehicle.Type,
+                        OrderSize = order.ShippingOrder.OrderSize
+                    } : null,
+
                     // Order items
                     OrderItems = new List<OrderItemDTO>()
                 };
@@ -326,8 +319,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         {
                             OrderDetailId = detail.SellOrderDetailId,
                             Quantity = detail.Quantity,
-                            //UnitPrice = detail.UnitPrice,
-                            //TotalPrice = detail.UnitPrice * detail.Quantity
                         };
 
                         // Determine item type and set properties accordingly
@@ -368,11 +359,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     {
                         RentalStartDate = order.RentOrder.RentalStartDate,
                         ExpectedReturnDate = order.RentOrder.ExpectedReturnDate,
-                        ActualReturnDate = order.RentOrder.ActualReturnDate,
-                        LateFee = order.RentOrder.LateFee,
-                        DamageFee = order.RentOrder.DamageFee,
-                        RentalNotes = order.RentOrder.RentalNotes,
-                        ReturnCondition = order.RentOrder.ReturnCondition
+
                     };
 
                     foreach (var detail in order.RentOrder.RentOrderDetails)
@@ -383,8 +370,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                             {
                                 OrderDetailId = detail.RentOrderDetailId,
                                 Quantity = detail.Quantity,
-                                //UnitPrice = detail.RentalPrice,
-                                //TotalPrice = detail.RentalPrice * detail.Quantity,
                                 ItemType = "Hotpot",
                                 ItemName = detail.HotpotInventory.Hotpot?.Name ?? "Unknown Hotpot",
                                 ItemId = detail.HotpotInventoryId
@@ -575,7 +560,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 IQueryable<ShippingOrder> query = _unitOfWork.Repository<ShippingOrder>()
                     .GetAll(so => !so.IsDelivered && !so.IsDelete)
                     .Include(so => so.Order)
-                        .ThenInclude(o => o.User);
+                        .ThenInclude(o => o.User)
+                    .Include(so => so.Vehicle); // Add this to include vehicle information
 
                 // Apply filters
                 query = query.ApplyFilters(queryParams);
@@ -600,11 +586,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         Address = so.Order?.Address ?? string.Empty,
                         Notes = so.Order?.Notes ?? string.Empty,
                         TotalPrice = so.Order?.TotalPrice ?? 0,
-                        Status = so.Order?.Status ?? OrderStatus.Pending, // Assuming OrderStatus.Pending is the default
+                        Status = so.Order?.Status ?? OrderStatus.Pending,
 
                         // Customer information
                         UserId = so.Order?.UserId ?? 0,
-                        UserName = so.Order?.User?.Name ?? string.Empty
+                        UserName = so.Order?.User?.Name ?? string.Empty,
+
+                        // Vehicle information
+                        VehicleInfo = so.Vehicle != null ? new VehicleInfoDto
+                        {
+                            VehicleId = so.Vehicle.VehicleId,
+                            VehicleName = so.Vehicle.Name,
+                            LicensePlate = so.Vehicle.LicensePlate,
+                            VehicleType = so.Vehicle.Type,
+                            OrderSize = so.OrderSize
+                        } : null
                     }).ToList(),
                     PageNumber = pagedResult.PageNumber,
                     PageSize = pagedResult.PageSize,
@@ -632,6 +628,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.User)
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
+                    .Include(o => o.ShippingOrder)
+                        .ThenInclude(so => so.Vehicle) 
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                     .Include(o => o.RentOrder)
@@ -675,7 +673,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                                 StaffId = o.ShippingOrder.Staff.UserId,
                                 Name = o.ShippingOrder.Staff.Name
                             } : null
-                        } : null,                      
+                        } : null,
+
+                        // Vehicle information
+                        VehicleInfo = o.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                        {
+                            VehicleId = o.ShippingOrder.Vehicle.VehicleId,
+                            VehicleName = o.ShippingOrder.Vehicle.Name,
+                            LicensePlate = o.ShippingOrder.Vehicle.LicensePlate,
+                            VehicleType = o.ShippingOrder.Vehicle.Type,
+                            OrderSize = o.ShippingOrder.OrderSize
+                        } : null
                     }).ToList(),
                     PageNumber = pagedResult.PageNumber,
                     PageSize = pagedResult.PageSize,
@@ -687,49 +695,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting paged orders with status {Status}", queryParams.Status);
-                throw;
-            }
-        }
-
-        public async Task<OrderCountsDTO> GetOrderCountsByStatus()
-        {
-            try
-            {
-                _logger.LogInformation("Getting order counts by status");
-
-                // Get repository for orders
-                var orderRepository = _unitOfWork.Repository<Order>();
-
-                // Query to count orders grouped by status
-                var statusCounts = await orderRepository.AsQueryable()
-                    .Where(o => !o.IsDelete)
-                    .GroupBy(o => o.Status)
-                    .Select(g => new { Status = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.Status, x => x.Count);
-
-                // Create the DTO with counts for each status
-                var result = new OrderCountsDTO
-                {
-                    PendingCount = statusCounts.GetValueOrDefault(OrderStatus.Pending, 0),
-                    ProcessingCount = statusCounts.GetValueOrDefault(OrderStatus.Processing, 0),
-                    ShippedCount = statusCounts.GetValueOrDefault(OrderStatus.Shipping, 0),
-                    DeliveredCount = statusCounts.GetValueOrDefault(OrderStatus.Delivered, 0),
-                    CancelledCount = statusCounts.GetValueOrDefault(OrderStatus.Cancelled, 0),
-                    ReturningCount = statusCounts.GetValueOrDefault(OrderStatus.Returning, 0),
-                    CompletedCount = statusCounts.GetValueOrDefault(OrderStatus.Completed, 0)
-                };
-
-                // Calculate total count
-                result.TotalCount = result.PendingCount + result.ProcessingCount +
-                                   result.ShippedCount + result.DeliveredCount +
-                                   result.CancelledCount + result.ReturningCount +
-                                   result.CompletedCount;
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting order counts by status");
                 throw;
             }
         }

@@ -206,19 +206,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpGet("counts")]
-        public async Task<ActionResult<OrderCountsDTO>> GetOrderCounts()
-        {
-            try
-            {
-                var counts = await _orderManagementService.GetOrderCountsByStatus();
-                return Ok(counts);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<OrderCountsDTO>.ErrorResponse(ex.Message));
-            }
-        }
 
         [HttpPost("allocate-with-vehicle")]
         [ProducesResponseType(StatusCodes.Status200OK)]
