@@ -54,6 +54,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Common
         public string? SortBy { get; set; } = "LoggedDate";
         public bool SortDescending { get; set; } = true;
     }
+    public class VehicleQueryParams : PaginationParams
+    {
+        public string? SortBy { get; set; }
+        public bool SortDescending { get; set; } = false;
+        public string? SearchTerm { get; set; }
+        public VehicleType? Type { get; set; }
+        public VehicleStatus? Status { get; set; }
+    }
 
-    
 }

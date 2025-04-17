@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Enum;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
 {
     public interface IVehicleManagementService
     {
-        Task<IEnumerable<VehicleDTO>> GetAllVehiclesAsync();
+        Task<PagedResult<VehicleDTO>> GetAllVehiclesAsync(VehicleQueryParams queryParams);
         Task<VehicleDTO> GetVehicleByIdAsync(int id);
         Task<VehicleDTO> CreateVehicleAsync(CreateVehicleRequest request);
         Task<VehicleDTO> UpdateVehicleAsync(int id, UpdateVehicleRequest request);

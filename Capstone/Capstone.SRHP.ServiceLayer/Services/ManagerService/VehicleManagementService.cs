@@ -7,7 +7,9 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,19 +27,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             _logger = logger;
         }
 
-        public async Task<IEnumerable<VehicleDTO>> GetAllVehiclesAsync()
+        public async Task<PagedResult<VehicleDTO>> GetAllVehiclesAsync(VehicleQueryParams queryParams)
         {
             try
             {
-                var vehicles = await _unitOfWork.Repository<Vehicle>()
-                    .GetAll(v => !v.IsDelete)
-                    .ToListAsync(); 
+                var query = _unitOfWork.Repository<Vehicle>()
+                    .GetAll(v => !v.IsDelete);
 
-                return vehicles.Select(MapToVehicleDTO);
+                // Apply filters and sorting
+                query = query.ApplyFilters(queryParams);
+                query = query.ApplySorting(queryParams);
+
+                // Get paged result
+                var pagedResult = await query.ToPagedResultAsync(queryParams);
+
+                // Map to DTOs
+                return new PagedResult<VehicleDTO>
+                {
+                    Items = pagedResult.Items.Select(MapToVehicleDTO).ToList(),
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving all vehicles");
+                _logger.LogError(ex, "Error retrieving vehicles");
                 throw;
             }
         }

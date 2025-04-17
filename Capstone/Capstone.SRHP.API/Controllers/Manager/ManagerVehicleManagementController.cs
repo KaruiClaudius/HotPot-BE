@@ -28,12 +28,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<VehicleDTO>>>> GetAllVehicles()
+        public async Task<ActionResult<PagedResult<VehicleDTO>>> GetVehicles([FromQuery] VehicleQueryParams queryParams)
         {
             try
             {
-                var vehicles = await _vehicleService.GetAllVehiclesAsync();
-                return Ok(ApiResponse<IEnumerable<VehicleDTO>>.SuccessResponse(vehicles, "Vehicles retrieved successfully"));
+                var vehicles = await _vehicleService.GetAllVehiclesAsync(queryParams);
+                return Ok(ApiResponse<ActionResult<PagedResult<VehicleDTO>>>.SuccessResponse(vehicles, "Vehicles retrieved successfully"));
             }
             catch (Exception ex)
             {
