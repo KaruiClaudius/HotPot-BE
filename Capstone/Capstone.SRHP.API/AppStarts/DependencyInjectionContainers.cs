@@ -16,6 +16,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Services;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
@@ -49,8 +50,8 @@ namespace Capstone.HPTY.API.AppStarts
             // Database
             services.AddDbContext<HPTYContext>(options =>
             {
+                var connectionString = configuration.GetConnectionString("Local");
                 //var connectionString = configuration.GetConnectionString("Server");
-                var connectionString = configuration.GetConnectionString("Server");
                 options.UseSqlServer(connectionString,
                     sqlOptions => sqlOptions.EnableRetryOnFailure());
             });
@@ -142,6 +143,7 @@ namespace Capstone.HPTY.API.AppStarts
             // External Services
             services.AddHttpClient();
             services.AddMemoryCache();
+            services.AddHostedService<DatabaseInitializer>();
 
             //// AutoMapper
             //services.AddAutoMapper(typeof(MappingProfile));
