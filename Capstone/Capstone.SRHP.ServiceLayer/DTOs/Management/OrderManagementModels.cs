@@ -174,6 +174,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         // User information
         public int UserId { get; set; }
         public string UserName { get; set; }
+        public string UserPhone { get; set; }
 
         // Shipping information
         public ShippingDetailDTO ShippingInfo { get; set; }

@@ -284,6 +284,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     // User information
                     UserId = order.UserId,
                     UserName = order.User?.Name ?? string.Empty,
+                    UserPhone = order.User.PhoneNumber ?? string.Empty,
 
                     // Shipping information
                     ShippingInfo = order.ShippingOrder != null ? new ShippingDetailDTO
