@@ -54,7 +54,7 @@ namespace Capstone.HPTY.ModelLayer
             SeedVehicle(modelBuilder);
         }
 
-        private static void SeedRoles(ModelBuilder modelBuilder) 
+        private static void SeedRoles(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleId = 1, Name = "Admin" },
@@ -77,10 +77,10 @@ namespace Capstone.HPTY.ModelLayer
                 new User { UserId = 7, PhoneNumber = "444444444", Name = "Đinh Thị Hà", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
 
                 // New staff
-                new User { UserId = 11, PhoneNumber = "0901234567", Name = "Võ Anh Dũng", Email = "Staff5@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 12, PhoneNumber = "0907654321", Name = "Nguyễn Thị Mai", Email = "Staff6@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 13, PhoneNumber = "0912345678", Name = "Bùi Văn Hậu", Email = "Staff7@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
-                new User { UserId = 14, PhoneNumber = "0918765432", Name = "Trương Thị Lan", Email = "Staff8@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User { UserId = 18, PhoneNumber = "0901234567", Name = "Võ Anh Dũng", Email = "Staff5@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
+                new User { UserId = 19, PhoneNumber = "0907654321", Name = "Nguyễn Thị Mai", Email = "Staff6@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
+                new User { UserId = 20, PhoneNumber = "0912345678", Name = "Bùi Văn Hậu", Email = "Staff7@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User { UserId = 21, PhoneNumber = "0918765432", Name = "Trương Thị Lan", Email = "Staff8@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
 
                 new User { UserId = 8, PhoneNumber = "333333333", Name = "Đặng Văn Nam", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
                 new User { UserId = 9, PhoneNumber = "222222222", Name = "Lý Thị Ngọc", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },

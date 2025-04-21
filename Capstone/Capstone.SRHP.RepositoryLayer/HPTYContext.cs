@@ -150,7 +150,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasOne(a => a.RentOrder)
                 .WithMany()
                 .HasForeignKey(a => a.OrderId)
-                .OnDelete(DeleteBehavior.Restrict);        
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<StaffPickupAssignment>()
                 .HasOne(a => a.Staff)
@@ -181,7 +181,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
 
                 entity.HasOne(p => p.Order)
-                    .WithMany(o => o.Payments)  
+                    .WithMany(o => o.Payments)
                     .HasForeignKey(p => p.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
@@ -200,12 +200,10 @@ namespace Capstone.HPTY.RepositoryLayer
             });
 
 
-
-
             modelBuilder.Entity<Order>(entity =>
             {
-                modelBuilder.Entity<Order>()
-                    .Property(o => o.TotalPrice)
+                // Configure decimal precision
+                entity.Property(o => o.TotalPrice)
                     .HasColumnType("decimal(18,2)");
 
                 // Add new flags
@@ -216,6 +214,19 @@ namespace Capstone.HPTY.RepositoryLayer
                 entity.Property(o => o.HasRentItems)
                     .IsRequired()
                     .HasDefaultValue(false);
+
+                // Configure the relationship between Order and User (Customer)
+                entity.HasOne(o => o.User)
+                    .WithMany(u => u.Orders)
+                    .HasForeignKey(o => o.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Configure the relationship between Order and User (PreparationStaff)
+                entity.HasOne(o => o.PreparationStaff)
+                    .WithMany(u => u.PreparedOrders)
+                    .HasForeignKey(o => o.PreparationStaffId)
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired(false);  // Since PreparationStaffId is nullable
             });
 
             // Configure SellOrder relationships
@@ -468,6 +479,8 @@ namespace Capstone.HPTY.RepositoryLayer
                 entity.Property(e => e.IsActive)
                     .IsRequired();
             });
+
+
 
             // Configure ChatMessage entity
             modelBuilder.Entity<ChatMessage>(entity =>

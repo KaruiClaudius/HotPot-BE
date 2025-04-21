@@ -21,13 +21,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEquipmentReturnService _equipmentReturnService;
-        private readonly Logger<StaffService> _logger;
+        private readonly ILogger<StaffService> _logger;
         private const int STAFF_ROLE_ID = 3; // Staff role ID
 
         public StaffService(
          IUnitOfWork unitOfWork,
          IEquipmentReturnService equipmentReturnService,
-         Logger<StaffService> logger)
+         ILogger<StaffService> logger)
         {
             _unitOfWork = unitOfWork;
             _equipmentReturnService = equipmentReturnService;
@@ -133,7 +133,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .GroupBy(a => a.StaffId)
                     .ToDictionary(
                         g => g.Key,
-                        g => new {
+                        g => new
+                        {
                             Count = g.Count(),
                             HasActiveOrder = g.Any(a => a.HasActiveOrder)
                         }
@@ -184,7 +185,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-       
+
 
         public async Task<User> CreateStaffAsync(User staff)
         {
