@@ -27,50 +27,39 @@ namespace Capstone.HPTY.API.Controllers.Manager
             _logger = logger;
         }
 
-        [HttpPost("assign-preparation-staff")]
+        [HttpPost("assign-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<OrderPreparationDTO>>> AssignPreparationStaff([FromBody] AssignPreparationStaffRequest request)
+        public async Task<ActionResult<ApiResponse<StaffAssignmentResponse>>> AssignStaffToOrder(
+    [FromBody] StaffAssignmentRequest request)
         {
             try
             {
-                var result = await _orderManagementService.AssignPreparationStaff(request.OrderId, request.StaffId);
-                return Ok(ApiResponse<OrderPreparationDTO>.SuccessResponse(result, "Preparation staff assigned successfully"));
+                var result = await _orderManagementService.AssignStaffToOrderAsync(
+                    request.OrderId,
+                    request.StaffId,
+                    request.TaskType,
+                    request.VehicleId);
+
+                string successMessage = request.TaskType == StaffTaskType.Preparation
+                    ? "Preparation staff assigned successfully"
+                    : "Shipping staff assigned successfully";
+
+                return Ok(ApiResponse<StaffAssignmentResponse>.SuccessResponse(result, successMessage));
             }
-            catch (KeyNotFoundException ex)
+            catch (NotFoundException ex)
             {
-                return NotFound(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
             catch (ValidationException ex)
             {
-                return BadRequest(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
-            }
-        }
-
-        // Order allocation endpoints
-        [HttpPost("allocate")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrderAllocationDTO>>> AllocateOrderToStaff([FromBody] AllocateOrderRequest request)
-        {
-            try
-            {
-                var result = await _orderManagementService.AllocateOrderToStaff(request.OrderId, request.StaffId);
-                return Ok(ApiResponse<ShippingOrderAllocationDTO>.SuccessResponse(result, "Order allocated successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
+                _logger.LogError(ex, "Error assigning staff to order");
+                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
         }
 
@@ -150,7 +139,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<OrderWithDetailsDTO>>>> GetOrdersByStatus(
-            OrderStatus? status= null,
+            OrderStatus? status = null,
             [FromQuery] OrderQueryParams queryParams = null)
         {
             // If no query params provided, create with defaults
