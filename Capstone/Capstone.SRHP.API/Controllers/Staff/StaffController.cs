@@ -17,9 +17,9 @@ namespace Capstone.HPTY.API.Controllers.Staff
     public class StaffController : ControllerBase
     {
         private readonly IStaffService _staffService;
-        private readonly Logger<StaffController> _logger;
+        private readonly ILogger<StaffController> _logger;
 
-        public StaffController(IStaffService staffService, Logger<StaffController> logger)
+        public StaffController(IStaffService staffService, ILogger<StaffController> logger)
         {
             _staffService = staffService ?? throw new ArgumentNullException(nameof(staffService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
