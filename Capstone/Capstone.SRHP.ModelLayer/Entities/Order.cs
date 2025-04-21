@@ -36,20 +36,27 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public OrderStatus Status { get; set; }
 
         [Required]
-        [ForeignKey("User")]
+        [ForeignKey("User")] // Customer
         public int UserId { get; set; }
 
         [ForeignKey("Discount")]
         public int? DiscountId { get; set; }
 
+        // For the staff member preparing the order
+        [ForeignKey("PreparationStaff")]
+        public int? PreparationStaffId { get; set; } // Nullable until assigned
+
         public bool HasSellItems { get; set; } = false;
 
         public bool HasRentItems { get; set; } = false;
 
-        public virtual User? User { get; set; }
+        public virtual User? User { get; set; } // Customer
         public virtual ShippingOrder? ShippingOrder { get; set; }
         public virtual Feedback? Feedback { get; set; }
         public virtual Discount? Discount { get; set; }
+
+        // Navigation property to the preparation staff member
+        public virtual User? PreparationStaff { get; set; }
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
         // Navigation properties to the specific order types

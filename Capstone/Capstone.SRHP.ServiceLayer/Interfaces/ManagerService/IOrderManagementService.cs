@@ -11,6 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
     public interface IOrderManagementService
     {
         // Order allocation
+        Task<OrderPreparationDTO> AssignPreparationStaff(int orderId, int staffId);
         Task<ShippingOrderAllocationDTO> AllocateOrderToStaff(int orderId, int staffId);
         Task<PagedResult<UnallocatedOrderDTO>> GetUnallocatedOrdersPaged(OrderQueryParams queryParams);
         Task<IEnumerable<StaffShippingOrderDTO>> GetOrdersByStaff(int staffId);

@@ -21,14 +21,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEquipmentReturnService _equipmentReturnService;
+        private readonly Logger<StaffService> _logger;
         private const int STAFF_ROLE_ID = 3; // Staff role ID
 
         public StaffService(
          IUnitOfWork unitOfWork,
-         IEquipmentReturnService equipmentReturnService)
+         IEquipmentReturnService equipmentReturnService,
+         Logger<StaffService> logger)
         {
             _unitOfWork = unitOfWork;
             _equipmentReturnService = equipmentReturnService;
+            _logger = logger;
         }
 
         public async Task<User> GetStaffByIdAsync(int userId)
@@ -53,25 +56,77 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
         }
 
-        public async Task<List<StaffAvailableDto>> GetAvailableStaffAsync()
+        public async Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null)
         {
             try
             {
+                _logger.LogInformation("Getting available staff for task type: {TaskType}", taskType);
+
                 // Get current day of week
                 var today = DateTime.Now.DayOfWeek;
                 var workDay = MapDayOfWeekToWorkDays(today);
 
-                // Get all users with staff role who are not deleted
-                var staffUsers = await _unitOfWork.Repository<User>()
-                    .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
-                    .Include(u => u.StaffWorkShifts)
-                    .ToListAsync();
+                // Build query for staff users
+                // First filter by role and deletion status
+                var staffQuery = _unitOfWork.Repository<User>()
+                    .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
-                // Get all active assignments in a single query
-                var allActiveAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
+                // Filter by staff type if task type is specified
+                if (taskType.HasValue)
+                {
+                    if (taskType == StaffTaskType.Preparation)
+                    {
+                        // Only preparation staff can handle preparation tasks
+                        staffQuery = staffQuery.Where(u => u.StaffType == StaffType.Preparation);
+                    }
+                    else if (taskType == StaffTaskType.Shipping)
+                    {
+                        // Both preparation and shipping staff can handle shipping tasks
+                        staffQuery = staffQuery.Where(u => u.StaffType == StaffType.Preparation || u.StaffType == StaffType.Shipping);
+                    }
+                }
+
+                // Then include the related data
+                staffQuery = staffQuery.Include(u => u.StaffWorkShifts);
+
+                var staffUsers = await staffQuery.ToListAsync();
+
+                // Get all active assignments in a single query for each type
+                var activePickupAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
                     .AsQueryable(a => a.CompletedDate == null)
                     .Select(a => new { a.StaffId, a.AssignedDate })
                     .ToListAsync();
+
+                var activeShippingOrders = await _unitOfWork.Repository<ShippingOrder>()
+                    .AsQueryable(so => !so.IsDelivered && !so.IsDelete)
+                    .Select(so => new { so.StaffId })
+                    .ToListAsync();
+
+                var activeReplacementRequests = await _unitOfWork.Repository<ReplacementRequest>()
+                    .AsQueryable(rr => rr.Status != ReplacementRequestStatus.Completed &&
+                                      rr.Status != ReplacementRequestStatus.Rejected &&
+                                      rr.AssignedStaffId != null &&
+                                      !rr.IsDelete)
+                    .Select(rr => new { StaffId = rr.AssignedStaffId.Value })
+                    .ToListAsync();
+
+                // Combine all active assignments
+                var allActiveAssignments = new List<(int StaffId, bool HasActiveOrder)>();
+
+                // Add pickup assignments
+                allActiveAssignments.AddRange(
+                    activePickupAssignments.Select(a => (a.StaffId, a.AssignedDate != null))
+                );
+
+                // Add shipping orders
+                allActiveAssignments.AddRange(
+                    activeShippingOrders.Select(so => (so.StaffId, true))
+                );
+
+                // Add replacement requests
+                allActiveAssignments.AddRange(
+                    activeReplacementRequests.Select(rr => (rr.StaffId, true))
+                );
 
                 // Group assignments by staff ID
                 var assignmentsByStaff = allActiveAssignments
@@ -80,7 +135,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         g => g.Key,
                         g => new {
                             Count = g.Count(),
-                            HasActiveOrder = g.Any(a => a.AssignedDate != null)
+                            HasActiveOrder = g.Any(a => a.HasActiveOrder)
                         }
                     );
 
@@ -89,18 +144,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 foreach (var staff in staffUsers)
                 {
                     // Check if staff is scheduled to work today
-                    bool isAvailable = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
+                    bool isScheduledToday = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
 
                     // Get assignment info for this staff
                     assignmentsByStaff.TryGetValue(staff.UserId, out var assignmentInfo);
-                    int activeAssignments = assignmentInfo?.Count ?? 0;
                     bool hasActiveOrder = assignmentInfo?.HasActiveOrder ?? false;
+                    int assignmentCount = assignmentInfo?.Count ?? 0;
 
-                    // Define a threshold for maximum assignments (e.g., 5)
-                    isAvailable = isAvailable && (activeAssignments < 5);
+                    // Staff is not available if they're not scheduled today or currently working on an order
+                    bool isAvailable = isScheduledToday && !hasActiveOrder;
 
-                    // Staff is not available if they're currently working on an order
-                    isAvailable = isAvailable && !hasActiveOrder;
+                    // Check if staff is eligible for the task type (if specified)
+                    bool isEligible = true;
+                    if (taskType.HasValue)
+                    {
+                        isEligible = IsStaffEligibleForTask(staff, taskType.Value);
+                    }
 
                     staffDtos.Add(new StaffAvailableDto
                     {
@@ -108,8 +167,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         Name = staff.Name,
                         Email = staff.Email ?? string.Empty,
                         Phone = staff.PhoneNumber ?? string.Empty,
+                        StaffType = staff.StaffType ?? StaffType.Preparation,
                         IsAvailable = isAvailable,
-                        AssignmentCount = activeAssignments
+                        IsEligible = isEligible,
+                        AssignmentCount = assignmentCount,
+                        WorkDays = staff.WorkDays
                     });
                 }
 
@@ -117,9 +179,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting available staff for task type {TaskType}", taskType);
                 throw;
             }
         }
+
+       
 
         public async Task<User> CreateStaffAsync(User staff)
         {
@@ -513,6 +578,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             };
         }
 
+
         private string GetEquipmentSummary(ICollection<RentOrderDetail> details)
         {
             Console.WriteLine("GetEquipmentSummary called");
@@ -579,19 +645,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             Console.WriteLine($"  Final summary: {(string.IsNullOrEmpty(summary) ? "No equipment" : summary)}");
             return string.IsNullOrEmpty(summary) ? "No equipment" : summary;
         }
+        // Helper method to check if a staff member is eligible for a specific task
+        private bool IsStaffEligibleForTask(User staff, StaffTaskType taskType)
+        {
+            if (staff == null)
+                return false;
 
+            // For preparation tasks, only preparation staff are eligible
+            if (taskType == StaffTaskType.Preparation)
+                return staff.StaffType == StaffType.Preparation;
+
+            // For shipping tasks, both preparation and shipping staff are eligible
+            if (taskType == StaffTaskType.Shipping)
+                return staff.StaffType == StaffType.Preparation || staff.StaffType == StaffType.Shipping;
+
+            return false;
+        }
+
+        // Helper method to map DayOfWeek to WorkDays enum
         private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
         {
             return dayOfWeek switch
             {
+                DayOfWeek.Sunday => WorkDays.Sunday,
                 DayOfWeek.Monday => WorkDays.Monday,
                 DayOfWeek.Tuesday => WorkDays.Tuesday,
                 DayOfWeek.Wednesday => WorkDays.Wednesday,
                 DayOfWeek.Thursday => WorkDays.Thursday,
                 DayOfWeek.Friday => WorkDays.Friday,
                 DayOfWeek.Saturday => WorkDays.Saturday,
-                DayOfWeek.Sunday => WorkDays.Sunday,
-                _ => WorkDays.Monday // Default case
+                _ => WorkDays.None
             };
         }
     }

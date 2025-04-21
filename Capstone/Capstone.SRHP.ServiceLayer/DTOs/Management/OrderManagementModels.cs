@@ -95,7 +95,14 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public VehicleInfoDto VehicleInfo { get; set; }
 
     }
+    public class AssignPreparationStaffRequest
+    {
+        [Required]
+        public int OrderId { get; set; }
 
+        [Required]
+        public int StaffId { get; set; }
+    }
     public class ShippingInfoDTO
     {
         public int ShippingOrderId { get; set; }
@@ -109,6 +116,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     {
         public int StaffId { get; set; }
         public string Name { get; set; }
+    }
+    public class OrderPreparationDTO
+    {
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public int PreparationStaffId { get; set; }
+        public string PreparationStaffName { get; set; }
+        public OrderStatus Status { get; set; }
+        public DateTime AssignedAt { get; set; }
     }
 
     public class ShippingOrderAllocationDTO

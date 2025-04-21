@@ -27,6 +27,31 @@ namespace Capstone.HPTY.API.Controllers.Manager
             _logger = logger;
         }
 
+        [HttpPost("assign-preparation-staff")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<OrderPreparationDTO>>> AssignPreparationStaff([FromBody] AssignPreparationStaffRequest request)
+        {
+            try
+            {
+                var result = await _orderManagementService.AssignPreparationStaff(request.OrderId, request.StaffId);
+                return Ok(ApiResponse<OrderPreparationDTO>.SuccessResponse(result, "Preparation staff assigned successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<OrderPreparationDTO>.ErrorResponse(ex.Message));
+            }
+        }
+
         // Order allocation endpoints
         [HttpPost("allocate")]
         [ProducesResponseType(StatusCodes.Status200OK)]

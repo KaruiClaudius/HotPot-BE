@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 {
-    public class OrderManagementService : IOrderManagementService   
+    public class OrderManagementService : IOrderManagementService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<OrderManagementService> _logger;
@@ -29,6 +29,79 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         }
 
         // Order allocation
+        public async Task<OrderPreparationDTO> AssignPreparationStaff(int orderId, int staffId)
+        {
+            try
+            {
+                _logger.LogInformation("Assigning preparation staff {StaffId} to order {OrderId}", staffId, orderId);
+
+                // Check if order exists
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderId} not found");
+
+                // Check if staff exists (user with staff role)
+                var staff = await _unitOfWork.Repository<User>()
+                    .AsQueryable()
+                    .Where(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (staff == null)
+                    throw new NotFoundException($"Staff with ID {staffId} not found");
+
+                // Ensure staff is of Preparation type
+                if (staff.StaffType != StaffType.Preparation)
+                    throw new ValidationException($"Staff with ID {staffId} is not authorized for order preparation. Only preparation staff can prepare orders.");
+
+                // Check staff availability on current day
+                var today = DateTime.Now.DayOfWeek;
+                var currentDay = today switch
+                {
+                    DayOfWeek.Sunday => WorkDays.Sunday,
+                    DayOfWeek.Monday => WorkDays.Monday,
+                    DayOfWeek.Tuesday => WorkDays.Tuesday,
+                    DayOfWeek.Wednesday => WorkDays.Wednesday,
+                    DayOfWeek.Thursday => WorkDays.Thursday,
+                    DayOfWeek.Friday => WorkDays.Friday,
+                    DayOfWeek.Saturday => WorkDays.Saturday,
+                    _ => WorkDays.None
+                };
+
+                // Check if staff is available on the current day
+                if ((staff.WorkDays & currentDay) == 0)
+                {
+                    throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+                }
+
+                // Update order with preparation staff
+                order.PreparationStaffId = staffId;
+                order.Status = OrderStatus.Processing;
+                order.SetUpdateDate();
+
+                await _unitOfWork.CommitAsync();
+
+                // Return DTO with preparation details
+                return new OrderPreparationDTO
+                {
+                    OrderId = order.OrderId,
+                    OrderCode = order.OrderCode,
+                    PreparationStaffId = staffId,
+                    PreparationStaffName = staff.Name,
+                    Status = order.Status,
+                    AssignedAt = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning preparation staff {StaffId} to order {OrderId}", staffId, orderId);
+                throw;
+            }
+        }
+
         public async Task<ShippingOrderAllocationDTO> AllocateOrderToStaff(int orderId, int staffId)
         {
             try
@@ -52,6 +125,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 if (staff == null)
                     throw new NotFoundException($"Staff with ID {staffId} not found");
+
+                // Allow both Preparation and Shipping staff types to deliver
+                if (staff.StaffType != StaffType.Preparation && staff.StaffType != StaffType.Shipping)
+                    throw new ValidationException($"Staff with ID {staffId} is not authorized for shipping. Staff type: {staff.StaffType}");
 
                 // Get current day of week and convert to WorkDays enum value
                 var today = DateTime.Now.DayOfWeek;
@@ -78,10 +155,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
 
                 ShippingOrder shippingOrder;
-
                 if (existingShippingOrder != null)
                 {
-                    _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}", existingShippingOrder.ShippingOrderId, orderId);
+                    _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
+                        existingShippingOrder.ShippingOrderId, orderId);
 
                     // Update existing shipping order
                     existingShippingOrder.StaffId = staffId;
@@ -100,12 +177,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         IsDelivered = false,
                         CreatedAt = DateTime.UtcNow
                     };
-
                     _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
                 }
 
-                // Update order status to Processing
-                order.Status = OrderStatus.Processing;
+                // Update order status to Shipping
+                order.Status = OrderStatus.Shipping;
                 order.SetUpdateDate();
 
                 // Save all changes
@@ -116,7 +192,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 {
                     ShippingOrderId = shippingOrder.ShippingOrderId,
                     OrderId = shippingOrder.OrderId,
-                    OrderCode = shippingOrder.Order.OrderCode,
+                    OrderCode = order.OrderCode,
                     StaffId = shippingOrder.StaffId,
                     StaffName = staff.Name,
                     IsDelivered = shippingOrder.IsDelivered,
@@ -176,7 +252,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                     // Order type indicators
                     HasSellItems = so.Order?.HasSellItems ?? false,
-                    HasRentItems = so.Order?.HasRentItems ?? false,                  
+                    HasRentItems = so.Order?.HasRentItems ?? false,
                 }).ToList();
             }
             catch (Exception ex)
@@ -527,7 +603,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Items = pagedResult.Items.Select(o => new UnallocatedOrderDTO
                     {
                         OrderId = o.OrderId,
-                        OrderCode= o.OrderCode,
+                        OrderCode = o.OrderCode,
                         Address = o.Address,
                         Notes = o.Notes ?? string.Empty,
                         TotalPrice = o.TotalPrice,
@@ -535,7 +611,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         UserId = o.UserId,
                         UserName = o.User?.Name ?? string.Empty,
                         HasSellItems = o.HasSellItems,
-                        HasRentItems = o.HasRentItems,                      
+                        HasRentItems = o.HasRentItems,
                     }).ToList(),
                     PageNumber = pagedResult.PageNumber,
                     PageSize = pagedResult.PageSize,
@@ -630,7 +706,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
                     .Include(o => o.ShippingOrder)
-                        .ThenInclude(so => so.Vehicle) 
+                        .ThenInclude(so => so.Vehicle)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                     .Include(o => o.RentOrder)
@@ -793,6 +869,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 if (staff == null)
                     throw new NotFoundException($"Staff with ID {staffId} not found");
 
+                // Allow both Preparation and Shipping staff types to deliver
+                if (staff.StaffType != StaffType.Preparation && staff.StaffType != StaffType.Shipping)
+                    throw new ValidationException($"Staff with ID {staffId} is not authorized for shipping. Staff type: {staff.StaffType}");
+
+                // Check staff availability on current day
+                var today = DateTime.Now.DayOfWeek;
+                var currentDay = today switch
+                {
+                    DayOfWeek.Sunday => WorkDays.Sunday,
+                    DayOfWeek.Monday => WorkDays.Monday,
+                    DayOfWeek.Tuesday => WorkDays.Tuesday,
+                    DayOfWeek.Wednesday => WorkDays.Wednesday,
+                    DayOfWeek.Thursday => WorkDays.Thursday,
+                    DayOfWeek.Friday => WorkDays.Friday,
+                    DayOfWeek.Saturday => WorkDays.Saturday,
+                    _ => WorkDays.None
+                };
+
+                if ((staff.WorkDays & currentDay) == 0)
+                {
+                    throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+                }
+
                 // Estimate order size
                 var orderSize = await EstimateOrderSizeAsync(orderId);
 
@@ -818,6 +917,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         if (availableVehicle == null)
                             throw new ValidationException("No vehicles are currently available for delivery");
                     }
+
                     vehicleId = availableVehicle.VehicleId;
                 }
                 else
@@ -838,7 +938,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
 
                 ShippingOrder shippingOrder;
-
                 if (existingShippingOrder != null)
                 {
                     _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
@@ -865,12 +964,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         IsDelivered = false,
                         CreatedAt = DateTime.UtcNow
                     };
-
                     _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
                 }
 
-                // Update order status to Processing
-                order.Status = OrderStatus.Processing;
+                // Update order status to Shipping
+                order.Status = OrderStatus.Shipping;
                 order.SetUpdateDate();
 
                 // Update vehicle status to InUse
@@ -916,7 +1014,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error allocating order {OrderId} to staff {StaffId} with vehicle {VehicleId}",
-                    orderId, staffId, vehicleId);
+           orderId, staffId, vehicleId);
                 throw;
             }
         }

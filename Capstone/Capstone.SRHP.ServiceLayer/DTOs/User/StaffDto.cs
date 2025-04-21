@@ -24,7 +24,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.User
         public string Name { get; set; }
         public string Email { get; set; }
         public string Phone { get; set; }
+        public StaffType StaffType { get; set; }
         public bool IsAvailable { get; set; }
+        public bool IsEligible { get; set; }
         public int AssignmentCount { get; set; }
+        public WorkDays? WorkDays { get; set; }
     }
 }

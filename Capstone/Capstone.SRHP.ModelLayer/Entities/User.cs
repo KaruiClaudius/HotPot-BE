@@ -50,6 +50,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(1000)]
         public string? Note { get; set; }
 
+        // For Role Staff only
+        public StaffType? StaffType { get; set; }
+
         [Required]
         [ForeignKey("Role")]
         public int RoleId { get; set; }
