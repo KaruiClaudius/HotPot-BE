@@ -11,10 +11,11 @@ namespace Capstone.HPTY.ModelLayer.Enum
         Cart = 0,
         Pending = 1,
         Processing = 2,
-        Shipping = 3,
-        Delivered = 4,
-        Cancelled = 5,
-        Returning = 6,
-        Completed = 7
+        Processed = 3,
+        Shipping = 4,
+        Delivered = 5,
+        Cancelled = 6,
+        Returning = 7,
+        Completed = 8
     }
 }

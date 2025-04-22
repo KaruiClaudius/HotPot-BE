@@ -808,26 +808,33 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Define business rules for order size estimation
                 bool isLarge = false;
 
-                // Rule 1: If order has rental items, it's considered large
-                if (order.HasRentItems && order.RentOrder?.RentOrderDetails?.Any() == true)
+                // Rule 1: If order has more than 2 rental items, it's considered large
+                if (order.HasRentItems &&
+                    order.RentOrder?.RentOrderDetails?.Any() == true &&
+                    order.RentOrder.RentOrderDetails.Count() > 2)
                 {
                     isLarge = true;
                 }
 
-                // Rule 2: If order has more than X sell items, it's considered large
-                const int LARGE_ORDER_ITEM_THRESHOLD = 10; // Adjust based on business needs
+                // Rule 2: If order has at least 10 total sell items AND at least 2 combo items, it's considered large
+                const int LARGE_ORDER_ITEM_THRESHOLD = 10;
+
                 if (order.HasSellItems &&
-                    order.SellOrder?.SellOrderDetails?.Sum(d => d.Quantity) >= LARGE_ORDER_ITEM_THRESHOLD)
+                    order.SellOrder?.SellOrderDetails != null)
                 {
-                    isLarge = true;
-                }
+                    // Check if total quantity is at least 10
+                    int totalQuantity = order.SellOrder.SellOrderDetails.Sum(d => d.Quantity);
 
-                //// Rule 3: If total price exceeds a threshold, consider it large
-                //const decimal LARGE_ORDER_PRICE_THRESHOLD = 500; // Adjust based on business needs
-                //if (order.TotalPrice >= LARGE_ORDER_PRICE_THRESHOLD)
-                //{
-                //    isLarge = true;
-                //}
+                    // Check if there are at least 2 combo items
+                    int comboItemCount = order.SellOrder.SellOrderDetails
+                        .Where(d => d.ComboId.HasValue)
+                        .Sum(d => d.Quantity);
+
+                    if (totalQuantity >= LARGE_ORDER_ITEM_THRESHOLD && comboItemCount >= 2)
+                    {
+                        isLarge = true;
+                    }
+                }
 
                 return isLarge ? OrderSize.Large : OrderSize.Small;
             }
