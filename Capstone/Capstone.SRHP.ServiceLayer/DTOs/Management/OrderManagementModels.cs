@@ -116,9 +116,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int? VehicleId { get; set; }
         public string VehicleName { get; set; }
         public VehicleType? VehicleType { get; set; }
-        public OrderSize OrderSize { get; set; }
         public bool IsDelivered { get; set; }
         public DateTime CreatedAt { get; set; }
+        public OrderSize OrderSize { get; set; }
+
     }
 
     public class ShippingInfoDTO

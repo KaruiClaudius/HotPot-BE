@@ -74,6 +74,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         [Required]
         public int StaffId { get; set; }
 
+        public StaffTaskType taskType { get; set; } = StaffTaskType.Shipping;
+
         public int? VehicleId { get; set; }
     }
 
