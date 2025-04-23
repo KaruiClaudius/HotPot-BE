@@ -56,10 +56,10 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 { "EquipmentName", equipmentName },
                 { "IssueName", request.Name },
                 { "Description", request.Description },
-                { "Status", request.Status.ToString() },  
-                { "ReportTime", DateTime.UtcNow },        
+                { "Status", request.Status.ToString() },
+                { "ReportTime", DateTime.UtcNow },
                     });
-      
+
 
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
                     ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Equipment condition logged successfully"));
@@ -107,7 +107,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             var conditionLogs = await _equipmentConditionService.GetConditionLogsByStatusAsync(status, paginationParams);
             return Ok(ApiResponse<PagedResult<EquipmentConditionListItemDto>>.SuccessResponse(conditionLogs, "Condition logs retrieved successfully"));
-        }      
+        }
 
         [HttpGet("filter")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -144,11 +144,11 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 { "EquipmentType", result.EquipmentType },
                 { "EquipmentName", result.EquipmentName },
                 { "IssueName", result.Name },
-                { "Description", result.Description },         
+                { "Description", result.Description },
                 { "NewStatus", request.Status.ToString() },
-             
+
                 { "UpdateTime", DateTime.UtcNow }
-                    });              
+                    });
 
                 return Ok(ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Condition status updated successfully"));
             }
@@ -191,40 +191,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        private string DeterminePriority(CreateEquipmentConditionRequest request)
-        {
-            // Logic to determine priority based on the issue type, description, or status
-            if (request.Status == MaintenanceStatus.InProgress)
-                return "High";       
-            else if (request.Status == MaintenanceStatus.InProgress)
-                return "Medium";
-            else
-                return "Normal";
-        }
-
-
-        //[HttpPost("notify-administrators")]
-        //[ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<bool>>> NotifyAdministrators([FromBody] NotifyAdminRequest request)
+        //private string DeterminePriority(CreateEquipmentConditionRequest request)
         //{
-        //    try
-        //    {
-        //        // Notify administrators using the new notification service
-        //        await _notificationService.NotifyConditionIssue(
-        //            request.ConditionLogId,
-        //            request.EquipmentType,
-        //            request.EquipmentName,
-        //            request.IssueName,
-        //            request.Description,
-        //            request.ScheduleType.ToString());
-
-        //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Administrators notified successfully"));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-        //    }
+        //    // Logic to determine priority based on the issue type, description, or status
+        //    if (request.Status == MaintenanceStatus.InProgress)
+        //        return "High";       
+        //    else if (request.Status == MaintenanceStatus.InProgress)
+        //        return "Medium";
+        //    else
+        //        return "Normal";
         //}
+
     }
 }

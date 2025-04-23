@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
+[assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
+
 
 var root = Directory.GetCurrentDirectory();
 var dotenvPath = Path.Combine(root, ".env");
@@ -36,10 +39,12 @@ builder.Services.InstallService(builder.Configuration);
 builder.Services.ConfigureAuthService(builder.Configuration);
 
 // Add SignalR
-builder.Services.AddSignalR(options => {
+builder.Services.AddSignalR(options =>
+{
     options.EnableDetailedErrors = true;
 })
-.AddJsonProtocol(options => {
+.AddJsonProtocol(options =>
+{
     options.PayloadSerializerOptions.PropertyNamingPolicy = null;
 });
 
