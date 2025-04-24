@@ -15,14 +15,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string RequestReason { get; set; }
 
         [StringLength(1000)]
-        public string? AdditionalNotes { get; set; }
+        public string AdditionalNotes { get; set; }
 
         [Required]
-        public EquipmentType EquipmentType { get; set; }
-
         public int? HotPotInventoryId { get; set; }
-
-        public int? UtensilId { get; set; }
     }
 
     public class ReviewReplacementRequestDto
@@ -58,7 +54,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public DateTime RequestDate { get; set; }
         public DateTime? ReviewDate { get; set; }
         public DateTime? CompletionDate { get; set; }
-        public EquipmentType EquipmentType { get; set; }
         public string EquipmentName { get; set; }
         public string CustomerName { get; set; }
         public string AssignedStaffName { get; set; }
@@ -74,7 +69,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public DateTime? ReviewDate { get; set; }
         public string ReviewNotes { get; set; }
         public DateTime? CompletionDate { get; set; }
-        public EquipmentType EquipmentType { get; set; }
         public string EquipmentName { get; set; }
 
         public int? CustomerId { get; set; }
@@ -89,10 +83,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string HotPotSeriesNumber { get; set; }
         public string HotPotName { get; set; }
 
-        public int? UtensilId { get; set; }
-        public string UtensilName { get; set; }
-        public string UtensilType { get; set; }
     }
+
     public class ReplacementDashboardDto
     {
         public int TotalRequests { get; set; }
@@ -102,12 +94,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int CompletedRequests { get; set; }
         public int RejectedRequests { get; set; }
         public int CancelledRequests { get; set; }
-
         public int HotPotRequests { get; set; }
-        public int UtensilRequests { get; set; }
-
         public List<ReplacementRequestSummaryDto> RecentRequests { get; set; }
     }
+
+
     public class VerifyEquipmentFaultyDto
     {
         [Required]

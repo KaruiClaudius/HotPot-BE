@@ -35,6 +35,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public OrderStatus Status { get; set; }
 
+
+        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
+        public DateTime? DeliveryTime { get; set; }
+
         [Required]
         [ForeignKey("User")]
         public int UserId { get; set; }

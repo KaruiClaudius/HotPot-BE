@@ -175,12 +175,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.Quantity < 0)
+                if (request.TotalAmount <= 0)
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Quantity cannot be negative"
+                        Message = "Total amount must be greater than 0"
                     });
                 }
 
@@ -193,6 +193,46 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
+                if (string.IsNullOrWhiteSpace(request.Unit))
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Unit cannot be empty"
+                    });
+                }
+
+                if (request.MeasurementValue <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Measurement value must be greater than 0"
+                    });
+                }
+
+                if (request.BestBeforeDate <= DateTime.UtcNow)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Best before date must be in the future"
+                    });
+                }
+
+                // Calculate quantity based on total amount and measurement value
+                // For example, if total is 5kg and measurement is 200g, then quantity is 5000/200 = 25 units
+                int calculatedQuantity = (int)Math.Ceiling(request.TotalAmount / request.MeasurementValue);
+
+                if (calculatedQuantity <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
+                    });
+                }
+
                 // Create ingredient entity
                 var ingredient = new Ingredient
                 {
@@ -200,15 +240,29 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     ImageURL = request.ImageURL,
                     MinStockLevel = request.MinStockLevel,
-                    Quantity = request.Quantity,
-                    IngredientTypeId = request.IngredientTypeID
+                    IngredientTypeId = request.IngredientTypeID,
+                    Unit = request.Unit,
+                    MeasurementValue = request.MeasurementValue
                 };
 
                 // Create ingredient with initial price
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
 
+                // Generate batch number if not provided
+                string batchNumber = GenerateBatchNumber(createdIngredient.IngredientId);
+
+                // Add initial batch with calculated quantity
+                await _ingredientService.AddBatchAsync(
+                    createdIngredient.IngredientId,
+                    calculatedQuantity,
+                    request.BestBeforeDate,
+                    batchNumber);
+
+                // Get the updated ingredient with batch information
+                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(createdIngredient.IngredientId);
+
                 // Map to DTO
-                var ingredientDto = MapToIngredientDto(createdIngredient);
+                var ingredientDto = MapToIngredientDto(updatedIngredient);
                 ingredientDto.Price = request.Price;
 
                 return CreatedAtAction(
@@ -217,7 +271,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientDto>
                     {
                         Success = true,
-                        Message = "Ingredient created successfully",
+                        Message = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit})",
                         Data = ingredientDto
                     });
             }
@@ -272,21 +326,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.Quantity.HasValue && request.Quantity.Value < 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Quantity cannot be negative"
-                    });
-                }
-
                 if (request.Price.HasValue && request.Price.Value < 0)
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
                         Message = "Price cannot be negative"
+                    });
+                }
+
+                if (request.MeasurementValue.HasValue && request.MeasurementValue.Value <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Measurement value must be greater than 0"
                     });
                 }
 
@@ -300,11 +354,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (!string.IsNullOrEmpty(request.ImageURL))
                     existingIngredient.ImageURL = request.ImageURL;
 
+                if (!string.IsNullOrEmpty(request.Unit))
+                    existingIngredient.Unit = request.Unit;
+
+                if (request.MeasurementValue.HasValue)
+                    existingIngredient.MeasurementValue = request.MeasurementValue.Value;
+
                 if (request.MinStockLevel.HasValue)
                     existingIngredient.MinStockLevel = request.MinStockLevel.Value;
-
-                if (request.Quantity.HasValue)
-                    existingIngredient.Quantity = request.Quantity.Value;
 
                 if (request.IngredientTypeID.HasValue && request.IngredientTypeID > 0)
                     existingIngredient.IngredientTypeId = request.IngredientTypeID.Value;
@@ -475,6 +532,90 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+        [HttpPost("{id}/restock")]
+        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> RestockIngredient(int id, [FromBody] RestockIngredientRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Admin restocking ingredient with ID: {IngredientId}", id);
+
+                // Validate request
+                if (request.Quantity <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Quantity must be greater than 0"
+                    });
+                }
+
+                if (request.BestBeforeDate <= DateTime.UtcNow)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Best before date must be in the future"
+                    });
+                }
+
+                // Check if ingredient exists
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
+
+                // Generate batch number if not provided
+                string batchNumber = GenerateBatchNumber(id);
+
+                // Add new batch
+                await _ingredientService.AddBatchAsync(
+                    id,
+                    request.Quantity,
+                    request.BestBeforeDate,
+                    batchNumber);
+
+                // Get updated ingredient with batch information
+                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
+                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
+
+                var ingredientDto = MapToIngredientDto(updatedIngredient);
+                ingredientDto.Price = currentPrice;
+
+                return Ok(new ApiResponse<IngredientDto>
+                {
+                    Success = true,
+                    Message = $"Ingredient restocked successfully with {request.Quantity} units ({request.Quantity * updatedIngredient.MeasurementValue} {updatedIngredient.Unit})",
+                    Data = ingredientDto
+                });
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "Validation error restocking ingredient with ID: {IngredientId}", id);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Validation Error",
+                    Message = ex.Message
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restocking ingredient with ID: {IngredientId}", id);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to restock ingredient"
+                });
+            }
+        }
+
 
         private static IngredientDto MapToIngredientDto(Ingredient ingredient)
         {
@@ -488,6 +629,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 ImageURL = ingredient.ImageURL ?? string.Empty,
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
+                Unit = ingredient.Unit,
+                MeasurementValue = ingredient.MeasurementValue != 0 ? ingredient.MeasurementValue : 1.0, // Default to 1.0 if zero
                 IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Price = 0, // This will be set later from the current price
@@ -496,5 +639,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
             };
         }
+
+        private string GenerateBatchNumber(int ingredientId)
+        {
+            // Format: ING-{ingredientId}-{timestamp}
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            return $"ING-{ingredientId}-{timestamp}";
+        }
+
     }
 }

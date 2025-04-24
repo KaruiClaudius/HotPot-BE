@@ -9,7 +9,6 @@ using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;

@@ -20,12 +20,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         public int ConditionLogId { get; set; }
 
         [Required]
-        [StringLength(50)]
-        public string EquipmentType { get; set; }
-
-        [Required]
         [StringLength(100)]
         public string EquipmentName { get; set; }
+
+        public string EquipmentType { get; set; } // "HotPot" or "Utensil"
 
         [Required]
         [StringLength(100)]
@@ -48,7 +46,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         public DateTime? UpdatedAt { get; set; }
 
         // Equipment information
-        public string EquipmentType { get; set; } // "HotPot" or "Utensil"
         public int EquipmentId { get; set; }
         public string EquipmentName { get; set; }
     }
@@ -56,9 +53,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
     public class EquipmentConditionDetailDto : EquipmentConditionDto
     {
         public DateTime? UpdatedAt { get; set; }
+        public DateTime? FinishDate { get; set; }
         public string EquipmentSerialNumber { get; set; }
-        public string EquipmentTypeName { get; set; } // For utensils, this would be the utensil type name
-        public string EquipmentMaterial { get; set; } // For utensils
+        public string EquipmentType { get; set; } // "HotPot" or "Utensil"
 
         // Additional maintenance information
         public string MaintenanceNotes { get; set; }
@@ -70,7 +67,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         public string Name { get; set; }
         public MaintenanceStatus Status { get; set; }
         public DateTime LoggedDate { get; set; }
-        public string EquipmentType { get; set; }
         public string EquipmentName { get; set; }
     }
 
@@ -88,7 +84,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
 
         // Only one of these should be provided
         public int? HotPotInventoryId { get; set; }
-        public int? UtensilId { get; set; }
         public bool UpdateEquipmentStatus { get; set; } = false; 
 
     }

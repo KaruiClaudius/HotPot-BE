@@ -4,7 +4,6 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -77,7 +76,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> ReviewReplacementRequest(
-           int id, [FromBody] ReviewReplacementRequestDto reviewDto)
+        int id, [FromBody] ReviewReplacementRequestDto reviewDto)
         {
             try
             {
@@ -121,7 +120,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> AssignStaffToReplacement(
-             int id, [FromBody] AssignStaffRequest assignDto)
+         int id, [FromBody] AssignStaffRequest assignDto)
         {
             try
             {
@@ -139,7 +138,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     await _notificationService.NotifyStaffReplacementAssignmentAsync(
                         request.AssignedStaffId.Value,
                         request.ReplacementRequestId,
-                        dto.EquipmentName,
+                        GetEquipmentName(request), // Use helper method
                         dto.RequestReason,
                         dto.Status.ToString());
                 }
@@ -215,8 +214,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 RejectedRequests = allRequests.Count(r => r.Status == ReplacementRequestStatus.Rejected),
                 CancelledRequests = allRequests.Count(r => r.Status == ReplacementRequestStatus.Cancelled),
 
-                HotPotRequests = allRequests.Count(r => r.EquipmentType == EquipmentType.HotPot),
-                UtensilRequests = allRequests.Count(r => r.EquipmentType == EquipmentType.Utensil),
+                // Count HotPot requests (those with HotPotInventoryId)
+                HotPotRequests = allRequests.Count(r => r.HotPotInventoryId.HasValue),
 
                 RecentRequests = allRequests
                     .OrderByDescending(r => r.RequestDate)
@@ -233,18 +232,18 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         #region Helper Methods
 
+        private string GetEquipmentName(ReplacementRequest request)
+        {
+            if (request.HotPotInventory != null)
+            {
+                return request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
+            }
+            return "Unknown Equipment";
+        }
+
         private ReplacementRequestSummaryDto MapToSummaryDto(ReplacementRequest request)
         {
-            string equipmentName = "";
-
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
-            {
-                equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                equipmentName = request.Utensil.Name;
-            }
+            string equipmentName = GetEquipmentName(request);
 
             return new ReplacementRequestSummaryDto
             {
@@ -254,7 +253,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 RequestDate = request.RequestDate,
                 ReviewDate = request.ReviewDate,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
                 EquipmentName = equipmentName,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
                 AssignedStaffName = request.AssignedStaff?.Name
@@ -263,16 +261,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
         private ReplacementRequestDetailDto MapToDetailDto(ReplacementRequest request)
         {
-            string equipmentName = "";
-
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
-            {
-                equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                equipmentName = request.Utensil.Name;
-            }
+            string equipmentName = GetEquipmentName(request);
 
             return new ReplacementRequestDetailDto
             {
@@ -284,7 +273,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 ReviewDate = request.ReviewDate,
                 ReviewNotes = request.ReviewNotes,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
 
                 // Set the EquipmentName property
                 EquipmentName = equipmentName,
@@ -299,11 +287,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 HotPotInventoryId = request.HotPotInventoryId,
                 HotPotSeriesNumber = request.HotPotInventory?.SeriesNumber,
-                HotPotName = request.HotPotInventory?.Hotpot?.Name,
-
-                UtensilId = request.UtensilId,
-                UtensilName = request.Utensil?.Name,
-                UtensilType = request.Utensil?.UtensilType?.Name
+                HotPotName = request.HotPotInventory?.Hotpot?.Name
             };
         }
 

@@ -81,7 +81,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Notification
     // New replacement request notification
     public class ReplacementRequestNotificationDto : ReplacementNotificationDto
     {
-        public string EquipmentType { get; set; }
         public string EquipmentName { get; set; }
         public string RequestReason { get; set; }
         public string CustomerName { get; set; }
@@ -92,7 +91,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Notification
     // Replacement status update notification
     public class ReplacementStatusUpdateDto : ReplacementNotificationDto
     {
-        public string EquipmentType { get; set; }
         public string EquipmentName { get; set; }
         public string Status { get; set; }
         public string StatusMessage { get; set; }

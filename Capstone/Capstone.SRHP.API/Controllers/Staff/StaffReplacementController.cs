@@ -5,7 +5,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.AspNetCore.Authorization;
@@ -251,17 +250,14 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
         #region Helper Methods
 
+
         private ReplacementRequestSummaryDto MapToSummaryDto(ReplacementRequest request)
         {
             string equipmentName = "";
 
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+            if (request.HotPotInventory != null)
             {
                 equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                equipmentName = request.Utensil.Name;
             }
 
             return new ReplacementRequestSummaryDto
@@ -272,7 +268,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 RequestDate = request.RequestDate,
                 ReviewDate = request.ReviewDate,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
                 EquipmentName = equipmentName,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
                 AssignedStaffName = request.AssignedStaff?.Name
@@ -283,13 +278,9 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             string equipmentName = "";
 
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+            if (request.HotPotInventory != null)
             {
                 equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                equipmentName = request.Utensil.Name;
             }
 
             return new ReplacementRequestDetailDto
@@ -302,7 +293,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 ReviewDate = request.ReviewDate,
                 ReviewNotes = request.ReviewNotes,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
 
                 // Set the EquipmentName property
                 EquipmentName = equipmentName,
@@ -317,11 +307,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 HotPotInventoryId = request.HotPotInventoryId,
                 HotPotSeriesNumber = request.HotPotInventory?.SeriesNumber,
-                HotPotName = request.HotPotInventory?.Hotpot?.Name,
-
-                UtensilId = request.UtensilId,
-                UtensilName = request.Utensil?.Name,
-                UtensilType = request.Utensil?.UtensilType?.Name
+                HotPotName = request.HotPotInventory?.Hotpot?.Name
             };
         }
 

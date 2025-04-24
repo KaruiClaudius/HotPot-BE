@@ -4,7 +4,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;

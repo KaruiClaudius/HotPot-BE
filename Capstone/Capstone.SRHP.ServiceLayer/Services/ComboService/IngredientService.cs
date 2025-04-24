@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
@@ -56,7 +57,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                     query = query.Where(i =>
                         EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                        i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                         EF.Functions.Collate(i.IngredientType.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm));
                 }
 
@@ -66,13 +66,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     query = query.Where(i => i.IngredientTypeId == typeId.Value);
                 }
 
-                // Apply low stock filter
+                // Apply low stock filter - now using the calculated Quantity property
                 if (isLowStock.HasValue && isLowStock.Value)
                 {
-                    query = query.Where(i => i.Quantity <= i.MinStockLevel);
+                    // We need to materialize the data to use the calculated Quantity property
+                    var ingredients = await query.ToListAsync();
+                    var lowStockIngredients = ingredients.Where(i => i.Quantity <= i.MinStockLevel).ToList();
+
+                    // Calculate total count for pagination
+                    var totalCount = lowStockIngredients.Count;
+
+                    // Apply sorting and pagination in memory
+                    IEnumerable<Ingredient> orderedIngredients;
+
+                    switch (sortBy?.ToLower())
+                    {
+                        case "price":
+                            // Get current prices
+                            var ingredientIds = lowStockIngredients.Select(i => i.IngredientId).ToList();
+                            var prices = await GetCurrentPricesAsync(ingredientIds);
+
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => prices.ContainsKey(i.IngredientId) ? prices[i.IngredientId] : 0)
+                                : lowStockIngredients.OrderByDescending(i => prices.ContainsKey(i.IngredientId) ? prices[i.IngredientId] : 0);
+                            break;
+                        case "type":
+                        case "typename":
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => i.IngredientType?.Name).ThenBy(i => i.Name)
+                                : lowStockIngredients.OrderByDescending(i => i.IngredientType?.Name).ThenBy(i => i.Name);
+                            break;
+                        case "quantity":
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => i.Quantity)
+                                : lowStockIngredients.OrderByDescending(i => i.Quantity);
+                            break;
+                        case "minstocklevel":
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => i.MinStockLevel)
+                                : lowStockIngredients.OrderByDescending(i => i.MinStockLevel);
+                            break;
+                        case "createdat":
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => i.CreatedAt)
+                                : lowStockIngredients.OrderByDescending(i => i.CreatedAt);
+                            break;
+                        default: // Default to Name
+                            orderedIngredients = ascending
+                                ? lowStockIngredients.OrderBy(i => i.Name)
+                                : lowStockIngredients.OrderByDescending(i => i.Name);
+                            break;
+                    }
+
+                    var paginatedItems = orderedIngredients
+                        .Skip((pageNumber - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
+
+                    return new PagedResult<Ingredient>
+                    {
+                        Items = paginatedItems,
+                        TotalCount = totalCount,
+                        PageNumber = pageNumber,
+                        PageSize = pageSize
+                    };
                 }
 
-                // Apply price filter if specified
                 if (minPrice.HasValue || maxPrice.HasValue)
                 {
                     // Get current date for price comparison
@@ -112,9 +171,32 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
 
                 // Get total count before applying pagination
-                var totalCount = await query.CountAsync();
+                var totalCountAll = await query.CountAsync();
 
-                // Apply sorting
+                // For sorting by quantity, we need to materialize the data
+                if (sortBy?.ToLower() == "quantity")
+                {
+                    var allIngredients = await query.ToListAsync();
+
+                    var orderedIngredients = ascending
+                        ? allIngredients.OrderBy(i => i.Quantity)
+                        : allIngredients.OrderByDescending(i => i.Quantity);
+
+                    var paginatedItems = orderedIngredients
+                        .Skip((pageNumber - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
+
+                    return new PagedResult<Ingredient>
+                    {
+                        Items = paginatedItems,
+                        TotalCount = totalCountAll,
+                        PageNumber = pageNumber,
+                        PageSize = pageSize
+                    };
+                }
+
+                // Apply sorting for other fields
                 IOrderedQueryable<Ingredient> orderedQuery;
 
                 switch (sortBy?.ToLower())
@@ -144,7 +226,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             return new PagedResult<Ingredient>
                             {
                                 Items = items,
-                                TotalCount = totalCount,
+                                TotalCount = totalCountAll,
                                 PageNumber = pageNumber,
                                 PageSize = pageSize
                             };
@@ -172,7 +254,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             return new PagedResult<Ingredient>
                             {
                                 Items = items,
-                                TotalCount = totalCount,
+                                TotalCount = totalCountAll,
                                 PageNumber = pageNumber,
                                 PageSize = pageSize
                             };
@@ -182,11 +264,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         orderedQuery = ascending
                             ? query.OrderBy(i => i.IngredientType.Name).ThenBy(i => i.Name)
                             : query.OrderByDescending(i => i.IngredientType.Name).ThenBy(i => i.Name);
-                        break;
-                    case "quantity":
-                        orderedQuery = ascending
-                            ? query.OrderBy(i => i.Quantity)
-                            : query.OrderByDescending(i => i.Quantity);
                         break;
                     case "minstocklevel":
                         orderedQuery = ascending
@@ -214,7 +291,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 return new PagedResult<Ingredient>
                 {
                     Items = standardItems,
-                    TotalCount = totalCount,
+                    TotalCount = totalCountAll,
                     PageNumber = pageNumber,
                     PageSize = pageSize
                 };
@@ -228,182 +305,319 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         public async Task<Ingredient> GetIngredientByIdAsync(int id)
         {
-            return await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete)
-                ?? throw new NotFoundException($"Ingredient with ID {id} not found");
-        }
+            try
+            {
+                var ingredient = await _unitOfWork.Repository<Ingredient>()
+                    .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete))
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
 
+                if (ingredient == null)
+                    throw new NotFoundException($"Không tìm thấy nguyên liệu với ID {id}");
+
+                return ingredient;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ingredient with ID {IngredientId}", id);
+                throw;
+            }
+        }
 
 
         public async Task<Ingredient> CreateIngredientAsync(Ingredient entity, decimal initialPrice)
         {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Ingredient name cannot be empty");
-
-            if (entity.MinStockLevel < 0)
-                throw new ValidationException("Minimum stock level cannot be negative");
-
-            if (entity.Quantity < 0)
-                throw new ValidationException("Quantity cannot be negative");
-
-            if (initialPrice < 0)
-                throw new ValidationException("Price cannot be negative");
-
-            // Check if ingredient type exists
-            var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
-
-            if (ingredientType == null)
-                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeId} not found");
-
-            // Check if ingredient exists (including soft-deleted)
-            var existingIngredient = await _unitOfWork.Repository<Ingredient>()
-                .FindAsync(i => i.Name == entity.Name);
-
-            if (existingIngredient != null)
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                if (!existingIngredient.IsDelete)
-                {
-                    throw new ValidationException($"Ingredient with name {entity.Name} already exists");
-                }
-                else
-                {
-                    // Reactivate and update the soft-deleted ingredient
-                    existingIngredient.IsDelete = false;
-                    existingIngredient.Description = entity.Description;
-                    existingIngredient.ImageURL = entity.ImageURL;
-                    existingIngredient.MinStockLevel = entity.MinStockLevel;
-                    existingIngredient.Quantity = entity.Quantity;
-                    existingIngredient.IngredientTypeId = entity.IngredientTypeId;
-                    existingIngredient.SetUpdateDate();
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Tên nguyên liệu không được để trống");
 
-                    // Add new price
-                    var price = new IngredientPrice
+                if (entity.MinStockLevel < 0)
+                    throw new ValidationException("Mức tồn kho tối thiểu không được âm");
+
+                if (initialPrice < 0)
+                    throw new ValidationException("Giá không được âm");
+
+                // Validate unit and measurement value (now required)
+                if (string.IsNullOrWhiteSpace(entity.Unit))
+                    throw new ValidationException("Đơn vị đo lường không được để trống");
+
+                if (entity.MeasurementValue <= 0)
+                    throw new ValidationException("Giá trị đo lường phải lớn hơn 0");
+
+                // Check if ingredient type exists
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
+
+                if (ingredientType == null)
+                    throw new ValidationException($"Không tìm thấy loại nguyên liệu với ID {entity.IngredientTypeId}");
+
+                // Check if ingredient exists (including soft-deleted)
+                var existingIngredient = await _unitOfWork.Repository<Ingredient>()
+                    .FindAsync(i => i.Name == entity.Name);
+
+                if (existingIngredient != null)
+                {
+                    if (!existingIngredient.IsDelete)
                     {
-                        IngredientId = existingIngredient.IngredientId,
-                        Price = initialPrice,
-                        EffectiveDate = DateTime.UtcNow
-                    };
+                        throw new ValidationException($"Nguyên liệu với tên {entity.Name} đã tồn tại");
+                    }
+                    else
+                    {
+                        // Reactivate and update the soft-deleted ingredient
+                        existingIngredient.IsDelete = false;
+                        existingIngredient.Description = entity.Description;
+                        existingIngredient.ImageURL = entity.ImageURL;
+                        existingIngredient.MinStockLevel = entity.MinStockLevel;
+                        existingIngredient.IngredientTypeId = entity.IngredientTypeId;
+                        existingIngredient.Unit = entity.Unit;
+                        existingIngredient.MeasurementValue = entity.MeasurementValue; // Ensure non-null
+                        existingIngredient.SetUpdateDate();
 
-                    _unitOfWork.Repository<IngredientPrice>().Insert(price);
-                    await _unitOfWork.CommitAsync();
+                        // Add new price
+                        var price = new IngredientPrice
+                        {
+                            IngredientId = existingIngredient.IngredientId,
+                            Price = initialPrice,
+                            EffectiveDate = DateTime.UtcNow
+                        };
 
-                    return existingIngredient;
+                        _unitOfWork.Repository<IngredientPrice>().Insert(price);
+                        await _unitOfWork.CommitAsync();
+
+                        return existingIngredient;
+                    }
                 }
-            }
 
-            // Create new ingredient
-            _unitOfWork.Repository<Ingredient>().Insert(entity);
-            await _unitOfWork.CommitAsync();
+                // Create new ingredient (without setting Quantity as it's now calculated)
+                _unitOfWork.Repository<Ingredient>().Insert(entity);
+                await _unitOfWork.CommitAsync();
 
-            // Add initial price
-            var initialPriceEntity = new IngredientPrice
+                // Add initial price
+                var initialPriceEntity = new IngredientPrice
+                {
+                    IngredientId = entity.IngredientId,
+                    Price = initialPrice,
+                    EffectiveDate = DateTime.UtcNow
+                };
+
+                _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
+                await _unitOfWork.CommitAsync();
+
+                return entity;
+            },
+            ex =>
             {
-                IngredientId = entity.IngredientId,
-                Price = initialPrice,
-                EffectiveDate = DateTime.UtcNow
-            };
-
-            _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
-            await _unitOfWork.CommitAsync();
-
-            return entity;
+                if (!(ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error creating ingredient");
+                }
+            });
         }
-
 
 
         public async Task UpdateIngredientAsync(int id, Ingredient entity)
         {
-            var existingIngredient = await GetIngredientByIdAsync(id);
-            if (existingIngredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Ingredient name cannot be empty");
-
-            if (entity.MinStockLevel < 0)
-                throw new ValidationException("Minimum stock level cannot be negative");
-
-            if (entity.Quantity < 0)
-                throw new ValidationException("Quantity cannot be negative");
-
-            // Check if ingredient type exists
-            var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
-
-            if (ingredientType == null)
-                throw new ValidationException($"Ingredient type with ID {entity.IngredientTypeId} not found");
-
-            // Check for name uniqueness if name is changed
-            if (entity.Name != existingIngredient.Name)
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var nameExists = await _unitOfWork.Repository<Ingredient>()
-                    .AnyAsync(i => i.Name == entity.Name && i.IngredientId != id && !i.IsDelete);
+                var existingIngredient = await GetIngredientByIdAsync(id);
 
-                if (nameExists)
-                    throw new ValidationException($"Ingredient with name {entity.Name} already exists");
-            }
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Tên nguyên liệu không được để trống");
 
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<Ingredient>().Update(entity, id);
-            await _unitOfWork.CommitAsync();
+                if (entity.MinStockLevel < 0)
+                    throw new ValidationException("Mức tồn kho tối thiểu không được âm");
+
+                // Validate unit and measurement value (now required)
+                if (string.IsNullOrWhiteSpace(entity.Unit))
+                    throw new ValidationException("Đơn vị đo lường không được để trống");
+
+                if (entity.MeasurementValue <= 0)
+                    throw new ValidationException("Giá trị đo lường phải lớn hơn 0");
+
+                // Check if ingredient type exists
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
+
+                if (ingredientType == null)
+                    throw new ValidationException($"Không tìm thấy loại nguyên liệu với ID {entity.IngredientTypeId}");
+
+                // Check for name uniqueness if name is changed
+                if (entity.Name != existingIngredient.Name)
+                {
+                    var nameExists = await _unitOfWork.Repository<Ingredient>()
+                        .AnyAsync(i => i.Name == entity.Name && i.IngredientId != id && !i.IsDelete);
+
+                    if (nameExists)
+                        throw new ValidationException($"Nguyên liệu với tên {entity.Name} đã tồn tại");
+                }
+
+                // Update properties (excluding Quantity as it's now calculated)
+                existingIngredient.Name = entity.Name;
+                existingIngredient.Description = entity.Description;
+                existingIngredient.ImageURL = entity.ImageURL;
+                existingIngredient.MinStockLevel = entity.MinStockLevel;
+                existingIngredient.IngredientTypeId = entity.IngredientTypeId;
+                existingIngredient.Unit = entity.Unit;
+                existingIngredient.MeasurementValue = entity.MeasurementValue; // Ensure non-null
+                existingIngredient.SetUpdateDate();
+
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating ingredient with ID {IngredientId}", id);
+                }
+            });
         }
-
 
         public async Task DeleteIngredientAsync(int id)
         {
-            var ingredient = await GetIngredientByIdAsync(id);
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var ingredient = await GetIngredientByIdAsync(id);
 
-            // Check if ingredient is in use
-            var isUsedInCustomization = await _unitOfWork.Repository<CustomizationIngredient>()
-                .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
+                // Check if ingredient is in use in customizations or combos
+                var isUsedInCustomization = await _unitOfWork.Repository<CustomizationIngredient>()
+                    .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
 
-            var isUsedInCombo = await _unitOfWork.Repository<ComboIngredient>()
-                .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
+                var isUsedInCombo = await _unitOfWork.Repository<ComboIngredient>()
+                    .AnyAsync(ci => ci.IngredientId == id && !ci.IsDelete);
 
-            var isUsedAsBrothInCombo = await _unitOfWork.Repository<Combo>()
-                .AnyAsync(c => c.HotpotBrothId == id && !c.IsDelete);
+                if (isUsedInCustomization || isUsedInCombo)
+                    throw new ValidationException("Không thể xóa nguyên liệu đang được sử dụng");
 
-            var isUsedAsBrothInCustomization = await _unitOfWork.Repository<Customization>()
-                .AnyAsync(c => c.HotpotBrothId == id && !c.IsDelete);
+                // Soft delete all batches
+                var batches = await _unitOfWork.Repository<IngredientBatch>()
+                    .FindAll(b => b.IngredientId == id && !b.IsDelete)
+                    .ToListAsync();
 
-            if (isUsedInCustomization || isUsedInCombo || isUsedAsBrothInCombo || isUsedAsBrothInCustomization)
-                throw new ValidationException("Cannot delete ingredient that is in use");
+                foreach (var batch in batches)
+                {
+                    batch.SoftDelete();
+                }
 
-            ingredient.SoftDelete();
-            await _unitOfWork.CommitAsync();
+                ingredient.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting ingredient with ID {IngredientId}", id);
+                }
+            });
         }
 
         public async Task UpdateIngredientQuantityAsync(int id, int quantityChange)
         {
-            var ingredient = await GetIngredientByIdAsync(id);
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {id} not found");
-
-            // Check if the resulting quantity would be negative
-            if (ingredient.Quantity + quantityChange < 0)
-                throw new ValidationException("Cannot reduce quantity below 0");
-
-            ingredient.Quantity += quantityChange;
-            ingredient.SetUpdateDate();
-            await _unitOfWork.CommitAsync();
+            if (quantityChange > 0)
+            {
+                // Adding quantity - create a new batch with default expiration (30 days)
+                await AddBatchAsync(id, quantityChange, DateTime.UtcNow.AddDays(30));
+            }
+            else if (quantityChange < 0)
+            {
+                // Removing quantity - consume from batches
+                await ConsumeIngredientAsync(id, Math.Abs(quantityChange));
+            }
         }
-
         public async Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync()
         {
-            return await _unitOfWork.Repository<Ingredient>()
-                .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices)
-                .Where(i => !i.IsDelete && i.Quantity <= i.MinStockLevel)
-                .ToListAsync();
+            try
+            {
+                // Get all ingredients with their batches
+                var ingredients = await _unitOfWork.Repository<Ingredient>()
+                    .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete))
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .Where(i => !i.IsDelete)
+                    .ToListAsync();
+
+                // Filter for low stock
+                return ingredients.Where(i => i.Quantity <= i.MinStockLevel).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving low stock ingredients");
+                throw;
+            }
         }
 
+        // Add a method to get ingredients by type (useful for getting broths)
+        public async Task<IEnumerable<Ingredient>> GetIngredientsByTypeAsync(int typeId)
+        {
+            try
+            {
+                var ingredients = await _unitOfWork.Repository<Ingredient>()
+                    .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .Where(i => !i.IsDelete && i.IngredientTypeId == typeId)
+                    .OrderBy(i => i.Name)
+                    .ToListAsync();
+
+                return ingredients;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ingredients by type ID {TypeId}", typeId);
+                throw;
+            }
+        }
+
+        public double GetPhysicalQuantity(Ingredient ingredient)
+        {
+            if (ingredient == null)
+                throw new ArgumentNullException(nameof(ingredient));
+
+            // Since MeasurementValue is now non-nullable, we don't need the null check
+            return (double)(ingredient.Quantity * ingredient.MeasurementValue);
+        }
+
+        public string GetFormattedQuantity(Ingredient ingredient)
+        {
+            if (ingredient == null)
+                throw new ArgumentNullException(nameof(ingredient));
+
+            double physicalQuantity = GetPhysicalQuantity(ingredient);
+
+            // Since Unit is now non-nullable, we don't need the null check
+            return $"{physicalQuantity} {ingredient.Unit}";
+        }
+
+        public async Task<Dictionary<int, string>> GetFormattedQuantitiesAsync(IEnumerable<int> ingredientIds)
+        {
+            try
+            {
+                var result = new Dictionary<int, string>();
+                var ingredients = await _unitOfWork.Repository<Ingredient>()
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .Where(i => ingredientIds.Contains(i.IngredientId) && !i.IsDelete)
+                    .ToListAsync();
+
+                foreach (var ingredient in ingredients)
+                {
+                    result[ingredient.IngredientId] = GetFormattedQuantity(ingredient);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving formatted quantities for multiple ingredients");
+                throw;
+            }
+        }
 
         #endregion
 
@@ -411,290 +625,665 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         public async Task<IEnumerable<IngredientType>> GetAllIngredientTypesAsync()
         {
-            return await _unitOfWork.Repository<IngredientType>()
-                .FindAll(t => !t.IsDelete)
-                .Include(i => i.Ingredients)
-                .OrderBy(t => t.Name)
-                .ToListAsync();
+            try
+            {
+                return await _unitOfWork.Repository<IngredientType>()
+                    .FindAll(t => !t.IsDelete)
+                    .Include(i => i.Ingredients)
+                    .OrderBy(t => t.Name)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all ingredient types");
+                throw;
+            }
         }
 
         public async Task<IngredientType> CreateIngredientTypeAsync(string name)
         {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ValidationException("Ingredient type name cannot be empty");
-
-            // Check if ingredient type exists (including soft-deleted)
-            var existingType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.Name == name);
-
-            if (existingType != null)
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                if (!existingType.IsDelete)
-                {
-                    throw new ValidationException($"Ingredient type with name {name} already exists");
-                }
-                else
-                {
-                    // Reactivate the soft-deleted ingredient type
-                    existingType.IsDelete = false;
-                    existingType.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
-                    return existingType;
-                }
-            }
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(name))
+                    throw new ValidationException("Tên loại nguyên liệu không được để trống");
 
-            var entity = new IngredientType { Name = name };
-            _unitOfWork.Repository<IngredientType>().Insert(entity);
-            await _unitOfWork.CommitAsync();
-            return entity;
+                // Check if ingredient type exists (including soft-deleted)
+                var existingType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.Name == name);
+
+                if (existingType != null)
+                {
+                    if (!existingType.IsDelete)
+                    {
+                        throw new ValidationException($"Loại nguyên liệu với tên {name} đã tồn tại");
+                    }
+                    else
+                    {
+                        // Reactivate the soft-deleted ingredient type
+                        existingType.IsDelete = false;
+                        existingType.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+                        return existingType;
+                    }
+                }
+
+                var entity = new IngredientType { Name = name };
+                _unitOfWork.Repository<IngredientType>().Insert(entity);
+                await _unitOfWork.CommitAsync();
+                return entity;
+            },
+            ex =>
+            {
+                if (!(ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error creating ingredient type");
+                }
+            });
         }
 
         public async Task DeleteIngredientTypeAsync(int id)
         {
-            var ingredientType = await _unitOfWork.Repository<IngredientType>()
-                .FindAsync(t => t.IngredientTypeId == id && !t.IsDelete);
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == id && !t.IsDelete);
 
-            if (ingredientType == null)
-                throw new NotFoundException($"Ingredient type with ID {id} not found");
+                if (ingredientType == null)
+                    throw new NotFoundException($"Không tìm thấy loại nguyên liệu với ID {id}");
 
-            // Check if ingredient type is in use
-            var isInUse = await _unitOfWork.Repository<Ingredient>()
-                .AnyAsync(i => i.IngredientTypeId == id && !i.IsDelete);
+                // Check if ingredient type is in use
+                var isInUse = await _unitOfWork.Repository<Ingredient>()
+                    .AnyAsync(i => i.IngredientTypeId == id && !i.IsDelete);
 
-            if (isInUse)
-                throw new ValidationException("Cannot delete ingredient type that is in use by ingredients");
+                if (isInUse)
+                    throw new ValidationException("Không thể xóa loại nguyên liệu đang được sử dụng bởi các nguyên liệu");
 
-            ingredientType.SoftDelete();
-            await _unitOfWork.CommitAsync();
+                ingredientType.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting ingredient type with ID {IngredientTypeId}", id);
+                }
+            });
         }
 
+        public async Task UpdateIngredientTypeAsync(int id, string name)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == id && !t.IsDelete);
+
+                if (ingredientType == null)
+                    throw new NotFoundException($"Không tìm thấy loại nguyên liệu với ID {id}");
+
+                if (string.IsNullOrWhiteSpace(name))
+                    throw new ValidationException("Tên loại nguyên liệu không được để trống");
+
+                // Check if name is unique (excluding current type)
+                var nameExists = await _unitOfWork.Repository<IngredientType>()
+                    .AnyAsync(t => t.Name == name && t.IngredientTypeId != id && !t.IsDelete);
+
+                if (nameExists)
+                    throw new ValidationException($"Loại nguyên liệu với tên {name} đã tồn tại");
+
+                ingredientType.Name = name;
+                ingredientType.SetUpdateDate();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating ingredient type with ID {IngredientTypeId}", id);
+                }
+            });
+        }
+
+        public async Task<IngredientType> GetIngredientTypeByIdAsync(int id)
+        {
+            try
+            {
+                var ingredientType = await _unitOfWork.Repository<IngredientType>()
+                    .FindAsync(t => t.IngredientTypeId == id && !t.IsDelete);
+
+                if (ingredientType == null)
+                    throw new NotFoundException($"Không tìm thấy loại nguyên liệu với ID {id}");
+
+                return ingredientType;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ingredient type with ID {IngredientTypeId}", id);
+                throw;
+            }
+        }
         #endregion
 
         #region Price Methods
 
         public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
-            var latestPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))
-                .OrderByDescending(p => p.EffectiveDate)
-                .FirstOrDefaultAsync();
+            try
+            {
+                var latestPrice = await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))
+                    .OrderByDescending(p => p.EffectiveDate)
+                    .FirstOrDefaultAsync();
 
-            if (latestPrice == null)
-                throw new NotFoundException($"No price found for ingredient with ID {ingredientId}");
+                if (latestPrice == null)
+                    throw new NotFoundException($"Không tìm thấy giá cho nguyên liệu với ID {ingredientId}");
 
-            return latestPrice.Price;
+                return latestPrice.Price;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving current price for ingredient with ID {IngredientId}", ingredientId);
+                throw;
+            }
         }
 
         public async Task<Dictionary<int, decimal>> GetCurrentPricesAsync(IEnumerable<int> ingredientIds)
         {
-            var idList = ingredientIds.ToList();
-            var now = DateTime.UtcNow;
-
-            // Get all prices for the specified ingredients
-            var allPrices = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAll(p => idList.Contains(p.IngredientId) && !p.IsDelete && p.EffectiveDate <= now)
-                .ToListAsync();
-
-            // Group by ingredient ID and get the latest price for each
-            var result = new Dictionary<int, decimal>();
-
-            foreach (var id in idList)
+            try
             {
-                var latestPrice = allPrices
-                    .Where(p => p.IngredientId == id)
-                    .OrderByDescending(p => p.EffectiveDate)
-                    .FirstOrDefault();
+                var idList = ingredientIds.ToList();
+                var now = DateTime.UtcNow;
 
-                if (latestPrice != null)
+                // Get all prices for the specified ingredients
+                var allPrices = await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAll(p => idList.Contains(p.IngredientId) && !p.IsDelete && p.EffectiveDate <= now)
+                    .ToListAsync();
+
+                // Group by ingredient ID and get the latest price for each
+                var result = new Dictionary<int, decimal>();
+
+                foreach (var id in idList)
                 {
-                    result[id] = latestPrice.Price;
-                }
-            }
+                    var latestPrice = allPrices
+                        .Where(p => p.IngredientId == id)
+                        .OrderByDescending(p => p.EffectiveDate)
+                        .FirstOrDefault();
 
-            return result;
+                    if (latestPrice != null)
+                    {
+                        result[id] = latestPrice.Price;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving current prices for multiple ingredients");
+                throw;
+            }
         }
 
         public async Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId)
         {
-            return await _unitOfWork.Repository<IngredientPrice>()
-                .Include(p => p.Ingredient)
-                .Where(p => p.IngredientId == ingredientId && !p.IsDelete)
-                .OrderByDescending(p => p.EffectiveDate)
-                .ToListAsync();
+            try
+            {
+                // First check if the ingredient exists
+                var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                return await _unitOfWork.Repository<IngredientPrice>()
+                    .Include(p => p.Ingredient)
+                    .Where(p => p.IngredientId == ingredientId && !p.IsDelete)
+                    .OrderByDescending(p => p.EffectiveDate)
+                    .ToListAsync();
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving price history for ingredient with ID {IngredientId}", ingredientId);
+                throw;
+            }
         }
 
         public async Task<IngredientPrice> AddPriceAsync(int ingredientId, decimal price, DateTime effectiveDate)
         {
-            // Validate
-            if (price < 0)
-                throw new ValidationException("Price cannot be negative");
-
-            var ingredient = await GetIngredientByIdAsync(ingredientId);
-            if (ingredient == null)
-                throw new NotFoundException($"Ingredient with ID {ingredientId} not found");
-
-            // Check if there's already a price with the same effective date
-            var existingPrice = await _unitOfWork.Repository<IngredientPrice>()
-                .FindAsync(p => p.IngredientId == ingredientId &&
-                               p.EffectiveDate == effectiveDate &&
-                               !p.IsDelete);
-
-            if (existingPrice != null)
-                throw new ValidationException($"A price for this ingredient with effective date {effectiveDate} already exists");
-
-            var priceEntity = new IngredientPrice
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                IngredientId = ingredientId,
-                Price = price,
-                EffectiveDate = effectiveDate
-            };
+                // Validate
+                if (price < 0)
+                    throw new ValidationException("Giá không được âm");
 
-            _unitOfWork.Repository<IngredientPrice>().Insert(priceEntity);
-            await _unitOfWork.CommitAsync();
-            return priceEntity;
+                var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                // Check if there's already a price with the same effective date
+                var existingPrice = await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAsync(p => p.IngredientId == ingredientId &&
+                                   p.EffectiveDate == effectiveDate &&
+                                   !p.IsDelete);
+
+                if (existingPrice != null)
+                {
+                    // If a soft-deleted price exists with the same date, reactivate it
+                    if (existingPrice.IsDelete)
+                    {
+                        existingPrice.IsDelete = false;
+                        existingPrice.Price = price;
+                        existingPrice.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+                        return existingPrice;
+                    }
+                    else
+                    {
+                        throw new ValidationException($"Đã tồn tại giá cho nguyên liệu này với ngày hiệu lực {effectiveDate.ToString("dd/MM/yyyy HH:mm")}");
+                    }
+                }
+
+                var priceEntity = new IngredientPrice
+                {
+                    IngredientId = ingredientId,
+                    Price = price,
+                    EffectiveDate = effectiveDate
+                };
+
+                _unitOfWork.Repository<IngredientPrice>().Insert(priceEntity);
+                await _unitOfWork.CommitAsync();
+                return priceEntity;
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error adding price for ingredient with ID {IngredientId}", ingredientId);
+                }
+            });
         }
 
+        public async Task DeletePriceAsync(int priceId)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var price = await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAsync(p => p.IngredientPriceId == priceId && !p.IsDelete);
+
+                if (price == null)
+                    throw new NotFoundException($"Không tìm thấy giá với ID {priceId}");
+
+                // Check if this is the only price for the ingredient
+                var isOnlyPrice = !await _unitOfWork.Repository<IngredientPrice>()
+                    .AnyAsync(p => p.IngredientId == price.IngredientId &&
+                                  p.IngredientPriceId != priceId &&
+                                  !p.IsDelete);
+
+                if (isOnlyPrice)
+                    throw new ValidationException("Không thể xóa giá duy nhất của nguyên liệu");
+
+                price.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting price with ID {PriceId}", priceId);
+                }
+            });
+        }
+
+        public async Task<IEnumerable<Ingredient>> GetBrothsAsync()
+        {
+            try
+            {
+                // Assuming broth is ingredient type with ID 1
+                const int BROTH_TYPE_ID = 1;
+
+                return await GetIngredientsByTypeAsync(BROTH_TYPE_ID);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving broths");
+                throw;
+            }
+        }
+
+        public async Task<int> GetTotalIngredientCountAsync()
+        {
+            try
+            {
+                return await _unitOfWork.Repository<Ingredient>()
+                    .FindAll(i => !i.IsDelete)
+                    .CountAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving total ingredient count");
+                throw;
+            }
+        }
+
+        public async Task<int> GetLowStockIngredientCountAsync()
+        {
+            try
+            {
+                return await _unitOfWork.Repository<Ingredient>()
+                    .FindAll(i => !i.IsDelete && i.Quantity <= i.MinStockLevel)
+                    .CountAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving low stock ingredient count");
+                throw;
+            }
+        }
 
         #endregion
 
-        #region Measurement Unit Helpers
+        #region Ingredient Batch Methods
 
-        // Helper method to standardize measurement unit format
-        private string StandardizeMeasurementUnit(string unit)
+        public async Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId)
         {
-            if (string.IsNullOrWhiteSpace(unit))
-                return "pcs"; // Default to pieces
-
-            unit = unit.Trim().ToLower();
-
-            // Map various forms to standard abbreviations
-            return unit switch
+            try
             {
-                "gram" or "grams" => "g",
-                "kilogram" or "kilograms" => "kg",
-                "milliliter" or "milliliters" => "ml",
-                "liter" or "liters" => "l",
-                "piece" or "pieces" => "pcs",
-                "teaspoon" or "teaspoons" => "tsp",
-                "tablespoon" or "tablespoons" => "tbsp",
-                "cup" or "cups" => "cup",
-                "ounce" or "ounces" => "oz",
-                "pound" or "pounds" => "lb",
-                _ => unit // Keep as is if it's already standardized
-            };
-        }
+                // First check if the ingredient exists
+                await GetIngredientByIdAsync(ingredientId);
 
-        // Helper method to check if a unit is valid
-        private bool IsValidMeasurementUnit(string unit)
-        {
-            if (string.IsNullOrWhiteSpace(unit))
-                return false;
-
-            // Standardize the unit for comparison
-            unit = unit.Trim().ToLower();
-
-            // List of valid units
-            var validUnits = new[]
-            {
-            "g", "gram", "grams",
-            "kg", "kilogram", "kilograms",
-            "ml", "milliliter", "milliliters",
-            "l", "liter", "liters",
-            "pcs", "piece", "pieces",
-            "tsp", "teaspoon", "teaspoons",
-            "tbsp", "tablespoon", "tablespoons",
-            "cup", "cups",
-            "oz", "ounce", "ounces",
-            "lb", "pound", "pounds"
-        };
-
-            return validUnits.Contains(unit);
-        }
-
-        // Helper method to convert between measurement units
-        private decimal ConvertMeasurement(decimal quantity, string fromUnit, string toUnit)
-        {
-            // Standardize units
-            fromUnit = StandardizeMeasurementUnit(fromUnit);
-            toUnit = StandardizeMeasurementUnit(toUnit);
-
-            // If units are the same, no conversion needed
-            if (fromUnit == toUnit)
-                return quantity;
-
-            // Weight conversions
-            if (IsWeightUnit(fromUnit) && IsWeightUnit(toUnit))
-            {
-                return ConvertWeight(quantity, fromUnit, toUnit);
+                return await _unitOfWork.Repository<IngredientBatch>()
+                    .FindAll(b => b.IngredientId == ingredientId && !b.IsDelete)
+                    .OrderBy(b => b.BestBeforeDate)
+                    .ToListAsync();
             }
-
-            // Volume conversions
-            if (IsVolumeUnit(fromUnit) && IsVolumeUnit(toUnit))
+            catch (NotFoundException)
             {
-                return ConvertVolume(quantity, fromUnit, toUnit);
+                throw;
             }
-
-            // Cannot convert between different types (weight to volume, etc.)
-            throw new InvalidOperationException($"Cannot convert from {fromUnit} to {toUnit}");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batches for ingredient with ID {IngredientId}", ingredientId);
+                throw;
+            }
         }
 
-        private bool IsWeightUnit(string unit)
+        public async Task<IngredientBatch> GetBatchByIdAsync(int batchId)
         {
-            return unit is "g" or "kg" or "oz" or "lb";
+            try
+            {
+                var batch = await _unitOfWork.Repository<IngredientBatch>()
+                    .Include(b => b.Ingredient)
+                    .FirstOrDefaultAsync(b => b.IngredientBatchId == batchId && !b.IsDelete);
+
+                if (batch == null)
+                    throw new NotFoundException($"Không tìm thấy lô hàng với ID {batchId}");
+
+                return batch;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batch with ID {BatchId}", batchId);
+                throw;
+            }
         }
 
-        private bool IsVolumeUnit(string unit)
+        public async Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string batchNumber = null)
         {
-            return unit is "ml" or "l" or "tsp" or "tbsp" or "cup";
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Validate
+                if (quantity <= 0)
+                    throw new ValidationException("Số lượng phải lớn hơn 0");
+
+                if (bestBeforeDate <= DateTime.UtcNow)
+                    throw new ValidationException("Ngày hết hạn phải sau ngày hiện tại");
+
+                // Check if ingredient exists
+                var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                var batch = new IngredientBatch
+                {
+                    IngredientId = ingredientId,
+                    InitialQuantity = quantity,
+                    RemainingQuantity = quantity,
+                    BestBeforeDate = bestBeforeDate,
+                    BatchNumber = batchNumber,
+                    ReceivedDate = DateTime.UtcNow
+                };
+
+                _unitOfWork.Repository<IngredientBatch>().Insert(batch);
+                await _unitOfWork.CommitAsync();
+
+                // Log with physical quantity information
+                _logger.LogInformation(
+                    "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} units ({PhysicalQuantity} {Unit}), Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
+                    ingredient.Name,
+                    ingredientId,
+                    quantity,
+                    quantity * ingredient.MeasurementValue,
+                    ingredient.Unit,
+                    bestBeforeDate,
+                    batchNumber ?? "N/A");
+
+                return batch;
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error adding batch for ingredient with ID {IngredientId}", ingredientId);
+                }
+            });
         }
 
-        private decimal ConvertWeight(decimal quantity, string fromUnit, string toUnit)
+        public async Task UpdateBatchAsync(int batchId, int quantity, DateTime bestBeforeDate, string batchNumber = null)
         {
-            // Convert to grams first
-            decimal grams = fromUnit switch
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                "g" => quantity,
-                "kg" => quantity * 1000,
-                "oz" => quantity * 28.35m,
-                "lb" => quantity * 453.592m,
-                _ => throw new ArgumentException($"Unsupported weight unit: {fromUnit}")
-            };
+                var batch = await GetBatchByIdAsync(batchId);
+                var ingredient = await GetIngredientByIdAsync(batch.IngredientId);
 
-            // Convert from grams to target unit
-            return toUnit switch
+                // Validate
+                if (quantity < 0)
+                    throw new ValidationException("Số lượng không được âm");
+
+                if (quantity < batch.InitialQuantity - batch.RemainingQuantity)
+                    throw new ValidationException("Số lượng không thể nhỏ hơn số lượng đã sử dụng");
+
+                // Calculate physical quantities for logging
+                double oldPhysicalQuantity = (double)(batch.InitialQuantity * ingredient.MeasurementValue);
+                double newPhysicalQuantity = (double)(quantity * ingredient.MeasurementValue);
+
+                // Update batch properties
+                int quantityDifference = quantity - batch.InitialQuantity;
+                batch.InitialQuantity = quantity;
+                batch.RemainingQuantity += quantityDifference;
+                batch.BestBeforeDate = bestBeforeDate;
+
+                if (batchNumber != null)
+                    batch.BatchNumber = batchNumber;
+
+                batch.SetUpdateDate();
+
+                await _unitOfWork.CommitAsync();
+
+                // Log the update with physical quantity information
+                _logger.LogInformation(
+                    "Updated batch {BatchId} for ingredient {IngredientName} (ID: {IngredientId}): Changed quantity from {OldQuantity} units ({OldPhysicalQuantity} {Unit}) to {NewQuantity} units ({NewPhysicalQuantity} {Unit})",
+                    batchId,
+                    ingredient.Name,
+                    ingredient.IngredientId,
+                    batch.InitialQuantity - quantityDifference,
+                    oldPhysicalQuantity,
+                    ingredient.Unit,
+                    batch.InitialQuantity,
+                    newPhysicalQuantity,
+                    ingredient.Unit);
+            },
+            ex =>
             {
-                "g" => grams,
-                "kg" => grams / 1000,
-                "oz" => grams / 28.35m,
-                "lb" => grams / 453.592m,
-                _ => throw new ArgumentException($"Unsupported weight unit: {toUnit}")
-            };
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating batch with ID {BatchId}", batchId);
+                }
+            });
         }
 
-        private decimal ConvertVolume(decimal quantity, string fromUnit, string toUnit)
+        public async Task DeleteBatchAsync(int batchId)
         {
-            // Convert to milliliters first
-            decimal ml = fromUnit switch
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                "ml" => quantity,
-                "l" => quantity * 1000,
-                "tsp" => quantity * 4.929m,
-                "tbsp" => quantity * 14.787m,
-                "cup" => quantity * 236.588m,
-                _ => throw new ArgumentException($"Unsupported volume unit: {fromUnit}")
-            };
+                var batch = await GetBatchByIdAsync(batchId);
 
-            // Convert from milliliters to target unit
-            return toUnit switch
+                // Check if this is the only batch with remaining quantity
+                var ingredient = await GetIngredientByIdAsync(batch.IngredientId);
+                var otherBatchesWithQuantity = ingredient.IngredientBatches
+                    .Where(b => b.IngredientBatchId != batchId && b.RemainingQuantity > 0 && !b.IsDelete)
+                    .Any();
+
+                // If this is the only batch with quantity and it's used in active orders, prevent deletion
+                if (!otherBatchesWithQuantity && batch.RemainingQuantity > 0)
+                {
+                    var isUsedInActiveOrders = await _unitOfWork.Repository<SellOrderDetail>()
+                        .AnyAsync(sod => sod.IngredientId == batch.IngredientId && !sod.IsDelete &&
+                                 sod.SellOrder != null && sod.SellOrder.Order.Status != OrderStatus.Completed && sod.SellOrder.Order.Status != OrderStatus.Cancelled);
+
+                    if (isUsedInActiveOrders)
+                        throw new ValidationException("Không thể xóa lô hàng duy nhất còn số lượng của nguyên liệu đang được sử dụng trong đơn hàng");
+                }
+
+                batch.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
             {
-                "ml" => ml,
-                "l" => ml / 1000,
-                "tsp" => ml / 4.929m,
-                "tbsp" => ml / 14.787m,
-                "cup" => ml / 236.588m,
-                _ => throw new ArgumentException($"Unsupported volume unit: {toUnit}")
-            };
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting batch with ID {BatchId}", batchId);
+                }
+            });
+        }
+
+        public async Task<int> ConsumeIngredientAsync(int ingredientId, int quantity)
+        {
+            int actualConsumed = 0;
+
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                if (quantity <= 0)
+                    throw new ValidationException("Số lượng tiêu thụ phải lớn hơn 0");
+
+                var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                if (ingredient.Quantity < quantity)
+                    throw new ValidationException($"Không đủ số lượng nguyên liệu. Hiện có: {GetFormattedQuantity(ingredient)}, Cần: {quantity * ingredient.MeasurementValue} {ingredient.Unit}");
+
+                // Get valid batches ordered by expiration date (FIFO)
+                var batches = ingredient.IngredientBatches
+                    .Where(b => !b.IsDelete && b.RemainingQuantity > 0 && b.BestBeforeDate > DateTime.UtcNow)
+                    .OrderBy(b => b.BestBeforeDate)
+                    .ToList();
+
+                int remainingToConsume = quantity;
+                actualConsumed = 0;
+
+                foreach (var batch in batches)
+                {
+                    if (remainingToConsume <= 0) break;
+
+                    int consumeFromBatch = Math.Min(batch.RemainingQuantity, remainingToConsume);
+                    batch.RemainingQuantity -= consumeFromBatch;
+                    remainingToConsume -= consumeFromBatch;
+                    actualConsumed += consumeFromBatch;
+                    batch.SetUpdateDate();
+
+                    _logger.LogInformation(
+                        "Consumed {ConsumedQuantity} units ({PhysicalQuantity} {Unit}) from batch {BatchNumber} of ingredient {IngredientName} (ID: {IngredientId})",
+                        consumeFromBatch,
+                        consumeFromBatch * ingredient.MeasurementValue,
+                        ingredient.Unit,
+                        batch.BatchNumber ?? "N/A",
+                        ingredient.Name,
+                        ingredientId);
+                }
+
+                if (remainingToConsume > 0)
+                {
+                    _logger.LogWarning(
+                        "Could not consume entire requested quantity. Requested: {RequestedQuantity} ({PhysicalQuantity} {Unit}), Consumed: {ConsumedQuantity} ({ConsumedPhysicalQuantity} {Unit})",
+                        quantity,
+                        quantity * ingredient.MeasurementValue,
+                        ingredient.Unit,
+                        actualConsumed,
+                        actualConsumed * ingredient.MeasurementValue,
+                        ingredient.Unit);
+                }
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error consuming ingredient with ID {IngredientId}", ingredientId);
+                }
+
+                // Reset actualConsumed on error
+                actualConsumed = 0;
+            });
+
+            return actualConsumed;
+        }
+
+        public async Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7)
+        {
+            try
+            {
+                var expirationThreshold = DateTime.UtcNow.AddDays(daysThreshold);
+
+                return await _unitOfWork.Repository<IngredientBatch>()
+                    .Include(b => b.Ingredient)
+                    .Where(b => !b.IsDelete &&
+                               b.RemainingQuantity > 0 &&
+                               b.BestBeforeDate > DateTime.UtcNow &&
+                               b.BestBeforeDate <= expirationThreshold)
+                    .OrderBy(b => b.BestBeforeDate)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving expiring batches");
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<IngredientBatch>> GetExpiredBatchesAsync()
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+
+                return await _unitOfWork.Repository<IngredientBatch>()
+                    .Include(b => b.Ingredient)
+                    .Where(b => !b.IsDelete &&
+                               b.RemainingQuantity > 0 &&
+                               b.BestBeforeDate < today)
+                    .OrderBy(b => b.BestBeforeDate)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving expired batches");
+                throw;
+            }
         }
 
         #endregion

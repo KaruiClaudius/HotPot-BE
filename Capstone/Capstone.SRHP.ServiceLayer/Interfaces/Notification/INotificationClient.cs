@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.API.Hubs
+namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
 {
     public interface INotificationClient
     {

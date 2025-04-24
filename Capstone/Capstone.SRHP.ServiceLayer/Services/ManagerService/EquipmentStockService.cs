@@ -136,7 +136,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 HotPotInventoryId = inventory.HotPotInventoryId,
                 SeriesNumber = inventory.SeriesNumber,
-                Status = inventory.Status.GetDisplayName(), 
+                Status = inventory.Status.GetDisplayName(),
                 HotpotId = inventory.HotpotId,
                 HotpotName = inventory.Hotpot?.Name,
                 CreatedAt = inventory.CreatedAt,
@@ -161,7 +161,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             var utensil = await _unitOfWork.Repository<Utensil>()
                 .AsQueryable(u => u.UtensilId == utensilId)
                 .Include(u => u.UtensilType)
-                .Include(u => u.ConditionLogs)
                 .FirstOrDefaultAsync();
 
             if (utensil == null)
@@ -177,19 +176,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 Price = utensil.Price,
                 Status = utensil.Status,
                 Quantity = utensil.Quantity,
-                LastMaintainDate = utensil.LastMaintainDate,
                 UtensilTypeId = utensil.UtensilTypeId,
                 UtensilTypeName = utensil.UtensilType?.Name,
                 CreatedAt = utensil.CreatedAt,
                 UpdatedAt = utensil.UpdatedAt,
-                ConditionLogs = utensil.ConditionLogs?.Select(c => new DamageDeviceDto
-                {
-                    DamageDeviceId = c.DamageDeviceId,
-                    Name = c.Name,
-                    Description = c.Description,
-                    Status = c.Status.ToString(),
-                    LoggedDate = c.LoggedDate
-                }).ToList()
             };
         }
 
@@ -245,17 +235,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 utensil.Status = false;
             }
+            else if (quantity > 0 && !utensil.Status)
+            {
+                // If quantity is greater than 0 and status is false, update to available
+                utensil.Status = true;
+            }
 
             await _unitOfWork.CommitAsync();
 
             // Load the utensil type for the response
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
-
-            // Load condition logs
-            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
-                .GetAll(d => d.UtensilId == utensilId)
-                .ToListAsync();
 
             return new UtensilDetailDto
             {
@@ -267,23 +257,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 Price = utensil.Price,
                 Status = utensil.Status,
                 Quantity = utensil.Quantity,
-                LastMaintainDate = utensil.LastMaintainDate,
                 UtensilTypeId = utensil.UtensilTypeId,
                 UtensilTypeName = utensil.UtensilType?.Name,
                 CreatedAt = utensil.CreatedAt,
-                UpdatedAt = utensil.UpdatedAt,
-                ConditionLogs = conditionLogs.Select(c => new DamageDeviceDto
-                {
-                    DamageDeviceId = c.DamageDeviceId,
-                    Name = c.Name,
-                    Description = c.Description,
-                    Status = c.Status.ToString(),
-                    LoggedDate = c.LoggedDate
-                }).ToList()
+                UpdatedAt = utensil.UpdatedAt
             };
         }
 
-        public async Task<UtensilDetailDto> UpdateUtensilStatusAsync(int utensilId, bool isAvailable, string reason)
+        public async Task<UtensilDetailDto> UpdateUtensilStatusAsync(int utensilId, bool isAvailable)
         {
             var utensil = await _unitOfWork.Repository<Utensil>()
                 .FindAsync(u => u.UtensilId == utensilId);
@@ -294,31 +275,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             utensil.Status = isAvailable;
             utensil.UpdatedAt = DateTime.UtcNow;
 
-            // If there's a reason for the status change, log it as a condition
-            if (!string.IsNullOrEmpty(reason))
-            {
-                var conditionLog = new DamageDevice
-                {
-                    Name = isAvailable ? "Available" : "Unavailable",
-                    Description = reason,
-                    Status = isAvailable ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
-                    LoggedDate = DateTime.UtcNow,
-                    UtensilId = utensilId
-                };
-
-                _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
-            }
-
             await _unitOfWork.CommitAsync();
 
             // Load the utensil type for the response
             utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
                 .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
-
-            // Load condition logs
-            var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
-                .GetAll(d => d.UtensilId == utensilId)
-                .ToListAsync();
 
             return new UtensilDetailDto
             {
@@ -330,21 +291,58 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 Price = utensil.Price,
                 Status = utensil.Status,
                 Quantity = utensil.Quantity,
-                LastMaintainDate = utensil.LastMaintainDate,
                 UtensilTypeId = utensil.UtensilTypeId,
                 UtensilTypeName = utensil.UtensilType?.Name,
                 CreatedAt = utensil.CreatedAt,
-                UpdatedAt = utensil.UpdatedAt,
-                ConditionLogs = conditionLogs.Select(c => new DamageDeviceDto
-                {
-                    DamageDeviceId = c.DamageDeviceId,
-                    Name = c.Name,
-                    Description = c.Description,
-                    Status = c.Status.ToString(),
-                    LoggedDate = c.LoggedDate
-                }).ToList()
+                UpdatedAt = utensil.UpdatedAt
             };
         }
+
+        public async Task<UtensilDetailDto> RestockUtensilAsync(int utensilId, int additionalQuantity)
+        {
+            if (additionalQuantity <= 0)
+                throw new ArgumentException("Additional quantity must be greater than zero");
+
+            var utensil = await _unitOfWork.Repository<Utensil>()
+                .FindAsync(u => u.UtensilId == utensilId);
+
+            if (utensil == null)
+                throw new KeyNotFoundException($"Utensil with ID {utensilId} not found");
+
+            // Add to existing quantity
+            utensil.Quantity += additionalQuantity;
+
+            // If adding stock, ensure status is available
+            if (utensil.Quantity > 0)
+            {
+                utensil.Status = true;
+            }
+
+            utensil.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.CommitAsync();
+
+            // Load the utensil type for the response
+            utensil.UtensilType = await _unitOfWork.Repository<UtensilType>()
+                .FindAsync(ut => ut.UtensilTypeId == utensil.UtensilTypeId);
+
+            return new UtensilDetailDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Description = utensil.Description,
+                ImageURL = utensil.ImageURL,
+                Price = utensil.Price,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                UtensilTypeId = utensil.UtensilTypeId,
+                UtensilTypeName = utensil.UtensilType?.Name,
+                CreatedAt = utensil.CreatedAt,
+                UpdatedAt = utensil.UpdatedAt
+            };
+        }
+
 
         #endregion
 
@@ -354,6 +352,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         {
             var utensils = await _unitOfWork.Repository<Utensil>()
                 .GetAll(u => u.Quantity <= threshold && u.Quantity > 0)
+                .Include(u => u.UtensilType)
+                .ToListAsync();
+
+            return utensils.Select(utensil => new UtensilDto
+            {
+                UtensilId = utensil.UtensilId,
+                Name = utensil.Name,
+                Material = utensil.Material,
+                Status = utensil.Status,
+                Quantity = utensil.Quantity,
+                UtensilTypeName = utensil.UtensilType?.Name
+            });
+        }
+
+        public async Task<IEnumerable<UtensilDto>> GetOutOfStockUtensilsAsync()
+        {
+            var utensils = await _unitOfWork.Repository<Utensil>()
+                .GetAll(u => u.Quantity == 0)
                 .Include(u => u.UtensilType)
                 .ToListAsync();
 
@@ -387,7 +403,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             };
             result.Add(hotpotSummary);
 
-            // Get Utensil summary
+            // Get Utensil summary (now for sellable items)
             var utensils = await _unitOfWork.Repository<Utensil>().GetAll().ToListAsync();
             var utensilSummary = new EquipmentStatusDto
             {
@@ -444,14 +460,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         HotpotStatus.Damaged,
                         $"Automatically marked as damaged due to {eventData.Status} condition: {eventData.Description}");
                 }
-                else if (eventData.UtensilId.HasValue)
-                {
-                    // Update utensil status to unavailable
-                    await UpdateUtensilStatusAsync(
-                        eventData.UtensilId.Value,
-                        false,
-                        $"Automatically marked as unavailable due to {eventData.Status} condition: {eventData.Description}");
-                }
+                // Remove the utensil handling since we don't track damage for sellable utensils
             }
             catch (Exception ex)
             {

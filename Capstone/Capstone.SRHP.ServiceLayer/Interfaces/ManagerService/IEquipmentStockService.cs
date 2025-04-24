@@ -18,7 +18,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
         Task<IEnumerable<UtensilDto>> GetAllUtensilsAsync();
         Task<IEnumerable<UtensilDto>> GetUtensilsByTypeAsync(int typeId);
         Task<UtensilDetailDto> UpdateUtensilQuantityAsync(int utensilId, int quantity);
-        Task<UtensilDetailDto> UpdateUtensilStatusAsync(int utensilId, bool isAvailable, string reason);
+        Task<UtensilDetailDto> UpdateUtensilStatusAsync(int utensilId, bool isAvailable);
 
         // Stock Status Methods
         Task<IEnumerable<UtensilDto>> GetLowStockUtensilsAsync(int threshold = 5);

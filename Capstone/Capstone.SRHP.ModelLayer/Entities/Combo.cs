@@ -70,9 +70,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public bool IsCustomizable { get; set; } = false;
 
-        [ForeignKey("HotpotBroth")]
-        public int HotpotBrothId { get; set; }
-
         [ForeignKey("AppliedDiscount")]
         public int? AppliedDiscountId { get; set; }
 
@@ -81,7 +78,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int TurtorialVideoId { get; set; }
 
         public virtual TurtorialVideo? TurtorialVideo { get; set; }
-        public virtual Ingredient? HotpotBroth { get; set; }
         public virtual ICollection<Customization>? Customizations { get; set; }
         public virtual ICollection<SellOrderDetail>? SellOrderDetails { get; set; }
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; } = new List<ComboIngredient>();

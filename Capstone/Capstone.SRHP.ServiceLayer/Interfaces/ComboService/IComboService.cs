@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
-    public interface IComboService : IBaseService<Combo>
+    public interface IComboService 
     {
-
+        Task<Combo> GetByIdAsync(int id);
         Task<PagedResult<Combo>> GetCombosAsync(
             string searchTerm = null,
             bool? isCustomizable = null,
@@ -28,6 +28,13 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
             TurtorialVideo video,
             List<ComboIngredient> baseIngredients = null,
             List<ComboAllowedIngredientType> allowedTypes = null);
+        Task UpdateAsync(
+             int id,
+             Combo combo,
+             TurtorialVideo video = null,
+             List<ComboIngredient> baseIngredients = null,
+             List<ComboAllowedIngredientType> allowedTypes = null);
+        Task DeleteAsync(int id);
         Task<IEnumerable<ComboAllowedIngredientType>> GetAllowedIngredientTypesAsync(int comboId);
         Task<IEnumerable<Ingredient>> GetAvailableIngredientsForTypeAsync(int comboId, int ingredientTypeId);
         Task<decimal> CalculateTotalPriceAsync(int comboId, int size);

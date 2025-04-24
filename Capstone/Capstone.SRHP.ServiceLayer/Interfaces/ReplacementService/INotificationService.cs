@@ -3,7 +3,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using System;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
+namespace Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService
 {
     public interface INotificationService
     {

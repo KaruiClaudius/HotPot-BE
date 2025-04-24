@@ -23,24 +23,12 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("Staff")]
         public int StaffId { get; set; }
 
-        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
-        public DateTime? DeliveryTime { get; set; }
 
         [StringLength(500)]
         public string? DeliveryNotes { get; set; }
 
         [DefaultValue(false)]
         public bool IsDelivered { get; set; } = false;
-
-        // Fields for proof of delivery
-        public byte[]? ProofImage { get; set; }
-
-        public string? ProofImageType { get; set; }
-
-        public byte[]? SignatureData { get; set; }
-
-        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
-        public DateTime? ProofTimestamp { get; set; }
 
 
         public virtual Order? Order { get; set; }

@@ -2,7 +2,7 @@
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -175,7 +175,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (!request.IsAvailable.HasValue)
                     return BadRequest(ApiResponse<UtensilDetailDto>.ErrorResponse("IsAvailable is required"));
 
-                var result = await _equipmentStockService.UpdateUtensilStatusAsync(id, request.IsAvailable.Value, request.Reason);
+                var result = await _equipmentStockService.UpdateUtensilStatusAsync(id, request.IsAvailable.Value);
 
                 // Notify administrators about the status change
                 await _notificationService.NotifyEquipmentStatusChange(

@@ -47,6 +47,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
 
         public virtual DbSet<PaymentReceipt> PaymentReceipts { get; set; }
+        public virtual DbSet<IngredientBatch> IngredientBatchs { get; set; }
 
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
@@ -150,7 +151,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasOne(a => a.RentOrder)
                 .WithMany()
                 .HasForeignKey(a => a.OrderId)
-                .OnDelete(DeleteBehavior.Restrict);        
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<StaffPickupAssignment>()
                 .HasOne(a => a.Staff)
@@ -181,7 +182,7 @@ namespace Capstone.HPTY.RepositoryLayer
 
 
                 entity.HasOne(p => p.Order)
-                    .WithMany(o => o.Payments)  
+                    .WithMany(o => o.Payments)
                     .HasForeignKey(p => p.OrderId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
@@ -360,27 +361,12 @@ namespace Capstone.HPTY.RepositoryLayer
             {
                 entity.ToTable("Combos");
 
-                entity.Property(e => e.HotpotBrothId)
-                    .HasColumnName("HotpotBrothId");
-
-                entity.HasOne(e => e.HotpotBroth)
-                    .WithMany()
-                    .HasForeignKey(e => e.HotpotBrothId)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Customization Configuration
             modelBuilder.Entity<Customization>(entity =>
             {
                 entity.ToTable("Customizations");
-
-                entity.Property(e => e.HotpotBrothId)
-                    .HasColumnName("HotpotBrothId");
-
-                entity.HasOne(e => e.HotpotBroth)
-                    .WithMany()
-                    .HasForeignKey(e => e.HotpotBrothId)
-                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(c => c.Combo)
                     .WithMany(c => c.Customizations)
@@ -429,11 +415,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 entity.Property(e => e.Status)
                     .IsRequired()
                     .HasConversion<int>();
-
-                modelBuilder.Entity<DamageDevice>()
-                     .HasOne(c => c.Utensil)
-                     .WithMany(u => u.ConditionLogs)
-                     .HasForeignKey(c => c.UtensilId);
             });
 
             modelBuilder.Entity<TurtorialVideo>()
@@ -868,7 +849,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Thịt bò cao cấp cắt lát mỏng hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/sliced-beef.jpg",
                     MinStockLevel = 20,
-                    Quantity = 100,
                     IngredientTypeId = 7,
                 },
                 new Ingredient
@@ -878,7 +858,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Thịt cừu mềm cắt lát, hoàn hảo cho nấu nhanh.",
                     ImageURL = "https://example.com/images/lamb-slices.jpg",
                     MinStockLevel = 15,
-                    Quantity = 80,
                     IngredientTypeId = 7,
                 },
                 new Ingredient
@@ -888,7 +867,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Thịt ba chỉ heo cắt mỏng với tỷ lệ mỡ-thịt hoàn hảo.",
                     ImageURL = "https://example.com/images/pork-belly.jpg",
                     MinStockLevel = 15,
-                    Quantity = 75,
                     IngredientTypeId = 7,
                 },
 
@@ -899,7 +877,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Tôm tươi, đã bóc vỏ và làm sạch.",
                     ImageURL = "https://example.com/images/shrimp.jpg",
                     MinStockLevel = 20,
-                    Quantity = 90,
                     IngredientTypeId = 2,
                 },
                 new Ingredient
@@ -909,7 +886,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Cá viên đàn hồi làm từ cá tươi xay.",
                     ImageURL = "https://example.com/images/fish-balls.jpg",
                     MinStockLevel = 30,
-                    Quantity = 120,
                     IngredientTypeId = 2,
                 },
                 new Ingredient
@@ -919,7 +895,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Mực tươi cắt thành khoanh.",
                     ImageURL = "https://example.com/images/squid.jpg",
                     MinStockLevel = 15,
-                    Quantity = 60,
                     IngredientTypeId = 2,
                 },
 
@@ -931,7 +906,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Rau giòn, lá xanh hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/napa-cabbage.jpg",
                     MinStockLevel = 25,
-                    Quantity = 100,
                     IngredientTypeId = 3,
                 },
                 new Ingredient
@@ -941,7 +915,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Rau chân vịt tươi, đã rửa sạch và sẵn sàng để nấu.",
                     ImageURL = "https://example.com/images/spinach.jpg",
                     MinStockLevel = 20,
-                    Quantity = 80,
                     IngredientTypeId = 3,
                 },
                 new Ingredient
@@ -951,7 +924,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Bắp ngọt cắt thành miếng vừa ăn.",
                     ImageURL = "https://example.com/images/corn.jpg",
                     MinStockLevel = 15,
-                    Quantity = 70,
                     IngredientTypeId = 3,
                 },
 
@@ -963,7 +935,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Mì lúa mì Nhật Bản dày và dai.",
                     ImageURL = "https://example.com/images/udon-noodles.jpg",
                     MinStockLevel = 20,
-                    Quantity = 80,
                     IngredientTypeId = 4,
                 },
                 new Ingredient
@@ -973,7 +944,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Miến trong suốt làm từ tinh bột đậu xanh.",
                     ImageURL = "https://example.com/images/glass-noodles.jpg",
                     MinStockLevel = 20,
-                    Quantity = 85,
                     IngredientTypeId = 4,
                 },
                 new Ingredient
@@ -983,7 +953,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Mì lúa mì xoăn hoàn hảo cho lẩu.",
                     ImageURL = "https://example.com/images/ramen-noodles.jpg",
                     MinStockLevel = 25,
-                    Quantity = 90,
                     IngredientTypeId = 4,
                 },
 
@@ -995,7 +964,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Đậu phụ cứng cắt khối giữ nguyên hình dạng trong lẩu.",
                     ImageURL = "https://example.com/images/firm-tofu.jpg",
                     MinStockLevel = 15,
-                    Quantity = 60,
                     IngredientTypeId = 5,
                 },
                 new Ingredient
@@ -1005,7 +973,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Đậu phụ chiên giòn hấp thụ hương vị nước lẩu.",
                     ImageURL = "https://example.com/images/tofu-puffs.jpg",
                     MinStockLevel = 15,
-                    Quantity = 65,
                     IngredientTypeId = 5,
                 },
 
@@ -1016,7 +983,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nấm hương thơm ngon, tươi hoặc khô.",
                     ImageURL = "https://example.com/images/shiitake.jpg",
                     MinStockLevel = 15,
-                    Quantity = 70,
                     IngredientTypeId = 6,
                 },
                 new Ingredient
@@ -1026,7 +992,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nấm kim châm mỏng, thân dài.",
                     ImageURL = "https://example.com/images/enoki.jpg",
                     MinStockLevel = 15,
-                    Quantity = 65,
                     IngredientTypeId = 6,
                 },
 
@@ -1038,7 +1003,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nước lẩu cay truyền thống với hạt tiêu Tứ Xuyên và dầu ớt.",
                     ImageURL = "https://example.com/images/sichuan-broth.jpg",
                     MinStockLevel = 10,
-                    Quantity = 50,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -1048,7 +1012,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nước lẩu cà chua chua ngọt.",
                     ImageURL = "https://example.com/images/tomato-broth.jpg",
                     MinStockLevel = 10,
-                    Quantity = 45,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -1058,7 +1021,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nước lẩu đậm đà làm từ nhiều loại nấm.",
                     ImageURL = "https://example.com/images/mushroom-broth.jpg",
                     MinStockLevel = 10,
-                    Quantity = 40,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -1068,7 +1030,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nước lẩu nhẹ, trong làm từ xương hầm nhiều giờ.",
                     ImageURL = "https://example.com/images/bone-broth.jpg",
                     MinStockLevel = 10,
-                    Quantity = 55,
                     IngredientTypeId = 1,
                 },
 
@@ -1080,7 +1041,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Sốt kem làm từ hạt mè xay.",
                     ImageURL = "https://example.com/images/sesame-sauce.jpg",
                     MinStockLevel = 10,
-                    Quantity = 40,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -1090,7 +1050,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nước tương pha với tỏi băm.",
                     ImageURL = "https://example.com/images/garlic-soy.jpg",
                     MinStockLevel = 10,
-                    Quantity = 45,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -1100,7 +1059,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Dầu cay làm từ ớt ngâm dầu.",
                     ImageURL = "https://example.com/images/chili-oil.jpg",
                     MinStockLevel = 10,
-                    Quantity = 50,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -1110,7 +1068,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Sốt đậm đà làm từ dầu đậu nành, tỏi, hành và hải sản khô.",
                     ImageURL = "https://example.com/images/shacha-sauce.jpg",
                     MinStockLevel = 10,
-                    Quantity = 35,
                     IngredientTypeId = 8,
                 }
             );
@@ -1342,15 +1299,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     Status = MaintenanceStatus.Completed,
                     LoggedDate = DateTime.UtcNow.AddHours(7),
                     HotPotInventoryId = 9
-                },
-                new DamageDevice
-                {
-                    DamageDeviceId = 4,
-                    Name = "Đĩa Bị Vỡ",
-                    Description = "Đĩa bị vỡ và cần được thay thế.",
-                    Status = MaintenanceStatus.Cancelled,
-                    LoggedDate = DateTime.UtcNow.AddHours(7),
-                    UtensilId = 5
                 }
             );
 

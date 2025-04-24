@@ -89,7 +89,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> CreateReplacementRequest(
-          [FromBody] CreateReplacementRequestDto createDto)
+      [FromBody] CreateReplacementRequestDto createDto)
         {
             try
             {
@@ -105,21 +105,16 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (user == null || user.Role.Name != "Customer")
                     return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a customer"));
 
-                // Validate equipment ID based on type
-                if (createDto.EquipmentType == EquipmentType.HotPot && !createDto.HotPotInventoryId.HasValue)
-                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("HotPot inventory ID is required for HotPot equipment type"));
-
-                if (createDto.EquipmentType == EquipmentType.Utensil && !createDto.UtensilId.HasValue)
-                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("Utensil ID is required for Utensil equipment type"));
+                // Validate HotPotInventoryId is provided
+                if (!createDto.HotPotInventoryId.HasValue)
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("HotPot inventory ID is required"));
 
                 // Create the replacement request
                 var request = new ReplacementRequest
                 {
                     RequestReason = createDto.RequestReason,
                     AdditionalNotes = createDto.AdditionalNotes,
-                    EquipmentType = createDto.EquipmentType,
                     HotPotInventoryId = createDto.HotPotInventoryId,
-                    UtensilId = createDto.UtensilId,
                     CustomerId = customerId
                 };
 
@@ -184,13 +179,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             string equipmentName = "";
 
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+            if (request.HotPotInventory != null)
             {
                 equipmentName = request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                equipmentName = request.Utensil.Name;
             }
 
             return new ReplacementRequestSummaryDto
@@ -201,7 +192,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 RequestDate = request.RequestDate,
                 ReviewDate = request.ReviewDate,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
+                // Remove EquipmentType property or set a default value
                 EquipmentName = equipmentName,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
                 AssignedStaffName = request.AssignedStaff?.Name
@@ -220,7 +211,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 ReviewDate = request.ReviewDate,
                 ReviewNotes = request.ReviewNotes,
                 CompletionDate = request.CompletionDate,
-                EquipmentType = request.EquipmentType,
 
                 CustomerId = request.CustomerId,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
@@ -234,9 +224,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 HotPotSeriesNumber = request.HotPotInventory?.SeriesNumber,
                 HotPotName = request.HotPotInventory?.Hotpot?.Name,
 
-                UtensilId = request.UtensilId,
-                UtensilName = request.Utensil?.Name,
-                UtensilType = request.Utensil?.UtensilType?.Name
             };
         }
 

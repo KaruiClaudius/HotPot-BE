@@ -101,7 +101,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         return await GetIngredientByIdAsync(id);
 
                     default:
-                        throw new ArgumentException($"Unknown product type: {productType}");
+                        throw new ArgumentException($"Loại sản phẩm không xác định: {productType}, phải là hotpot, utensil, ingredient hoặc broth");
                 }
             }
             catch (Exception ex)
@@ -137,7 +137,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         return ingredientTypes.Cast<object>().ToList();
 
                     default:
-                        throw new ArgumentException($"No types available for product type: {productType}");
+                        throw new ArgumentException($"Không có loại sản phẩm phụ cho loại sản phẩm: {productType}");
                 }
             }
             catch (Exception ex)
@@ -183,7 +183,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                         pageNumber, pageSize, sortBy, ascending);
 
                 default:
-                    throw new ArgumentException($"Unknown product type: {productType}");
+                    throw new ArgumentException($"Loại sản phẩm không xác định: {productType}");
             }
         }
 
@@ -309,10 +309,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             {
                 searchTerm = searchTerm.ToLower();
                 utensilDtoQuery = utensilDtoQuery.Where(p =>
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
-                    (p.Material != null && p.Material.ToLower().Contains(searchTerm)) ||
-                    (p.TypeName != null && p.TypeName.ToLower().Contains(searchTerm)));
+                    EF.Functions.Collate(p.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    p.Description != null && EF.Functions.Collate(p.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    p.Material != null && EF.Functions.Collate(p.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    p.TypeName != null && EF.Functions.Collate(p.TypeName.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                );
             }
 
             if (typeId.HasValue)
@@ -352,6 +353,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (minQuantity.HasValue)
             {
                 ingredientQuery = ingredientQuery.Where(i => i.Quantity >= minQuantity.Value);
+            }
+
+            // Apply search filter 
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                ingredientQuery = ingredientQuery.Where(i =>
+                    EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.IngredientType.Name != null && EF.Functions.Collate(i.IngredientType.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                );
+            }
+
+            // Apply type filter
+            if (typeId.HasValue)
+            {
+                ingredientQuery = ingredientQuery.Where(i => i.IngredientTypeId == typeId.Value);
             }
 
             // We need to materialize the ingredients to work with the latest prices
@@ -678,10 +696,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             {
                 searchTerm = searchTerm.ToLower();
                 query = query.Where(u =>
-                    u.Name.ToLower().Contains(searchTerm) ||
-                    (u.Description != null && u.Description.ToLower().Contains(searchTerm)) ||
-                    (u.Material != null && u.Material.ToLower().Contains(searchTerm)) ||
-                    u.UtensilType.Name.ToLower().Contains(searchTerm));
+                    EF.Functions.Collate(u.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    u.Description != null && EF.Functions.Collate(u.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    u.Material != null && EF.Functions.Collate(u.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    EF.Functions.Collate(u.UtensilType.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                );
             }
 
             // Apply type filter
@@ -694,7 +713,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             if (!string.IsNullOrWhiteSpace(material))
             {
                 material = material.ToLower();
-                query = query.Where(u => u.Material.ToLower().Contains(material));
+                query = query.Where(u =>
+                    u.Material != null && EF.Functions.Collate(u.Material.ToLower(), "Latin1_General_CI_AI").Contains(material)
+                );
             }
 
             // Apply price filters
@@ -841,9 +862,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             {
                 searchTerm = searchTerm.ToLower();
                 query = query.Where(i =>
-                    i.Name.ToLower().Contains(searchTerm) ||
-                    (i.Description != null && i.Description.ToLower().Contains(searchTerm)) ||
-                    i.IngredientType.Name.ToLower().Contains(searchTerm));
+                    EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
+                    EF.Functions.Collate(i.IngredientType.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
+                );
             }
 
             // Apply type filter

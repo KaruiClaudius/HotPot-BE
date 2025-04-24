@@ -158,8 +158,8 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                     ? query.OrderByDescending(so => so.IsDelivered)
                     : query.OrderBy(so => so.IsDelivered),
                 "deliverytime" => queryParams.SortDescending
-                    ? query.OrderByDescending(so => so.DeliveryTime)
-                    : query.OrderBy(so => so.DeliveryTime),
+                    ? query.OrderByDescending(so => so.Order.DeliveryTime)
+                    : query.OrderBy(so => so.Order.DeliveryTime),
                 "date" => queryParams.SortDescending
                     ? query.OrderByDescending(so => so.CreatedAt)
                     : query.OrderBy(so => so.CreatedAt),

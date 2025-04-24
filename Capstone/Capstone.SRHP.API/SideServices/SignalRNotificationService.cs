@@ -334,7 +334,6 @@ namespace Capstone.HPTY.API.SideServices
                 Title = "New Replacement Request",
                 Message = $"New replacement request for {equipmentName}",
                 ReplacementRequestId = request.ReplacementRequestId,
-                EquipmentType = request.EquipmentType.ToString(),
                 EquipmentName = equipmentName,
                 RequestReason = request.RequestReason,
                 CustomerName = request.Customer?.Name ?? "Unknown Customer",
@@ -357,7 +356,6 @@ namespace Capstone.HPTY.API.SideServices
                 Title = "Replacement Status Update",
                 Message = $"Replacement request for {equipmentName} is now {statusMessage}",
                 ReplacementRequestId = request.ReplacementRequestId,
-                EquipmentType = request.EquipmentType.ToString(),
                 EquipmentName = equipmentName,
                 Status = request.Status.ToString(),
                 StatusMessage = statusMessage,
@@ -427,16 +425,13 @@ namespace Capstone.HPTY.API.SideServices
         // Helper methods
         private string GetEquipmentName(ReplacementRequest request)
         {
-            if (request.EquipmentType == EquipmentType.HotPot && request.HotPotInventory != null)
+
+            if (request.HotPotInventory != null && request.HotPotInventory.Hotpot != null)
             {
-                return request.HotPotInventory.Hotpot?.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
-            }
-            else if (request.EquipmentType == EquipmentType.Utensil && request.Utensil != null)
-            {
-                return request.Utensil.Name;
+                return request.HotPotInventory.Hotpot.Name ?? $"HotPot #{request.HotPotInventory.SeriesNumber}";
             }
 
-            return $"{request.EquipmentType} (Unknown)";
+            return "Unknown Equipment";
         }
 
         private string GetStatusMessage(ReplacementRequestStatus status)

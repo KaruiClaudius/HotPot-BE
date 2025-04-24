@@ -24,10 +24,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         // Existing methods remain the same
         public async Task<EquipmentConditionDetailDto> LogEquipmentConditionAsync(CreateEquipmentConditionRequest request)
         {
-            // Validate that either HotPotInventoryId or UtensilId is provided
-            if (!request.HotPotInventoryId.HasValue && !request.UtensilId.HasValue)
+            // Validate that HotPotInventoryId is provided
+            if (!request.HotPotInventoryId.HasValue)
             {
-                throw new ArgumentException("Either HotPotInventoryId or UtensilId must be provided");
+                throw new ArgumentException("HotPotInventoryId must be provided");
             }
 
             // Create entity from request
@@ -37,35 +37,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 Description = request.Description,
                 Status = request.Status,
                 LoggedDate = DateTime.UtcNow,
-                HotPotInventoryId = request.HotPotInventoryId,
-                UtensilId = request.UtensilId
+                HotPotInventoryId = request.HotPotInventoryId
             };
 
             _unitOfWork.Repository<DamageDevice>().Insert(conditionLog);
             await _unitOfWork.CommitAsync();
 
             // Load related entities
-            if (conditionLog.HotPotInventoryId.HasValue)
-            {
-                conditionLog.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                    .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value)
-                    .Include(h => h.Hotpot)
-                    .FirstOrDefaultAsync();
-            }
-            else if (conditionLog.UtensilId.HasValue)
-            {
-                conditionLog.Utensil = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable(u => u.UtensilId == conditionLog.UtensilId.Value)
-                    .Include(u => u.UtensilType)
-                    .FirstOrDefaultAsync();
-            }
+            conditionLog.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value)
+                .Include(h => h.Hotpot)
+                .FirstOrDefaultAsync();
 
             // Publish event to notify about the condition log
-            // This will allow the stock service to react to severe conditions
             _eventPublisher.Publish(new EquipmentConditionLoggedEvent
             {
                 HotPotInventoryId = conditionLog.HotPotInventoryId,
-                UtensilId = conditionLog.UtensilId,
                 Status = conditionLog.Status,
                 Description = conditionLog.Description
             });
@@ -75,7 +62,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 await UpdateEquipmentStatusBasedOnCondition(
                     conditionLog.HotPotInventoryId,
-                    conditionLog.UtensilId,
                     conditionLog.Status,
                     conditionLog.Description);
             }
@@ -91,35 +77,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
-                .Include(c => c.Utensil)
-                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .FirstOrDefaultAsync();
 
             return entity?.ToDetailDto();
         }
-     
-        public async Task<PagedResult<EquipmentConditionListItemDto>> GetConditionLogsByEquipmentAsync(
-           string equipmentType, int equipmentId, PaginationParams paginationParams)
-        {
-            IQueryable<DamageDevice> query;
 
-            if (equipmentType.ToLower() == "hotpot")
-            {
-                query = _unitOfWork.Repository<DamageDevice>()
-                    .GetAll(c => c.HotPotInventoryId == equipmentId)
-                    .Include(c => c.HotPotInventory)
-                        .ThenInclude(h => h.Hotpot)
-                    .OrderByDescending(c => c.LoggedDate);
-            }
-            else if (equipmentType.ToLower() == "utensil")
-            {
-                query = _unitOfWork.Repository<DamageDevice>()
-                    .GetAll(c => c.UtensilId == equipmentId)
-                    .Include(c => c.Utensil)
-                        .ThenInclude(u => u.UtensilType)
-                    .OrderByDescending(c => c.LoggedDate);
-            }
-            else
+        public async Task<PagedResult<EquipmentConditionListItemDto>> GetConditionLogsByEquipmentAsync(
+     string equipmentType, int equipmentId, PaginationParams paginationParams)
+        {
+            // Only support hotpot equipment type
+            if (equipmentType.ToLower() != "hotpot")
             {
                 return new PagedResult<EquipmentConditionListItemDto>
                 {
@@ -130,19 +97,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 };
             }
 
+            var query = _unitOfWork.Repository<DamageDevice>()
+                .GetAll(c => c.HotPotInventoryId == equipmentId)
+                .Include(c => c.HotPotInventory)
+                    .ThenInclude(h => h.Hotpot)
+                .OrderByDescending(c => c.LoggedDate);
+
             var pagedResult = await query.ToPagedResultAsync(paginationParams);
             return pagedResult.ToPagedListItemDto();
         }
 
         public async Task<PagedResult<EquipmentConditionListItemDto>> GetConditionLogsByStatusAsync(
-    MaintenanceStatus status, PaginationParams paginationParams)
+               MaintenanceStatus status, PaginationParams paginationParams)
         {
             var query = _unitOfWork.Repository<DamageDevice>()
                 .GetAll(c => c.Status == status)
                 .Include(c => c.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
-                .Include(c => c.Utensil)
-                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .OrderByDescending(c => c.LoggedDate);
 
             var pagedResult = await query.ToPagedResultAsync(paginationParams);
@@ -150,42 +121,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         }
 
         public async Task<PagedResult<EquipmentConditionListItemDto>> GetFilteredConditionLogsAsync(
-            EquipmentConditionFilterDto filterParams)
+        EquipmentConditionFilterDto filterParams)
         {
             IQueryable<DamageDevice> query = _unitOfWork.Repository<DamageDevice>().GetAll();
 
             // Apply filters
-            // Filter by equipment type
-            if (!string.IsNullOrEmpty(filterParams.EquipmentType))
+            // Filter by equipment type - only support hotpot
+            if (!string.IsNullOrEmpty(filterParams.EquipmentType) &&
+                filterParams.EquipmentType.ToLower() == "hotpot")
             {
-                string equipmentType = filterParams.EquipmentType.ToLower();
-
-                if (equipmentType == "hotpot")
+                // If ID is also provided, further filter by ID
+                if (filterParams.EquipmentId.HasValue)
                 {
-                    query = query.Where(c => c.HotPotInventoryId != null);
-
-                    // If ID is also provided, further filter by ID
-                    if (filterParams.EquipmentId.HasValue)
-                    {
-                        query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId);
-                    }
-                }
-                else if (equipmentType == "utensil")
-                {
-                    query = query.Where(c => c.UtensilId != null);
-
-                    // If ID is also provided, further filter by ID
-                    if (filterParams.EquipmentId.HasValue)
-                    {
-                        query = query.Where(c => c.UtensilId == filterParams.EquipmentId);
-                    }
+                    query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId);
                 }
             }
-            // If only equipment ID is provided without type (optional)
+            // If only equipment ID is provided without type
             else if (filterParams.EquipmentId.HasValue)
             {
-                query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId ||
-                                        c.UtensilId == filterParams.EquipmentId);
+                query = query.Where(c => c.HotPotInventoryId == filterParams.EquipmentId);
             }
 
             // Filter by equipment name
@@ -194,24 +148,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 string equipmentName = filterParams.EquipmentName.ToLower();
 
                 query = query.Where(c =>
-                    (c.HotPotInventory != null && c.HotPotInventory.Hotpot != null &&
-                     c.HotPotInventory.Hotpot.Name.ToLower().Contains(equipmentName)) ||
-                    (c.Utensil != null && c.Utensil.UtensilType != null &&
-                     c.Utensil.Name.ToLower().Contains(equipmentName))
+                    c.HotPotInventory != null && c.HotPotInventory.Hotpot != null &&
+                    c.HotPotInventory.Hotpot.Name.ToLower().Contains(equipmentName)
                 );
             }
 
             if (filterParams.Status.HasValue)
             {
                 query = query.Where(c => c.Status == filterParams.Status);
-            }          
+            }
 
             // Include related entities
             query = query
                 .Include(c => c.HotPotInventory)
-                    .ThenInclude(h => h != null ? h.Hotpot : null)
-                .Include(c => c.Utensil)
-                    .ThenInclude(u => u != null ? u.UtensilType : null);
+                    .ThenInclude(h => h != null ? h.Hotpot : null);
 
             // Apply sorting
             if (!string.IsNullOrEmpty(filterParams.SortBy))
@@ -251,15 +201,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 .AsQueryable(c => c.DamageDeviceId == conditionLogId)
                 .Include(c => c.HotPotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
-                .Include(c => c.Utensil)
-                    .ThenInclude(u => u != null ? u.UtensilType : null)
                 .FirstOrDefaultAsync();
 
             if (conditionLog == null)
                 return null;
 
+            // Update status
             conditionLog.Status = request.Status;
             conditionLog.UpdatedAt = DateTime.UtcNow;
+
+            // Set finish date if status is Completed or Cancelled
+            if (request.Status == MaintenanceStatus.Completed || request.Status == MaintenanceStatus.Cancelled)
+            {
+                conditionLog.FinishDate = DateTime.UtcNow;
+            }
+
+            // If status is changing from Completed/Cancelled to something else, clear the finish date
+            if (conditionLog.Status != MaintenanceStatus.Completed &&
+                conditionLog.Status != MaintenanceStatus.Cancelled)
+            {
+                // Only reset if it was previously set
+                if (conditionLog.FinishDate != default)
+                {
+                    conditionLog.FinishDate = default;
+                }
+            }
 
             await _unitOfWork.CommitAsync();
 
@@ -267,38 +233,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         }
 
         private async Task UpdateEquipmentStatusBasedOnCondition(
-            int? hotPotInventoryId,
-            int? utensilId,
-            MaintenanceStatus status,
-            string description)
+         int? hotPotInventoryId,
+         MaintenanceStatus status,
+         string description)
         {
             // Only update status for severe conditions
-            if (status != MaintenanceStatus.Pending)
+            if (status != MaintenanceStatus.Pending || !hotPotInventoryId.HasValue)
                 return;
 
-            if (hotPotInventoryId.HasValue)
-            {
-                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                    .FindAsync(h => h.HotPotInventoryId == hotPotInventoryId.Value);
+            var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                .FindAsync(h => h.HotPotInventoryId == hotPotInventoryId.Value);
 
-                if (hotpot != null)
-                {
-                    // Set to damaged if condition is pending
-                    hotpot.Status = HotpotStatus.Damaged;
-                    hotpot.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-            else if (utensilId.HasValue)
+            if (hotpot != null)
             {
-                var utensil = await _unitOfWork.Repository<Utensil>()
-                    .FindAsync(u => u.UtensilId == utensilId.Value);
-
-                if (utensil != null)
-                {
-                    // Set to unavailable if condition is pending
-                    utensil.Status = false;
-                    utensil.UpdatedAt = DateTime.UtcNow;
-                }
+                // Set to damaged if condition is pending
+                hotpot.Status = HotpotStatus.Damaged;
+                hotpot.UpdatedAt = DateTime.UtcNow;
             }
 
             await _unitOfWork.CommitAsync();

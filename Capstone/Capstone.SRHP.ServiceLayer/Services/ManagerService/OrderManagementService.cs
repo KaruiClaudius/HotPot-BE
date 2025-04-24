@@ -160,7 +160,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 {
                     ShippingOrderId = so.ShippingOrderId,
                     OrderId = so.Order.OrderCode,
-                    DeliveryTime = so.DeliveryTime,
+                    DeliveryTime = so.Order?.DeliveryTime,
                     DeliveryNotes = so.DeliveryNotes,
                     IsDelivered = so.IsDelivered,
 
@@ -270,7 +270,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         ShippingOrderId = order.ShippingOrder.ShippingOrderId,
                         StaffId = order.ShippingOrder.StaffId,
                         StaffName = order.ShippingOrder.Staff?.Name ?? string.Empty,
-                        DeliveryTime = order.ShippingOrder.DeliveryTime,
+                        DeliveryTime = order.DeliveryTime,
                         DeliveryNotes = order.ShippingOrder.DeliveryNotes ?? string.Empty,
                         IsDelivered = order.ShippingOrder.IsDelivered
                     } : null,                   
@@ -300,9 +300,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 shippingOrder.IsDelivered = isDelivered;
 
-                if (isDelivered && !shippingOrder.DeliveryTime.HasValue)
-                    shippingOrder.DeliveryTime = DateTime.UtcNow;
-
                 if (notes != null)
                     shippingOrder.DeliveryNotes = notes;
 
@@ -330,7 +327,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     OrderCode = shippingOrder.Order.OrderCode,
                     OrderId = shippingOrder.OrderId,
                     IsDelivered = shippingOrder.IsDelivered,
-                    DeliveryTime = shippingOrder.DeliveryTime,
+                    DeliveryTime = shippingOrder.Order?.DeliveryTime,
                     DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
                     UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
                 };
@@ -358,8 +355,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 if (shippingOrder == null)
                     throw new NotFoundException($"Shipping Order with ID {shippingOrderId} not found");
 
-                shippingOrder.DeliveryTime = deliveryTime;
-                shippingOrder.SetUpdateDate();
+                if (shippingOrder.Order != null)
+                {
+                    shippingOrder.Order.DeliveryTime = deliveryTime;
+                    shippingOrder.Order.SetUpdateDate();
+                }
 
                 await _unitOfWork.CommitAsync();
 
@@ -372,7 +372,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     ShippingOrderId = shippingOrder.ShippingOrderId,
                     OrderId = shippingOrder.OrderId,
                     OrderCode = orderCode,
-                    DeliveryTime = shippingOrder.DeliveryTime ?? DateTime.UtcNow,
+                    DeliveryTime = shippingOrder.Order?.DeliveryTime ?? DateTime.UtcNow,
                     UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
                 };
             }
@@ -474,7 +474,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     {
                         ShippingOrderId = so.ShippingOrderId,
                         OrderId = so.Order.OrderCode,
-                        DeliveryTime = so.DeliveryTime,
+                        DeliveryTime = so.Order?.DeliveryTime,
                         DeliveryNotes = so.DeliveryNotes ?? string.Empty,
 
                         // Order information
@@ -548,7 +548,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         ShippingInfo = o.ShippingOrder != null ? new ShippingInfoDTO
                         {
                             ShippingOrderId = o.ShippingOrder.ShippingOrderId,
-                            DeliveryTime = o.ShippingOrder.DeliveryTime,
+                            DeliveryTime = o.DeliveryTime,
                             IsDelivered = o.ShippingOrder.IsDelivered,
                             DeliveryNotes = o.ShippingOrder.DeliveryNotes ?? string.Empty,
                             Staff = o.ShippingOrder.Staff != null ? new StaffDTO

@@ -43,6 +43,14 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         // Specialized methods
         Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync();
 
-
+        // batch logic
+        Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId);
+        Task<IngredientBatch> GetBatchByIdAsync(int batchId);
+        Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string batchNumber = null);
+        Task UpdateBatchAsync(int batchId, int quantity, DateTime bestBeforeDate, string batchNumber = null);
+        Task DeleteBatchAsync(int batchId);
+        Task<int> ConsumeIngredientAsync(int ingredientId, int quantity);
+        Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7);
+        Task<IEnumerable<IngredientBatch>> GetExpiredBatchesAsync();
     }
 }

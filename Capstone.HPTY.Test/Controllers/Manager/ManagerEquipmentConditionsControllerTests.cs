@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System;
@@ -179,7 +179,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                         DamageDeviceId = 1,
                         Name = "Test Condition",
                         Status = MaintenanceStatus.Pending,
-                        EquipmentType = "HotPot",
                         EquipmentName = "Test HotPot"
                     }
                 },
@@ -243,7 +242,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                         DamageDeviceId = 1,
                         Name = "Test Condition",
                         Status = MaintenanceStatus.Pending,
-                        EquipmentType = "HotPot",
                         EquipmentName = "Test HotPot"
                     }
                 },
@@ -289,7 +287,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                         DamageDeviceId = 1,
                         Name = "Test Condition",
                         Status = MaintenanceStatus.Pending,
-                        EquipmentType = "HotPot",
                         EquipmentName = "Test HotPot"
                     }
                 },
