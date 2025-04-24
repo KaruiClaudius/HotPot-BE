@@ -1,4 +1,5 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
@@ -16,10 +17,12 @@ namespace Capstone.HPTY.API.Controllers.Staff
     public class StaffController : ControllerBase
     {
         private readonly IStaffService _staffService;
+        private readonly ILogger<StaffController> _logger;
 
-        public StaffController(IStaffService staffService)
+        public StaffController(IStaffService staffService, ILogger<StaffController> logger)
         {
             _staffService = staffService ?? throw new ArgumentNullException(nameof(staffService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
 
@@ -111,21 +114,26 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
 
-        [HttpGet("available")]
+        [HttpGet("available-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<ApiResponse<List<StaffAvailableDto>>>> GetAvailableStaff()
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<List<StaffAvailableDto>>>> GetAvailableStaff([FromQuery] StaffTaskType? taskType = null)
         {
             try
             {
-                var availableStaff = await _staffService.GetAvailableStaffAsync();
-                return Ok(ApiResponse<List<StaffAvailableDto>>.SuccessResponse(availableStaff, "Available staff retrieved successfully"));
+                var result = await _staffService.GetAvailableStaffForTaskAsync(taskType);
+
+                string message = taskType.HasValue
+                    ? $"Available staff for {taskType} tasks retrieved successfully"
+                    : "All available staff retrieved successfully";
+
+                return Ok(ApiResponse<List<StaffAvailableDto>>.SuccessResponse(result, message));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse<List<StaffDto>>.ErrorResponse("An error occurred while retrieving available staff"));
+                _logger.LogError(ex, "Error retrieving available staff");
+                return BadRequest(ApiResponse<List<StaffAvailableDto>>.ErrorResponse(ex.Message));
             }
         }
-
-        }
+    }
 }

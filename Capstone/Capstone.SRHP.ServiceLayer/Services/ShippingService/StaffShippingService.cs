@@ -7,6 +7,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Microsoft.EntityFrameworkCore;
@@ -162,10 +163,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             {
                 _logger.LogInformation("Updating shipping status for order ID: {ShippingOrderId}", shippingOrderId);
 
-                // Find the shipping order with its associated order
+                // Find the shipping order with its associated order and vehicle
                 var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                    .IncludeNested(query => query.Include(so => so.Order))
-                    .FirstOrDefaultAsync(so => so.ShippingOrderId == shippingOrderId);
+                    .AsQueryable()
+                    .Where(so => so.ShippingOrderId == shippingOrderId)
+                    .Include(so => so.Order)
+                    .Include(so => so.Vehicle)
+                    .FirstOrDefaultAsync();
 
                 if (shippingOrder == null)
                 {
@@ -186,11 +190,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 {
                     shippingOrder.Order.Status = OrderStatus.Delivered;
                     shippingOrder.Order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(shippingOrder.Order, shippingOrder.OrderId);
+                }
+
+                // Update vehicle status back to Available
+                if (shippingOrder.Vehicle != null)
+                {
+                    shippingOrder.Vehicle.Status = VehicleStatus.Available;
+                    shippingOrder.Vehicle.SetUpdateDate();
                 }
 
                 // Save changes
-                await _unitOfWork.Repository<ShippingOrder>().Update(shippingOrder, shippingOrderId);
                 await _unitOfWork.CommitAsync();
 
                 // Fetch the updated shipping order with all details
@@ -202,8 +211,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 throw;
             }
         }
-
-
 
 
         // Helper method to map ShippingOrder entity to ShippingListDto
@@ -223,7 +230,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 CustomerPhone = shippingOrder.Order?.User?.PhoneNumber ?? "Unknown",
                 OrderStatus = shippingOrder.Order?.Status.ToString() ?? "Unknown",
                 TotalPrice = shippingOrder.Order?.TotalPrice ?? 0,
-                Items = new List<ShippingItemDto>()
+                Items = new List<ShippingItemDto>(),
+                VehicleId = shippingOrder.VehicleId,
+                VehicleName = shippingOrder.Vehicle?.Name ?? string.Empty,
+                VehicleType = shippingOrder.Vehicle?.Type ?? VehicleType.Scooter,
+                OrderSize = shippingOrder.OrderSize
             };
 
             // Map sell order details to shipping items
@@ -300,5 +311,170 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
 
             return dto;
         }
+
+        //public async Task<ProofOfDeliveryResponse> SaveProofOfDeliveryAsync(int shippingOrderId, ProofOfDeliveryRequest request)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Saving proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+        //        // Find the shipping order with its associated order
+        //        var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+        //            .IncludeNested(query => query.Include(so => so.Order))
+        //            .FirstOrDefaultAsync(so => so.ShippingOrderId == shippingOrderId);
+
+        //        if (shippingOrder == null)
+        //        {
+        //            throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+        //        }
+
+        //        // Update the shipping order with proof of delivery data
+        //        if (!string.IsNullOrEmpty(request.Base64Image))
+        //        {
+        //            shippingOrder.ProofImage = Convert.FromBase64String(request.Base64Image);
+        //            shippingOrder.ProofImageType = request.ImageType ?? "image/jpeg";
+        //        }
+
+        //        if (!string.IsNullOrEmpty(request.Base64Signature))
+        //        {
+        //            shippingOrder.SignatureData = Convert.FromBase64String(request.Base64Signature);
+        //        }
+
+        //        if (!string.IsNullOrEmpty(request.DeliveryNotes))
+        //        {
+        //            shippingOrder.DeliveryNotes = request.DeliveryNotes;
+        //        }
+
+        //        // Mark as delivered and set timestamps
+        //        shippingOrder.IsDelivered = true;
+        //        shippingOrder.ProofTimestamp = DateTime.UtcNow;
+
+        //        if (shippingOrder.DeliveryTime == null)
+        //        {
+        //            shippingOrder.DeliveryTime = DateTime.UtcNow;
+        //        }
+
+        //        // Update the associated order status to Delivered
+        //        if (shippingOrder.Order != null)
+        //        {
+        //            shippingOrder.Order.Status = OrderStatus.Delivered;
+        //            shippingOrder.Order.SetUpdateDate();
+        //            await _unitOfWork.Repository<Order>().Update(shippingOrder.Order, shippingOrder.OrderId);
+        //        }
+
+        //        // Save changes
+        //        await _unitOfWork.Repository<ShippingOrder>().Update(shippingOrder, shippingOrderId);
+        //        await _unitOfWork.CommitAsync();
+
+        //        // Return response
+        //        return new ProofOfDeliveryResponse
+        //        {
+        //            ShippingOrderId = shippingOrder.ShippingOrderId,
+        //            IsDelivered = shippingOrder.IsDelivered,
+        //            DeliveryTime = shippingOrder.DeliveryTime,
+        //            ProofTimestamp = shippingOrder.ProofTimestamp,
+        //            DeliveryNotes = shippingOrder.DeliveryNotes,
+        //            HasProofImage = shippingOrder.ProofImage != null && shippingOrder.ProofImage.Length > 0,
+        //            HasSignature = shippingOrder.SignatureData != null && shippingOrder.SignatureData.Length > 0
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error saving proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+        //        throw;
+        //    }
+        //}
+
+        //public async Task<ProofOfDeliveryDto> GetProofOfDeliveryAsync(int shippingOrderId)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Getting proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+        //        // Find the shipping order
+        //        var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+        //            .FindAsync(so => so.ShippingOrderId == shippingOrderId);
+
+        //        if (shippingOrder == null)
+        //        {
+        //            throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+        //        }
+
+        //        // Check if proof of delivery exists
+        //        if (shippingOrder.ProofImage == null && shippingOrder.SignatureData == null)
+        //        {
+        //            throw new NotFoundException($"No proof of delivery found for shipping order with ID {shippingOrderId}");
+        //        }
+
+        //        // Convert binary data to base64 strings
+        //        string? base64Image = null;
+        //        string? base64Signature = null;
+
+        //        if (shippingOrder.ProofImage != null && shippingOrder.ProofImage.Length > 0)
+        //        {
+        //            base64Image = Convert.ToBase64String(shippingOrder.ProofImage);
+        //        }
+
+        //        if (shippingOrder.SignatureData != null && shippingOrder.SignatureData.Length > 0)
+        //        {
+        //            base64Signature = Convert.ToBase64String(shippingOrder.SignatureData);
+        //        }
+
+        //        // Return DTO
+        //        return new ProofOfDeliveryDto
+        //        {
+        //            ShippingOrderId = shippingOrder.ShippingOrderId,
+        //            Base64Image = base64Image,
+        //            ImageType = shippingOrder.ProofImageType,
+        //            Base64Signature = base64Signature,
+        //            DeliveryNotes = shippingOrder.DeliveryNotes,
+        //            ProofTimestamp = shippingOrder.ProofTimestamp
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error getting proof of delivery for shipping order ID: {ShippingOrderId}", shippingOrderId);
+        //        throw;
+        //    }
+        //}
+
+        public async Task<VehicleInfoDto> GetVehicleInfoAsync(int shippingOrderId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting vehicle information for shipping order ID: {ShippingOrderId}", shippingOrderId);
+
+                var shippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                    .AsQueryable()
+                    .Where(so => so.ShippingOrderId == shippingOrderId)
+                    .Include(so => so.Vehicle)
+                    .FirstOrDefaultAsync();
+
+                if (shippingOrder == null)
+                {
+                    throw new NotFoundException($"Shipping order with ID {shippingOrderId} not found");
+                }
+
+                if (shippingOrder.Vehicle == null)
+                {
+                    throw new NotFoundException($"No vehicle assigned to shipping order with ID {shippingOrderId}");
+                }
+
+                return new VehicleInfoDto
+                {
+                    VehicleId = shippingOrder.VehicleId,
+                    VehicleName = shippingOrder.Vehicle.Name,
+                    LicensePlate = shippingOrder.Vehicle.LicensePlate,
+                    VehicleType = shippingOrder.Vehicle.Type,
+                    OrderSize = shippingOrder.OrderSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle information for shipping order ID: {ShippingOrderId}", shippingOrderId);
+                throw;
+            }
+        }
+
     }
 }

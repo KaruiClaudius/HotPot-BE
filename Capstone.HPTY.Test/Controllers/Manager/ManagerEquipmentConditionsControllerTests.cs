@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,14 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
 using Xunit;
+using FluentAssertions;
+using System.Linq;
+
+using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
+using Capstone.HPTY.ModelLayer.Entities;
 
 namespace Capstone.HPTY.Test.Controllers.Manager
 {
@@ -17,18 +25,34 @@ namespace Capstone.HPTY.Test.Controllers.Manager
     {
         private readonly Mock<IEquipmentConditionService> _mockEquipmentConditionService;
         private readonly Mock<INotificationService> _mockNotificationService;
+        private Mock<IHotpotService> _mockHotpotService;
+        private Mock<IUtensilService> _mockUtensilService;
+        private readonly ManagerEquipmentConditionsController _controller;
+
+
 
         public ManagerEquipmentConditionsControllerTests()
         {
             _mockEquipmentConditionService = new Mock<IEquipmentConditionService>();
             _mockNotificationService = new Mock<INotificationService>();
+            _mockHotpotService = new Mock<IHotpotService>();
+            _mockUtensilService = new Mock<IUtensilService>();
+
+            _controller = new ManagerEquipmentConditionsController(
+            _mockEquipmentConditionService.Object,
+            _mockNotificationService.Object,
+            _mockHotpotService.Object,
+            _mockUtensilService.Object
+            );
         }
 
         private ManagerEquipmentConditionsController CreateController()
         {
             return new ManagerEquipmentConditionsController(
                 _mockEquipmentConditionService.Object,
-                _mockNotificationService.Object);
+                _mockNotificationService.Object,
+                _mockHotpotService.Object,
+                _mockUtensilService.Object);
         }
 
         [Fact]
@@ -59,7 +83,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 .Setup(s => s.LogEquipmentConditionAsync(It.IsAny<CreateEquipmentConditionRequest>()))
                 .ReturnsAsync(expectedResult);
 
-          
+
 
             // Act
             var result = await controller.CreateConditionLog(request);
@@ -74,7 +98,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
 
             _mockEquipmentConditionService.Verify(s => s.LogEquipmentConditionAsync(request), Times.Once);
-           
+
         }
 
         [Fact]
@@ -100,8 +124,98 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             var apiResponse = Assert.IsType<ApiResponse<EquipmentConditionDetailDto>>(badRequestResult.Value);
             Assert.False(apiResponse.Success);
             Assert.Equal(exceptionMessage, apiResponse.Message);
-          
-         
+
+
+        }
+
+        [Fact]
+        public async Task CreateConditionLog_ForHotPot_ShouldSendCorrectNotification()
+        {
+            // Arrange
+            var request = new CreateEquipmentConditionRequest
+            {
+                Name = "Broken Heating Element",
+                Description = "The heating element is not working properly",
+                Status = MaintenanceStatus.Pending,
+                HotPotInventoryId = 123,
+                UtensilId = null
+            };
+
+            var expectedResult = new EquipmentConditionDetailDto
+            {
+                DamageDeviceId = 456,
+                Name = request.Name,
+                Description = request.Description,
+                Status = request.Status,
+                LoggedDate = DateTime.UtcNow,
+                EquipmentType = "HotPot"
+            };
+
+            // Create a Hotpot with a Name
+            var hotpot = new Hotpot
+            {
+                Name = "Premium HotPot",
+                // Add any other required properties
+                HotpotId = 789
+            };
+
+            // Create a HotPotInventory with the Hotpot
+            var hotpotInventory = new HotPotInventory
+            {
+                HotPotInventoryId = 123,
+                Hotpot = hotpot,
+                SeriesNumber = "SN12345",
+                Status = HotpotStatus.Available,
+                HotpotId = hotpot.HotpotId
+            };
+
+            // Ensure all required properties are set
+            Assert.NotNull(hotpotInventory.Hotpot);
+            Assert.NotNull(hotpotInventory.Hotpot.Name);
+
+            _mockEquipmentConditionService
+                .Setup(s => s.LogEquipmentConditionAsync(It.IsAny<CreateEquipmentConditionRequest>()))
+                .ReturnsAsync(expectedResult);
+
+            // Setup the mock to return the HotPotInventory object
+            _mockHotpotService
+                .Setup(s => s.GetByInvetoryIdAsync(request.HotPotInventoryId.Value))
+                .ReturnsAsync(hotpotInventory);
+
+            _mockNotificationService
+                .Setup(s => s.NotifyRole(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.CreateConditionLog(request);
+
+            // Assert
+            Assert.NotNull(result); // Make sure result is not null
+            Assert.NotNull(result.Result); // Make sure result.Result is not null
+
+            result.Result.Should().BeOfType<CreatedAtActionResult>();
+
+            // Verify notification was sent with correct parameters
+            _mockNotificationService.Verify(s => s.NotifyRole(
+                "Administrators",
+                "ConditionIssue",
+                "New Equipment Condition Issue",
+                $"New issue reported for Premium HotPot: {request.Name}",
+                It.Is<Dictionary<string, object>>(d =>
+                    d.ContainsKey("ConditionLogId") && (int)d["ConditionLogId"] == expectedResult.DamageDeviceId &&
+                    d.ContainsKey("EquipmentType") && (string)d["EquipmentType"] == "HotPot" &&
+                    d.ContainsKey("EquipmentName") && (string)d["EquipmentName"] == "Premium HotPot" &&
+                    d.ContainsKey("IssueName") && (string)d["IssueName"] == request.Name &&
+                    d.ContainsKey("Description") && (string)d["Description"] == request.Description &&
+                    d.ContainsKey("Status") && (string)d["Status"] == request.Status.ToString() &&
+                    d.ContainsKey("ReportTime")
+                )),
+                Times.Once);
         }
 
         [Fact]
@@ -336,7 +450,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             _mockEquipmentConditionService
                 .Setup(s => s.UpdateConditionStatusAsync(conditionLogId, request))
                 .ReturnsAsync(expectedResult);
-          
+
 
             // Act
             var result = await controller.UpdateConditionStatus(conditionLogId, request);
@@ -348,7 +462,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             Assert.True(apiResponse.Success);
             Assert.Equal("Condition status updated successfully", apiResponse.Message);
 
-            _mockEquipmentConditionService.Verify(s => s.UpdateConditionStatusAsync(conditionLogId, request), Times.Once);          
+            _mockEquipmentConditionService.Verify(s => s.UpdateConditionStatusAsync(conditionLogId, request), Times.Once);
         }
 
         [Fact]
@@ -376,7 +490,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             Assert.Equal($"Condition log with ID {conditionLogId} not found", apiResponse.Message);
 
             _mockEquipmentConditionService.Verify(s => s.UpdateConditionStatusAsync(conditionLogId, request), Times.Once);
-           
+
         }
 
         [Fact]
@@ -405,36 +519,10 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             Assert.Equal(exceptionMessage, apiResponse.Message);
 
             _mockEquipmentConditionService.Verify(s => s.UpdateConditionStatusAsync(conditionLogId, request), Times.Once);
-           
+
         }
 
-        [Fact]
-        public async Task NotifyAdministrators_ValidRequest_ReturnsOkResult()
-        {
-            // Arrange
-            var controller = CreateController();
-            var request = new NotifyAdminRequest
-            {
-                ConditionLogId = 1,
-                EquipmentType = "HotPot",
-                EquipmentName = "Test HotPot",
-                IssueName = "Test Issue",
-                Description = "Test Description",
-                ScheduleType = MaintenanceScheduleType.Regular
-            };
-           
 
-            // Act
-            var result = await controller.NotifyAdministrators(request);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiResponse<bool>>(okResult.Value);
-            Assert.True(apiResponse.Data);
-            Assert.True(apiResponse.Success);
-            Assert.Equal("Administrators notified successfully", apiResponse.Message);
-           
-        }
 
     }
 }

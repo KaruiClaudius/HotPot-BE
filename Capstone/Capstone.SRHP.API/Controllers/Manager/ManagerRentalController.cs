@@ -8,6 +8,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,17 +26,20 @@ namespace Capstone.HPTY.API.Controllers.Manager
         private readonly IStaffService _staffService;
         private readonly IEquipmentReturnService _equipmentReturnService;
         private readonly INotificationService _notificationService;
+        private readonly IUserService _userService;
 
         public ManagerRentalController(
             IRentOrderService rentOrderService,
             IStaffService staffService,
             IEquipmentReturnService equipmentReturnService,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IUserService userService)
         {
             _rentOrderService = rentOrderService;
             _staffService = staffService;
             _equipmentReturnService = equipmentReturnService;
             _notificationService = notificationService;
+            _userService = userService;
         }
 
         [HttpGet("unassigned-pickups")]
@@ -74,11 +78,46 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     return NotFound(ApiResponse<StaffPickupAssignmentDto>.ErrorResponse($"Assignment for rent order detail {request.RentOrderDetailId} not found"));
                 }
 
+                // Get additional information for a more detailed notification
+                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(request.RentOrderDetailId);
+                string customerName = rentOrder.Order?.User?.Name ?? "Customer";
+                string pickupAddress = rentOrder.Order?.Address ?? "No address provided";
+
+                // Get staff information
+                var staff = await _staffService.GetStaffByIdAsync(request.StaffId);
+                string staffName = staff?.Name ?? "Staff Member";
+
                 // Notify the staff member about the new assignment
-                await _notificationService.NotifyStaffNewAssignmentAsync(
+                await _notificationService.NotifyUser(
                     request.StaffId,
-                    assignmentDto.AssignmentId,
-                    assignmentDto);
+                    "NewAssignment",
+                    "New Pickup Assignment",
+                    $"You have been assigned to pick up equipment from {customerName}",
+                    new Dictionary<string, object>
+                    {
+                { "AssignmentId", assignmentDto.AssignmentId },
+                { "OrderId", assignmentDto.OrderId },
+                { "CustomerName", customerName },
+                { "PickupAddress", pickupAddress },
+                { "Notes", request.Notes ?? "No additional notes" },
+                { "AssignmentType", "Pickup" },
+                    });
+
+                // Also notify the customer about the pickup assignment
+                if (rentOrder.Order?.UserId != null)
+                {
+                    await _notificationService.NotifyUser(
+                        rentOrder.Order.UserId,
+                        "PickupScheduled",
+                        "Equipment Pickup Scheduled",
+                        $"A staff member has been assigned to pick up your rented equipment",
+                        new Dictionary<string, object>
+                        {
+                    { "OrderId", assignmentDto.OrderId },
+                    { "StaffName", staffName },                
+                    { "Notes", "Please ensure the equipment is ready for pickup." }
+                        });
+                }
 
                 return Ok(ApiResponse<StaffPickupAssignmentDto>.SuccessResponse(assignmentDto, "Staff allocated for equipment pickup successfully"));
             }
@@ -95,6 +134,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<StaffPickupAssignmentDto>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("all")]
         public async Task<IActionResult> GetAllRentalHistory()
@@ -160,10 +200,47 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     rentOrder.ExpectedReturnDate != parsedDate &&
                     rentOrder.Order?.UserId != null)
                 {
-                    await _notificationService.NotifyCustomerRentalExtendedAsync(
+                    // Get equipment summary for more detailed notification
+                    string equipmentSummary = await GetEquipmentSummaryForRental(rentOrder);
+
+                    // Calculate extension days
+                    int extensionDays = (parsedDate - rentOrder.ExpectedReturnDate).Days;
+                    string extensionType = extensionDays > 0 ? "extended" : "reduced";
+
+                    await _notificationService.NotifyUser(
                         rentOrder.Order.UserId,
-                        id,
-                        parsedDate);
+                        "RentalDateAdjusted",
+                        "Rental Return Date Adjusted",
+                        $"Your rental return date has been {extensionType} to {parsedDate.ToShortDateString()}",
+                        new Dictionary<string, object>
+                        {
+                    { "RentalId", id },
+                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                    { "NewReturnDate", parsedDate },
+                    { "ExtensionDays", extensionDays },
+                    { "EquipmentSummary", equipmentSummary },
+                    { "AdjustmentDate", DateTime.UtcNow },
+                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
+                    { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
+                        });
+
+                    // Also notify staff about the adjustment
+                    await _notificationService.NotifyRole(
+                        "Staff",
+                        "RentalDateAdjusted",
+                        "Rental Return Date Adjusted",
+                        $"Rental #{id} return date has been {extensionType} to {parsedDate.ToShortDateString()}",
+                        new Dictionary<string, object>
+                        {
+                    { "RentalId", id },
+                    { "CustomerId", rentOrder.Order.UserId },
+                    { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
+                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                    { "NewReturnDate", parsedDate },
+                    { "ExtensionDays", extensionDays },
+                    { "AdjustmentDate", DateTime.UtcNow },
+                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
+                        });
                 }
 
                 return Ok(ApiResponse<bool>.SuccessResponse(result, "Rental detail updated successfully"));
@@ -181,6 +258,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("{id}/calculate-late-fee")]
         public async Task<IActionResult> CalculateLateFee(int id, [FromQuery] DateTime actualReturnDate)
@@ -211,6 +289,44 @@ namespace Capstone.HPTY.API.Controllers.Manager
             catch (Exception ex)
             {
                 return StatusCode(500, ApiResponse<PagedResult<StaffPickupAssignmentDto>>.ErrorResponse(ex.Message));
+            }
+        }
+
+        private async Task<string> GetEquipmentSummaryForRental(RentOrder rentOrder)
+        {
+            try
+            {
+                // Build a summary of the equipment in the order
+                var equipmentItems = new List<string>();
+
+                if (rentOrder.RentOrderDetails != null && rentOrder.RentOrderDetails.Any())
+                {
+                    var hotpotCount = rentOrder.RentOrderDetails.Count;
+                    equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
+                }
+
+                return equipmentItems.Any()
+                    ? string.Join(", ", equipmentItems)
+                    : "equipment";
+            }
+            catch (Exception)
+            {
+                // If there's any error getting the equipment summary, return a generic message
+                return "equipment";
+            }
+        }
+
+        // Helper method to get customer name
+        private async Task<string> GetCustomerNameAsync(int userId)
+        {
+            try
+            {
+                var user = await _userService.GetByIdAsync(userId);
+                return user?.Name ?? "Unknown Customer";
+            }
+            catch
+            {
+                return "Unknown Customer";
             }
         }
     }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
@@ -14,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
     {
         Task<User> GetStaffByIdAsync(int userId);
         Task<IEnumerable<User>> GetAllStaffAsync();
-        Task<List<StaffAvailableDto>> GetAvailableStaffAsync();
+        Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null);
         Task<User> CreateStaffAsync(User staff);
         Task UpdateStaffAsync(int userId, User staffUpdate);
         Task DeleteStaffAsync(int userId);

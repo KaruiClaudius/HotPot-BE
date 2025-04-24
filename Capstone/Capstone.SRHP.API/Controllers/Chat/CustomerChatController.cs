@@ -1,11 +1,10 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Exceptions;
+﻿using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -16,12 +15,12 @@ using System.Threading.Tasks;
 public class CustomerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
-    private readonly IHubContext<ChatHub> _chatHubContext;
+    private readonly SocketIOClientService _socketService;
 
-    public CustomerChatController(IChatService chatService, IHubContext<ChatHub> chatHubContext)
+    public CustomerChatController(IChatService chatService, SocketIOClientService socketService)
     {
         _chatService = chatService;
-        _chatHubContext = chatHubContext;
+        _socketService = socketService;
     }
 
     // CUSTOMER-SPECIFIC ENDPOINTS
@@ -62,8 +61,8 @@ public class CustomerChatController : ControllerBase
 
             var session = await _chatService.CreateChatSessionAsync(request.CustomerId, request.Topic);
 
-            // Notify managers about the new chat request via SignalR
-            await _chatHubContext.Clients.Group("Managers").SendAsync("NewChatRequest",
+            // Notify managers about the new chat request via Socket.IO
+            await _socketService.SendNewChatRequestAsync(
                 session.ChatSessionId,
                 session.CustomerId,
                 session.CustomerName,
@@ -118,8 +117,8 @@ public class CustomerChatController : ControllerBase
         {
             var message = await _chatService.SaveMessageAsync(request.SenderId, request.ReceiverId, request.Message);
 
-            // Send the message to the receiver via SignalR
-            await _chatHubContext.Clients.User(request.ReceiverId.ToString()).SendAsync("ReceiveMessage",
+            // Send the message to the receiver via Socket.IO
+            await _socketService.SendMessageAsync(
                 message.ChatMessageId,
                 message.SenderUserId,
                 message.ReceiverUserId,
@@ -144,16 +143,11 @@ public class CustomerChatController : ControllerBase
         {
             var session = await _chatService.EndChatSessionAsync(sessionId);
 
-            // Notify both parties that the chat has ended
-            if (session.CustomerId > 0)
-            {
-                await _chatHubContext.Clients.User(session.CustomerId.ToString()).SendAsync("ChatEnded", sessionId);
-            }
-
-            if (session.ManagerId.HasValue)
-            {
-                await _chatHubContext.Clients.User(session.ManagerId.Value.ToString()).SendAsync("ChatEnded", sessionId);
-            }
+            // Notify both parties that the chat has ended via Socket.IO
+            await _socketService.EndChatSessionAsync(
+                sessionId,
+                session.CustomerId,
+                session.ManagerId);
 
             return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Chat session ended successfully"));
         }
@@ -176,11 +170,11 @@ public class CustomerChatController : ControllerBase
         if (!result)
             return NotFound(ApiResponse<bool>.ErrorResponse($"Message with ID {messageId} not found"));
 
-        // Get the message to notify the sender
+        // Get the message to notify the sender via Socket.IO
         var message = await _chatService.GetMessageByIdAsync(messageId);
         if (message != null)
         {
-            await _chatHubContext.Clients.User(message.SenderUserId.ToString()).SendAsync("MessageRead", messageId);
+            await _socketService.MarkMessageAsReadAsync(messageId, message.SenderUserId);
         }
 
         return Ok(ApiResponse<bool>.SuccessResponse(true, "Message marked as read successfully"));

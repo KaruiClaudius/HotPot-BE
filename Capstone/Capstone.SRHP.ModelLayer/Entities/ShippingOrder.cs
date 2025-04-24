@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -23,6 +24,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("Staff")]
         public int StaffId { get; set; }
 
+        [ForeignKey("Vehicle")]
+        public int? VehicleId { get; set; }
 
         [StringLength(500)]
         public string? DeliveryNotes { get; set; }
@@ -30,6 +33,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DefaultValue(false)]
         public bool IsDelivered { get; set; } = false;
 
+        public OrderSize OrderSize { get; set; } = OrderSize.Small;
+        public virtual Vehicle? Vehicle { get; set; }
 
         public virtual Order? Order { get; set; }
         public virtual User? Staff { get; set; }

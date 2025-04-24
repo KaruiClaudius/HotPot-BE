@@ -128,7 +128,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> VerifyEquipmentFaulty(
-            int id, [FromBody] VerifyEquipmentFaultyDto verifyDto)
+    int id, [FromBody] VerifyEquipmentFaultyDto verifyDto)
         {
             try
             {
@@ -158,17 +158,57 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var dto = MapToDetailDto(updatedRequest);
 
+                // Determine verification result text
+                string verificationResult = verifyDto.IsFaulty ? "faulty" : "not faulty";
+                string equipmentName = dto.EquipmentName;
+
                 // Notify managers about the verification
-                await _notificationService.NotifyReplacementStatusChangeAsync(updatedRequest);
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "ReplacementVerified",
+                    $"Equipment Verified as {verificationResult.ToUpper()}",
+                    $"{staff.Name} has verified the {equipmentName} as {verificationResult}",
+                    new Dictionary<string, object>
+                    {
+                { "RequestId", id },
+                { "EquipmentName", equipmentName },
+                { "EquipmentType", dto.EquipmentType },
+                { "IsFaulty", verifyDto.IsFaulty },
+                { "VerificationNotes", verifyDto.VerificationNotes },
+                { "VerifiedBy", staff.UserId },
+                { "VerifierName", staff.Name },
+                { "VerificationDate", DateTime.UtcNow },
+                { "Status", dto.Status },
+                { "NextSteps", verifyDto.IsFaulty ?
+                    "The replacement process will continue." :
+                    "The replacement request will be closed." }
+                    });
 
                 // Notify the customer if applicable
-                if (dto.CustomerId != 0)
+                if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyCustomerAboutReplacementAsync(updatedRequest);
+                    await _notificationService.NotifyUser(
+                        dto.CustomerId.Value,
+                        "ReplacementVerified",
+                        $"Your Equipment was Verified as {verificationResult.ToUpper()}",
+                        $"Our staff has verified your {equipmentName} as {verificationResult}",
+                        new Dictionary<string, object>
+                        {
+                    { "RequestId", id },
+                    { "EquipmentName", equipmentName },
+                    { "IsFaulty", verifyDto.IsFaulty },
+                    { "VerificationNotes", verifyDto.VerificationNotes },
+                    { "VerifierName", staff.Name },
+                    { "VerificationDate", DateTime.UtcNow },
+                    { "Status", dto.Status },
+                    { "NextSteps", verifyDto.IsFaulty ?
+                        "We will proceed with the replacement process." :
+                        "Since the equipment is not faulty, no replacement is needed. Your request will be closed." }
+                        });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
-                    dto, verifyDto.IsFaulty ? "Equipment verified as faulty" : "Equipment verified as not faulty"));
+                    dto, $"Equipment verified as {verificationResult}"));
             }
             catch (Exception ex)
             {
@@ -183,7 +223,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<ReplacementRequestDetailDto>>> CompleteReplacement(
-           int id, [FromBody] CompleteReplacementDto completeDto)
+      int id, [FromBody] CompleteReplacementDto completeDto)
         {
             try
             {
@@ -219,14 +259,45 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     id, completeDto.CompletionNotes);
 
                 var dto = MapToDetailDto(updatedRequest);
+                string equipmentName = dto.EquipmentName;
 
                 // Notify managers about the completion
-                await _notificationService.NotifyReplacementStatusChangeAsync(updatedRequest);
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "ReplacementCompleted",
+                    "Replacement Request Completed",
+                    $"{staff.Name} has completed the replacement for {equipmentName}",
+                    new Dictionary<string, object>
+                    {
+                { "RequestId", id },
+                { "EquipmentName", equipmentName },
+                { "EquipmentType", dto.EquipmentType },
+                { "CompletionNotes", completeDto.CompletionNotes },
+                { "CompletedBy", staff.UserId },
+                { "CompleterName", staff.Name },
+                { "CompletionDate", DateTime.UtcNow },
+                { "Status", dto.Status },
+                { "RequestReason", dto.RequestReason }
+                    });
 
                 // Notify the customer if applicable
-                if (dto.CustomerId != 0)
+                if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyCustomerAboutReplacementAsync(updatedRequest);
+                    await _notificationService.NotifyUser(
+                        dto.CustomerId.Value,
+                        "ReplacementCompleted",
+                        "Your Replacement Request is Complete",
+                        $"The replacement for your {equipmentName} has been completed",
+                        new Dictionary<string, object>
+                        {
+                    { "RequestId", id },
+                    { "EquipmentName", equipmentName },
+                    { "CompletionNotes", completeDto.CompletionNotes },
+                    { "CompleterName", staff.Name },
+                    { "CompletionDate", DateTime.UtcNow },
+                    { "Status", dto.Status },
+                    { "FeedbackPrompt", "Please let us know if you're satisfied with the replacement." }
+                        });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
