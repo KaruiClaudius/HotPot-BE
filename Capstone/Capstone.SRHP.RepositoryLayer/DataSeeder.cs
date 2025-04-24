@@ -148,7 +148,7 @@ namespace Capstone.HPTY.ModelLayer
                     Material = "Đồng",
                     Size = "M",
                     Description = "Nồi lẩu đồng truyền thống với hệ thống đốt than.",
-                    ImageURL = "https://example.com/images/classic-copper-hotpot.jpg",
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noilaudongcodien.jpg?alt=media&token=6f345d27-7ff9-43e6-8beb-e50f29578436"],
                     Price = 730000m, // ~29.99 USD
                     BasePrice = 2200000m, // ~89.99 USD
                     Quantity = 5,
@@ -160,7 +160,7 @@ namespace Capstone.HPTY.ModelLayer
                     Material = "Thép Không Gỉ",
                     Size = "L",
                     Description = "Nồi lẩu điện với điều khiển nhiệt độ và lớp phủ chống dính.",
-                    ImageURL = "https://example.com/images/modern-electric-hotpot.jpg",
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noi-lau-dien-sunhouse-shd4523-gia-re.jpg?alt=media&token=2d6c1dd9-c484-4dde-94a2-bdf52e511d0b"],
                     Price = 1460000m, // ~59.99 USD
                     BasePrice = 3170000m, // ~129.99 USD
                     Quantity = 2,
@@ -172,7 +172,7 @@ namespace Capstone.HPTY.ModelLayer
                     Material = "Nhôm",
                     Size = "S",
                     Description = "Nồi lẩu nhỏ gọn di động hoàn hảo cho du lịch hoặc các buổi tụ họp nhỏ.",
-                    ImageURL = "https://example.com/images/mini-portable-hotpot.jpg",
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noi-lau-mini-lebenlang-lbec0808-shr-1000x1000.jpg?alt=media&token=92f6bcd1-169c-43c0-8e73-013cb8a68637"],
                     Price = 490000m, // ~19.99 USD
                     BasePrice = 1710000m, // ~69.99 USD
                     Quantity = 2,
@@ -184,7 +184,7 @@ namespace Capstone.HPTY.ModelLayer
                     Material = "Thép Không Gỉ",
                     Size = "L",
                     Description = "Nồi lẩu đa ngăn cho phép nấu nhiều loại nước lẩu khác nhau trong một nồi.",
-                    ImageURL = "https://example.com/images/dual-section-hotpot.jpg",
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-hai-ngan.jpg?alt=media%token=4c530d54-dafd-45fe-8d77-7b6c45a81b5a"],
                     Price = 1710000m, // ~69.99 USD
                     BasePrice = 3660000m, // ~149.99 USD
                     Quantity = 2,
@@ -196,7 +196,8 @@ namespace Capstone.HPTY.ModelLayer
                     Material = "Gốm",
                     Size = "M",
                     Description = "Nồi lẩu gốm truyền thống giữ nhiệt cực tốt.",
-                    ImageURL = "https://example.com/images/traditional-ceramic-hotpot.jpg",
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau%20inox.jpg?alt=media&token=e4963f3f-5130-4485-9932-39cecd7a98af",
+                                "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau%20inox%202.jpg?alt=media&token=4dda3d4c-3ba3-4cd0-96fc-d4ff505c5887"],
                     Price = 980000m, // ~39.99 USD
                     BasePrice = 1950000m, // ~79.99 USD
                     Quantity = 4,
@@ -432,9 +433,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 1,
                     Name = "Thịt Bò Cắt Lát",
                     Description = "Thịt bò cao cấp cắt lát mỏng hoàn hảo cho lẩu.",
-                    ImageURL = "https://example.com/images/sliced-beef.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/89d16277-5f5d-45f0-9be4-6d710ecf2eaa.png?alt=media&token=a0db0650-a99e-4044-8552-88b096956487",
                     MinStockLevel = 20,
-                    Quantity = 100,
                     IngredientTypeId = 7,
                 },
                 new Ingredient
@@ -442,9 +442,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 2,
                     Name = "Thịt Cừu Cắt Lát",
                     Description = "Thịt cừu mềm cắt lát, hoàn hảo cho nấu nhanh.",
-                    ImageURL = "https://example.com/images/lamb-slices.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/thit-cuu-cat-lat.jpg?alt=media&token=c2d6bbbd-b69d-450a-8d0e-396b135f35f3",
                     MinStockLevel = 15,
-                    Quantity = 80,
                     IngredientTypeId = 7,
                 },
                 new Ingredient
@@ -452,9 +451,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 3,
                     Name = "Ba Chỉ Heo",
                     Description = "Thịt ba chỉ heo cắt mỏng với tỷ lệ mỡ-thịt hoàn hảo.",
-                    ImageURL = "https://example.com/images/pork-belly.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/ba-chi-heo.png?alt=media&token=83bbc055-4726-4c68-8ede-f0a0ea17c2d4",
                     MinStockLevel = 15,
-                    Quantity = 75,
                     IngredientTypeId = 7,
                 },
 
@@ -463,9 +461,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 4,
                     Name = "Tôm",
                     Description = "Tôm tươi, đã bóc vỏ và làm sạch.",
-                    ImageURL = "https://example.com/images/shrimp.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/shrimps.jpg?alt=media&token=3ef01d1a-0df5-4f5a-b8db-b1fe34ae89ca",
                     MinStockLevel = 20,
-                    Quantity = 90,
                     IngredientTypeId = 2,
                 },
                 new Ingredient
@@ -473,9 +470,9 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 5,
                     Name = "Cá Viên",
                     Description = "Cá viên đàn hồi làm từ cá tươi xay.",
-                    ImageURL = "https://example.com/images/fish-balls.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/C%C3%A1-vi%C3%AAn-g%E1%BA%A7n-nh%C6%B0-%C4%91%C6%B0%E1%BB%A3c-l%C3%A0m-m%C3%B3n-%C4%83n-ph%E1%BB%95-bi%E1%BA%BFn-nh%C6%B0-c%C3%A1-vi%C3%AAn-chi%C3%AAn.jpg?alt=media&token=98bd96d8-124e-4883-afa0-4482913cadfa",
                     MinStockLevel = 30,
-                    Quantity = 120,
+
                     IngredientTypeId = 2,
                 },
                 new Ingredient
@@ -483,9 +480,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 6,
                     Name = "Mực",
                     Description = "Mực tươi cắt thành khoanh.",
-                    ImageURL = "https://example.com/images/squid.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/M%E1%BB%B1c-t%C6%B0%C6%A1i-2-532x532.jpg?alt=media&token=1cd9d76a-0435-4fc3-b773-64af8b515e76",
                     MinStockLevel = 15,
-                    Quantity = 60,
                     IngredientTypeId = 2,
                 },
 
@@ -495,9 +491,9 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 7,
                     Name = "Cải Thảo",
                     Description = "Rau giòn, lá xanh hoàn hảo cho lẩu.",
-                    ImageURL = "https://example.com/images/napa-cabbage.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/1ad2d8b1-30c1-45c6-aa26-fe898a065120.png?alt=media&token=918e0ce5-e455-4391-9d17-f7430b41c195",
                     MinStockLevel = 25,
-                    Quantity = 100,
+
                     IngredientTypeId = 3,
                 },
                 new Ingredient
@@ -505,9 +501,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 8,
                     Name = "Rau Chân Vịt",
                     Description = "Rau chân vịt tươi, đã rửa sạch và sẵn sàng để nấu.",
-                    ImageURL = "https://example.com/images/spinach.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/spinach.png?alt=media&token=4ae0c9f7-e3a3-48bc-b56a-8594a0d081f2",
                     MinStockLevel = 20,
-                    Quantity = 80,
                     IngredientTypeId = 3,
                 },
                 new Ingredient
@@ -515,9 +510,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 9,
                     Name = "Bắp",
                     Description = "Bắp ngọt cắt thành miếng vừa ăn.",
-                    ImageURL = "https://example.com/images/corn.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/corn.jpg?alt=media&token=3d64d225-6be7-4c8f-b8b4-8b19a220d09b",
                     MinStockLevel = 15,
-                    Quantity = 70,
                     IngredientTypeId = 3,
                 },
 
@@ -527,9 +521,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 10,
                     Name = "Mì Udon",
                     Description = "Mì lúa mì Nhật Bản dày và dai.",
-                    ImageURL = "https://example.com/images/udon-noodles.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/udon.png?alt=media&token=c05be1ca-db95-4dd2-8d36-c9567b3f7ea0",
                     MinStockLevel = 20,
-                    Quantity = 80,
                     IngredientTypeId = 4,
                 },
                 new Ingredient
@@ -537,9 +530,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 11,
                     Name = "Miến",
                     Description = "Miến trong suốt làm từ tinh bột đậu xanh.",
-                    ImageURL = "https://example.com/images/glass-noodles.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/1663922149_8W3viNBAwDyUEHTj_1663931837-php9bcja8.png?alt=media&token=8a3b05d0-3cdb-4916-b451-f1ee01d38cbf",
                     MinStockLevel = 20,
-                    Quantity = 85,
                     IngredientTypeId = 4,
                 },
                 new Ingredient
@@ -547,9 +539,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 12,
                     Name = "Mì Ramen",
                     Description = "Mì lúa mì xoăn hoàn hảo cho lẩu.",
-                    ImageURL = "https://example.com/images/ramen-noodles.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/mi-ramen-luoc-cap-dong%20(2).png?alt=media&token=5826d348-02c2-4ded-b350-c70cc7ebc42e",
                     MinStockLevel = 25,
-                    Quantity = 90,
                     IngredientTypeId = 4,
                 },
 
@@ -559,9 +550,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 13,
                     Name = "Đậu Phụ Cứng",
                     Description = "Đậu phụ cứng cắt khối giữ nguyên hình dạng trong lẩu.",
-                    ImageURL = "https://example.com/images/firm-tofu.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/tofu.png?alt=media&token=31b50c1e-c030-43a7-9eed-a9543f30b51d",
                     MinStockLevel = 15,
-                    Quantity = 60,
                     IngredientTypeId = 5,
                 },
                 new Ingredient
@@ -569,9 +559,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 14,
                     Name = "Đậu Phụ Chiên",
                     Description = "Đậu phụ chiên giòn hấp thụ hương vị nước lẩu.",
-                    ImageURL = "https://example.com/images/tofu-puffs.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/fried-tofu.png?alt=media&token=e645c47c-95f5-4a45-9407-4d99464e0023",
                     MinStockLevel = 15,
-                    Quantity = 65,
                     IngredientTypeId = 5,
                 },
 
@@ -580,9 +569,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 15,
                     Name = "Nấm Hương",
                     Description = "Nấm hương thơm ngon, tươi hoặc khô.",
-                    ImageURL = "https://example.com/images/shiitake.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/mnam-huong.png?alt=media&token=f6e2ec47-ad19-4688-b20b-ffba6ae5fd7a",
                     MinStockLevel = 15,
-                    Quantity = 70,
                     IngredientTypeId = 6,
                 },
                 new Ingredient
@@ -590,9 +578,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 16,
                     Name = "Nấm Kim Châm",
                     Description = "Nấm kim châm mỏng, thân dài.",
-                    ImageURL = "https://example.com/images/enoki.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/nam-kim-cham.png?alt=media&token=060215f1-02b2-402e-83e4-ba93d2535928",
                     MinStockLevel = 15,
-                    Quantity = 65,
                     IngredientTypeId = 6,
                 },
 
@@ -602,9 +589,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 17,
                     Name = "Nước Lẩu Tứ Xuyên Cay",
                     Description = "Nước lẩu cay truyền thống với hạt tiêu Tứ Xuyên và dầu ớt.",
-                    ImageURL = "https://example.com/images/sichuan-broth.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-tu-xuyen-cay.png?alt=media&token=cb8f5064-ee26-499b-8fe9-f3f4a6adc473",
                     MinStockLevel = 10,
-                    Quantity = 50,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -612,9 +598,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 18,
                     Name = "Nước Lẩu Cà Chua",
                     Description = "Nước lẩu cà chua chua ngọt.",
-                    ImageURL = "https://example.com/images/tomato-broth.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-ca-chua.png?alt=media&token=8fcf88b3-6128-4689-aab0-e64a48ce8b5a",
                     MinStockLevel = 10,
-                    Quantity = 45,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -622,9 +607,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 19,
                     Name = "Nước Lẩu Nấm",
                     Description = "Nước lẩu đậm đà làm từ nhiều loại nấm.",
-                    ImageURL = "https://example.com/images/mushroom-broth.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-nam.jpg?alt=media&token=d2080167-804c-4909-9bef-1d7e8e7dcfdc",
                     MinStockLevel = 10,
-                    Quantity = 40,
                     IngredientTypeId = 1,
                 },
                 new Ingredient
@@ -632,9 +616,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 20,
                     Name = "Nước Lẩu Xương Trong",
                     Description = "Nước lẩu nhẹ, trong làm từ xương hầm nhiều giờ.",
-                    ImageURL = "https://example.com/images/bone-broth.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-xuong-trong.jpg?alt=media&token=49407a13-5f3e-47a0-8126-bab93c157b69",
                     MinStockLevel = 10,
-                    Quantity = 55,
                     IngredientTypeId = 1,
                 },
 
@@ -644,9 +627,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 21,
                     Name = "Sốt Mè",
                     Description = "Sốt kem làm từ hạt mè xay.",
-                    ImageURL = "https://example.com/images/sesame-sauce.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-me.jpg?alt=media&token=560bf6c4-26fb-4adb-b543-308089fd0e40",
                     MinStockLevel = 10,
-                    Quantity = 40,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -654,9 +636,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 22,
                     Name = "Nước Tương Tỏi",
                     Description = "Nước tương pha với tỏi băm.",
-                    ImageURL = "https://example.com/images/garlic-soy.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-tuong-toi.png?alt=media&token=fe07fff2-694d-420f-aea0-9bd6723f0798",
                     MinStockLevel = 10,
-                    Quantity = 45,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -664,9 +645,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 23,
                     Name = "Dầu Ớt",
                     Description = "Dầu cay làm từ ớt ngâm dầu.",
-                    ImageURL = "https://example.com/images/chili-oil.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/dau-ot.png?alt=media&token=0ed694a6-cdfe-4a7a-b788-8f679ab5a86f",
                     MinStockLevel = 10,
-                    Quantity = 50,
                     IngredientTypeId = 8,
                 },
                 new Ingredient
@@ -674,9 +654,8 @@ namespace Capstone.HPTY.ModelLayer
                     IngredientId = 24,
                     Name = "Tương Sa Tế",
                     Description = "Sốt đậm đà làm từ dầu đậu nành, tỏi, hành và hải sản khô.",
-                    ImageURL = "https://example.com/images/shacha-sauce.jpg",
+                    ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-sa-te.png?alt=media&token=fae51735-1dc5-4fb2-b950-27163f9eebdc",
                     MinStockLevel = 10,
-                    Quantity = 35,
                     IngredientTypeId = 8,
                 }
             );
@@ -911,15 +890,6 @@ namespace Capstone.HPTY.ModelLayer
                     Status = MaintenanceStatus.Completed,
                     LoggedDate = DateTime.UtcNow.AddHours(7),
                     HotPotInventoryId = 9
-                },
-                new DamageDevice
-                {
-                    DamageDeviceId = 4,
-                    Name = "Đĩa Bị Vỡ",
-                    Description = "Đĩa bị vỡ và cần được thay thế.",
-                    Status = MaintenanceStatus.Cancelled,
-                    LoggedDate = DateTime.UtcNow.AddHours(7),
-                    UtensilId = 5
                 }
             );
         }

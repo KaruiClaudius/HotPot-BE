@@ -40,7 +40,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(request);
 
                 // Determine equipment type and name for the notification
-                string equipmentType = DetermineEquipmentType(request);
+                //string equipmentType = DetermineEquipmentType(request);
                 string equipmentName = await GetEquipmentNameAsync(request);
 
                 // Notify administrators about the new condition log
@@ -52,7 +52,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     new Dictionary<string, object>
                     {
                 { "ConditionLogId", result.DamageDeviceId },
-                { "EquipmentType", equipmentType },
+                //{ "EquipmentType", equipmentType },
                 { "EquipmentName", equipmentName },
                 { "IssueName", request.Name },
                 { "Description", request.Description },
@@ -158,15 +158,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        private string DetermineEquipmentType(CreateEquipmentConditionRequest request)
-        {
-            if (request.HotPotInventoryId.HasValue)
-                return "HotPot";
-            else if (request.UtensilId.HasValue)
-                return "Utensil";
-            else
-                return "Unknown";
-        }
+        //private string DetermineEquipmentType(CreateEquipmentConditionRequest request)
+        //{
+        //    if (request.HotPotInventoryId.HasValue)
+        //        return "HotPot";
+        //    else
+        //        return "Unknown";
+        //}
 
         private async Task<string> GetEquipmentNameAsync(CreateEquipmentConditionRequest request)
         {
@@ -176,11 +174,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 {
                     var hotpot = await _hotpotService.GetByInvetoryIdAsync(request.HotPotInventoryId.Value);
                     return hotpot?.Hotpot.Name ?? $"HotPot #{request.HotPotInventoryId.Value}";
-                }
-                else if (request.UtensilId.HasValue)
-                {
-                    var utensil = await _utensilService.GetUtensilByIdAsync(request.UtensilId.Value);
-                    return utensil?.Name ?? $"Utensil #{request.UtensilId.Value}";
                 }
 
                 return "Unknown Equipment";

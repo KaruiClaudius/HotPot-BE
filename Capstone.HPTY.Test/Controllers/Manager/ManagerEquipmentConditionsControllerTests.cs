@@ -138,7 +138,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Description = "The heating element is not working properly",
                 Status = MaintenanceStatus.Pending,
                 HotPotInventoryId = 123,
-                UtensilId = null
+                //UtensilId = null
             };
 
             var expectedResult = new EquipmentConditionDetailDto

@@ -172,7 +172,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     {
                 { "RequestId", id },
                 { "EquipmentName", equipmentName },
-                { "EquipmentType", dto.EquipmentType },
+                //{ "EquipmentType", dto.EquipmentType },
                 { "IsFaulty", verifyDto.IsFaulty },
                 { "VerificationNotes", verifyDto.VerificationNotes },
                 { "VerifiedBy", staff.UserId },
@@ -271,7 +271,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     {
                 { "RequestId", id },
                 { "EquipmentName", equipmentName },
-                { "EquipmentType", dto.EquipmentType },
+                //{ "EquipmentType", dto.EquipmentType },
                 { "CompletionNotes", completeDto.CompletionNotes },
                 { "CompletedBy", staff.UserId },
                 { "CompleterName", staff.Name },

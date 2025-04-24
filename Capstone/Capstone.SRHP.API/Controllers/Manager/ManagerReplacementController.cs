@@ -97,7 +97,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     {
                 { "RequestId", id },
                 { "EquipmentName", equipmentName },
-                { "EquipmentType", dto.EquipmentType },
+                //{ "EquipmentType", dto.EquipmentType },
                 { "IsApproved", reviewDto.IsApproved },
                 { "Status", dto.Status },
                 { "ReviewNotes", reviewDto.ReviewNotes },
@@ -173,7 +173,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         {
                     { "RequestId", id },
                     { "EquipmentName", equipmentName },
-                    { "EquipmentType", dto.EquipmentType },
+                    //{ "EquipmentType", dto.EquipmentType },
                     { "RequestReason", dto.RequestReason },
                     { "CustomerName", dto.CustomerName },
                     { "CustomerId", dto.CustomerId },

@@ -1,6 +1,7 @@
 ﻿using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.API.SideServices;
 using Capstone.HPTY.ServiceLayer.DTOs.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Text.RegularExpressions;
