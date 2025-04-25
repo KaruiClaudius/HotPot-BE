@@ -72,11 +72,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("User")]
         public int UserId { get; set; }
 
-        [Required]
-        [ForeignKey("HotpotBroth")]
-        public int HotpotBrothId { get; set; }
-
-
         [ForeignKey("Combo")]
         public int? ComboId { get; set; }
 
@@ -84,7 +79,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int? AppliedDiscountId { get; set; }
 
         public virtual User User { get; set; } = null!;
-        public virtual Ingredient HotpotBroth { get; set; } = null!;
         public virtual Combo Combo { get; set; } = null!;
         public virtual ICollection<SellOrderDetail>? SellOrderDetails { get; set; }
         public virtual ICollection<CustomizationIngredient> CustomizationIngredients { get; set; } = new List<CustomizationIngredient>();

@@ -4,7 +4,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -76,10 +76,18 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 string customerName = feedback.User?.Name ?? "Customer";
 
                 // Notify admins about the new feedback that needs approval
-                await _notificationService.NotifyNewFeedback(
-                    feedback.FeedbackId,
-                    customerName,
-                    feedback.Title);
+                await _notificationService.NotifyRole(
+                    "Admins",
+                    "NewFeedback",
+                    "New Feedback Received",
+                    $"New feedback from {customerName}: {feedback.Title}",
+                    new Dictionary<string, object>
+                    {
+                { "FeedbackId", feedback.FeedbackId },
+                { "CustomerName", customerName },              
+                { "FeedbackTitle", feedback.Title },                       
+                { "SubmissionDate", feedback.CreatedAt },            
+                    });
 
                 return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId },
                     ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(feedback, "Feedback created successfully. It will be reviewed by an administrator."));

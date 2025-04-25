@@ -46,7 +46,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _utensilService = utensilService;
         }
 
-        public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId, DateTime? expectedReturnDate, CreatePaymentLinkRequest paymentRequest, int userId)
+        public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId,
+               DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
         {
             try
             {
@@ -77,7 +78,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Address = address,
                     Notes = notes,
                     DiscountId = discountId,
-                    ExpectedReturnDate = expectedReturnDate
+                    ExpectedReturnDate = expectedReturnDate,
+                    DeliveryTime = deliveryTime
                 };
 
                 try
@@ -164,12 +166,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId, DateTime? expectedReturnDate, int userId)
+        public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId,
+      DateTime? expectedReturnDate, DateTime? deliveryTime, int userId)
         {
             try
             {
                 // 1. Get the order with all details
                 var order = await GetOrderByIdAsync(orderId);
+
+                // Validate order is in Cart status
+                if (order.Status != OrderStatus.Cart)
+                {
+                    throw new ValidationException("Only orders in Cart status can be processed for payment");
+                }
 
                 // 2. Verify inventory availability
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
@@ -178,18 +187,38 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     throw new ValidationException($"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}");
                 }
 
-                // 3. Update the order details
+                // 3. Validate delivery time
+                if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.Now)
+                {
+                    throw new ValidationException("Delivery time must be set and be in the future");
+                }
+
+                // 4. Validate expected return date for rental orders
+                if (order.HasRentItems)
+                {
+                    // Get current time with offset (local current time)
+                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
+
+                    // Check if provided date is valid (future compared to current time)
+                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
+                    {
+                        throw new ValidationException("Expected return date must be in the future");
+                    }
+                }
+
+                // 5. Update the order details
                 var updateRequest = new UpdateOrderRequest
                 {
                     Address = address,
                     Notes = notes,
                     DiscountId = discountId,
-                    ExpectedReturnDate = expectedReturnDate
+                    ExpectedReturnDate = expectedReturnDate,
+                    DeliveryTime = deliveryTime
                 };
 
                 order = await OrderUpdateAsync(orderId, updateRequest);
 
-                // 4. Create payment record
+                // 6. Create payment record
                 var payment = new Payment
                 {
                     TransactionCode = int.Parse(DateTimeOffset.Now.ToString("ffffff")),
@@ -197,16 +226,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     OrderId = orderId,
                     Price = order.TotalPrice,
                     Type = PaymentType.Cash,
-                    Status = PaymentStatus.Pending,
+                    Status = PaymentStatus.Success, // Cash payments are immediately successful
                     Purpose = PaymentPurpose.OrderPayment
                 };
 
                 await _unitOfWork.Repository<Payment>().InsertAsync(payment);
 
-                // 5. Finalize inventory deduction for cash payments
+                // 7. Finalize inventory deduction for cash payments
                 await FinalizeInventoryDeduction(order);
 
-                // 6. Update order status to Processing
+                // 8. Update order status to Processing
                 order.Status = OrderStatus.Processing;
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
@@ -255,12 +284,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return new Response(-1, "Fail", null);
             }
         }
+
         public async Task<Response> CancelOrder(int orderCode, string reason)
         {
             try
             {
-                var paymentTransaction = (await _unitOfWork.Repository<Payment>()
-                    .GetWhere(pt => pt.TransactionCode == orderCode)).SingleOrDefault();
+                var paymentTransaction = await _unitOfWork.Repository<Payment>()
+                    .FindAsync(pt => pt.TransactionCode == orderCode);
 
                 if (paymentTransaction == null)
                 {
@@ -281,7 +311,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await _unitOfWork.CommitAsync();
 
                 // Cancel the payment link in PayOS
-                PaymentLinkInformation paymentLinkInformation = await _payOS.cancelPaymentLink(orderCode, reason);
+                PaymentLinkInformation paymentLinkInformation = null;
+                if (paymentTransaction.Type == PaymentType.Online)
+                {
+                    paymentLinkInformation = await _payOS.cancelPaymentLink(orderCode, reason);
+                }
 
                 return new Response(0, "Ok", paymentLinkInformation);
             }
@@ -310,23 +344,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             try
             {
-                // Use AsNoTracking for the initial query if you're going to update later
+                // Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
                 if (user == null)
                 {
                     return new Response(-1, "User not found", null);
                 }
 
-
+                // Get payment information from PayOS
                 PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
                 if (paymentLinkInformation == null)
                 {
                     return new Response(-1, "Payment information not found", null);
                 }
 
-
-                var paymentTransaction = (await _unitOfWork.Repository<Payment>()
-                    .GetWhere(pt => pt.TransactionCode == request.OrderCode)).SingleOrDefault();
+                // Get payment transaction
+                var paymentTransaction = await _unitOfWork.Repository<Payment>()
+                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
                 if (paymentTransaction == null)
                 {
                     return new Response(-1, "Transaction not found", null);
@@ -335,7 +369,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Get the order
                 var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
 
-
+                // Process based on payment status
                 if (paymentLinkInformation.status == "PAID" && paymentTransaction.Status == PaymentStatus.Pending)
                 {
                     // Update transaction
@@ -423,12 +457,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        /// <summary>
+        /// Process additional fee payment (late fee or damage fee)
+        /// </summary>
         public async Task<Payment> ProcessAdditionalFeePaymentAsync(
-    int orderId,
-    PaymentPurpose feeType,
-    decimal amount,
-    PaymentType paymentType,
-    string notes = null)
+            int orderId,
+            PaymentPurpose feeType,
+            decimal amount,
+            PaymentType paymentType,
+            string notes = null)
         {
             try
             {
@@ -441,10 +478,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Get the order
                 var order = await GetOrderByIdAsync(orderId);
 
-                // Validate order status - only allow additional fees for orders that are not pending
-                if (order.Status == OrderStatus.Pending)
+                // Validate order status - only allow additional fees for orders that are not in Cart status
+                if (order.Status == OrderStatus.Cart)
                 {
-                    throw new ValidationException("Cannot add additional fees to pending orders");
+                    throw new ValidationException("Cannot add additional fees to cart orders");
                 }
 
                 // Validate that the order has a rent order
@@ -461,7 +498,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     OrderId = orderId,
                     Price = amount,
                     Type = paymentType,
-                    Status = PaymentStatus.Pending,
+                    Status = paymentType == PaymentType.Cash ? PaymentStatus.Success : PaymentStatus.Pending,
                     Purpose = feeType
                 };
 
@@ -505,10 +542,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<Payment> ProcessLateFeePaymentAsync(
-            int orderId,
-            decimal amount,
-            PaymentType paymentType,
-            string notes = null)
+               int orderId,
+               decimal amount,
+               PaymentType paymentType,
+               string notes = null)
         {
             return await ProcessAdditionalFeePaymentAsync(orderId, PaymentPurpose.LateFee, amount, paymentType, notes);
         }
@@ -725,6 +762,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
 
+
         public async Task<Response> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
         {
             try
@@ -864,6 +902,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+
+        /// <summary>
+        /// Unified method to verify cart items availability
+        /// </summary>
         private async Task<CartVerificationResult> VerifyCartItemsAvailabilityAsync(Order order)
         {
             var result = new CartVerificationResult
@@ -880,6 +922,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (detail.IngredientId.HasValue)
                     {
                         var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
+                        if (ingredient == null)
+                        {
+                            result.AllItemsAvailable = false;
+                            result.UnavailableItems.Add($"Ingredient ID {detail.IngredientId.Value} not found");
+                            continue;
+                        }
+
                         if (ingredient.Quantity < detail.Quantity)
                         {
                             result.AllItemsAvailable = false;
@@ -889,6 +938,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     else if (detail.UtensilId.HasValue)
                     {
                         var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+                        if (utensil == null)
+                        {
+                            result.AllItemsAvailable = false;
+                            result.UnavailableItems.Add($"Utensil ID {detail.UtensilId.Value} not found");
+                            continue;
+                        }
+
                         if (utensil.Quantity < detail.Quantity)
                         {
                             result.AllItemsAvailable = false;
@@ -962,6 +1018,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             return result;
         }
 
+        /// <summary>
+        /// Unified method to finalize inventory deduction after payment
+        /// </summary>
         private async Task FinalizeInventoryDeduction(Order order)
         {
             // This method actually deducts inventory quantities after payment is confirmed
@@ -971,18 +1030,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (detail.IngredientId.HasValue)
                     {
-                        await _ingredientService.UpdateIngredientQuantityAsync(
-                            detail.IngredientId.Value, -detail.Quantity);
+                        try
+                        {
+                            // Use the ConsumeIngredientAsync method instead of directly modifying Quantity
+                            int consumed = await _ingredientService.ConsumeIngredientAsync(
+                                detail.IngredientId.Value,
+                                detail.Quantity);
+
+                            if (consumed < detail.Quantity)
+                            {
+                                // Log a warning if we couldn't consume the full amount
+                                _logger.LogWarning(
+                                    "Could not consume full quantity for ingredient ID {IngredientId}. Requested: {Requested}, Consumed: {Consumed}",
+                                    detail.IngredientId.Value,
+                                    detail.Quantity,
+                                    consumed);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the error but continue processing other items
+                            _logger.LogError(ex,
+                                "Error consuming ingredient ID {IngredientId} with quantity {Quantity}",
+                                detail.IngredientId.Value,
+                                detail.Quantity);
+                        }
                     }
                     else if (detail.UtensilId.HasValue)
                     {
-                        await _utensilService.UpdateUtensilQuantityAsync(
-                            detail.UtensilId.Value, -detail.Quantity);
+                        var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+                        if (utensil != null)
+                        {
+                            // Deduct from inventory
+                            utensil.Quantity -= detail.Quantity;
+                            await _unitOfWork.Repository<Utensil>().Update(utensil, utensil.UtensilId);
+                        }
                     }
                 }
             }
 
-            // For hotpots, we just need to update their status to Rented
+            // For hotpots, we update their status to Rented
             if (order.RentOrder != null)
             {
                 // Track which hotpot types need quantity updates
@@ -1016,6 +1103,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        /// <summary>
+        /// Count hotpot inventory by status
+        /// </summary>
         private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
         {
             try
@@ -1035,9 +1125,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        /// <summary>
+        /// Release inventory reservations when cancelling an order
+        /// </summary>
         private async Task ReleaseInventoryReservation(Order order)
         {
-            // This method releases all reservations for an order
             // For hotpots, we need to update their status back to Available
             if (order.RentOrder != null)
             {
@@ -1171,8 +1263,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     depositAmount = order.RentOrder.SubTotal * 0.7m;
 
                     depositRefunded = payments
-                        .Where(p => p.Status == PaymentStatus.Success && p.Purpose == PaymentPurpose.DepositRefund)
-                        .Sum(p => -p.Price);
+                     .Where(p => p.Status == PaymentStatus.Success && p.Purpose == PaymentPurpose.DepositRefund)
+                     .Sum(p => -p.Price);
                 }
 
                 // Create summary
@@ -1290,8 +1382,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         // Release inventory reservations
                         await ReleaseInventoryReservation(order);
 
-                        // We don't need to update hotpot quantities here since ReleaseInventoryReservation already does it
-
                         // Cancel any pending payments
                         var pendingPayments = (await GetListPaymentByOrderIdAsync(orderId))
                             .Where(p => p.Status == PaymentStatus.Pending)
@@ -1334,10 +1424,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        /// <summary>
+        /// Validate if a status transition is allowed
+        /// </summary>
         private bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
         {
             switch (currentStatus)
             {
+                case OrderStatus.Cart:
+                    return newStatus == OrderStatus.Pending || newStatus == OrderStatus.Cancelled;
                 case OrderStatus.Pending:
                     return newStatus == OrderStatus.Processing || newStatus == OrderStatus.Cancelled;
                 case OrderStatus.Processing:
@@ -1349,24 +1444,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 case OrderStatus.Returning:
                     return newStatus == OrderStatus.Completed;
                 case OrderStatus.Completed:
-                    return false; 
+                    return false; // Terminal state
                 case OrderStatus.Cancelled:
-                    return false; 
+                    return false; // Terminal state
                 default:
                     return false;
             }
         }
 
-
+        /// <summary>
+        /// Update order details
+        /// </summary>
         private async Task<Order> OrderUpdateAsync(int id, UpdateOrderRequest request)
         {
             try
             {
                 var order = await GetOrderByIdAsync(id);
 
-                // Only allow updates for pending orders
-                if (order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Only pending orders can be updated");
+                // Only allow updates for cart or pending orders
+                if (order.Status != OrderStatus.Cart && order.Status != OrderStatus.Pending)
+                    throw new ValidationException("Only cart or pending orders can be updated");
 
                 // Update order properties
                 if (!string.IsNullOrWhiteSpace(request.Address))
@@ -1375,10 +1472,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (!string.IsNullOrWhiteSpace(request.Notes))
                     order.Notes = request.Notes;
 
+                // Update delivery time if provided
+                if (request.DeliveryTime.HasValue)
+                {
+                    // Validate delivery time is in the future
+                    if (request.DeliveryTime.Value <= DateTime.Now)
+                    {
+                        throw new ValidationException("Delivery time must be in the future");
+                    }
+
+                    order.DeliveryTime = request.DeliveryTime.Value;
+                }
+
                 // Update rental dates if provided and order has rental items
                 if (order.RentOrder != null && request.ExpectedReturnDate.HasValue)
                 {
-
                     DateTime today = DateTime.UtcNow.AddHours(7);
                     order.RentOrder.RentalStartDate = today;
                     DateTime expectedReturnDate = request.ExpectedReturnDate.Value;
@@ -1438,6 +1546,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     order.DiscountId = null;
                 }
 
+                // Update order status from Cart to Pending if it's currently in Cart status
+                if (order.Status == OrderStatus.Cart)
+                {
+                    order.Status = OrderStatus.Pending;
+                }
+
                 // Update order
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, id);
@@ -1461,6 +1575,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
 
+        /// <summary>
+        /// Get order by ID with all related entities
+        /// </summary>
         private async Task<Order> GetOrderByIdAsync(int id)
         {
             try

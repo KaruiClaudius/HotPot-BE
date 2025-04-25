@@ -85,6 +85,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     request.Notes,
                     request.DiscountId,
                     request.ExpectedReturnDate,
+                    request.DeliveryTime,
                     paymentLinkRequest,
                     userId);
 
@@ -134,6 +135,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     request.Notes,
                     request.DiscountId,
                     request.ExpectedReturnDate,
+                    request.DeliveryTime,
                     userId);
 
                 return Ok(new

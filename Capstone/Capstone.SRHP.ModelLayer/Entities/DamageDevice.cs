@@ -30,16 +30,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DataType(DataType.DateTime)]
         public DateTime LoggedDate { get; set; }
 
-        public int? UtensilId { get; set; }
+        [DataType(DataType.DateTime)]
+        public DateTime? FinishDate { get; set; }
+
         public int? HotPotInventoryId { get; set; }
 
 
         [ForeignKey(nameof(HotPotInventoryId))]
         public virtual HotPotInventory? HotPotInventory { get; set; }
-
-        [ForeignKey(nameof(UtensilId))]
-        public virtual Utensil? Utensil { get; set; }
-
         public virtual ICollection<ReplacementRequest>? ReplacementRequests { get; set; }
 
     }

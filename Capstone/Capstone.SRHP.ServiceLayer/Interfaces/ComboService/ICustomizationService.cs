@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
-    public interface ICustomizationService : IBaseService<Customization>
+    public interface ICustomizationService 
     {
         Task<PagedResult<Customization>> GetCustomizationsAsync(
         string searchTerm = null,
@@ -25,20 +25,23 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         string sortBy = "CreatedAt",
         bool ascending = false);
 
+        Task<Customization?> GetByIdAsync(int id);
+
         Task<Customization> CreateCustomizationAsync(
-            int? comboId,
-            int userId,
-            string name,
-            string? note,
-            int size,
-            int brothId,
-            List<CustomizationIngredientsRequest> ingredients,
-            string[]? imageURLs = null);
+                 int? comboId,  // Accept nullable comboId
+                 int userId,
+                 string name,
+                 string? note,
+                 int size,
+                 List<CustomizationIngredientsRequest> ingredients,
+                 string[]? imageURLs = null);
         Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientsRequest> ingredients);
+
+        Task DeleteAsync(int id);
+
         Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
             int? comboId,
             int size,
-            int brothId,
             List<CustomizationIngredientsRequest> ingredients);
     }
 }

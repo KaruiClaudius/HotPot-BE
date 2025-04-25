@@ -158,8 +158,8 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                     ? query.OrderByDescending(so => so.IsDelivered)
                     : query.OrderBy(so => so.IsDelivered),
                 "deliverytime" => queryParams.SortDescending
-                    ? query.OrderByDescending(so => so.DeliveryTime)
-                    : query.OrderBy(so => so.DeliveryTime),
+                    ? query.OrderByDescending(so => so.Order.DeliveryTime)
+                    : query.OrderBy(so => so.Order.DeliveryTime),
                 "date" => queryParams.SortDescending
                     ? query.OrderByDescending(so => so.CreatedAt)
                     : query.OrderBy(so => so.CreatedAt),
@@ -174,5 +174,56 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                     : query.OrderBy(so => so.CreatedAt)
             };
         }
+
+        public static IQueryable<Vehicle> ApplyFilters(this IQueryable<Vehicle> query, VehicleQueryParams queryParams)
+        {
+            // Apply Type filter
+            if (queryParams.Type.HasValue)
+            {
+                query = query.Where(v => v.Type == queryParams.Type.Value);
+            }
+
+            // Apply Status filter
+            if (queryParams.Status.HasValue)
+            {
+                query = query.Where(v => v.Status == queryParams.Status.Value);
+            }
+
+            // Apply search term filter for Name and LicensePlate
+            if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
+            {
+                var searchTerm = queryParams.SearchTerm.ToLower();
+                query = query.Where(v =>
+                    v.Name.ToLower().Contains(searchTerm) ||
+                    v.LicensePlate.ToLower().Contains(searchTerm)
+                );
+            }
+
+            return query;
+        }
+        public static IQueryable<Vehicle> ApplySorting(this IQueryable<Vehicle> query, VehicleQueryParams queryParams)
+        {
+            if (string.IsNullOrWhiteSpace(queryParams.SortBy))
+            {
+                // Default sorting by VehicleId
+                return query.OrderBy(v => v.VehicleId);
+            }
+
+            // Apply sorting based on the provided field (only Type, Status, and VehicleId)
+            return queryParams.SortBy.ToLower() switch
+            {
+                "vehicleid" => queryParams.SortDescending
+                    ? query.OrderByDescending(v => v.VehicleId)
+                    : query.OrderBy(v => v.VehicleId),
+                "type" => queryParams.SortDescending
+                    ? query.OrderByDescending(v => v.Type)
+                    : query.OrderBy(v => v.Type),
+                "status" => queryParams.SortDescending
+                    ? query.OrderByDescending(v => v.Status)
+                    : query.OrderBy(v => v.Status),
+                _ => query.OrderBy(v => v.Type) // Default sorting
+            };
+        }
+
     }
 }

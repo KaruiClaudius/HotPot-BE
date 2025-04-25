@@ -34,5 +34,14 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
         Task<UtensilType> CreateUtensilTypeAsync(string name);
         Task DeleteUtensilTypeAsync(int id);
         Task<Dictionary<int, int>> GetUtensilCountsByTypesAsync(IEnumerable<int> typeIds);
+
+        Task UpdateUtensilTypeAsync(int id, string name);
+
+
+        Task<int> GetTotalUtensilCountAsync();
+
+
+        Task<int> GetAvailableUtensilCountAsync();
+
     }
 }

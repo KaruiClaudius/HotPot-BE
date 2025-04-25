@@ -5,7 +5,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 // Use the fully qualified name for System.Security.Claims.ClaimTypes
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Mapster;
@@ -247,11 +247,39 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Note: We're allowing WorkDays.None as a valid value to clear the schedule
                 var staff = await _scheduleService.AssignStaffWorkDaysAsync(assignDto.StaffId, assignDto.WorkDays);
 
-                // Notify the staff member about their schedule update
-                await _notificationService.NotifyScheduleUpdate(staff.UserId, DateTime.Now);
+                // Get work days as readable text
+                string workDaysText = GetWorkDaysText(staff.WorkDays.GetValueOrDefault());
 
-                // Also notify all staff about schedule updates
-                await _notificationService.NotifyAllScheduleUpdates();
+                // Notify the staff member about their schedule update
+                await _notificationService.NotifyUser(
+                    staff.UserId,
+                    "ScheduleUpdate",
+                    "Your Work Days Updated",
+                    $"Your work days have been updated: {workDaysText}",
+                    new Dictionary<string, object>
+                    {
+                { "StaffId", staff.UserId },
+                { "WorkDays", staff.WorkDays },
+                { "WorkDaysText", workDaysText },
+                { "UpdatedAt", DateTime.UtcNow },
+                { "Action", "WorkDaysAssigned" }
+                    });
+
+                // Notify managers about the staff schedule update
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "ScheduleUpdate",
+                    "Staff Work Days Updated",
+                    $"Work days for {staff.Name} have been updated: {workDaysText}",
+                    new Dictionary<string, object>
+                    {
+                { "StaffId", staff.UserId },
+                { "StaffName", staff.Name },
+                { "WorkDays", staff.WorkDays },
+                { "WorkDaysText", workDaysText },
+                { "UpdatedAt", DateTime.UtcNow },
+                { "Action", "StaffWorkDaysAssigned" }
+                    });
 
                 // Manually map the staff entity to StaffSDto
                 var staffDto = new StaffSDto
@@ -273,6 +301,25 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             {
                 return StatusCode(500, ApiResponse<StaffSDto>.ErrorResponse(ex.Message));
             }
+        }
+
+        // Helper method to convert WorkDays enum to readable text
+        private string GetWorkDaysText(WorkDays workDays)
+        {
+            if (workDays == WorkDays.None)
+                return "No days assigned";
+
+            var days = new List<string>();
+
+            if (workDays.HasFlag(WorkDays.Monday)) days.Add("Monday");
+            if (workDays.HasFlag(WorkDays.Tuesday)) days.Add("Tuesday");
+            if (workDays.HasFlag(WorkDays.Wednesday)) days.Add("Wednesday");
+            if (workDays.HasFlag(WorkDays.Thursday)) days.Add("Thursday");
+            if (workDays.HasFlag(WorkDays.Friday)) days.Add("Friday");
+            if (workDays.HasFlag(WorkDays.Saturday)) days.Add("Saturday");
+            if (workDays.HasFlag(WorkDays.Sunday)) days.Add("Sunday");
+
+            return string.Join(", ", days);
         }
 
     }

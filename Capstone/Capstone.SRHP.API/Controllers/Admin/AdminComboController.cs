@@ -60,7 +60,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error get combo");
+                _logger.LogError(ex, "Error getting combos");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -78,13 +78,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 return Ok(comboDto);
             }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error get by id combo");
+                _logger.LogError(ex, "Error getting combo by id {ComboId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
-
 
         [HttpPost]
         public async Task<ActionResult<ComboDto>> Create(CreateComboRequest request)
@@ -109,7 +112,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     Size = request.Size,
                     IsCustomizable = false,
-                    HotpotBrothId = request.HotpotBrothID,
                     ImageURLs = request.ImageURLs
                 };
 
@@ -158,7 +160,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     Size = request.Size,
                     IsCustomizable = true,
-                    HotpotBrothId = request.HotpotBrothID,
                     ImageURLs = request.ImageURLs
                 };
 
@@ -208,11 +209,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (request.Size > 0)
                 {
                     existingCombo.Size = request.Size.Value;
-                }
-
-                if (request.HotpotBrothID > 0)
-                {
-                    existingCombo.HotpotBrothId = request.HotpotBrothID.Value;
                 }
 
                 if (request.ImageURLs != null) // This allows explicitly setting to null or a new array
@@ -281,9 +277,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
-                HotpotBrothID = combo.HotpotBrothId,
-                HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
-                ImageURLs = combo.ImageURLs ?? new string[0]
+                ImageURLs = combo.ImageURLs ?? []
             };
 
             // Only set Ingredients if there are any
@@ -326,11 +320,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
-                HotpotBrothID = combo.HotpotBrothId,
-                HotpotBrothName = combo.HotpotBroth?.Name ?? "Unknown",
                 AppliedDiscountID = combo.AppliedDiscountId,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
-                ImageURLs = combo.ImageURLs ?? new string[0],
+                ImageURLs = combo.ImageURLs ?? [],
                 TurtorialVideoID = combo.TurtorialVideoId,
                 TutorialVideoName = combo.TurtorialVideo?.Name,
                 TutorialVideoUrl = combo.TurtorialVideo?.VideoURL,

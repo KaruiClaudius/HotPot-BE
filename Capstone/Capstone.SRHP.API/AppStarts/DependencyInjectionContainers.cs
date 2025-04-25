@@ -9,13 +9,13 @@ using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Services;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
@@ -49,7 +49,7 @@ namespace Capstone.HPTY.API.AppStarts
             // Database
             services.AddDbContext<HPTYContext>(options =>
             {
-                //var connectionString = configuration.GetConnectionString("Server");
+                //var connectionString = configuration.GetConnectionString("Local");
                 var connectionString = configuration.GetConnectionString("Server");
                 options.UseSqlServer(connectionString,
                     sqlOptions => sqlOptions.EnableRetryOnFailure());
@@ -113,7 +113,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddHostedService<EquipmentStockMonitorService>();
 
             // Shipping Services
-            services.AddScoped<IStaffShippingService, StaffShippingService>();
+            //services.AddScoped<IStaffShippingService, StaffShippingService>();
 
             // Equipment Services
             services.AddScoped<IStaffEquipmentService, StaffEquipmentService>();
@@ -130,13 +130,19 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddTransient<IEmailSender, EmailService>();
             services.AddScoped<EmailService>();
 
+            // Vehicle Services
+            services.AddScoped<IVehicleManagementService, VehicleManagementService>();
+
 
             services.AddSingleton<IEventPublisher, EventPublisher>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
+            services.AddSingleton<SocketIOClientService>();
+
 
             // External Services
             services.AddHttpClient();
             services.AddMemoryCache();
+            services.AddHostedService<DatabaseInitializer>();
 
             //// AutoMapper
             //services.AddAutoMapper(typeof(MappingProfile));

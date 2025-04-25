@@ -27,7 +27,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int OrderId { get; set; }
         public int? HotpotInventoryId { get; set; }
 
-
         public virtual RentOrder RentOrder { get; set; } = null!;
 
         [ForeignKey(nameof(HotpotInventoryId))]

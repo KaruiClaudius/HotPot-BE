@@ -3,9 +3,12 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,19 +21,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IOrderService _orderService;
+        private readonly ILogger<StaffOrderService> _logger;
 
-        public StaffOrderService(IUnitOfWork unitOfWork, IOrderService orderService)
+        public StaffOrderService(
+            IUnitOfWork unitOfWork,
+            IOrderService orderService,
+            ILogger<StaffOrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _orderService = orderService;
+            _logger = logger;
         }
-
-        public async Task<IEnumerable<Order>> GetAssignedOrdersAsync(int staffId)
+        public async Task<IEnumerable<StaffOrderDto>> GetAssignedOrdersAsync(int staffId)
         {
-            // In a real system, you'd have a way to assign orders to staff
-            // For now, we'll just return orders with Processing status
-            return await _unitOfWork.Repository<Order>()
+            // Get orders assigned to this staff member either as preparation staff or shipping staff
+            var query = _unitOfWork.Repository<Order>().AsQueryable()
+                .Where(o => !o.IsDelete &&
+                    (o.PreparationStaffId == staffId || // Staff is assigned for preparation
+                     o.ShippingOrder != null && o.ShippingOrder.StaffId == staffId)) // Staff is assigned for shipping
                 .Include(o => o.User)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
                 .Include(o => o.SellOrder.SellOrderDetails)
@@ -38,18 +49,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Combo)
                 .Include(o => o.SellOrder.SellOrderDetails)
-                    .ThenInclude(rd => rd.Utensil)
+                    .ThenInclude(od => od.Utensil)
                 .Include(o => o.RentOrder.RentOrderDetails)
                     .ThenInclude(rd => rd.HotpotInventory)
-                        .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                .Where(o => o.Status == OrderStatus.Processing && !o.IsDelete)
-                .ToListAsync();
+                        .ThenInclude(hi => hi != null ? hi.Hotpot : null);
+
+            var orders = await query.ToListAsync();
+            return orders.Select(MapToStaffOrderDto).ToList();
         }
 
-        public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status)
+        public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status, int staffId)
         {
-            return await _unitOfWork.Repository<Order>()
+            // Get orders with the specified status that are assigned to this staff member
+            var orders = await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Where(o => o.Status == status && !o.IsDelete &&
+                       (o.PreparationStaffId == staffId || // Staff is assigned for preparation
+                        o.ShippingOrder != null && o.ShippingOrder.StaffId == staffId)) // Staff is assigned for shipping
                 .Include(o => o.User)
+                .Include(o => o.PreparationStaff)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
                 .Include(o => o.SellOrder.SellOrderDetails)
@@ -57,65 +77,146 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Combo)
                 .Include(o => o.SellOrder.SellOrderDetails)
-                    .ThenInclude(rd => rd.Utensil)
+                    .ThenInclude(od => od.Utensil)
                 .Include(o => o.RentOrder.RentOrderDetails)
                     .ThenInclude(rd => rd.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                .Where(o => o.Status == status && !o.IsDelete)
                 .ToListAsync();
+
+            return orders.Select(MapToStaffOrderDto).ToList();
         }
 
-        public async Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
+        public async Task<StaffOrderDto> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, int staffId, string? notes = null)
         {
-            var order = await _orderService.GetByIdAsync(orderId);
+            var order = await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
             if (order == null)
                 throw new NotFoundException($"Order with ID {orderId} not found");
 
-            // Update status
-            await _orderService.UpdateStatusAsync(orderId, newStatus);
+            // Validate status transition
+            ValidateStatusTransition(order.Status, newStatus);
 
+            // Validate staff authorization
+            ValidateStaffAuthorization(order, newStatus, staffId);
 
-            return await _orderService.GetByIdAsync(orderId);
+            // Update order status
+            order.Status = newStatus;
+            order.SetUpdateDate();
+
+            // Handle specific status transitions
+            switch (newStatus)
+            {
+                case OrderStatus.Processed:
+                    // Preparation complete - notify shipping staff if assigned
+                    if (order.ShippingOrder != null)
+                    {
+                        // In a real system, send notification to shipping staff
+                        _logger.LogInformation("Order {OrderId} is ready for shipping. Notifying staff {StaffId}",
+                            orderId, order.ShippingOrder.StaffId);
+
+                        // Add preparation completion note if provided
+                        if (!string.IsNullOrWhiteSpace(notes))
+                        {
+                            order.Notes = string.IsNullOrWhiteSpace(order.Notes)
+                                ? $"Preparation completed: {notes}"
+                                : $"{order.Notes}\n\nPreparation completed ({DateTime.UtcNow:g}): {notes}";
+                        }
+                    }
+                    break;
+
+                case OrderStatus.Shipping:
+                    // Start shipping - update shipping order
+                    if (order.ShippingOrder != null && order.ShippingOrder.StaffId == staffId)
+                    {
+                        // Add shipping started note if provided
+                        if (!string.IsNullOrWhiteSpace(notes))
+                        {
+                            order.Notes = string.IsNullOrWhiteSpace(order.Notes)
+                                ? $"Shipping started: {notes}"
+                                : $"{order.Notes}\n\nShipping started ({DateTime.UtcNow:g}): {notes}";
+                        }
+                    }
+                    else
+                    {
+                        throw new ValidationException("You are not assigned to ship this order");
+                    }
+                    break;
+
+                case OrderStatus.Delivered:
+                    // Complete delivery - update shipping order and vehicle status
+                    if (order.ShippingOrder != null && order.ShippingOrder.StaffId == staffId)
+                    {
+                        order.ShippingOrder.IsDelivered = true;
+
+                        // Update vehicle status back to Available
+                        if (order.ShippingOrder.Vehicle != null)
+                        {
+                            order.ShippingOrder.Vehicle.Status = VehicleStatus.Available;
+                            order.ShippingOrder.Vehicle.SetUpdateDate();
+                        }
+
+                        // Add delivery completion note if provided
+                        if (!string.IsNullOrWhiteSpace(notes))
+                        {
+                            order.Notes = string.IsNullOrWhiteSpace(order.Notes)
+                                ? $"Delivery completed: {notes}"
+                                : $"{order.Notes}\n\nDelivery completed ({DateTime.UtcNow:g}): {notes}";
+                        }
+                    }
+                    else
+                    {
+                        throw new ValidationException("You are not assigned to deliver this order");
+                    }
+                    break;
+            }
+
+            await _unitOfWork.CommitAsync();
+            return await GetOrderWithDetailsAsync(orderId);
         }
 
-        public async Task<Order> CancelOrderAsync(int orderId, string cancellationReason)
+
+        public async Task<StaffOrderDto> CancelOrderAsync(int orderId, string cancellationReason)
         {
-            var order = await _orderService.GetByIdAsync(orderId);
+            var order = await _unitOfWork.Repository<Order>()
+                .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
 
             if (order == null)
                 throw new NotFoundException($"Order with ID {orderId} not found");
 
-            // Can only cancel orders that are not already delivered or cancelled
-            if (order.Status == OrderStatus.Delivered || order.Status == OrderStatus.Cancelled)
-                throw new ValidationException("Cannot cancel an order that is already delivered or cancelled");
+            // Can only cancel orders that are not already delivered or completed
+            if (order.Status == OrderStatus.Delivered || order.Status == OrderStatus.Completed)
+                throw new ValidationException("Cannot cancel an order that is already delivered or completed");
 
             // Update status to cancelled
-            await _orderService.UpdateStatusAsync(orderId, OrderStatus.Cancelled);
+            order.Status = OrderStatus.Cancelled;
+            order.SetUpdateDate();
 
             // Add cancellation reason to notes
             order.Notes = string.IsNullOrWhiteSpace(order.Notes)
                 ? $"Cancelled: {cancellationReason}"
                 : $"{order.Notes}\n\nCancelled ({DateTime.UtcNow:g}): {cancellationReason}";
 
-            // Using the approach from source [0] to update entity properties
-            // This is a cleaner way to update specific properties
-            _unitOfWork.Context.Entry(order).Property(o => o.Notes).IsModified = true;
             await _unitOfWork.CommitAsync();
-
-            return await _orderService.GetByIdAsync(orderId);
+            return await GetOrderWithDetailsAsync(orderId);
         }
 
-        public async Task<PagedResult<Order>> GetOrderHistoryAsync(
-            int pageNumber,
-            int pageSize,
-            OrderStatus? status = null,
-            DateTime? startDate = null,
-            DateTime? endDate = null)
+        public async Task<PagedResult<StaffOrderDto>> GetOrderHistoryAsync(
+                   int pageNumber,
+                   int pageSize,
+                   OrderStatus? status = null,
+                   DateTime? startDate = null,
+                   DateTime? endDate = null)
         {
             var query = _unitOfWork.Repository<Order>()
                 .AsQueryable()
                 .Include(o => o.User)
+                .Include(o => o.PreparationStaff)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
                 .Include(o => o.SellOrder.SellOrderDetails)
                 .Include(o => o.RentOrder.RentOrderDetails)
                 .Where(o => !o.IsDelete);
@@ -142,20 +243,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Take(pageSize)
                 .ToListAsync();
 
-            return new PagedResult<Order>
+            var orderDtos = items.Select(MapToStaffOrderDto).ToList();
+
+            return new PagedResult<StaffOrderDto>
             {
-                Items = items,
+                Items = orderDtos,
                 TotalCount = totalCount,
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
         }
 
-        public async Task<Order> GetOrderWithDetailsAsync(int orderId)
+        public async Task<StaffOrderDto> GetOrderWithDetailsAsync(int orderId)
         {
             var order = await _unitOfWork.Repository<Order>()
                 .AsQueryable()
                 .Include(o => o.User)
+                .Include(o => o.PreparationStaff)
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Ingredient)
                 .Include(o => o.SellOrder.SellOrderDetails)
@@ -163,7 +269,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .Include(o => o.SellOrder.SellOrderDetails)
                     .ThenInclude(od => od.Combo)
                 .Include(o => o.SellOrder.SellOrderDetails)
-                    .ThenInclude(rd => rd.Utensil)
+                    .ThenInclude(od => od.Utensil)
                 .Include(o => o.RentOrder.RentOrderDetails)
                     .ThenInclude(rd => rd.HotpotInventory)
                         .ThenInclude(hi => hi != null ? hi.Hotpot : null)
@@ -174,11 +280,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             if (order == null)
                 throw new NotFoundException($"Order with ID {orderId} not found");
 
-            return order;
+            return MapToStaffOrderDto(order);
         }
 
+
         // New method to efficiently update order properties using EF Core's SetValues
-        public async Task<Order> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate)
+        public async Task<StaffOrderDto> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate)
         {
             var order = await _unitOfWork.Repository<Order>()
                 .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
@@ -209,6 +316,197 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ExecuteUpdateAsync(o =>
                     o.SetProperty(x => x.Status, newStatus)
                      .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+        }
+
+        public async Task<VehicleInfoDto> GetVehicleInfoAsync(int orderId)
+        {
+            var order = await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Include(o => o.ShippingOrder)
+                    .ThenInclude(so => so != null ? so.Vehicle : null)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
+
+            if (order == null)
+                throw new NotFoundException($"Order with ID {orderId} not found");
+
+            if (order.ShippingOrder?.Vehicle == null)
+                throw new NotFoundException($"No vehicle assigned to order with ID {orderId}");
+
+            return new VehicleInfoDto
+            {
+                VehicleId = order.ShippingOrder.VehicleId ?? 0,
+                VehicleName = order.ShippingOrder.Vehicle.Name,
+                LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                VehicleType = order.ShippingOrder.Vehicle.Type,
+                OrderSize = order.ShippingOrder.OrderSize
+            };
+        }
+
+        private void ValidateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
+        {
+            bool isValid = (currentStatus, newStatus) switch
+            {
+                // Valid transitions
+                (OrderStatus.Pending, OrderStatus.Processing) => true,
+                (OrderStatus.Processing, OrderStatus.Processed) => true,
+                (OrderStatus.Processed, OrderStatus.Shipping) => true,
+                (OrderStatus.Shipping, OrderStatus.Delivered) => true,
+                (OrderStatus.Delivered, OrderStatus.Completed) => true,
+
+                // Allow cancellation from most states
+                (_, OrderStatus.Cancelled) when currentStatus != OrderStatus.Delivered
+                                           && currentStatus != OrderStatus.Completed => true,
+
+                // Invalid transitions
+                _ => false
+            };
+
+            if (!isValid)
+            {
+                throw new ValidationException($"Invalid status transition from {currentStatus} to {newStatus}");
+            }
+        }
+
+        // Helper method to map Order entity to StaffOrderDto
+        private StaffOrderDto MapToStaffOrderDto(Order order)
+        {
+            if (order == null) return null;
+
+            return new StaffOrderDto
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                Address = order.Address,
+                Notes = order.Notes ?? string.Empty,
+                TotalPrice = order.TotalPrice,
+                Status = order.Status.ToString(),
+                UserID = order.UserId,
+                UserName = order.User?.Name ?? "Unknown",
+                UserPhone = order.User?.PhoneNumber ?? "Unknown",
+                CreatedAt = order.CreatedAt,
+                UpdatedAt = order.UpdatedAt,
+                DeliveryTime = order.DeliveryTime,
+
+                // Preparation staff information
+                PreparationStaffId = order.PreparationStaffId,
+                PreparationStaffName = order.PreparationStaff?.Name,
+
+                // Shipping information
+                ShippingStaffId = order.ShippingOrder?.StaffId,
+                ShippingStaffName = order.ShippingOrder?.Staff?.Name,
+                IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
+                DeliveryNotes = order.ShippingOrder?.DeliveryNotes,
+
+                // Order details
+                OrderDetails = order.SellOrder?.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
+                RentalDetails = order.RentOrder?.RentOrderDetails?.Select(MapToRentalDetailDto).ToList() ?? new List<RentalDetailDto>(),
+
+                // Vehicle information
+                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                {
+                    VehicleId = order.ShippingOrder.VehicleId ?? 0,
+                    VehicleName = order.ShippingOrder.Vehicle.Name,
+                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                    VehicleType = order.ShippingOrder.Vehicle.Type
+                } : null,
+                OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
+
+                // Payment information
+                DiscountAmount = order.Discount?.DiscountPercentage ?? 0,
+                DiscountCode = order.Discount?.Title,
+                PaymentStatus = order.Payments?.Any(p => p.Status == PaymentStatus.Success) == true ? "Paid" : "Unpaid"
+            };
+        }
+
+        // Helper method to map OrderDetail to OrderDetailDto
+        private OrderDetailDto MapToOrderDetailDto(SellOrderDetail detail)
+        {
+            if (detail == null) return null;
+
+            string itemName = "Unknown";
+            string itemType = "Unknown";
+            int? itemId = null;
+
+            if (detail.Ingredient != null)
+            {
+                itemName = detail.Ingredient.Name;
+                itemType = "Ingredient";
+                itemId = detail.IngredientId;
+            }
+            else if (detail.Customization != null)
+            {
+                itemName = detail.Customization.Name;
+                itemType = "Customization";
+                itemId = detail.CustomizationId;
+            }
+            else if (detail.Combo != null)
+            {
+                itemName = detail.Combo.Name;
+                itemType = "Combo";
+                itemId = detail.ComboId;
+            }
+            else if (detail.Utensil != null)
+            {
+                itemName = detail.Utensil.Name;
+                itemType = "Utensil";
+                itemId = detail.UtensilId;
+            }
+
+            return new OrderDetailDto
+            {
+                OrderDetailId = detail.SellOrderDetailId,
+                Quantity = detail.Quantity,
+                UnitPrice = detail.UnitPrice,
+                ItemName = itemName,
+                ItemType = itemType,
+                ItemId = itemId,
+                OrderId = detail.OrderId
+            };
+        }
+
+        private RentalDetailDto MapToRentalDetailDto(RentOrderDetail detail)
+        {
+            if (detail == null) return null;
+
+            return new RentalDetailDto
+            {
+                RentalDetailId = detail.RentOrderDetailId,
+                Quantity = detail.Quantity,
+                RentalPrice = detail.RentalPrice,
+                HotpotInventoryId = detail.HotpotInventoryId,
+                HotpotName = detail.HotpotInventory?.Hotpot?.Name ?? "Unknown",
+                SeriesNumber = detail.HotpotInventory?.SeriesNumber ?? "Unknown",
+                RentalStartDate = detail.RentOrder?.RentalStartDate,
+                ExpectedReturnDate = detail.RentOrder?.ExpectedReturnDate,
+                ActualReturnDate = detail.RentOrder?.ActualReturnDate,
+                LateFee = detail.RentOrder?.LateFee,
+                DamageFee = detail.RentOrder?.DamageFee,
+                RentalNotes = detail.RentOrder?.RentalNotes,
+                ReturnCondition = detail.RentOrder?.ReturnCondition
+            };
+        }
+
+        private void ValidateStaffAuthorization(Order order, OrderStatus newStatus, int staffId)
+        {
+            switch (newStatus)
+            {
+                case OrderStatus.Processed:
+                    // Only preparation staff can mark as processed
+                    if (order.PreparationStaffId != staffId)
+                    {
+                        throw new ValidationException("You are not assigned as the preparation staff for this order");
+                    }
+                    break;
+
+                case OrderStatus.Shipping:
+                case OrderStatus.Delivered:
+                    // Only shipping staff can update shipping status
+                    if (order.ShippingOrder == null || order.ShippingOrder.StaffId != staffId)
+                    {
+                        throw new ValidationException("You are not assigned as the shipping staff for this order");
+                    }
+                    break;
+            }
         }
     }
 }

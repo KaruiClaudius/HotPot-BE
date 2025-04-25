@@ -69,7 +69,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 _logger.LogInformation("Staff retrieving details for {EquipmentType} with ID: {EquipmentId}",
                     equipmentType, equipmentId);
 
-                var equipment = await _staffEquipmentService.GetRentalEquipmentDetailsAsync(equipmentId, equipmentType);
+                var equipment = await _staffEquipmentService.GetRentalEquipmentDetailsAsync(equipmentId);
 
                 return Ok(new ApiResponse<EquipmentRetrievalDto>
                 {
@@ -122,8 +122,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                _logger.LogInformation("Staff logging inspection for {EquipmentType} with ID: {EquipmentId}",
-                    request.EquipmentType, request.EquipmentId);
+                _logger.LogInformation("Staff logging inspection for hotpot with ID: {EquipmentId}", request.EquipmentId);
 
                 var result = await _staffEquipmentService.LogEquipmentInspectionAsync(request);
 
@@ -136,8 +135,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Equipment not found: {EquipmentType} with ID: {EquipmentId}",
-                    request.EquipmentType, request.EquipmentId);
+                _logger.LogWarning(ex, "Equipment not found: hotpot with ID: {EquipmentId}", request.EquipmentId);
 
                 return NotFound(new ApiErrorResponse
                 {
@@ -147,8 +145,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid equipment type: {EquipmentType}", request.EquipmentType);
-
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Bad Request",
@@ -157,8 +153,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging inspection for {EquipmentType} with ID: {EquipmentId}",
-                    request.EquipmentType, request.EquipmentId);
+                _logger.LogError(ex, "Error logging inspection for hotpot with ID: {EquipmentId}", request.EquipmentId);
 
                 return BadRequest(new ApiErrorResponse
                 {
@@ -184,7 +179,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     equipmentType, equipmentId, request.IsAvailable);
 
                 var result = await _staffEquipmentService.UpdateEquipmentAvailabilityAsync(
-                    equipmentId, equipmentType, request.IsAvailable);
+                    equipmentId, request);
 
                 return Ok(new ApiResponse<bool>
                 {
@@ -240,7 +235,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 _logger.LogInformation("Staff retrieving inspection history for {EquipmentType} with ID: {EquipmentId}",
                     equipmentType, equipmentId);
 
-                var inspections = await _staffEquipmentService.GetEquipmentInspectionHistoryAsync(equipmentId, equipmentType);
+                var inspections = await _staffEquipmentService.GetEquipmentInspectionHistoryAsync(equipmentId);
 
                 return Ok(new ApiResponse<IEnumerable<EquipmentInspectionResponse>>
                 {

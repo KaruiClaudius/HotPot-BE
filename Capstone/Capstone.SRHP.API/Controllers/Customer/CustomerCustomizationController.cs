@@ -124,7 +124,6 @@ public class CustomerCustomizationController : ControllerBase
             var priceEstimate = await _customizationService.CalculatePriceEstimateAsync(
                 request.ComboId, 
                 request.Size,
-                request.BrothId,
                 request.Ingredients);
 
             return Ok(priceEstimate);
@@ -182,7 +181,6 @@ public class CustomerCustomizationController : ControllerBase
                 request.Name,
                 request.Note,
                 size,
-                request.BrothId,
                 request.Ingredients,
                 imageURLs); 
 
@@ -240,10 +238,6 @@ public class CustomerCustomizationController : ControllerBase
                 existingCustomization.Size = request.Size.Value;
             }
 
-            if (request.BrothId.HasValue)
-            {
-                existingCustomization.HotpotBrothId = request.BrothId.Value;
-            }
 
             if (request.ImageURLs != null)
             {
@@ -347,7 +341,6 @@ public class CustomerCustomizationController : ControllerBase
             ImageURLs = customization.ImageURLs ?? new string[0],
             CreatedAt = customization.CreatedAt,
             ComboName = customization.Combo?.Name ?? string.Empty,
-            BrothName = customization.HotpotBroth?.Name ?? string.Empty
         };
     }
 
@@ -365,8 +358,6 @@ public class CustomerCustomizationController : ControllerBase
             CreatedAt = customization.CreatedAt,
             ComboId = customization.ComboId ?? 0,
             ComboName = customization.Combo?.Name ?? string.Empty,
-            BrothId = customization.HotpotBrothId,
-            BrothName = customization.HotpotBroth?.Name ?? string.Empty,
             DiscountPercentage = customization.AppliedDiscount?.DiscountPercentage ?? 0,
             Ingredients = customization.CustomizationIngredients
                 .Where(ci => !ci.IsDelete)

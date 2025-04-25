@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static Capstone.HPTY.RepositoryLayer.Utils.AuthenTools;
 
 namespace Capstone.HPTY.API.Hubs
 {
@@ -70,34 +71,34 @@ namespace Capstone.HPTY.API.Hubs
                 // Store the connection ID with the user ID
                 _userConnections.AddOrUpdate(userId, Context.ConnectionId, (_, _) => Context.ConnectionId);
 
-                // Get the user's role from the Context
-                var userRole = Context.User.FindFirst("role")?.Value ?? "Customer";
+                // Get the user's role through multiple fallback options
+                var roleClaim = Context.User.FindFirst("role")
+                    ?? Context.User.FindFirst(ClaimTypes.Role)
+                    ?? Context.User.Claims.FirstOrDefault(c => c.Type.Contains("role", StringComparison.OrdinalIgnoreCase));
+
+                var userRole = roleClaim?.Value ?? "Customer";
 
                 // Add to the appropriate group based on role
-                if (userRole.ToLower() == "manager" || userRole.ToLower() == "admin")
+                var normalizedRole = userRole.Trim().ToLowerInvariant();
+                if (normalizedRole == "manager" || normalizedRole == "admin")
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
-                    _logger.LogInformation("Manager/Admin {UserId} connected with connection {ConnectionId}",
-                        userId, Context.ConnectionId);
+                    _logger.LogInformation("Manager/Admin {UserId} connected with connection {ConnectionId} and role {Role}",
+                        userId, Context.ConnectionId, userRole);
                 }
                 else
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Customers");
-                    _logger.LogInformation("Customer {UserId} connected with connection {ConnectionId}",
-                        userId, Context.ConnectionId);
+                    _logger.LogInformation("Customer {UserId} connected with connection {ConnectionId} and role {Role}",
+                        userId, Context.ConnectionId, userRole);
                 }
 
                 await Clients.Caller.SendAsync("UserConnectionRegistered", userId);
             }
             catch (Exception ex)
             {
-                // Log the exception
                 _logger.LogError(ex, "Error in RegisterConnection for connection {ConnectionId}", Context.ConnectionId);
-
-                // Send a more detailed error to the client
                 await Clients.Caller.SendAsync("ChatError", $"Registration error: {ex.Message}");
-
-                // Rethrow to let SignalR handle it
                 throw;
             }
         }

@@ -20,7 +20,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
         [Required]
         public MaintenanceStatus Status { get; set; }
 
-        public int? UtensilID { get; set; }
         public int? HotPotInventoryId { get; set; }
     }
 }
