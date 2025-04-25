@@ -113,7 +113,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddHostedService<EquipmentStockMonitorService>();
 
             // Shipping Services
-            services.AddScoped<IStaffShippingService, StaffShippingService>();
+            //services.AddScoped<IStaffShippingService, StaffShippingService>();
 
             // Equipment Services
             services.AddScoped<IStaffEquipmentService, StaffEquipmentService>();
