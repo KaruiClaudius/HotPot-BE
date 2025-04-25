@@ -67,8 +67,14 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                _logger.LogInformation("Staff retrieving orders with status: {Status}", status);
-                var orders = await _staffOrderService.GetOrdersByStatusAsync(status);
+                var userIdClaim = User.FindFirstValue("id");
+                if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
+                {
+                    return Unauthorized(new { message = "User ID not found in token" });
+                }
+
+                _logger.LogInformation("Staff {StaffId} retrieving orders with status: {Status}", staffId, status);
+                var orders = await _staffOrderService.GetOrdersByStatusAsync(status, staffId);
 
                 return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
                 {

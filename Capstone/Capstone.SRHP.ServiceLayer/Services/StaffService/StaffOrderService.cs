@@ -58,11 +58,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             return orders.Select(MapToStaffOrderDto).ToList();
         }
 
-        public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status)
+        public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status, int staffId)
         {
+            // Get orders with the specified status that are assigned to this staff member
             var orders = await _unitOfWork.Repository<Order>()
                 .AsQueryable()
-                .Where(o => o.Status == status && !o.IsDelete)
+                .Where(o => o.Status == status && !o.IsDelete &&
+                       (o.PreparationStaffId == staffId || // Staff is assigned for preparation
+                        o.ShippingOrder != null && o.ShippingOrder.StaffId == staffId)) // Staff is assigned for shipping
                 .Include(o => o.User)
                 .Include(o => o.PreparationStaff)
                 .Include(o => o.ShippingOrder)
