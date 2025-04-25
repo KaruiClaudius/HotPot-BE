@@ -6,7 +6,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
-using Capstone.HPTY.ServiceLayer.Services.StaffService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [ApiController]
     [Route("api/staff/orders")]
-    [Authorize(Roles = "Staff")]
+    //[Authorize(Roles = "Staff")]
     public class StaffOrderController : ControllerBase
     {
         private readonly IStaffOrderService _staffOrderService;
@@ -34,22 +33,20 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
-
             {
                 return Unauthorized(new { message = "User ID not found in token" });
             }
+
             try
             {
                 _logger.LogInformation("Staff {StaffId} retrieving assigned orders", userId);
-
                 var orders = await _staffOrderService.GetAssignedOrdersAsync(userId);
-                var orderDtos = orders.Select(MapToStaffOrderDto).ToList();
 
                 return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
                 {
                     Success = true,
                     Message = "Assigned orders retrieved successfully",
-                    Data = orderDtos
+                    Data = orders
                 });
             }
             catch (Exception ex)
@@ -63,22 +60,27 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+
         [HttpGet("by-status/{status}")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetOrdersByStatus(OrderStatus status)
         {
             try
             {
-                _logger.LogInformation("Staff retrieving orders with status: {Status}", status);
+                var userIdClaim = User.FindFirstValue("id");
+                if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
+                {
+                    return Unauthorized(new { message = "User ID not found in token" });
+                }
 
-                var orders = await _staffOrderService.GetOrdersByStatusAsync(status);
-                var orderDtos = orders.Select(MapToStaffOrderDto).ToList();
+                _logger.LogInformation("Staff {StaffId} retrieving orders with status: {Status}", staffId, status);
+                var orders = await _staffOrderService.GetOrdersByStatusAsync(status, staffId);
 
                 return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
                 {
                     Success = true,
                     Message = $"Orders with status {status} retrieved successfully",
-                    Data = orderDtos
+                    Data = orders
                 });
             }
             catch (Exception ex)
@@ -92,6 +94,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ApiResponse<StaffOrderDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -99,32 +102,14 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                _logger.LogInformation("Staff retrieving vehicle information for order with ID: {OrderId}", id);
-
+                _logger.LogInformation("Staff retrieving order details for ID: {OrderId}", id);
                 var order = await _staffOrderService.GetOrderWithDetailsAsync(id);
 
-                if (order.ShippingOrder?.Vehicle == null)
-                {
-                    return NotFound(new ApiErrorResponse
-                    {
-                        Status = "Not Found",
-                        Message = $"No vehicle assigned to order with ID {id}"
-                    });
-                }
-
-                var vehicleInfo = new VehicleInfoDto
-                {
-                    VehicleId = order.ShippingOrder.VehicleId,
-                    VehicleName = order.ShippingOrder.Vehicle.Name,
-                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
-                    VehicleType = order.ShippingOrder.Vehicle.Type
-                };
-
-                return Ok(new ApiResponse<VehicleInfoDto>
+                return Ok(new ApiResponse<StaffOrderDto>
                 {
                     Success = true,
-                    Message = "Vehicle information retrieved successfully",
-                    Data = vehicleInfo
+                    Message = "Order details retrieved successfully",
+                    Data = order
                 });
             }
             catch (NotFoundException ex)
@@ -132,20 +117,21 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 _logger.LogWarning(ex, "Order not found with ID: {OrderId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Not Found",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving vehicle information for order with ID: {OrderId}", id);
+                _logger.LogError(ex, "Error retrieving order details for ID: {OrderId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve vehicle information"
+                    Message = "Failed to retrieve order details"
                 });
             }
         }
+
 
         [HttpPut("{id}/status")]
         [ProducesResponseType(typeof(ApiResponse<StaffOrderDto>), StatusCodes.Status200OK)]
@@ -158,14 +144,20 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 _logger.LogInformation("Staff updating order {OrderId} status to {NewStatus}", id, request.Status);
 
-                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status);
-                var orderDto = MapToStaffOrderDto(updatedOrder);
+                // Get the current staff ID from the token
+                var userIdClaim = User.FindFirstValue("id");
+                if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
+                {
+                    return Unauthorized(new { message = "User ID not found in token" });
+                }
+
+                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, staffId, request.Notes);
 
                 return Ok(new ApiResponse<StaffOrderDto>
                 {
                     Success = true,
                     Message = $"Order status updated to {request.Status} successfully",
-                    Data = orderDto
+                    Data = updatedOrder
                 });
             }
             catch (NotFoundException ex)
@@ -197,26 +189,25 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+
         [HttpPut("{id}/cancel")]
         [ProducesResponseType(typeof(ApiResponse<StaffOrderDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiResponse<StaffOrderDto>>> CancelOrder(
-    int id,
-    [FromBody] CancelOrderRequest request,
-    CancellationToken cancellationToken)
+            int id,
+            [FromBody] CancelOrderRequest request,
+            CancellationToken cancellationToken)
         {
             try
             {
                 _logger.LogInformation("Staff cancelling order with ID: {OrderId}, Reason: {Reason}", id, request.CancellationReason);
-
                 var cancelledOrder = await _staffOrderService.CancelOrderAsync(id, request.CancellationReason);
-                var orderDto = MapToStaffOrderDto(cancelledOrder);
 
                 return Ok(new ApiResponse<StaffOrderDto>
                 {
                     Success = true,
                     Message = "Order cancelled successfully",
-                    Data = orderDto
+                    Data = cancelledOrder
                 });
             }
             catch (NotFoundException ex)
@@ -257,6 +248,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
+
         [HttpGet("history")]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<StaffOrderDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<StaffOrderDto>>>> GetOrderHistory(
@@ -283,21 +275,11 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                 var pagedOrders = await _staffOrderService.GetOrderHistoryAsync(pageNumber, pageSize, status, startDate, endDate);
 
-                var orderDtos = pagedOrders.Items.Select(MapToStaffOrderDto).ToList();
-
-                var result = new PagedResult<StaffOrderDto>
-                {
-                    Items = orderDtos,
-                    PageNumber = pagedOrders.PageNumber,
-                    PageSize = pagedOrders.PageSize,
-                    TotalCount = pagedOrders.TotalCount
-                };
-
                 return Ok(new ApiResponse<PagedResult<StaffOrderDto>>
                 {
                     Success = true,
                     Message = "Order history retrieved successfully",
-                    Data = result
+                    Data = pagedOrders
                 });
             }
             catch (OperationCanceledException)
@@ -319,74 +301,43 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 });
             }
         }
-        private StaffOrderDto MapToStaffOrderDto(Order order)
+
+
+        [HttpGet("{id}/vehicle")]
+        [ProducesResponseType(typeof(ApiResponse<VehicleInfoDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<VehicleInfoDto>>> GetVehicleInfo(int id)
         {
-            if (order == null) return null;
-
-            return new StaffOrderDto
+            try
             {
-                OrderId = order.OrderId,
-                Address = order.Address,
-                Notes = order.Notes ?? string.Empty,
-                TotalPrice = order.TotalPrice,
-                Status = order.Status.ToString(),
-                UserID = order.UserId,
-                UserName = order.User?.Name ?? "Unknown",
-                UserPhone = order.User?.PhoneNumber ?? "Unknown",
-                CreatedAt = order.CreatedAt,
-                UpdatedAt = order.UpdatedAt,
-                OrderDetails = order.SellOrder.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
+                _logger.LogInformation("Staff retrieving vehicle information for order ID: {OrderId}", id);
+                var vehicleInfo = await _staffOrderService.GetVehicleInfoAsync(id);
 
-                // Add vehicle information
-                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                return Ok(new ApiResponse<VehicleInfoDto>
                 {
-                    VehicleId = order.ShippingOrder.VehicleId,
-                    VehicleName = order.ShippingOrder.Vehicle.Name,
-                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
-                    VehicleType = order.ShippingOrder.Vehicle.Type
-                } : null,
-                OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small
-            };
-        }
-
-        // Helper method to map OrderDetail to OrderDetailDto
-        private OrderDetailDto MapToOrderDetailDto(SellOrderDetail detail)
-        {
-            if (detail == null) return null;
-
-            string itemName = "Unknown";
-            string itemType = "Unknown";
-            int? itemId = null;
-
-            if (detail.Ingredient != null)
-            {
-                itemName = detail.Ingredient.Name;
-                itemType = "Ingredient";
-                itemId = detail.IngredientId;
+                    Success = true,
+                    Message = "Vehicle information retrieved successfully",
+                    Data = vehicleInfo
+                });
             }
-            else if (detail.Customization != null)
+            catch (NotFoundException ex)
             {
-                itemName = detail.Customization.Name;
-                itemType = "Customization";
-                itemId = detail.CustomizationId;
+                _logger.LogWarning(ex, "Vehicle information not found for order ID: {OrderId}", id);
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Not Found",
+                    Message = ex.Message
+                });
             }
-            else if (detail.Combo != null)
+            catch (Exception ex)
             {
-                itemName = detail.Combo.Name;
-                itemType = "Combo";
-                itemId = detail.ComboId;
+                _logger.LogError(ex, "Error retrieving vehicle information for order ID: {OrderId}", id);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve vehicle information"
+                });
             }
-
-            return new OrderDetailDto
-            {
-                OrderDetailId = detail.SellOrderDetailId,
-                Quantity = detail.Quantity,
-                UnitPrice = detail.UnitPrice,
-                ItemName = itemName,
-                ItemType = itemType,
-                ItemId = itemId,
-             
-            };
         }
     }
 }
