@@ -25,6 +25,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Payments
     {
         public int ReceiptId { get; init; }
         public int OrderId { get; init; }
+        public string OrderCode { get; init; } = string.Empty;
         public int PaymentId { get; init; }
         public string TransactionCode { get; init; } = string.Empty;
         public decimal Amount { get; init; }
@@ -40,7 +41,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Payments
         public DateTime? FromDate { get; init; }
         public DateTime? ToDate { get; init; }
         public string? SortBy { get; init; } = "CreatedAt";
-        public bool SortDescending { get; init; } = true;     
+        public bool SortDescending { get; init; } = true;
     }
 
     public record PaymentListItemDto
