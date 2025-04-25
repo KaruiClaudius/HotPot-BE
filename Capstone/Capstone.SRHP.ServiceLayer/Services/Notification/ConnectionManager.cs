@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Capstone.HPTY.API.SideServices
+namespace Capstone.HPTY.ServiceLayer.Services.Notification
 {
     public interface IConnectionManager
     {

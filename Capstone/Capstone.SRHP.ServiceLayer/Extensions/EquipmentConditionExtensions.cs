@@ -1,8 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
-using System.Collections.Generic;
-using System.Linq;
+
 
 namespace Capstone.HPTY.ServiceLayer.Extensions
 {
@@ -20,13 +19,8 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 Description = entity.Description ?? string.Empty,
                 Status = entity.Status,
                 LoggedDate = entity.LoggedDate,
-
-                // Determine equipment type and details
-                EquipmentType = entity.HotPotInventoryId.HasValue ? "HotPot" : "Utensil",
-                EquipmentId = entity.HotPotInventoryId ?? entity.UtensilId ?? 0,
-                EquipmentName = entity.HotPotInventoryId.HasValue
-                    ? entity.HotPotInventory?.Hotpot?.Name ?? "Unknown HotPot"
-                    : entity.Utensil?.Name ?? "Unknown Utensil"
+                EquipmentId = entity.HotPotInventoryId ?? 0,
+                EquipmentName = entity.HotPotInventory?.Hotpot?.Name ?? $"HotPot #{entity.HotPotInventoryId}"
             };
         }
 
@@ -44,22 +38,15 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 Description = baseDto.Description,
                 Status = baseDto.Status,
                 LoggedDate = baseDto.LoggedDate,
-                EquipmentType = baseDto.EquipmentType,
                 EquipmentId = baseDto.EquipmentId,
                 EquipmentName = baseDto.EquipmentName,
 
                 // Additional details
                 UpdatedAt = entity.UpdatedAt,
+                FinishDate = entity.FinishDate,
                 EquipmentSerialNumber = entity.HotPotInventoryId.HasValue
                     ? entity.HotPotInventory?.SeriesNumber
                     : null,
-                EquipmentTypeName = entity.UtensilId.HasValue
-                    ? entity.Utensil?.UtensilType?.Name
-                    : null,
-                EquipmentMaterial = entity.UtensilId.HasValue
-                    ? entity.Utensil?.Material
-                    : null,
-                MaintenanceNotes = null // Add this if you have maintenance notes in your entity
             };
         }
 
@@ -74,10 +61,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 Name = entity.Name,
                 Status = entity.Status,
                 LoggedDate = entity.LoggedDate,
-                EquipmentType = entity.HotPotInventoryId.HasValue ? "HotPot" : "Utensil",
-                EquipmentName = entity.HotPotInventoryId.HasValue
-                    ? entity.HotPotInventory?.Hotpot?.Name ?? "Unknown HotPot"
-                    : entity.Utensil?.Name ?? "Unknown Utensil"
+                EquipmentName = entity.HotPotInventory?.Hotpot?.Name ?? "Unknown HotPot"
             };
         }
 

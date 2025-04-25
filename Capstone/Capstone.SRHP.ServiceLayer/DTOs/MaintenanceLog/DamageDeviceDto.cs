@@ -22,18 +22,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog
         public string HotPotInventorySeriesNumber { get; set; }
     }
 
-    public class DamageUtensilDto : DamageDeviceDto
-    {
-        public int? UtensilID { get; set; }
-        public string UtensilName { get; set; }
-
-    }
 
     public class DamageDeviceDetailDto : DamageDeviceDto
     {
-        public int? UtensilID { get; set; }
         public int? HotPotInventoryId { get; set; }
-        public string UtensilName { get; set; }
         public string HotPotInventorySeriesNumber { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

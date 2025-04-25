@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
@@ -23,12 +24,13 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
         Task<ShippingListDto> UpdateDeliveryNotesAsync(int shippingOrderId, string notes);
 
         /// Saves proof of delivery for a shipping order
-        Task<ProofOfDeliveryResponse> SaveProofOfDeliveryAsync(int shippingOrderId, ProofOfDeliveryRequest request);
+        //Task<ProofOfDeliveryResponse> SaveProofOfDeliveryAsync(int shippingOrderId, ProofOfDeliveryRequest request);
 
         /// Gets proof of delivery for a shipping order
-        Task<ProofOfDeliveryDto> GetProofOfDeliveryAsync(int shippingOrderId);
+        //Task<ProofOfDeliveryDto> GetProofOfDeliveryAsync(int shippingOrderId);
 
         Task<ShippingListDto> UpdateShippingStatusAsync(int shippingOrderId, string? notes = null);
 
+        Task<VehicleInfoDto> GetVehicleInfoAsync(int shippingOrderId);
     }
 }

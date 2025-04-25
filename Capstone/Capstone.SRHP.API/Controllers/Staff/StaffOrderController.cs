@@ -3,6 +3,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Services.StaffService;
@@ -98,16 +99,32 @@ namespace Capstone.HPTY.API.Controllers.Staff
         {
             try
             {
-                _logger.LogInformation("Staff retrieving order with ID: {OrderId}", id);
+                _logger.LogInformation("Staff retrieving vehicle information for order with ID: {OrderId}", id);
 
                 var order = await _staffOrderService.GetOrderWithDetailsAsync(id);
-                var orderDto = MapToStaffOrderDto(order);
 
-                return Ok(new ApiResponse<StaffOrderDto>
+                if (order.ShippingOrder?.Vehicle == null)
+                {
+                    return NotFound(new ApiErrorResponse
+                    {
+                        Status = "Not Found",
+                        Message = $"No vehicle assigned to order with ID {id}"
+                    });
+                }
+
+                var vehicleInfo = new VehicleInfoDto
+                {
+                    VehicleId = order.ShippingOrder.VehicleId,
+                    VehicleName = order.ShippingOrder.Vehicle.Name,
+                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                    VehicleType = order.ShippingOrder.Vehicle.Type
+                };
+
+                return Ok(new ApiResponse<VehicleInfoDto>
                 {
                     Success = true,
-                    Message = "Order retrieved successfully",
-                    Data = orderDto
+                    Message = "Vehicle information retrieved successfully",
+                    Data = vehicleInfo
                 });
             }
             catch (NotFoundException ex)
@@ -121,11 +138,11 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving order with ID: {OrderId}", id);
+                _logger.LogError(ex, "Error retrieving vehicle information for order with ID: {OrderId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve order"
+                    Message = "Failed to retrieve vehicle information"
                 });
             }
         }
@@ -318,7 +335,17 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 UserPhone = order.User?.PhoneNumber ?? "Unknown",
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                OrderDetails = order.SellOrder.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>()
+                OrderDetails = order.SellOrder.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
+
+                // Add vehicle information
+                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                {
+                    VehicleId = order.ShippingOrder.VehicleId,
+                    VehicleName = order.ShippingOrder.Vehicle.Name,
+                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                    VehicleType = order.ShippingOrder.Vehicle.Type
+                } : null,
+                OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small
             };
         }
 

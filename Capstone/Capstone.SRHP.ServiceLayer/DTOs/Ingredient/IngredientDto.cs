@@ -14,11 +14,16 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public string ImageURL { get; set; }
         public int MinStockLevel { get; set; }
         public int Quantity { get; set; }
+        public string Unit { get; set; }
+        public double MeasurementValue { get; set; }
+        public double PhysicalQuantity => Quantity * MeasurementValue;
+        public string FormattedQuantity => $"{PhysicalQuantity} {Unit}";
         public int IngredientTypeID { get; set; }
         public string IngredientTypeName { get; set; }
         public decimal Price { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsLowStock { get; set; }
+        public List<IngredientBatchDto> Batches { get; set; } = new List<IngredientBatchDto>();
     }
 }

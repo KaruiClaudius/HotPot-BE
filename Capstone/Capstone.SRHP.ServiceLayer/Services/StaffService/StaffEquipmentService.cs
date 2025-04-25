@@ -49,32 +49,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     result.Add(new EquipmentRetrievalDto
                     {
                         EquipmentId = hotpot.HotPotInventoryId,
-                        EquipmentType = "HotPot",
                         SeriesNumber = hotpot.SeriesNumber,
                         Name = hotpot.Hotpot?.Name ?? "Unknown",
                         IsAvailable = hotpot.Status == HotpotStatus.Available,
-                        LastInspectionDate = lastInspection?.LoggedDate,
-                        LastInspectionStatus = lastInspection?.Status
-                    });
-                }
-
-                // Get Utensils
-                var utensils = await _unitOfWork.Repository<Utensil>()
-                    .AsQueryable()
-                    .Include(u => u.ConditionLogs.OrderByDescending(c => c.LoggedDate).Take(1))
-                    .ToListAsync();
-
-                foreach (var utensil in utensils)
-                {
-                    var lastInspection = utensil.ConditionLogs?.OrderByDescending(c => c.LoggedDate).FirstOrDefault();
-
-                    result.Add(new EquipmentRetrievalDto
-                    {
-                        EquipmentId = utensil.UtensilId,
-                        EquipmentType = "Utensil",
-                        SeriesNumber = utensil.UtensilId.ToString(), // Utensils might not have series numbers
-                        Name = utensil.Name,
-                        IsAvailable = utensil.Status,
                         LastInspectionDate = lastInspection?.LoggedDate,
                         LastInspectionStatus = lastInspection?.Status
                     });
@@ -89,80 +66,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-        public async Task<EquipmentRetrievalDto> GetRentalEquipmentDetailsAsync(int equipmentId, string equipmentType)
+        public async Task<EquipmentRetrievalDto> GetRentalEquipmentDetailsAsync(int equipmentId)
         {
             try
             {
-                _logger.LogInformation("Getting details for {EquipmentType} with ID: {EquipmentId}", equipmentType, equipmentId);
+                _logger.LogInformation("Getting details for equipment with ID: {EquipmentId}", equipmentId);
 
-                if (equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase))
+                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .Include(h => h.Hotpot)
+                    .Include(h => h.ConditionLogs.OrderByDescending(c => c.LoggedDate).Take(1))
+                    .FirstOrDefaultAsync(h => h.HotPotInventoryId == equipmentId);
+
+                if (hotpot == null)
                 {
-                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                        .AsQueryable()
-                        .Include(h => h.Hotpot)
-                        .Include(h => h.ConditionLogs.OrderByDescending(c => c.LoggedDate).Take(1))
-                        .FirstOrDefaultAsync(h => h.HotPotInventoryId == equipmentId);
-
-                    if (hotpot == null)
-                    {
-                        throw new NotFoundException($"HotPot with ID {equipmentId} not found");
-                    }
-
-                    var lastInspection = hotpot.ConditionLogs?.OrderByDescending(c => c.LoggedDate).FirstOrDefault();
-
-                    return new EquipmentRetrievalDto
-                    {
-                        EquipmentId = hotpot.HotPotInventoryId,
-                        EquipmentType = "HotPot",
-                        SeriesNumber = hotpot.SeriesNumber,
-                        Name = hotpot.Hotpot?.Name ?? "Unknown",
-                        IsAvailable = hotpot.Status == HotpotStatus.Available,
-                        LastInspectionDate = lastInspection?.LoggedDate,
-                        LastInspectionStatus = lastInspection?.Status
-                    };
+                    throw new NotFoundException($"HotPot with ID {equipmentId} not found");
                 }
-                else if (equipmentType.Equals("Utensil", StringComparison.OrdinalIgnoreCase))
+
+                var lastInspection = hotpot.ConditionLogs?.OrderByDescending(c => c.LoggedDate).FirstOrDefault();
+
+                return new EquipmentRetrievalDto
                 {
-                    var utensil = await _unitOfWork.Repository<Utensil>()
-                        .AsQueryable()
-                        .Include(u => u.ConditionLogs.OrderByDescending(c => c.LoggedDate).Take(1))
-                        .FirstOrDefaultAsync(u => u.UtensilId == equipmentId);
-
-                    if (utensil == null)
-                    {
-                        throw new NotFoundException($"Utensil with ID {equipmentId} not found");
-                    }
-
-                    var lastInspection = utensil.ConditionLogs?.OrderByDescending(c => c.LoggedDate).FirstOrDefault();
-
-                    return new EquipmentRetrievalDto
-                    {
-                        EquipmentId = utensil.UtensilId,
-                        EquipmentType = "Utensil",
-                        SeriesNumber = utensil.UtensilId.ToString(), // Utensils might not have series numbers
-                        Name = utensil.Name,
-                        IsAvailable = utensil.Status,
-                        LastInspectionDate = lastInspection?.LoggedDate,
-                        LastInspectionStatus = lastInspection?.Status
-                    };
-                }
-                else
-                {
-                    throw new ArgumentException($"Invalid equipment type: {equipmentType}. Must be 'HotPot' or 'Utensil'.");
-                }
+                    EquipmentId = hotpot.HotPotInventoryId,
+                    SeriesNumber = hotpot.SeriesNumber,
+                    Name = hotpot.Hotpot?.Name ?? "Unknown",
+                    IsAvailable = hotpot.Status == HotpotStatus.Available,
+                    LastInspectionDate = lastInspection?.LoggedDate,
+                    LastInspectionStatus = lastInspection?.Status
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving rental equipment details for {EquipmentType} with ID: {EquipmentId}", equipmentType, equipmentId);
+                _logger.LogError(ex, "Error retrieving rental equipment details for ID: {EquipmentId}", equipmentId);
                 throw;
             }
         }
+
 
         public async Task<EquipmentInspectionResponse> LogEquipmentInspectionAsync(EquipmentInspectionRequest request)
         {
             try
             {
-                _logger.LogInformation("Logging inspection for {EquipmentType} with ID: {EquipmentId}", request.EquipmentType, request.EquipmentId);
+                _logger.LogInformation("Logging inspection for equipment with ID: {EquipmentId}", request.EquipmentId);
+
+                // Get the HotPot
+                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAsync(h => h.HotPotInventoryId == request.EquipmentId);
+
+                if (hotpot == null)
+                {
+                    throw new NotFoundException($"HotPot with ID {request.EquipmentId} not found");
+                }
 
                 // Create condition log
                 var conditionLog = new DamageDevice
@@ -170,59 +124,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     Name = request.ConditionName,
                     Description = request.ConditionDescription,
                     Status = request.Status,
-                    LoggedDate = DateTime.UtcNow
+                    LoggedDate = DateTime.UtcNow,
+                    HotPotInventoryId = request.EquipmentId
                 };
 
-                // Set the appropriate foreign key based on equipment type
-                if (request.EquipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase))
+                // Set finish date if status is Completed or Cancelled
+                if (request.Status == MaintenanceStatus.Completed || request.Status == MaintenanceStatus.Cancelled)
                 {
-                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                        .FindAsync(h => h.HotPotInventoryId == request.EquipmentId);
-
-                    if (hotpot == null)
-                    {
-                        throw new NotFoundException($"HotPot with ID {request.EquipmentId} not found");
-                    }
-
-                    conditionLog.HotPotInventoryId = request.EquipmentId;
-
-                    // Update availability status if requested
-                    if (request.SetAsAvailable)
-                    {
-                        hotpot.Status = HotpotStatus.Available;
-                    }
-                    else if (request.Status != MaintenanceStatus.Completed)
-                    {
-                        // If maintenance is needed, set as unavailable
-                        hotpot.Status = HotpotStatus.Damaged;
-                    }
+                    conditionLog.FinishDate = DateTime.UtcNow;
                 }
-                else if (request.EquipmentType.Equals("Utensil", StringComparison.OrdinalIgnoreCase))
+
+                // Update availability status if requested
+                if (request.SetAsAvailable)
                 {
-                    var utensil = await _unitOfWork.Repository<Utensil>()
-                        .FindAsync(u => u.UtensilId == request.EquipmentId);
-
-                    if (utensil == null)
-                    {
-                        throw new NotFoundException($"Utensil with ID {request.EquipmentId} not found");
-                    }
-
-                    conditionLog.UtensilId = request.EquipmentId;
-
-                    // Update availability status if requested
-                    if (request.SetAsAvailable)
-                    {
-                        utensil.Status = true;
-                    }
-                    else if (request.Status != MaintenanceStatus.Completed)
-                    {
-                        // If maintenance is needed, set as unavailable
-                        utensil.Status = false;
-                    }
+                    hotpot.Status = HotpotStatus.Available;
                 }
-                else
+                else if (request.Status != MaintenanceStatus.Completed)
                 {
-                    throw new ArgumentException($"Invalid equipment type: {request.EquipmentType}. Must be 'HotPot' or 'Utensil'.");
+                    // If maintenance is needed, set as unavailable
+                    hotpot.Status = HotpotStatus.Damaged;
                 }
 
                 // Save condition log
@@ -233,141 +153,90 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 return new EquipmentInspectionResponse
                 {
                     ConditionLogId = conditionLog.DamageDeviceId,
-                    EquipmentId = request.EquipmentId,
-                    EquipmentType = request.EquipmentType,
+                    Equipment = hotpot.Hotpot?.Name ?? $"HotPot #{hotpot.HotPotInventoryId}",
                     ConditionName = conditionLog.Name,
                     ConditionDescription = conditionLog.Description,
                     Status = conditionLog.Status,
                     LoggedDate = conditionLog.LoggedDate,
+                    FinishDate = conditionLog.FinishDate,
                     IsAvailable = request.SetAsAvailable || (request.Status == MaintenanceStatus.Completed)
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging inspection for {EquipmentType} with ID: {EquipmentId}", request.EquipmentType, request.EquipmentId);
+                _logger.LogError(ex, "Error logging inspection for equipment with ID: {EquipmentId}", request.EquipmentId);
                 throw;
             }
         }
-        public async Task<bool> UpdateEquipmentAvailabilityAsync(int equipmentId, string equipmentType, bool isAvailable)
+        public async Task<bool> UpdateEquipmentAvailabilityAsync(int equipmentId, UpdateAvailabilityRequest request)
         {
             try
             {
-                _logger.LogInformation("Updating availability for {EquipmentType} with ID: {EquipmentId} to {IsAvailable}",
-                    equipmentType, equipmentId, isAvailable);
+                _logger.LogInformation("Updating availability for equipment with ID: {EquipmentId} to {IsAvailable}",
+                    equipmentId, request.IsAvailable);
 
-                if (equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase))
+                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAsync(h => h.HotPotInventoryId == equipmentId);
+
+                if (hotpot == null)
                 {
-                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                        .FindAsync(h => h.HotPotInventoryId == equipmentId);
-
-                    if (hotpot == null)
-                    {
-                        throw new NotFoundException($"HotPot with ID {equipmentId} not found");
-                    }
-
-                    // Convert boolean to appropriate HotpotStatus enum value
-                    hotpot.Status = isAvailable ? HotpotStatus.Available : HotpotStatus.Damaged;
-                    await _unitOfWork.CommitAsync();
-
-                    return true;
+                    throw new NotFoundException($"HotPot with ID {equipmentId} not found");
                 }
-                else if (equipmentType.Equals("Utensil", StringComparison.OrdinalIgnoreCase))
-                {
-                    var utensil = await _unitOfWork.Repository<Utensil>()
-                        .FindAsync(u => u.UtensilId == equipmentId);
 
-                    if (utensil == null)
-                    {
-                        throw new NotFoundException($"Utensil with ID {equipmentId} not found");
-                    }
+                // Convert boolean to appropriate HotpotStatus enum value
+                hotpot.Status = request.IsAvailable ? HotpotStatus.Available : HotpotStatus.Damaged;
+                await _unitOfWork.CommitAsync();
 
-                    utensil.Status = isAvailable;
-                    await _unitOfWork.CommitAsync();
-
-                    return true;
-                }
-                else
-                {
-                    throw new ArgumentException($"Invalid equipment type: {equipmentType}. Must be 'HotPot' or 'Utensil'.");
-                }
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating availability for {EquipmentType} with ID: {EquipmentId}",
-                    equipmentType, equipmentId);
+                _logger.LogError(ex, "Error updating availability for equipment with ID: {EquipmentId}", equipmentId);
                 throw;
             }
         }
 
-        public async Task<IEnumerable<EquipmentInspectionResponse>> GetEquipmentInspectionHistoryAsync(int equipmentId, string equipmentType)
+
+        public async Task<IEnumerable<EquipmentInspectionResponse>> GetEquipmentInspectionHistoryAsync(int equipmentId)
         {
             try
             {
-                _logger.LogInformation("Getting inspection history for {EquipmentType} with ID: {EquipmentId}",
-                    equipmentType, equipmentId);
+                _logger.LogInformation("Getting inspection history for equipment with ID: {EquipmentId}", equipmentId);
 
-                List<DamageDevice> conditionLogs;
+                // Check if the HotPot exists
+                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                    .AsQueryable()
+                    .Include(h => h.Hotpot)
+                    .FirstOrDefaultAsync(h => h.HotPotInventoryId == equipmentId);
 
-                if (equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase))
+                if (hotpot == null)
                 {
-                    // Check if the HotPot exists
-                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                        .FindAsync(h => h.HotPotInventoryId == equipmentId);
-
-                    if (hotpot == null)
-                    {
-                        throw new NotFoundException($"HotPot with ID {equipmentId} not found");
-                    }
-
-                    // Get condition logs for this HotPot
-                    conditionLogs = await _unitOfWork.Repository<DamageDevice>()
-                        .AsQueryable()
-                        .Where(c => c.HotPotInventoryId == equipmentId)
-                        .OrderByDescending(c => c.LoggedDate)
-                        .ToListAsync();
+                    throw new NotFoundException($"HotPot with ID {equipmentId} not found");
                 }
-                else if (equipmentType.Equals("Utensil", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Check if the Utensil exists
-                    var utensil = await _unitOfWork.Repository<Utensil>()
-                        .FindAsync(u => u.UtensilId == equipmentId);
 
-                    if (utensil == null)
-                    {
-                        throw new NotFoundException($"Utensil with ID {equipmentId} not found");
-                    }
-
-                    // Get condition logs for this Utensil
-                    conditionLogs = await _unitOfWork.Repository<DamageDevice>()
-                        .AsQueryable()
-                        .Where(c => c.UtensilId == equipmentId)
-                        .OrderByDescending(c => c.LoggedDate)
-                        .ToListAsync();
-                }
-                else
-                {
-                    throw new ArgumentException($"Invalid equipment type: {equipmentType}. Must be 'HotPot' or 'Utensil'.");
-                }
+                // Get condition logs for this HotPot
+                var conditionLogs = await _unitOfWork.Repository<DamageDevice>()
+                    .AsQueryable()
+                    .Where(c => c.HotPotInventoryId == equipmentId)
+                    .OrderByDescending(c => c.LoggedDate)
+                    .ToListAsync();
 
                 // Map condition logs to response DTOs
                 return conditionLogs.Select(log => new EquipmentInspectionResponse
                 {
                     ConditionLogId = log.DamageDeviceId,
-                    EquipmentId = equipmentType.Equals("HotPot", StringComparison.OrdinalIgnoreCase)
-                        ? log.HotPotInventoryId.Value
-                        : log.UtensilId.Value,
-                    EquipmentType = equipmentType,
+                    Equipment = hotpot.Hotpot?.Name ?? $"HotPot #{hotpot.HotPotInventoryId}",
                     ConditionName = log.Name,
                     ConditionDescription = log.Description,
                     Status = log.Status,
                     LoggedDate = log.LoggedDate,
+                    FinishDate = log.FinishDate,
                     IsAvailable = log.Status == MaintenanceStatus.Completed
                 }).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting inspection history for {EquipmentType} with ID: {EquipmentId}",
-                    equipmentType, equipmentId);
+                _logger.LogError(ex, "Error getting inspection history for equipment with ID: {EquipmentId}", equipmentId);
                 throw;
             }
         }

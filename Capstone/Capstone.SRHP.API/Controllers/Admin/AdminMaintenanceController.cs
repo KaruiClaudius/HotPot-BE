@@ -36,15 +36,15 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpGet("hotpots")]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<DamageHotpotDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<DamageHotpotDto>>>> GetHotpotLogs(
-     [FromQuery] string searchTerm = null,
-     [FromQuery] MaintenanceStatus? status = null,
-     [FromQuery] int? hotPotInventoryId = null,
-     [FromQuery] DateTime? fromDate = null,
-     [FromQuery] DateTime? toDate = null,
-     [FromQuery] string sortBy = "LoggedDate",
-     [FromQuery] bool ascending = false,
-     [FromQuery] int pageNumber = 1,
-     [FromQuery] int pageSize = 10)
+            [FromQuery] string searchTerm = null,
+            [FromQuery] MaintenanceStatus? status = null,
+            [FromQuery] int? hotPotInventoryId = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string sortBy = "LoggedDate",
+            [FromQuery] bool ascending = false,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -63,7 +63,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     SearchTerm = searchTerm,
                     Status = status,
-                    DeviceType = DeviceType.Hotpot,
                     HotPotInventoryId = hotPotInventoryId,
                     FromDate = fromDate,
                     ToDate = toDate,
@@ -101,78 +100,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 });
             }
         }
-
-        [HttpGet("utensils")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<DamageUtensilDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<DamageUtensilDto>>>> GetUtensilLogs(
-            [FromQuery] string searchTerm = null,
-            [FromQuery] MaintenanceStatus? status = null,
-            [FromQuery] int? utensilId = null,
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null,
-            [FromQuery] string sortBy = "LoggedDate",
-            [FromQuery] bool ascending = false,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (pageNumber < 1 || pageSize < 1)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
-                    });
-                }
-
-                _logger.LogInformation($"Admin retrieving utensil damage logs - Page {pageNumber}, Size {pageSize}");
-
-                var request = new DamageDeviceFilterRequest
-                {
-                    SearchTerm = searchTerm,
-                    Status = status,
-                    DeviceType = DeviceType.Utensil,
-                    UtensilId = utensilId,
-                    FromDate = fromDate,
-                    ToDate = toDate,
-                    SortBy = sortBy,
-                    Ascending = ascending,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
-
-                var pagedDevices = await _damageDeviceService.GetAllAsync(request);
-                var deviceDtos = pagedDevices.Items.Select(MapToDamageUtensilDto).ToList();
-
-                var result = new PagedResult<DamageUtensilDto>
-                {
-                    Items = deviceDtos,
-                    PageNumber = pagedDevices.PageNumber,
-                    PageSize = pagedDevices.PageSize,
-                    TotalCount = pagedDevices.TotalCount
-                };
-
-                return Ok(new ApiResponse<PagedResult<DamageUtensilDto>>
-                {
-                    Success = true,
-                    Message = "Utensil damage logs retrieved successfully",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving utensil damage logs");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve utensil damage logs"
-                });
-            }
-        }
-
-
-
 
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ApiResponse<DamageDeviceDetailDto>), StatusCodes.Status200OK)]
@@ -227,7 +154,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     Status = request.Status,
                     LoggedDate = DateTime.UtcNow,
-                    UtensilId = request.UtensilID,
                     HotPotInventoryId = request.HotPotInventoryId
                 };
 
@@ -377,7 +303,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = device.Status.GetDisplayName(),
+                StatusName = device.Status.ToString(),
                 LoggedDate = device.LoggedDate,
             };
         }
@@ -391,29 +317,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = device.Status.GetDisplayName(),
+                StatusName = device.Status.ToString(),
                 LoggedDate = device.LoggedDate,
                 HotPotInventoryId = device.HotPotInventoryId,
                 HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber
             };
         }
-
-        private static DamageUtensilDto MapToDamageUtensilDto(DamageDevice device)
-        {
-            if (device == null) return null;
-
-            return new DamageUtensilDto
-            {
-                DamageDeviceId = device.DamageDeviceId,
-                Name = device.Name,
-                Description = device.Description,
-                StatusName = device.Status.GetDisplayName(),
-                LoggedDate = device.LoggedDate,
-                UtensilID = device.UtensilId,
-                UtensilName = device.Utensil?.Name
-            };
-        }
-
 
         private static DamageDeviceDetailDto MapToDetailDto(DamageDevice device)
         {
@@ -425,11 +334,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 DamageDeviceId = device.DamageDeviceId,
                 Name = device.Name,
                 Description = device.Description,
-                StatusName = device.Status.GetDisplayName(),
+                StatusName = device.Status.ToString(),
                 LoggedDate = device.LoggedDate,
-                UtensilID = device.UtensilId,
                 HotPotInventoryId = device.HotPotInventoryId,
-                UtensilName = device.Utensil?.Name,
                 HotPotInventorySeriesNumber = device.HotPotInventory?.SeriesNumber,
 
                 // Add the detail-specific properties

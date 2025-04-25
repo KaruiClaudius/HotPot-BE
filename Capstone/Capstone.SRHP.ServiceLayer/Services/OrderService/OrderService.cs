@@ -233,7 +233,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
                 if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
+                    throw new NotFoundException($"Không tìm thấy đơn hàng với ID {orderId}");
 
                 return order;
             }
@@ -253,7 +253,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 // Validate request
                 if (request.Items == null || !request.Items.Any())
-                    throw new ValidationException("Order must contain at least one item");
+                    throw new ValidationException("Đơn hàng phải chứa ít nhất một mặt hàng");
 
                 // Execute in transaction to ensure consistency
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -266,7 +266,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         .Include(o => o.Payments)
                         .Include(o => o.SellOrder)
                         .Include(o => o.RentOrder)
-                        .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
+                        .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Cart && !o.IsDelete);
 
                     if (existingPendingOrder != null)
                     {
@@ -365,7 +365,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             // Get user's default address
             var user = await _unitOfWork.Repository<User>().GetById(userId);
-            string address = user?.Address ?? "To be provided";
+            string address = user?.Address ?? "Sẽ Cung Cấp Sau";
 
             // Create new order
             var order = new Order
@@ -373,7 +373,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 UserId = userId,
                 Address = address, // Use user's default address
                 Notes = null, // No notes initially
-                Status = OrderStatus.Pending,
+                Status = OrderStatus.Cart,
                 DiscountId = null, // No discount initially
                 SellOrder = new SellOrder
                 {
@@ -429,7 +429,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var hotpot = await _hotpotService.GetByIdAsync(item.HotpotID.Value);
             if (hotpot == null)
-                throw new ValidationException($"Hotpot with ID {item.HotpotID} is not available");
+                throw new ValidationException($"Lẩu với ID {item.HotpotID} hiện không có sẵn");
 
             // Get all hotpot inventory items of this type
             var allHotpots = await _unitOfWork.Repository<HotPotInventory>()
@@ -455,7 +455,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Check if we have enough total hotpots
             if (neededFromAvailable + Math.Min(neededFromReserved, reservedHotpots.Count) < item.Quantity)
-                throw new ValidationException($"Only {availableHotpots.Count + reservedHotpots.Count} hotpots of type {hotpot.Name} are available");
+                throw new ValidationException($"Chỉ còn {availableHotpots.Count + reservedHotpots.Count} lẩu loại {hotpot.Name} có sẵn");
 
             // Select the hotpots to use
             var selectedHotpots = availableHotpots.Take(neededFromAvailable)
@@ -521,11 +521,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
             if (ingredient == null)
-                throw new ValidationException($"Ingredient with ID {item.IngredientID} not found");
+                throw new ValidationException($"Không tìm thấy nguyên liệu với ID {item.IngredientID}");
 
-            // Check if the requested quantity is available
+            // Kiểm tra số lượng yêu cầu có sẵn hay không
             if (ingredient.Quantity < item.Quantity)
-                throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
+                throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
 
             // Get the latest price
             var latestPrice = ingredient.IngredientPrices
@@ -589,7 +589,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var utensil = await _utensilService.GetUtensilByIdAsync(item.UtensilID.Value);
             if (utensil == null || !utensil.Status || utensil.Quantity < item.Quantity)
-                throw new ValidationException($"Utensil with ID {item.UtensilID} is not available in the requested quantity");
+                throw new ValidationException($"Dụng cụ với ID {item.UtensilID} không có sẵn với số lượng yêu cầu");
 
             // Ensure SellOrder exists
             if (order.SellOrder == null)
@@ -647,11 +647,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var customization = await _customizationService.GetByIdAsync(item.CustomizationID.Value);
             if (customization == null)
-                throw new ValidationException($"Customization with ID {item.CustomizationID} not found");
+                throw new ValidationException($"Không tìm thấy tuỳ chỉnh với ID {item.CustomizationID}");
 
-            // Verify the customization belongs to the current user
+            // Kiểm tra tuỳ chỉnh có thuộc về người dùng hiện tại không
             if (customization.UserId != order.UserId)
-                throw new ValidationException($"Customization with ID {item.CustomizationID} does not belong to the current user");
+                throw new ValidationException($"Tuỳ chỉnh với ID {item.CustomizationID} không thuộc về người dùng hiện tại");
+
 
             // Ensure SellOrder exists
             if (order.SellOrder == null)
@@ -705,7 +706,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var combo = await _comboService.GetByIdAsync(item.ComboID.Value);
             if (combo == null)
-                throw new ValidationException($"Combo with ID {item.ComboID} not found");
+                throw new ValidationException($"Không tìm thấy combo với ID {item.ComboID}");
 
             // Ensure SellOrder exists
             if (order.SellOrder == null)
@@ -837,28 +838,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         public async Task<Order> UpdateCartItemsQuantityAsync(int userId, CartItemUpdate[] itemUpdates)
         {
             if (itemUpdates == null || !itemUpdates.Any())
-                throw new ValidationException("No items to update");
+                throw new ValidationException("Không có mặt hàng nào để cập nhật");
 
-            // Validate all quantities are non-negative (allowing 0 for removal)
+            // Kiểm tra tất cả số lượng đều không âm (cho phép 0 để xóa)
             foreach (var update in itemUpdates)
             {
                 if (update.NewQuantity < 0)
-                    throw new ValidationException("Quantity cannot be negative");
+                    throw new ValidationException("Số lượng không được là số âm");
             }
 
-            try
+                try
             {
-                // Find the user's pending order
+                // Find the user's cart order
                 var pendingOrder = await _unitOfWork.Repository<Order>()
                     .IncludeNested(query =>
                         query.Include(o => o.SellOrder)
                              .ThenInclude(so => so.SellOrderDetails)
                              .Include(o => o.RentOrder)
                              .ThenInclude(ro => ro.RentOrderDetails))
-                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending && !o.IsDelete);
+                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Cart && !o.IsDelete);
 
                 if (pendingOrder == null)
-                    throw new NotFoundException("No pending order found");
+                    throw new NotFoundException("Không tìm thấy giỏ hàng");
 
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
@@ -876,7 +877,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
                             if (detail == null)
-                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
 
                             // Check inventory if it's an ingredient
                             if (detail.IngredientId.HasValue)
@@ -887,7 +888,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 int quantityDifference = update.NewQuantity - detail.Quantity;
 
                                 if (quantityDifference > 0 && ingredient.Quantity < quantityDifference)
-                                    throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
+                                    throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
                             }
                             // Add check for utensil inventory
                             else if (detail.UtensilId.HasValue)
@@ -898,7 +899,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 int quantityDifference = update.NewQuantity - detail.Quantity;
 
                                 if (quantityDifference > 0 && utensil.Quantity < quantityDifference)
-                                    throw new ValidationException($"Only {utensil.Quantity} of {utensil.Name} is available");
+                                    throw new ValidationException($"Chỉ còn {utensil.Quantity} {utensil.Name} có sẵn");
                             }
                         }
                         else
@@ -908,9 +909,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
                             if (detail == null)
-                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
 
-                            // Remove utensil check since utensils are now only sold
                             if (detail.HotpotInventoryId.HasValue)
                             {
                                 // For hotpot inventory, we need special handling
@@ -918,7 +918,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                     .GetById(detail.HotpotInventoryId.Value);
 
                                 if (hotpotInventory == null)
-                                    throw new NotFoundException($"Hotpot inventory with ID {detail.HotpotInventoryId.Value} not found");
+                                    throw new NotFoundException($"Không tìm thấy tồn kho lẩu với ID {detail.HotpotInventoryId.Value}");
 
                                 // Find all hotpots of the same type in the order
                                 var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
@@ -953,7 +953,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                         .ToListAsync();
 
                                     if (availableHotpots.Count < quantityDifference)
-                                        throw new ValidationException($"Only {availableHotpots.Count} additional hotpots of this type are available");
+                                        throw new ValidationException($"Chỉ còn {availableHotpots.Count} lẩu loại này có sẵn thêm");
                                 }
                             }
                         }
@@ -974,7 +974,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
                             if (detail == null)
-                                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID  {update.OrderDetailId}");
 
                             // Remove utensil handling since utensils are now only sold
                             if (detail.HotpotInventoryId.HasValue)
@@ -1031,7 +1031,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
 
             if (hotpotInventory == null)
-                throw new NotFoundException($"Hotpot inventory with ID {detail.HotpotInventoryId.Value} not found");
+                throw new NotFoundException($"Không tìm thấy tồn kho lẩu với ID {detail.HotpotInventoryId.Value}");
 
             // Step 1: Find all hotpot details of the same type in the order
             var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
@@ -1093,7 +1093,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Check if we have enough total hotpots
                 if (neededFromAvailable + Math.Min(neededFromReserved, reservedHotpots.Count) < quantityDifference)
-                    throw new ValidationException($"Only {availableHotpots.Count + reservedHotpots.Count} additional hotpots of this type are available");
+                    throw new ValidationException($"Chỉ còn {availableHotpots.Count + reservedHotpots.Count} lẩu loại này có sẵn thêm");
 
                 // Select the hotpots to use
                 var selectedHotpots = availableHotpots.Take(neededFromAvailable)
@@ -1158,7 +1158,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
 
             if (detail == null)
-                throw new NotFoundException($"Order detail with ID {update.OrderDetailId} not found");
+                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
 
             // Handle item removal (quantity = 0)
             if (update.NewQuantity == 0)
@@ -1233,8 +1233,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var order = await GetByIdAsync(id);
 
                 // Only allow updates for pending orders
-                if (order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Only pending orders can be updated");
+                if (order.Status != OrderStatus.Cart)
+                    throw new ValidationException("Chỉ các giỏ hàng mới có thể được cập nhật");
 
                 // Update order properties
                 if (!string.IsNullOrWhiteSpace(request.Address))
@@ -1248,11 +1248,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     var discount = await _discountService.GetByIdAsync(request.DiscountId.Value);
                     if (discount == null)
-                        throw new ValidationException($"Discount with ID {request.DiscountId} not found");
+                        throw new ValidationException($"Không tìm thấy mã giảm giá với ID {request.DiscountId}");
 
-                    // Validate discount is still valid
                     if (!await _discountService.IsDiscountValidAsync(request.DiscountId.Value))
-                        throw new ValidationException("The selected discount is not valid or has expired");
+                        throw new ValidationException("Mã giảm giá đã chọn không hợp lệ hoặc đã hết hạn");
+
 
                     // Calculate new total price with discount
                     decimal basePrice = order.TotalPrice;
@@ -1443,8 +1443,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var order = await GetByIdAsync(id);
 
                 // Only allow deletion of pending orders
-                if (order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Only pending orders can be deleted");
+                if (order.Status != OrderStatus.Cart)
+                    throw new ValidationException("Chỉ các đơn hàng trong giỏ hàng mới có thể bị xóa");
 
                 // Soft delete order
                 order.SoftDelete();
@@ -1483,8 +1483,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var order = await GetByIdAsync(orderId);
 
                 // Only allow confirmation for pending orders
-                if (order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Only pending orders can be confirmed for payment");
+                if (order.Status != OrderStatus.Cart)
+                    throw new ValidationException("Chỉ các đơn hàng chờ xử lý mới có thể được xác nhận thanh toán");
 
                 // Execute in transaction to ensure consistency
                 return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -1568,8 +1568,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Define valid status transitions
             bool isValidTransition = (currentStatus, newStatus) switch
             {
+                (OrderStatus.Cart, OrderStatus.Processing) => true,
+                (OrderStatus.Cart, OrderStatus.Cancelled) => true,
                 (OrderStatus.Pending, OrderStatus.Processing) => true,
-                (OrderStatus.Pending, OrderStatus.Cancelled) => true,
                 (OrderStatus.Processing, OrderStatus.Shipping) => true,
                 (OrderStatus.Processing, OrderStatus.Cancelled) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
@@ -1580,7 +1581,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             if (!isValidTransition)
             {
-                throw new ValidationException($"Invalid status transition from {currentStatus} to {newStatus}");
+                throw new ValidationException($"Chuyển trạng thái không hợp lệ từ {currentStatus} sang {newStatus}");
             }
         }
 
@@ -1592,19 +1593,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             switch (itemType)
             {
                 case ItemType.Ingredient:
-                    // Just verify availability without updating quantity
+                    // Kiểm tra tính sẵn có mà không cập nhật số lượng
                     var ingredient = await _ingredientService.GetIngredientByIdAsync(itemId);
                     if (ingredient.Quantity < quantity)
-                        throw new ValidationException($"Only {ingredient.Quantity} of {ingredient.Name} is available");
+                        throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
                     break;
 
                 case ItemType.Utensil:
-                    // Just verify availability without updating quantity
+                    // Kiểm tra tính sẵn có mà không cập nhật số lượng
                     var utensil = await _utensilService.GetUtensilByIdAsync(itemId);
                     if (utensil.Quantity < quantity)
-                        throw new ValidationException($"Only {utensil.Quantity} of {utensil.Name} is available");
+                        throw new ValidationException($"Chỉ còn {utensil.Quantity} {utensil.Name} có sẵn");
                     break;
-
                 case ItemType.Hotpot:
                     // For hotpots, we'll continue to mark them as Reserved in the database
                     // This is already handled in the ProcessHotpotItem method

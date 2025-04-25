@@ -1,8 +1,9 @@
 ﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,13 +16,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
     {
         private readonly IEquipmentConditionService _equipmentConditionService;
         private readonly INotificationService _notificationService;
+        private readonly IHotpotService _hotpotService;
+        private readonly IUtensilService _utensilService;
 
         public ManagerEquipmentConditionsController(
             IEquipmentConditionService equipmentConditionService,
-            INotificationService notificationService)
+            INotificationService notificationService, IHotpotService hotpotService, IUtensilService utensilService)
         {
             _equipmentConditionService = equipmentConditionService;
             _notificationService = notificationService;
+            _hotpotService = hotpotService;
+            _utensilService = utensilService;
         }
 
         [HttpPost]
@@ -34,14 +39,34 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(request);
 
+                // Get equipment name for the notification
+                string equipmentName = await GetEquipmentNameAsync(request);
+
+                // Notify administrators about the new condition log
+                await _notificationService.NotifyRole(
+                    "Administrators",
+                    "ConditionIssue",
+                    "New HotPot Condition Issue",
+                    $"New issue reported for {equipmentName}: {request.Name}",
+                    new Dictionary<string, object>
+                    {
+                { "ConditionLogId", result.DamageDeviceId },
+                { "HotPotName", equipmentName },
+                { "IssueName", request.Name },
+                { "Description", request.Description },
+                { "Status", request.Status.ToString() },
+                { "ReportTime", DateTime.UtcNow },
+                    });
+
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
-                    ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Equipment condition logged successfully"));
+                    ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "HotPot condition logged successfully"));
             }
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<EquipmentConditionDetailDto>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -80,7 +105,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             var conditionLogs = await _equipmentConditionService.GetConditionLogsByStatusAsync(status, paginationParams);
             return Ok(ApiResponse<PagedResult<EquipmentConditionListItemDto>>.SuccessResponse(conditionLogs, "Condition logs retrieved successfully"));
-        }      
+        }
 
         [HttpGet("filter")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -96,8 +121,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<EquipmentConditionDetailDto>>> UpdateConditionStatus(
-            int id,
-            [FromBody] UpdateConditionStatusRequest request)
+     int id,
+     [FromBody] UpdateConditionStatusRequest request)
         {
             try
             {
@@ -105,13 +130,22 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (result == null)
                     return NotFound(ApiResponse<EquipmentConditionDetailDto>.ErrorResponse($"Condition log with ID {id} not found"));
 
-                // Notify administrators about the status update using the new notification service
-                await _notificationService.NotifyEquipmentStatusChange(
-                    id,
-                    result.EquipmentType,
-                    result.EquipmentName,
-                    result.Name,
-                    request.Status.ToString());
+                // Notify administrators about the status update using the simplified notification service
+                await _notificationService.NotifyRole(
+                    "Administrators",
+                    "EquipmentStatusUpdate",
+                    "Equipment Status Updated",
+                    $"Status updated to {request.Status} for {result.EquipmentName}: {result.Name}",
+                    new Dictionary<string, object>
+                    {
+                { "ConditionLogId", id },
+                { "EquipmentName", result.EquipmentName },
+                { "IssueName", result.Name },
+                { "Description", result.Description },
+                { "NewStatus", request.Status.ToString() },
+
+                { "UpdateTime", DateTime.UtcNow }
+                    });
 
                 return Ok(ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Condition status updated successfully"));
             }
@@ -121,29 +155,18 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-
-        [HttpPost("notify-administrators")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<bool>>> NotifyAdministrators([FromBody] NotifyAdminRequest request)
+        private async Task<string> GetEquipmentNameAsync(CreateEquipmentConditionRequest request)
         {
             try
             {
-                // Notify administrators using the new notification service
-                await _notificationService.NotifyConditionIssue(
-                    request.ConditionLogId,
-                    request.EquipmentType,
-                    request.EquipmentName,
-                    request.IssueName,
-                    request.Description,
-                    request.ScheduleType.ToString());
-
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "Administrators notified successfully"));
+                var hotpot = await _hotpotService.GetByInvetoryIdAsync(request.HotPotInventoryId);
+                return hotpot?.Hotpot.Name ?? $"HotPot #{request.HotPotInventoryId}";
             }
-            catch (Exception ex)
+            catch
             {
-                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
+                return $"HotPot #{request.HotPotInventoryId}";
             }
         }
+
     }
 }

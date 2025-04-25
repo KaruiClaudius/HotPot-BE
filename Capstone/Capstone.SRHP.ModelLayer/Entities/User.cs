@@ -43,12 +43,15 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
 
         [Range(0, double.MaxValue)]
-        public double? LoyatyPoint { get; set; } 
+        public double? LoyatyPoint { get; set; }
 
         public WorkDays? WorkDays { get; set; }
 
         [StringLength(1000)]
         public string? Note { get; set; }
+
+        // For Role Staff only
+        public StaffType? StaffType { get; set; }
 
         [Required]
         [ForeignKey("Role")]
@@ -76,6 +79,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ICollection<WorkShift>? StaffWorkShifts { get; set; } = new List<WorkShift>();
         public virtual ICollection<ShippingOrder>? ShippingOrders { get; set; }
         public virtual ICollection<ReplacementRequest>? StaffReplacementRequests { get; set; }
+
+        [InverseProperty("PreparationStaff")]
+        public virtual ICollection<Order>? PreparedOrders { get; set; } = new List<Order>();
 
 
         //manager

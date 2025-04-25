@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 
@@ -41,24 +42,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<PagedResult<Customization>> GetCustomizationsAsync(
-                string searchTerm = null,
-                int? userId = null,
-                int? comboId = null,
-                int? minSize = null,
-                int? maxSize = null,
-                decimal? minPrice = null,
-                decimal? maxPrice = null,
-                int pageNumber = 1,
-                int pageSize = 10,
-                string sortBy = "CreatedAt",
-                bool ascending = false)
+            string searchTerm = null,
+            int? userId = null,
+            int? comboId = null,
+            int? minSize = null,
+            int? maxSize = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string sortBy = "CreatedAt",
+            bool ascending = false)
         {
             try
             {
                 // Start with base query
                 var query = _unitOfWork.Repository<Customization>()
                     .IncludeNested(q => q
-                        .Include(c => c.HotpotBroth)
                         .Include(c => c.User)
                         .Include(c => c.Combo)
                         .Include(c => c.AppliedDiscount))
@@ -71,7 +71,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     query = query.Where(i =>
                         EF.Functions.Collate(i.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                         i.Note != null && EF.Functions.Collate(i.Note.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
-                        EF.Functions.Collate(i.HotpotBroth.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                         EF.Functions.Collate(i.Combo.Name.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm));
                 }
 
@@ -169,7 +168,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             {
                 var customization = await _unitOfWork.Repository<Customization>()
                     .IncludeNested(q => q
-                        .Include(c => c.HotpotBroth)
                         .Include(c => c.User)
                         .Include(c => c.Combo)
                         .Include(c => c.AppliedDiscount))
@@ -188,27 +186,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving customization with ID {CustomizationId}", id);
+                _logger.LogError(ex, "Lỗi khi lấy thông tin tùy chỉnh với ID {CustomizationId}", id);
                 throw;
             }
         }
 
         public async Task<Customization> CreateCustomizationAsync(
-    int? comboId,  // Accept nullable comboId
-    int userId,
-    string name,
-    string? note,
-    int size,
-    int brothId,
-    List<CustomizationIngredientsRequest> ingredients,
-    string[]? imageURLs = null)
+            int? comboId,  // Accept nullable comboId
+            int userId,
+            string name,
+            string? note,
+            int size,
+            List<CustomizationIngredientsRequest> ingredients,
+            string[]? imageURLs = null)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(name))
-                throw new ValidationException("Customization name cannot be empty");
+                throw new ValidationException("Tên tùy chỉnh không được để trống");
 
             if (size <= 0)
-                throw new ValidationException("Size must be greater than 0");
+                throw new ValidationException("Kích thước phải lớn hơn 0");
 
             // Treat comboId = 0 as null (create from scratch)
             if (comboId == 0)
@@ -221,10 +218,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 .FindAsync(u => u.UserId == userId && !u.IsDelete);
 
             if (user == null)
-                throw new ValidationException($"User with ID {userId} not found");
-
-            // Validate broth
-            await ValidateHotpotBroth(brothId);
+                throw new ValidationException($"Không tìm thấy người dùng với ID {userId}");
 
             // Validate image URLs if provided
             if (imageURLs != null && imageURLs.Length > 0)
@@ -233,13 +227,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     if (string.IsNullOrWhiteSpace(url))
                     {
-                        throw new ValidationException("Image URLs cannot be empty");
+                        throw new ValidationException("URL hình ảnh không được để trống");
                     }
 
                     // Optional: Add URL format validation if needed
                     if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
                     {
-                        throw new ValidationException($"Invalid image URL format: {url}");
+                        throw new ValidationException($"Định dạng URL hình ảnh không hợp lệ: {url}");
                     }
                 }
             }
@@ -253,10 +247,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Get the combo
                 combo = await _comboService.GetByIdAsync(comboId.Value);
                 if (combo == null)
-                    throw new NotFoundException($"Combo with ID {comboId} not found");
+                    throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
 
                 if (!combo.IsCustomizable)
-                    throw new ValidationException("This combo is not customizable");
+                    throw new ValidationException("Combo này không thể tùy chỉnh");
 
                 // Get all allowed ingredient types for this combo
                 allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
@@ -266,8 +260,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
             return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
             {
+                // Check for soft-deleted customization with the same name for this user
+                var existingCustomization = await _unitOfWork.Repository<Customization>()
+                    .FindAsync(c => c.Name == name && c.UserId == userId && c.IsDelete);
+
+                if (existingCustomization != null)
+                {
+                    // Reactivate the soft-deleted customization
+                    existingCustomization.IsDelete = false;
+                    existingCustomization.Note = note;
+                    existingCustomization.ComboId = comboId;
+                    existingCustomization.Size = size;
+                    existingCustomization.ImageURL = imageURLs != null ? JsonSerializer.Serialize(imageURLs) : null;
+                    existingCustomization.SetUpdateDate();
+
+                    // Get applicable discount for this size
+                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
+                    existingCustomization.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+
+                    await _unitOfWork.Repository<Customization>().Update(existingCustomization, existingCustomization.CustomizationId);
+                    await _unitOfWork.CommitAsync();
+
+                    // Update ingredients
+                    await UpdateCustomizationIngredientsAsync(existingCustomization.CustomizationId, ingredients);
+
+                    // Recalculate prices
+                    await UpdatePricesAsync(existingCustomization.CustomizationId);
+
+                    return await GetByIdAsync(existingCustomization.CustomizationId) ??
+                        throw new InvalidOperationException("Tạo tùy chỉnh thất bại");
+                }
+
                 // Get applicable discount for this size
-                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
+                var newDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
 
                 // Create new customization
                 var customization = new Customization
@@ -276,9 +301,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     Note = note,
                     UserId = userId,
                     ComboId = comboId,
-                    HotpotBrothId = brothId,
                     Size = size,
-                    AppliedDiscountId = applicableDiscount?.SizeDiscountId,
+                    AppliedDiscountId = newDiscount?.SizeDiscountId,
                     BasePrice = 0,
                     TotalPrice = 0,
                     ImageURLs = imageURLs
@@ -287,19 +311,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 _unitOfWork.Repository<Customization>().Insert(customization);
                 await _unitOfWork.CommitAsync();
 
-                // Add ingredients and calculate base price
-                decimal basePrice = 0;
-
-                // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
-                basePrice += brothPrice;
-
                 // If this is a combo-based customization, validate ingredient types
                 if (combo != null && allowedTypes != null && allowedTypes.Any())
                 {
                     await ValidateCustomizationIngredientsAsync(ingredients, allowedTypes);
                 }
-            
 
                 // Add selected ingredients
                 foreach (var ingredientDto in ingredients)
@@ -309,11 +325,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
 
                     if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+                        throw new ValidationException($"Không tìm thấy nguyên liệu với ID {ingredientDto.IngredientID}");
 
                     // Validate quantity
                     if (ingredientDto.Quantity <= 0)
-                        throw new ValidationException("Ingredient quantity must be greater than 0");
+                        throw new ValidationException("Số lượng nguyên liệu phải lớn hơn 0");
 
                     // Add ingredient to customization
                     var customizationIngredient = new CustomizationIngredient
@@ -324,36 +340,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     };
 
                     _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
-
-                    // Add to base price
-                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
                 }
-
-                // Update base price
-                customization.BasePrice = basePrice;
-
-                // Calculate total price with discount
-                decimal totalPrice = basePrice;
-                if (applicableDiscount != null)
-                {
-                    totalPrice = basePrice * (1 - (applicableDiscount.DiscountPercentage / 100m));
-                }
-
-                // Update total price
-                customization.TotalPrice = totalPrice;
-                await _unitOfWork.Repository<Customization>().Update(customization, customization.CustomizationId);
 
                 await _unitOfWork.CommitAsync();
 
-                return await GetByIdAsync(customization.CustomizationId) ?? throw new InvalidOperationException("Customization creation failed");
+                // Calculate prices
+                await UpdatePricesAsync(customization.CustomizationId);
+
+                return await GetByIdAsync(customization.CustomizationId) ??
+                    throw new InvalidOperationException("Tạo tùy chỉnh thất bại");
             },
             ex =>
             {
                 // Only log for exceptions that aren't validation or not found
                 if (!(ex is NotFoundException || ex is ValidationException))
                 {
-                    _logger.LogError(ex, "Error creating customization", ex);
+                    _logger.LogError(ex, "Lỗi khi tạo tùy chỉnh", ex);
                 }
             });
         }
@@ -364,54 +366,47 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var existingCustomization = await GetByIdAsync(id);
-                if (existingCustomization == null)
-                    throw new NotFoundException($"Customization with ID {id} not found");
+            var existingCustomization = await GetByIdAsync(id);
+            if (existingCustomization == null)
+                throw new NotFoundException($"Không tìm thấy tùy chỉnh với ID {id}");
 
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(entity.Name))
-                    throw new ValidationException("Customization name cannot be empty");
+            // Validate basic properties
+            if (string.IsNullOrWhiteSpace(entity.Name))
+                throw new ValidationException("Tên tùy chỉnh không được để trống");
 
-                // Treat comboId = 0 as null (create from scratch)
-                if (entity.ComboId == 0)
+            // Treat comboId = 0 as null (create from scratch)
+            if (entity.ComboId == 0)
+            {
+                entity.ComboId = null;
+            }
+
+            if (entity.Size <= 0)
+                throw new ValidationException("Kích thước phải lớn hơn 0");
+
+            // Validate image URLs if provided
+            if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
+            {
+                foreach (var url in entity.ImageURLs)
                 {
-                    entity.ComboId = null;
-                }
-
-                if (entity.Size <= 0 && entity.ComboId != null)
-                    throw new ValidationException("Size must be greater than 0");
-
-
-                // Validate image URLs if provided
-                if (entity.ImageURLs != null && entity.ImageURLs.Length > 0)
-                {
-                    foreach (var url in entity.ImageURLs)
+                    if (string.IsNullOrWhiteSpace(url))
                     {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            throw new ValidationException("Image URLs cannot be empty");
-                        }
+                        throw new ValidationException("URL hình ảnh không được để trống");
+                    }
 
-                        // Optional: Add URL format validation if needed
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
-                        {
-                            throw new ValidationException($"Invalid image URL format: {url}");
-                        }
+                    // Optional: Add URL format validation if needed
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+                    {
+                        throw new ValidationException($"Định dạng URL hình ảnh không hợp lệ: {url}");
                     }
                 }
+            }
 
-                // Validate HotpotBroth if it's being changed
-                if (existingCustomization.HotpotBrothId != entity.HotpotBrothId)
-                {
-                    await ValidateHotpotBroth(entity.HotpotBrothId);
-                }
-
-                // Get applicable discount for this size if size changed
-                if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
-                {
-                    var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
-                    entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
-                }
+            // Get applicable discount for this size if size changed
+            if (existingCustomization.Size != entity.Size || !entity.AppliedDiscountId.HasValue)
+            {
+                var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(entity.Size);
+                entity.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+            }
 
                 // Update customization basic info
                 entity.SetUpdateDate();
@@ -426,10 +421,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     combo = await _comboService.GetByIdAsync(entity.ComboId.Value);
                     if (combo == null)
-                        throw new NotFoundException($"Combo with ID {entity.ComboId} not found");
+                        throw new NotFoundException($"Không tìm thấy combo với ID {entity.ComboId}");
 
                     if (!combo.IsCustomizable)
-                        throw new ValidationException("This combo is not customizable");
+                        throw new ValidationException("Combo này không thể tùy chỉnh");
 
                     // Get all allowed ingredient types for this combo
                     allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
@@ -443,84 +438,122 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     await ValidateCustomizationIngredientsAsync(ingredients, allowedTypes);
                 }
 
-                // Remove existing ingredients
-                var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
-                    .FindAll(ci => ci.CustomizationId == id)
-                    .ToListAsync();
+                // Update ingredients
+                await UpdateCustomizationIngredientsAsync(id, ingredients);
 
-                foreach (var existingIngredient in existingIngredients)
+                // Recalculate prices
+                await UpdatePricesAsync(id);
+            },
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật tùy chỉnh", ex);
+            }
+        });
+        }
+        private async Task UpdateCustomizationIngredientsAsync(int customizationId, List<CustomizationIngredientsRequest> ingredients)
+        {
+            // Get existing ingredients
+            var existingIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                .FindAll(ci => ci.CustomizationId == customizationId)
+                .ToListAsync();
+
+            // Soft delete all existing ingredients
+            foreach (var existingIngredient in existingIngredients)
+            {
+                existingIngredient.SoftDelete();
+                existingIngredient.SetUpdateDate();
+            }
+            await _unitOfWork.CommitAsync();
+
+            // Add new ingredients
+            foreach (var ingredientDto in ingredients)
+            {
+                // Validate ingredient exists
+                var ingredient = await _unitOfWork.Repository<Ingredient>()
+                    .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+
+                if (ingredient == null)
+                    throw new ValidationException($"Không tìm thấy nguyên liệu với ID {ingredientDto.IngredientID}");
+
+                // Validate quantity
+                if (ingredientDto.Quantity <= 0)
+                    throw new ValidationException("Số lượng nguyên liệu phải lớn hơn 0");
+
+                // Check if this ingredient was previously soft-deleted
+                var softDeletedIngredient = await _unitOfWork.Repository<CustomizationIngredient>()
+                    .FindAsync(ci => ci.CustomizationId == customizationId &&
+                                    ci.IngredientId == ingredientDto.IngredientID &&
+                                    ci.IsDelete);
+
+                if (softDeletedIngredient != null)
                 {
-                    existingIngredient.SoftDelete();
-                    existingIngredient.SetUpdateDate();
+                    // Reactivate the soft-deleted ingredient
+                    softDeletedIngredient.IsDelete = false;
+                    softDeletedIngredient.Quantity = ingredientDto.Quantity;
+                    softDeletedIngredient.SetUpdateDate();
+                    await _unitOfWork.Repository<CustomizationIngredient>().Update(
+                        softDeletedIngredient, softDeletedIngredient.CustomizationIngredientId);
                 }
-                await _unitOfWork.CommitAsync();
-
-                // Add new ingredients
-                decimal basePrice = 0;
-
-                // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(entity.HotpotBrothId);
-                basePrice += brothPrice;
-
-                // Add ingredients
-                foreach (var ingredientDto in ingredients)
+                else
                 {
-                    // Validate ingredient exists (we already did this for combo-based customizations)
-                    var ingredient = await _unitOfWork.Repository<Ingredient>()
-                        .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
-
-                    if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
-
-                    // Validate quantity
-                    if (ingredientDto.Quantity <= 0)
-                        throw new ValidationException("Ingredient quantity must be greater than 0");
-
                     // Add ingredient to customization
                     var customizationIngredient = new CustomizationIngredient
                     {
-                        CustomizationId = id,
+                        CustomizationId = customizationId,
                         IngredientId = ingredientDto.IngredientID,
                         Quantity = ingredientDto.Quantity
                     };
 
                     _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
-
-                    // Add to base price
-                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
                 }
+            }
 
-                // Update base price
-                entity.BasePrice = basePrice;
-
-                // Calculate total price with discount
-                decimal totalPrice = basePrice;
-                if (entity.AppliedDiscountId.HasValue)
-                {
-                    var discount = await _sizeDiscountService.GetByIdAsync(entity.AppliedDiscountId.Value);
-                    if (discount != null)
-                    {
-                        totalPrice = basePrice * (1 - (discount.DiscountPercentage / 100m));
-                    }
-                }
-
-                // Update total price
-                entity.TotalPrice = totalPrice;
-                await _unitOfWork.Repository<Customization>().Update(entity, id);
-                await _unitOfWork.CommitAsync();
-            },
-            ex =>
-            {
-                // Only log for exceptions that aren't validation or not found
-                if (!(ex is NotFoundException || ex is ValidationException))
-                {
-                    _logger.LogError(ex, "Error updating customization", ex);
-                }
-            });
+            await _unitOfWork.CommitAsync();
         }
+        private async Task UpdatePricesAsync(int customizationId)
+        {
+            var customization = await _unitOfWork.Repository<Customization>()
+                .IncludeNested(query =>
+                    query.Include(c => c.CustomizationIngredients)
+                         .ThenInclude(ci => ci.Ingredient)
+                         .Include(c => c.AppliedDiscount))
+                .FirstOrDefaultAsync(c => c.CustomizationId == customizationId && !c.IsDelete);
 
+            if (customization == null)
+                throw new NotFoundException($"Không tìm thấy tùy chỉnh với ID {customizationId}");
 
+            // Calculate base price from ingredients
+            decimal basePrice = 0;
+
+            // Add prices of all ingredients
+            foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
+            {
+                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(customizationIngredient.IngredientId);
+                basePrice += ingredientPrice * customizationIngredient.Quantity;
+            }
+
+            // Update base price
+            customization.BasePrice = basePrice;
+
+            // Calculate total price with discount
+            decimal totalPrice = basePrice;
+            if (customization.AppliedDiscount != null)
+            {
+                decimal discountPercentage = customization.AppliedDiscount.DiscountPercentage;
+                totalPrice = basePrice * (1 - (discountPercentage / 100m));
+            }
+
+            // Update total price
+            customization.TotalPrice = totalPrice;
+
+            // Update the customization
+            customization.SetUpdateDate();
+            await _unitOfWork.Repository<Customization>().Update(customization, customizationId);
+            await _unitOfWork.CommitAsync();
+        }
 
 
         public async Task DeleteAsync(int id)
@@ -529,14 +562,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             {
                 var customization = await GetByIdAsync(id);
                 if (customization == null)
-                    throw new NotFoundException($"Customization with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy tùy chỉnh với ID {id}");
 
                 // Check if this customization is used by any orders
                 var isUsedByOrder = await _unitOfWork.Repository<SellOrderDetail>()
                     .AnyAsync(od => od.CustomizationId == id && !od.IsDelete);
 
                 if (isUsedByOrder)
-                    throw new ValidationException("Cannot delete this customization as it is used by existing orders");
+                    throw new ValidationException("Không thể xóa tùy chỉnh này vì nó đang được sử dụng bởi các đơn hàng hiện có");
 
                 // Soft delete customization
                 customization.SoftDelete();
@@ -556,17 +589,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting customization with ID {CustomizationId}", id);
+                _logger.LogError(ex, "Lỗi khi xóa tùy chỉnh với ID {CustomizationId}", id);
                 throw;
             }
         }
 
 
         public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
-    int? comboId, // Accept nullable comboId
-    int size,
-    int brothId,
-    List<CustomizationIngredientsRequest> ingredients)
+            int? comboId, // Accept nullable comboId
+            int size,
+            List<CustomizationIngredientsRequest> ingredients)
         {
             try
             {
@@ -582,25 +614,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     combo = await _comboService.GetByIdAsync(comboId.Value);
                     if (combo == null)
-                        throw new NotFoundException($"Combo with ID {comboId} not found");
+                        throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
 
                     if (!combo.IsCustomizable)
-                        throw new ValidationException("This combo is not customizable");
+                        throw new ValidationException("Combo này không thể tùy chỉnh");
                 }
-
-                // Validate broth
-                await ValidateHotpotBroth(brothId);
 
                 // Validate size
                 if (size <= 0)
-                    throw new ValidationException("Size must be greater than 0");
+                    throw new ValidationException("Kích thước phải lớn hơn 0");
 
                 // Calculate base price
                 decimal basePrice = 0;
-
-                // Add broth price
-                var brothPrice = await _ingredientService.GetCurrentPriceAsync(brothId);
-                basePrice += brothPrice;
 
                 // Validate ingredients and add to price
                 foreach (var ingredientDto in ingredients)
@@ -610,11 +635,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
 
                     if (ingredient == null)
-                        throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+                        throw new ValidationException($"Không tìm thấy nguyên liệu với ID {ingredientDto.IngredientID}");
 
                     // Validate quantity
                     if (ingredientDto.Quantity <= 0)
-                        throw new ValidationException("Ingredient quantity must be greater than 0");
+                        throw new ValidationException("Số lượng nguyên liệu phải lớn hơn 0");
 
                     // If this is a customizable combo, validate that the ingredient is allowed
                     if (combo != null && combo.IsCustomizable)
@@ -622,15 +647,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         // Check if ingredient type is allowed
                         var allowedType = await _unitOfWork.Repository<ComboAllowedIngredientType>()
                             .FindAsync(ait => ait.ComboId == comboId.Value &&
-                                                 ait.IngredientTypeId == ingredient.IngredientTypeId &&
-                                                 !ait.IsDelete);
+                                             ait.IngredientTypeId == ingredient.IngredientTypeId &&
+                                             !ait.IsDelete);
 
                         if (allowedType == null)
-                            throw new ValidationException($"Ingredient type of ingredient {ingredientDto.IngredientID} is not allowed for this combo");
+                            throw new ValidationException($"Loại nguyên liệu của nguyên liệu {ingredientDto.IngredientID} không được phép cho combo này");
 
                         // Validate minimum quantity requirement
                         if (ingredientDto.Quantity < allowedType.MinQuantity)
-                            throw new ValidationException($"Ingredient {ingredient.Name} quantity must be at least {allowedType.MinQuantity}");
+                            throw new ValidationException($"Số lượng nguyên liệu {ingredient.Name} phải ít nhất {allowedType.MinQuantity}");
                     }
                     // For from-scratch customizations, no ingredient type validation is needed
 
@@ -656,14 +681,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calculating price estimate");
+                _logger.LogError(ex, "Lỗi khi tính giá ước tính");
                 throw;
             }
         }
 
         private async Task ValidateCustomizationIngredientsAsync(
-    List<CustomizationIngredientsRequest> ingredients,
-    List<ComboAllowedIngredientType> allowedTypes)
+        List<CustomizationIngredientsRequest> ingredients,
+        List<ComboAllowedIngredientType> allowedTypes)
         {
             // Group allowed types by IngredientTypeId.
             var allowedTypesByTypeId = allowedTypes
@@ -677,7 +702,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 var ingredient = await _unitOfWork.Repository<Ingredient>()
                     .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
                 if (ingredient == null)
-                    throw new ValidationException($"Ingredient with ID {ingredientDto.IngredientID} not found");
+                    throw new ValidationException($"Không tìm thấy nguyên liệu với ID {ingredientDto.IngredientID}");
 
                 int typeId = ingredient.IngredientTypeId;
                 if (!ingredientsByType.ContainsKey(typeId))
@@ -699,7 +724,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!ingredientsByType.ContainsKey(typeId))
                 {
                     var typeName = await _unitOfWork.Repository<IngredientType>().GetById(typeId);
-                    throw new ValidationException($"Combo requires {allowedEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but none were provided");
+                    throw new ValidationException($"Combo yêu cầu {allowedEntries.Count} nguyên liệu khác nhau thuộc loại '{typeName?.Name ?? typeId.ToString()}', nhưng không có nguyên liệu nào được cung cấp");
                 }
 
                 var ingredientsOfType = ingredientsByType[typeId];
@@ -713,19 +738,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (duplicateIds.Any())
                 {
                     var duplicates = string.Join(", ", duplicateIds);
-                    throw new ValidationException($"Duplicate ingredients detected for ingredient IDs: {duplicates}. Please add one entry per ingredient.");
+                    throw new ValidationException($"Phát hiện nguyên liệu trùng lặp cho ID nguyên liệu: {duplicates}. Vui lòng thêm một mục cho mỗi nguyên liệu.");
                 }
 
                 // Check that the count is exactly what is allowed.
                 if (ingredientsOfType.Count < allowedEntries.Count)
                 {
                     var typeName = await _unitOfWork.Repository<IngredientType>().GetById(typeId);
-                    throw new ValidationException($"Combo requires exactly {allowedEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but only {ingredientsOfType.Count} were provided");
+                    throw new ValidationException($"Combo yêu cầu chính xác {allowedEntries.Count} nguyên liệu khác nhau thuộc loại '{typeName?.Name ?? typeId.ToString()}', nhưng chỉ có {ingredientsOfType.Count} được cung cấp");
                 }
                 else if (ingredientsOfType.Count > allowedEntries.Count)
                 {
                     var typeName = await _unitOfWork.Repository<IngredientType>().GetById(typeId);
-                    throw new ValidationException($"Combo allows only {allowedEntries.Count} different ingredients of type '{typeName?.Name ?? typeId.ToString()}', but {ingredientsOfType.Count} were provided");
+                    throw new ValidationException($"Combo chỉ cho phép {allowedEntries.Count} nguyên liệu khác nhau thuộc loại '{typeName?.Name ?? typeId.ToString()}', nhưng {ingredientsOfType.Count} đã được cung cấp");
                 }
 
                 // Validate that each ingredient meets the minimum
@@ -735,10 +760,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     var ingredientDto = ingredientsOfType[i];
 
                     var ingredient = await _unitOfWork.Repository<Ingredient>()
-                        .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+                    .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
                     if (ingredientDto.Quantity < allowedEntry.MinQuantity)
                     {
-                        throw new ValidationException($"Ingredient {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} quantity must be at least {allowedEntry.MinQuantity}");
+                        throw new ValidationException($"Số lượng nguyên liệu {ingredient?.Name ?? ingredientDto.IngredientID.ToString()} phải ít nhất {allowedEntry.MinQuantity}");
                     }
                 }
             }
@@ -751,41 +776,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!allowedTypesByTypeId.ContainsKey(typeId))
                 {
                     var typeName = await _unitOfWork.Repository<IngredientType>().GetById(typeId);
-                    throw new ValidationException($"Ingredient type '{typeName?.Name ?? typeId.ToString()}' is not allowed for this combo");
+                    throw new ValidationException($"Loại nguyên liệu '{typeName?.Name ?? typeId.ToString()}' không được phép cho combo này");
                 }
             }
-        }
-
-
-        private async Task ValidateHotpotBroth(int brothId)
-        {
-            var broth = await _unitOfWork.Repository<Ingredient>()
-                .IncludeNested(query => query.Include(i => i.IngredientType))
-                .FirstOrDefaultAsync(i => i.IngredientId == brothId && !i.IsDelete);
-
-            if (broth == null)
-                throw new ValidationException("Invalid hotpot broth selected");
-
-            if (broth.IngredientTypeId != BROTH_TYPE_ID)
-                throw new ValidationException("Selected ingredient is not a broth type");
-
-            if (broth.Quantity <= 0)
-                throw new ValidationException("Selected broth is out of stock");
-        }
-
-        public Task<IEnumerable<Customization>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<Customization> CreateAsync(Customization entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task UpdateAsync(int id, Customization entity)
-        {
-            throw new NotImplementedException();
         }
 
 

@@ -40,13 +40,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         public int? DamageDeviceId  { get; set; }
 
-        // Equipment type and ID
-        [Required]
-        public EquipmentType EquipmentType { get; set; }
-
         public int? HotPotInventoryId { get; set; }
 
-        public int? UtensilId { get; set; }
 
         // Navigation properties
         [InverseProperty("CustomerReplacementRequests")]
@@ -62,7 +57,5 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [ForeignKey("HotPotInventoryId")]
         public virtual HotPotInventory? HotPotInventory { get; set; }
 
-        [ForeignKey("UtensilId")]
-        public virtual Utensil? Utensil { get; set; }
     }
 }

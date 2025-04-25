@@ -6,6 +6,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,273 +18,385 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
     public class DamageDeviceService : IDamageDeviceService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<DamageDeviceService> _logger;
+        private readonly IHotpotService _hotpotService;
 
-        public DamageDeviceService(IUnitOfWork unitOfWork)
+        public DamageDeviceService(
+            IUnitOfWork unitOfWork,
+            ILogger<DamageDeviceService> logger,
+            IHotpotService hotpotService)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
+            _hotpotService = hotpotService;
         }
 
         public async Task<PagedResult<DamageDevice>> GetAllAsync(DamageDeviceFilterRequest request)
         {
-            var query = _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable()
-                .Include(d => d.Utensil)
-                .Include(d => d.HotPotInventory)
-                .Where(d => !d.IsDelete);
-
-            // Apply device type filter
-            if (request.DeviceType == DeviceType.Hotpot)
+            try
             {
-                query = query.Where(d => d.HotPotInventoryId != null);
+                var query = _unitOfWork.Repository<DamageDevice>()
+                    .AsQueryable()
+                    .Include(d => d.HotPotInventory)
+                    .Where(d => !d.IsDelete);
+
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+                {
+                    var searchTerm = request.SearchTerm.ToLower();
+                    query = query.Where(d =>
+                        d.Name.ToLower().Contains(searchTerm) ||
+                        (d.Description != null && d.Description.ToLower().Contains(searchTerm)) ||
+                        (d.HotPotInventory != null && d.HotPotInventory.SeriesNumber.ToLower().Contains(searchTerm)));
+                }
+
+                if (request.Status.HasValue)
+                {
+                    query = query.Where(d => d.Status == request.Status.Value);
+                }
+
+                if (request.HotPotInventoryId.HasValue)
+                {
+                    query = query.Where(d => d.HotPotInventoryId == request.HotPotInventoryId.Value);
+                }
+
+                if (request.FromDate.HasValue)
+                {
+                    var fromDate = request.FromDate.Value.Date;
+                    query = query.Where(d => d.LoggedDate >= fromDate);
+                }
+
+                if (request.ToDate.HasValue)
+                {
+                    var toDate = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
+                    query = query.Where(d => d.LoggedDate <= toDate);
+                }
+
+                // Apply sorting
+                IOrderedQueryable<DamageDevice> orderedQuery;
+                switch (request.SortBy?.ToLower())
+                {
+                    case "name":
+                        orderedQuery = request.Ascending
+                            ? query.OrderBy(d => d.Name)
+                            : query.OrderByDescending(d => d.Name);
+                        break;
+                    case "status":
+                        orderedQuery = request.Ascending
+                            ? query.OrderBy(d =>
+                                d.Status == MaintenanceStatus.Pending ? 0 :
+                                d.Status == MaintenanceStatus.InProgress ? 1 :
+                                d.Status == MaintenanceStatus.Completed ? 2 :
+                                d.Status == MaintenanceStatus.Cancelled ? 3 : 4)
+                            : query.OrderByDescending(d =>
+                                d.Status == MaintenanceStatus.Pending ? 0 :
+                                d.Status == MaintenanceStatus.InProgress ? 1 :
+                                d.Status == MaintenanceStatus.Completed ? 2 :
+                                d.Status == MaintenanceStatus.Cancelled ? 3 : 4);
+                        break;
+                    case "hotpotinventory":
+                        orderedQuery = request.Ascending
+                            ? query.OrderBy(d => d.HotPotInventory != null ? d.HotPotInventory.SeriesNumber : string.Empty)
+                            : query.OrderByDescending(d => d.HotPotInventory != null ? d.HotPotInventory.SeriesNumber : string.Empty);
+                        break;
+                    case "createdat":
+                        orderedQuery = request.Ascending
+                            ? query.OrderBy(d => d.CreatedAt)
+                            : query.OrderByDescending(d => d.CreatedAt);
+                        break;
+                    case "loggeddate":
+                    default:
+                        orderedQuery = request.Ascending
+                            ? query.OrderBy(d => d.LoggedDate)
+                            : query.OrderByDescending(d => d.LoggedDate);
+                        break;
+                }
+
+                // Get total count
+                var totalCount = await query.CountAsync();
+
+                // Apply pagination
+                var items = await orderedQuery
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<DamageDevice>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                };
             }
-            else if (request.DeviceType == DeviceType.Utensil)
+            catch (Exception ex)
             {
-                query = query.Where(d => d.UtensilId != null);
+                _logger.LogError(ex, "Error retrieving damage devices with filters");
+                throw;
             }
-
-            // Apply other filters
-            if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-            {
-                var searchTerm = request.SearchTerm.ToLower();
-                query = query.Where(d =>
-                    d.Name.ToLower().Contains(searchTerm) ||
-                    (d.Description != null && d.Description.ToLower().Contains(searchTerm)) ||
-                    (d.Utensil != null && d.Utensil.Name.ToLower().Contains(searchTerm)) ||
-                    (d.HotPotInventory != null && d.HotPotInventory.SeriesNumber.ToLower().Contains(searchTerm)));
-            }
-
-            if (request.Status.HasValue)
-            {
-                query = query.Where(d => d.Status == request.Status.Value);
-            }
-
-            if (request.HotPotInventoryId.HasValue)
-            {
-                query = query.Where(d => d.HotPotInventoryId == request.HotPotInventoryId.Value);
-            }
-
-            if (request.UtensilId.HasValue)
-            {
-                query = query.Where(d => d.UtensilId == request.UtensilId.Value);
-            }
-
-            if (request.FromDate.HasValue)
-            {
-                var fromDate = request.FromDate.Value.Date;
-                query = query.Where(d => d.LoggedDate >= fromDate);
-            }
-
-            if (request.ToDate.HasValue)
-            {
-                var toDate = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
-                query = query.Where(d => d.LoggedDate <= toDate);
-            }
-
-            // Apply sorting
-            IOrderedQueryable<DamageDevice> orderedQuery;
-            switch (request.SortBy?.ToLower())
-            {
-                case "name":
-                    orderedQuery = request.Ascending
-                        ? query.OrderBy(d => d.Name)
-                        : query.OrderByDescending(d => d.Name);
-                    break;
-                case "status":
-                    orderedQuery = request.Ascending
-                        ? query.OrderBy(d =>
-                            d.Status == MaintenanceStatus.Pending ? 0 :
-                            d.Status == MaintenanceStatus.InProgress ? 1 :
-                            d.Status == MaintenanceStatus.Completed ? 2 :
-                            d.Status == MaintenanceStatus.Cancelled ? 3 : 4)
-                        : query.OrderByDescending(d =>
-                            d.Status == MaintenanceStatus.Pending ? 0 :
-                            d.Status == MaintenanceStatus.InProgress ? 1 :
-                            d.Status == MaintenanceStatus.Completed ? 2 :
-                            d.Status == MaintenanceStatus.Cancelled ? 3 : 4);
-                    break;
-                case "loggeddate":
-                default:
-                    orderedQuery = request.Ascending
-                        ? query.OrderBy(d => d.LoggedDate)
-                        : query.OrderByDescending(d => d.LoggedDate);
-                    break;
-            }
-
-            // Get total count
-            var totalCount = await query.CountAsync();
-
-            // Apply pagination
-            var items = await orderedQuery
-                .Skip((request.PageNumber - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .ToListAsync();
-
-            return new PagedResult<DamageDevice>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = request.PageNumber,
-                PageSize = request.PageSize
-            };
         }
+
 
 
         public async Task<DamageDevice> GetByIdAsync(int id)
         {
-            var damageDevice = await _unitOfWork.Repository<DamageDevice>()
-                .AsQueryable()
-                .Include(d => d.HotPotInventory)
-                .Include(d => d.Utensil)
-                .Include(d => d.ReplacementRequests)
-                .FirstOrDefaultAsync(d => d.DamageDeviceId == id && !d.IsDelete);
+            try
+            {
+                var damageDevice = await _unitOfWork.Repository<DamageDevice>()
+                    .AsQueryable()
+                    .Include(d => d.HotPotInventory)
+                    .Include(d => d.ReplacementRequests)
+                    .FirstOrDefaultAsync(d => d.DamageDeviceId == id && !d.IsDelete);
 
-            if (damageDevice == null)
-                throw new NotFoundException($"Damage device with ID {id} not found");
+                if (damageDevice == null)
+                    throw new NotFoundException($"Damage device with ID {id} not found");
 
-            return damageDevice;
+                return damageDevice;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving damage device with ID {DamageDeviceId}", id);
+                throw;
+            }
         }
 
         public async Task<DamageDevice> CreateAsync(DamageDevice entity)
         {
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Device name cannot be empty");
-
-            // Validate that at least one of HotPotInventoryId or UtensilId is provided
-            if (!entity.HotPotInventoryId.HasValue && !entity.UtensilId.HasValue)
-                throw new ValidationException("Either HotPotInventoryId or UtensilId must be provided");
-
-            // Validate HotPotInventory exists if provided
-            if (entity.HotPotInventoryId.HasValue)
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Device name cannot be empty");
+
+                // Validate that HotPotInventoryId is provided
+                if (!entity.HotPotInventoryId.HasValue)
+                    throw new ValidationException("HotPotInventoryId must be provided");
+
+                // Validate HotPotInventory exists
                 var hotpot = await _unitOfWork.Repository<HotPotInventory>()
                     .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
 
                 if (hotpot == null)
                     throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
-            }
 
-            // Validate Utensil exists if provided
-            if (entity.UtensilId.HasValue)
+                // Set logged date if not set
+                if (entity.LoggedDate == default)
+                    entity.LoggedDate = DateTime.UtcNow;
+
+                // Update the hotpot inventory status to Damaged
+                hotpot.Status = HotpotStatus.Damaged;
+                await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
+
+                // Insert the damage device
+                _unitOfWork.Repository<DamageDevice>().Insert(entity);
+                await _unitOfWork.CommitAsync();
+
+                // Update the hotpot quantity
+                await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+
+                return entity;
+            },
+            ex =>
             {
-                var utensil = await _unitOfWork.Repository<Utensil>()
-                    .FindAsync(u => u.UtensilId == entity.UtensilId.Value && !u.IsDelete);
-
-                if (utensil == null)
-                    throw new ValidationException($"Utensil with ID {entity.UtensilId.Value} not found");
-            }
-
-            // Set logged date if not set
-            if (entity.LoggedDate == default)
-                entity.LoggedDate = DateTime.UtcNow;
-
-            _unitOfWork.Repository<DamageDevice>().Insert(entity);
-            await _unitOfWork.CommitAsync();
-
-            return entity;
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error creating damage device");
+                }
+            });
         }
-
         public async Task UpdateAsync(int id, DamageDevice entity)
         {
-            var existingDevice = await GetByIdAsync(id);
-            if (existingDevice == null)
-                throw new NotFoundException($"Damage device with ID {id} not found");
-
-            // Validate basic properties
-            if (string.IsNullOrWhiteSpace(entity.Name))
-                throw new ValidationException("Device name cannot be empty");
-
-            // Validate that at least one of HotPotInventoryId or UtensilId is provided
-            if (!entity.HotPotInventoryId.HasValue && !entity.UtensilId.HasValue)
-                throw new ValidationException("Either HotPotInventoryId or UtensilId must be provided");
-
-            // Validate HotPotInventory exists if changed
-            if (entity.HotPotInventoryId != existingDevice.HotPotInventoryId && entity.HotPotInventoryId.HasValue)
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                    .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
+                var existingDevice = await GetByIdAsync(id);
+                if (existingDevice == null)
+                    throw new NotFoundException($"Damage device with ID {id} not found");
 
-                if (hotpot == null)
-                    throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
+                // Validate basic properties
+                if (string.IsNullOrWhiteSpace(entity.Name))
+                    throw new ValidationException("Device name cannot be empty");
 
-                if (entity.Status == MaintenanceStatus.Completed)
+                // Validate that HotPotInventoryId is provided
+                if (!entity.HotPotInventoryId.HasValue)
+                    throw new ValidationException("HotPotInventoryId must be provided");
+
+                // Check if HotPotInventoryId has changed
+                bool hotpotChanged = entity.HotPotInventoryId != existingDevice.HotPotInventoryId;
+                bool statusChanged = entity.Status != existingDevice.Status;
+
+                // Validate HotPotInventory exists if changed
+                if (hotpotChanged)
                 {
-                    hotpot.Status = HotpotStatus.Available;
-                    await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, id);
+                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
+
+                    if (hotpot == null)
+                        throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
                 }
-            }
 
-            // Validate Utensil exists if changed
-            if (entity.UtensilId != existingDevice.UtensilId && entity.UtensilId.HasValue)
+                // Update the entity
+                entity.SetUpdateDate();
+                await _unitOfWork.Repository<DamageDevice>().Update(entity, id);
+
+                // Handle status changes
+                if (statusChanged || hotpotChanged)
+                {
+                    // If status changed to Completed, update the hotpot inventory status
+                    if (entity.Status == MaintenanceStatus.Completed)
+                    {
+                        var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                            .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
+
+                        if (hotpot != null)
+                        {
+                            hotpot.Status = HotpotStatus.Available;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
+
+                            // Update the hotpot quantity
+                            await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                        }
+                    }
+
+                    // If the hotpot changed, update the old hotpot's status if no other damage reports exist
+                    if (hotpotChanged && existingDevice.HotPotInventoryId.HasValue)
+                    {
+                        var oldHotpot = await _unitOfWork.Repository<HotPotInventory>()
+                            .FindAsync(h => h.HotPotInventoryId == existingDevice.HotPotInventoryId.Value && !h.IsDelete);
+
+                        if (oldHotpot != null)
+                        {
+                            // Check if there are any other active damage reports for this hotpot
+                            var otherDamageReports = await _unitOfWork.Repository<DamageDevice>()
+                                .FindAll(d => d.HotPotInventoryId == oldHotpot.HotPotInventoryId &&
+                                             d.DamageDeviceId != id &&
+                                             !d.IsDelete &&
+                                             d.Status != MaintenanceStatus.Completed &&
+                                             d.Status != MaintenanceStatus.Cancelled)
+                                .AnyAsync();
+
+                            if (!otherDamageReports)
+                            {
+                                oldHotpot.Status = HotpotStatus.Available;
+                                await _unitOfWork.Repository<HotPotInventory>().Update(oldHotpot, oldHotpot.HotPotInventoryId);
+
+                                // Update the old hotpot's quantity
+                                await _hotpotService.UpdateQuantityAsync(oldHotpot.HotpotId);
+                            }
+                        }
+                    }
+                }
+
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
             {
-                var utensil = await _unitOfWork.Repository<Utensil>()
-                    .FindAsync(u => u.UtensilId == entity.UtensilId.Value && !u.IsDelete);
-
-                if (utensil == null)
-                    throw new ValidationException($"Utensil with ID {entity.UtensilId.Value} not found");
-            }
-
-            // Update the entity
-            entity.SetUpdateDate();
-            await _unitOfWork.Repository<DamageDevice>().Update(entity, id);
-            await _unitOfWork.CommitAsync();
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating damage device with ID {DamageDeviceId}", id);
+                }
+            });
         }
 
         public async Task DeleteAsync(int id)
         {
-            var device = await GetByIdAsync(id);
-            if (device == null)
-                throw new NotFoundException($"Damage device with ID {id} not found");
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var device = await GetByIdAsync(id);
+                if (device == null)
+                    throw new NotFoundException($"Damage device with ID {id} not found");
 
-            // Check if there are any active replacement requests
-            var hasActiveRequests = await _unitOfWork.Repository<ReplacementRequest>()
-                .AnyAsync(r => r.DamageDeviceId == id && !r.IsDelete && r.Status != ReplacementRequestStatus.Completed);
+                // Check if there are any active replacement requests
+                var hasActiveRequests = await _unitOfWork.Repository<ReplacementRequest>()
+                    .AnyAsync(r => r.DamageDeviceId == id && !r.IsDelete && r.Status != ReplacementRequestStatus.Completed);
 
-            if (hasActiveRequests)
-                throw new ValidationException("Cannot delete device with active replacement requests");
+                if (hasActiveRequests)
+                    throw new ValidationException("Cannot delete device with active replacement requests");
 
-            device.SoftDelete();
-            await _unitOfWork.CommitAsync();
+                // If this is the only damage report for the hotpot, update the hotpot status
+                if (device.HotPotInventoryId.HasValue)
+                {
+                    var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAsync(h => h.HotPotInventoryId == device.HotPotInventoryId.Value && !h.IsDelete);
+
+                    if (hotpot != null)
+                    {
+                        // Check if there are any other active damage reports for this hotpot
+                        var otherDamageReports = await _unitOfWork.Repository<DamageDevice>()
+                            .FindAll(d => d.HotPotInventoryId == hotpot.HotPotInventoryId &&
+                                         d.DamageDeviceId != id &&
+                                         !d.IsDelete &&
+                                         d.Status != MaintenanceStatus.Completed &&
+                                         d.Status != MaintenanceStatus.Cancelled)
+                            .AnyAsync();
+
+                        if (!otherDamageReports)
+                        {
+                            hotpot.Status = HotpotStatus.Available;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
+
+                            // Update the hotpot quantity
+                            await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                        }
+                    }
+                }
+
+                // Soft delete the damage device
+                device.SoftDelete();
+                await _unitOfWork.Repository<DamageDevice>().Update(device, id);
+
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting damage device with ID {DamageDeviceId}", id);
+                }
+            });
         }
-
-        private IQueryable<DamageDevice> ApplySorting(IQueryable<DamageDevice> query, string sortBy, bool ascending)
+        private async Task UpdateHotpotInventoryStatusAsync(int hotpotInventoryId, MaintenanceStatus damageStatus)
         {
-            // Default to LoggedDate if sortBy is invalid
-            if (string.IsNullOrWhiteSpace(sortBy))
-            {
-                sortBy = "LoggedDate";
-            }
+            var hotpot = await _unitOfWork.Repository<HotPotInventory>()
+                .FindAsync(h => h.HotPotInventoryId == hotpotInventoryId && !h.IsDelete);
 
-            // Apply sorting based on property name
-            switch (sortBy.ToLower())
+            if (hotpot == null)
+                return;
+
+            // If damage is completed, check if there are any other active damage reports
+            if (damageStatus == MaintenanceStatus.Completed || damageStatus == MaintenanceStatus.Cancelled)
             {
-                case "name":
-                    return ascending
-                        ? query.OrderBy(d => d.Name)
-                        : query.OrderByDescending(d => d.Name);
-                case "status":
-                    return ascending
-                        ? query.OrderBy(d => d.Status)
-                        : query.OrderByDescending(d => d.Status);
-                case "hotpotinventory":
-                    return ascending
-                        ? query.OrderBy(d => d.HotPotInventory.SeriesNumber)
-                        : query.OrderByDescending(d => d.HotPotInventory.SeriesNumber);
-                case "utensil":
-                    return ascending
-                        ? query.OrderBy(d => d.Utensil.Name)
-                        : query.OrderByDescending(d => d.Utensil.Name);
-                case "createdat":
-                    return ascending
-                        ? query.OrderBy(d => d.CreatedAt)
-                        : query.OrderByDescending(d => d.CreatedAt);
-                case "loggeddate":
-                default:
-                    return ascending
-                        ? query.OrderBy(d => d.LoggedDate)
-                        : query.OrderByDescending(d => d.LoggedDate);
+                var otherDamageReports = await _unitOfWork.Repository<DamageDevice>()
+                    .FindAll(d => d.HotPotInventoryId == hotpotInventoryId &&
+                                 !d.IsDelete &&
+                                 d.Status != MaintenanceStatus.Completed &&
+                                 d.Status != MaintenanceStatus.Cancelled)
+                    .AnyAsync();
+
+                // If no other active damage reports, set hotpot to Available
+                if (!otherDamageReports)
+                {
+                    hotpot.Status = HotpotStatus.Available;
+                    await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
+
+                    // Update the hotpot quantity
+                    await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                }
+            }
+            else if (damageStatus == MaintenanceStatus.Pending || damageStatus == MaintenanceStatus.InProgress)
+            {
+                // If damage is pending or in progress, set hotpot to Damaged
+                hotpot.Status = HotpotStatus.Damaged;
+                await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
+
+                // Update the hotpot quantity
+                await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
             }
         }
+
 
         public Task<IEnumerable<DamageDevice>> GetAllAsync()
         {

@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.API.Controllers.Staff;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
@@ -16,31 +17,49 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerOrderManagementController : ControllerBase
     {
         private readonly IOrderManagementService _orderManagementService;
+        private readonly ILogger<ManagerOrderManagementController> _logger;
 
-        public ManagerOrderManagementController(IOrderManagementService orderManagementService)
+
+        public ManagerOrderManagementController(IOrderManagementService orderManagementService,
+            ILogger<ManagerOrderManagementController> logger)
         {
             _orderManagementService = orderManagementService;
+            _logger = logger;
         }
 
-        // Order allocation endpoints
-        [HttpPost("allocate")]
+        [HttpPost("assign-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrderAllocationDTO>>> AllocateOrderToStaff([FromBody] AllocateOrderRequest request)
+        public async Task<ActionResult<ApiResponse<StaffAssignmentResponse>>> AssignStaffToOrder(
+    [FromBody] StaffAssignmentRequest request)
         {
             try
             {
-                var result = await _orderManagementService.AllocateOrderToStaff(request.OrderId, request.StaffId);
-                return Ok(ApiResponse<ShippingOrderAllocationDTO>.SuccessResponse(result, "Order allocated successfully"));
+                var result = await _orderManagementService.AssignStaffToOrderAsync(
+                    request.OrderId,
+                    request.StaffId,
+                    request.TaskType,
+                    request.VehicleId);
+
+                string successMessage = request.TaskType == StaffTaskType.Preparation
+                    ? "Preparation staff assigned successfully"
+                    : "Shipping staff assigned successfully";
+
+                return Ok(ApiResponse<StaffAssignmentResponse>.SuccessResponse(result, successMessage));
             }
-            catch (KeyNotFoundException ex)
+            catch (NotFoundException ex)
             {
-                return NotFound(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
+                _logger.LogError(ex, "Error assigning staff to order");
+                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
         }
 
@@ -120,7 +139,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [HttpGet("status/{status}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<OrderWithDetailsDTO>>>> GetOrdersByStatus(
-            OrderStatus? status= null,
+            OrderStatus? status = null,
             [FromQuery] OrderQueryParams queryParams = null)
         {
             // If no query params provided, create with defaults
@@ -201,17 +220,66 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpGet("counts")]
-        public async Task<ActionResult<OrderCountsDTO>> GetOrderCounts()
+
+        [HttpPost("allocate-with-vehicle")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<ShippingOrderAllocationDTO>>> AllocateOrderToStaffWithVehicle([FromBody] AllocateOrderWithVehicleRequest request)
         {
             try
             {
-                var counts = await _orderManagementService.GetOrderCountsByStatus();
-                return Ok(counts);
+                var result = await _orderManagementService.AllocateOrderToStaffWithVehicle(
+                    request.OrderId,
+                    request.StaffId,
+                    request.VehicleId);
+
+                return Ok(ApiResponse<ShippingOrderAllocationDTO>.SuccessResponse(
+                    result,
+                    "Order allocated successfully with vehicle"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<OrderCountsDTO>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
+            }
+        }
+
+        [HttpGet("estimate-size/{orderId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<OrderSizeDTO>>> EstimateOrderSize(int orderId)
+        {
+            try
+            {
+                var orderSize = await _orderManagementService.EstimateOrderSizeAsync(orderId);
+
+                var result = new OrderSizeDTO
+                {
+                    OrderId = orderId,
+                    Size = orderSize,
+                    SuggestedVehicleType = orderSize == OrderSize.Large ? VehicleType.Car : VehicleType.Scooter
+                };
+
+                return Ok(ApiResponse<OrderSizeDTO>.SuccessResponse(
+                    result,
+                    $"Order size estimated as {orderSize}"));
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(ApiResponse<OrderSizeDTO>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderId);
+                return StatusCode(500, ApiResponse<OrderSizeDTO>.ErrorResponse($"An error occurred: {ex.Message}"));
             }
         }
 

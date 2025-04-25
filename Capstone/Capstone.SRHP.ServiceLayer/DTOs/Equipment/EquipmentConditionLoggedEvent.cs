@@ -10,7 +10,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
     public class EquipmentConditionLoggedEvent
     {
         public int? HotPotInventoryId { get; set; }
-        public int? UtensilId { get; set; }
         public MaintenanceStatus Status { get; set; }
         public string Description { get; set; }
     }

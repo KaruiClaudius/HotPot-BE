@@ -4,7 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -31,8 +31,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
         }
 
         public async Task<bool> CompletePickupAssignmentAsync(
-            int assignmentId,
-            EquipmentReturnRequest request)
+     int assignmentId,
+     EquipmentReturnRequest request)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -56,19 +56,44 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 var rentOrderId = assignment.OrderId;
                 await ProcessEquipmentReturnInternalAsync(rentOrderId, request);
 
-                // Send notifications
-                await _notificationService.NotifyStaffAssignmentCompletedAsync(
-                    request.StaffId, assignmentId);
-
+                // Get staff information for notification
                 var staff = await _unitOfWork.Repository<User>().GetById(request.StaffId);
-                await _notificationService.NotifyManagerAssignmentCompletedAsync(
-                    assignmentId,
+                string staffName = staff?.Name ?? "Staff member";
+
+                // Notify the staff member who completed the assignment
+                await _notificationService.NotifyUser(
                     request.StaffId,
-                    staff?.Name ?? "Staff member");
+                    "AssignmentCompleted",
+                    "Assignment Completed",
+                    "You have successfully completed a pickup assignment",
+                    new Dictionary<string, object>
+                    {
+                { "AssignmentId", assignmentId },
+                { "OrderId", assignment.OrderId },
+                { "CompletionDate", request.ReturnDate },
+                { "ReturnCondition", request.ReturnCondition }
+                    });
+
+                // Notify managers about the completed assignment
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "AssignmentCompleted",
+                    "Assignment Completed",
+                    $"{staffName} has completed a pickup assignment",
+                    new Dictionary<string, object>
+                    {
+                { "AssignmentId", assignmentId },
+                { "OrderId", assignment.OrderId },
+                { "StaffId", request.StaffId },
+                { "StaffName", staffName },
+                { "CompletionDate", request.ReturnDate },
+                { "ReturnCondition", request.ReturnCondition }
+                    });
 
                 return true;
             });
         }
+
         public async Task<RentOrder> GetRentOrderAsync(int orderId)
         {
             var rentOrder = await _unitOfWork.Repository<RentOrder>()
@@ -105,9 +130,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                     var rentOrder = await GetRentOrderAsync(request.RentOrderId.Value);
                     if (rentOrder.Order?.UserId != null)
                     {
-                        await _notificationService.NotifyCustomerRentalReturnedAsync(
+                        // Get additional information for a more detailed notification
+                        string equipmentSummary = await GetEquipmentSummaryForRentOrder(request.RentOrderId.Value);
+
+                        await _notificationService.NotifyUser(
                             rentOrder.Order.UserId,
-                            request.RentOrderId.Value);
+                            "RentalReturned",
+                            "Rental Returned",
+                            "Your rental has been successfully returned",
+                            new Dictionary<string, object>
+                            {
+                        { "RentalId", request.RentOrderId.Value },
+                        { "ReturnDate", request.ReturnDate },
+                        { "ReturnCondition", request.ReturnCondition },
+                        { "EquipmentSummary", equipmentSummary }
+                            });
                     }
 
                     _logger.LogInformation("Equipment return processed successfully for rent order ID: {RentOrderId}", request.RentOrderId.Value);
@@ -257,7 +294,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             }
         }
 
+        private async Task<string> GetEquipmentSummaryForRentOrder(int rentOrderId)
+        {
+            try
+            {
+                var rentOrder = await GetRentOrderAsync(rentOrderId);
 
+                // Build a summary of the equipment in the order
+                var equipmentItems = new List<string>();
+
+                // Group by hotpot types
+                var hotpotRentals = rentOrder.RentOrderDetails
+                    .Where(d => d.HotpotInventory != null && d.HotpotInventory.Hotpot != null)
+                    .ToList();
+
+                if (hotpotRentals.Any())
+                {
+                    var hotpotCount = hotpotRentals.Count;
+                    equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
+                }       
+
+                return equipmentItems.Any()
+                    ? string.Join(", ", equipmentItems)
+                    : "equipment";
+            }
+            catch (Exception)
+            {
+                // If there's any error getting the equipment summary, return a generic message
+                return "equipment";
+            }
+        }
 
 
         //// Keep this method for backward compatibility or specific item returns

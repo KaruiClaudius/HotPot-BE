@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
 {
-    public interface IHotpotService : IBaseService<Hotpot>
+    public interface IHotpotService
     {
         Task<PagedResult<Hotpot>> GetHotpotsAsync(
                 string searchTerm = null,
@@ -24,9 +24,12 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.HotpotService
                 int pageSize = 10,
                 string sortBy = "Name",
                 bool ascending = true);
+
+        Task<Hotpot> GetByIdAsync(int id);
         Task<HotPotInventory> GetByInvetoryIdAsync(int inventoryId);
         Task<Hotpot> CreateAsync(Hotpot entity, string[] seriesNumbers = null);
         Task UpdateAsync(int id, Hotpot entity, string[] seriesNumbers = null);
+        Task DeleteAsync(int id);
         Task<decimal> CalculateDepositAsync(int id, int quantity);
         Task UpdateQuantityAsync(int hotpotId);
         Task<bool> IsAvailableAsync(int id);

@@ -52,7 +52,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         public int UtensilTypeId { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        public List<DamageDeviceDto> ConditionLogs { get; set; }
     }
 
     // DTO for Damage Device

@@ -3,7 +3,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -97,19 +97,49 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<ApiResponse<ManagerFeedbackDetailDto>>> RespondToFeedback(
-            int id, [FromBody] RespondToFeedbackRequest request)
+      int id, [FromBody] RespondToFeedbackRequest request)
         {
             try
             {
                 var feedback = await _managerFeedbackService.RespondToFeedbackAsync(
                     id, request.ManagerId, request.Response);
 
-                // Notify the customer about the response via the new notification service
-                await _notificationService.NotifyFeedbackResponse(
+                // Get manager name for notification
+                string managerName = feedback.Manager?.Name ?? "Manager";
+
+                // Notify the customer about the response via the simplified notification service
+                await _notificationService.NotifyUser(
                     feedback.User.UserId,
-                    feedback.FeedbackId,
-                    feedback.Response,
-                    feedback.Manager?.Name ?? "Manager");
+                    "FeedbackResponse",
+                    "Response to Your Feedback",
+                    $"A manager has responded to your feedback: {feedback.Title}",
+                    new Dictionary<string, object>
+                    {
+                { "FeedbackId", feedback.FeedbackId },
+                { "Title", feedback.Title },
+                { "Response", feedback.Response },
+                { "ResponderName", managerName },
+                { "ResponderId", request.ManagerId },
+                { "ResponseDate", DateTime.UtcNow },
+                    });
+
+                // Also notify other managers about the response for transparency
+                await _notificationService.NotifyRole(
+                    "Managers",
+                    "FeedbackResponseAdded",
+                    "Feedback Response Added",
+                    $"{managerName} responded to feedback: {feedback.Title}",
+                    new Dictionary<string, object>
+                    {
+                { "FeedbackId", feedback.FeedbackId },
+                { "Title", feedback.Title },
+                { "Response", feedback.Response },
+                { "ResponderName", managerName },
+                { "ResponderId", request.ManagerId },
+                { "ResponseDate", DateTime.UtcNow },
+                { "CustomerName", feedback.User?.Name ?? "Customer" },
+                { "CustomerId", feedback.User?.UserId ?? 0 },
+                    });
 
                 return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(
                     feedback, "Response added successfully"));

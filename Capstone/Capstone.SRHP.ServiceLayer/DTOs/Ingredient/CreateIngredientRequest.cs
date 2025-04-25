@@ -18,12 +18,20 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public string ImageURL { get; set; }
 
         [Required]
-        [Range(0, int.MaxValue)]
-        public int MinStockLevel { get; set; }
+        [StringLength(50)]
+        public string Unit { get; set; }
+
+        [Required]
+        [Range(0.0001, double.MaxValue, ErrorMessage = "Measurement value must be greater than 0")]
+        public double MeasurementValue { get; set; }
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public double TotalAmount { get; set; }
 
         [Required]
         [Range(0, int.MaxValue)]
-        public int Quantity { get; set; }
+        public int MinStockLevel { get; set; }
 
         [Required]
         [Range(0, double.MaxValue)]
@@ -32,6 +40,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         [Required]
         [Range(1, int.MaxValue)]
         public int IngredientTypeID { get; set; }
+
+        [Required]
+        public DateTime BestBeforeDate { get; set; }
     }
 
 }

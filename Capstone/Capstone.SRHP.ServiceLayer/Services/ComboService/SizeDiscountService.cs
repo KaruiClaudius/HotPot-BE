@@ -154,117 +154,229 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-        // Keep for backward compatibility
-        public async Task<IEnumerable<SizeDiscount>> GetAllAsync()
-        {
-            return await _unitOfWork.Repository<SizeDiscount>()
-                .FindAll(sd => !sd.IsDelete)
-                .OrderBy(sd => sd.MinSize)
-                .ToListAsync();
-        }
-
         public async Task<SizeDiscount> GetByIdAsync(int id)
         {
-            return await _unitOfWork.Repository<SizeDiscount>()
-                .FindAsync(sd => sd.SizeDiscountId == id && !sd.IsDelete);
+            try
+            {
+                var discount = await _unitOfWork.Repository<SizeDiscount>()
+                    .FindAsync(sd => sd.SizeDiscountId == id && !sd.IsDelete);
+
+                if (discount == null)
+                    throw new NotFoundException($"Không tìm thấy giảm giá với ID {id}");
+
+                return discount;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy giảm giá theo kích thước với ID {DiscountId}", id);
+                throw;
+            }
         }
 
         public async Task<SizeDiscount> CreateAsync(SizeDiscount sizeDiscount)
         {
-            // Validate
-            if (sizeDiscount.MinSize <= 0)
-                throw new ValidationException("Minimum size must be greater than 0");
-
-            if (sizeDiscount.DiscountPercentage < 0 || sizeDiscount.DiscountPercentage > 100)
-                throw new ValidationException("Discount percentage must be between 0 and 100");
-
-            // Check for overlapping date ranges
-            if (sizeDiscount.StartDate.HasValue && sizeDiscount.EndDate.HasValue)
+            try
             {
-                if (sizeDiscount.StartDate > sizeDiscount.EndDate)
-                    throw new ValidationException("Start date must be before end date");
+                // Validate
+                if (sizeDiscount.MinSize <= 0)
+                    throw new ValidationException("Kích thước tối thiểu phải lớn hơn 0");
+
+                if (sizeDiscount.DiscountPercentage < 0 || sizeDiscount.DiscountPercentage > 100)
+                    throw new ValidationException("Phần trăm giảm giá phải nằm trong khoảng từ 0 đến 100");
+
+                // Check for overlapping date ranges
+                if (sizeDiscount.StartDate.HasValue && sizeDiscount.EndDate.HasValue)
+                {
+                    if (sizeDiscount.StartDate > sizeDiscount.EndDate)
+                        throw new ValidationException("Ngày bắt đầu phải trước ngày kết thúc");
+                }
+
+                // Check for existing discount with same min size
+                var existingDiscount = await _unitOfWork.Repository<SizeDiscount>()
+                    .FindAsync(sd => sd.MinSize == sizeDiscount.MinSize && !sd.IsDelete);
+
+                if (existingDiscount != null)
+                    throw new ValidationException($"Đã tồn tại giảm giá cho kích thước {sizeDiscount.MinSize}");
+
+                // Check for soft-deleted discount with same min size
+                var softDeletedDiscount = await _unitOfWork.Repository<SizeDiscount>()
+                    .FindAsync(sd => sd.MinSize == sizeDiscount.MinSize && sd.IsDelete);
+
+                if (softDeletedDiscount != null)
+                {
+                    // Reactivate the soft-deleted discount
+                    softDeletedDiscount.IsDelete = false;
+                    softDeletedDiscount.DiscountPercentage = sizeDiscount.DiscountPercentage;
+                    softDeletedDiscount.StartDate = sizeDiscount.StartDate;
+                    softDeletedDiscount.EndDate = sizeDiscount.EndDate;
+                    softDeletedDiscount.SetUpdateDate();
+
+                    await _unitOfWork.Repository<SizeDiscount>().Update(softDeletedDiscount, softDeletedDiscount.SizeDiscountId);
+                    await _unitOfWork.CommitAsync();
+
+                    return softDeletedDiscount;
+                }
+
+                _unitOfWork.Repository<SizeDiscount>().Insert(sizeDiscount);
+                await _unitOfWork.CommitAsync();
+
+                return sizeDiscount;
             }
-
-            // Check for existing discount with same min size
-            var existingDiscount = await _unitOfWork.Repository<SizeDiscount>()
-                .FindAsync(sd => sd.MinSize == sizeDiscount.MinSize && !sd.IsDelete);
-
-            if (existingDiscount != null)
-                throw new ValidationException($"A discount for size {sizeDiscount.MinSize} already exists");
-
-            _unitOfWork.Repository<SizeDiscount>().Insert(sizeDiscount);
-            await _unitOfWork.CommitAsync();
-
-            return sizeDiscount;
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo giảm giá theo kích thước");
+                throw;
+            }
         }
 
         public async Task UpdateAsync(int id, SizeDiscount sizeDiscount)
         {
-            var existingDiscount = await GetByIdAsync(id);
-            if (existingDiscount == null)
-                throw new NotFoundException($"Size discount with ID {id} not found");
-
-            // Validate
-            if (sizeDiscount.MinSize <= 0)
-                throw new ValidationException("Minimum size must be greater than 0");
-
-            if (sizeDiscount.DiscountPercentage < 0 || sizeDiscount.DiscountPercentage > 100)
-                throw new ValidationException("Discount percentage must be between 0 and 100");
-
-            // Check for overlapping date ranges
-            if (sizeDiscount.StartDate.HasValue && sizeDiscount.EndDate.HasValue)
+            try
             {
-                if (sizeDiscount.StartDate > sizeDiscount.EndDate)
-                    throw new ValidationException("Start date must be before end date");
+                var existingDiscount = await GetByIdAsync(id);
+                if (existingDiscount == null)
+                    throw new NotFoundException($"Không tìm thấy giảm giá với ID {id}");
+
+                // Validate
+                if (sizeDiscount.MinSize <= 0)
+                    throw new ValidationException("Kích thước tối thiểu phải lớn hơn 0");
+
+                if (sizeDiscount.DiscountPercentage < 0 || sizeDiscount.DiscountPercentage > 100)
+                    throw new ValidationException("Phần trăm giảm giá phải nằm trong khoảng từ 0 đến 100");
+
+                // Check for overlapping date ranges
+                if (sizeDiscount.StartDate.HasValue && sizeDiscount.EndDate.HasValue)
+                {
+                    if (sizeDiscount.StartDate > sizeDiscount.EndDate)
+                        throw new ValidationException("Ngày bắt đầu phải trước ngày kết thúc");
+                }
+
+                // Check for existing discount with same min size (excluding this one)
+                var existingWithSameSize = await _unitOfWork.Repository<SizeDiscount>()
+                    .FindAsync(sd => sd.MinSize == sizeDiscount.MinSize && sd.SizeDiscountId != id && !sd.IsDelete);
+
+                if (existingWithSameSize != null)
+                    throw new ValidationException($"Đã tồn tại giảm giá khác cho kích thước {sizeDiscount.MinSize}");
+
+                sizeDiscount.SetUpdateDate();
+                await _unitOfWork.Repository<SizeDiscount>().Update(sizeDiscount, id);
+                await _unitOfWork.CommitAsync();
             }
-
-            // Check for existing discount with same min size (excluding this one)
-            var existingWithSameSize = await _unitOfWork.Repository<SizeDiscount>()
-                .FindAsync(sd => sd.MinSize == sizeDiscount.MinSize && sd.SizeDiscountId != id && !sd.IsDelete);
-
-            if (existingWithSameSize != null)
-                throw new ValidationException($"Another discount for size {sizeDiscount.MinSize} already exists");
-
-            sizeDiscount.SetUpdateDate();
-            await _unitOfWork.Repository<SizeDiscount>().Update(sizeDiscount, id);
-            await _unitOfWork.CommitAsync();
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật giảm giá theo kích thước với ID {DiscountId}", id);
+                throw;
+            }
         }
+
 
         public async Task DeleteAsync(int id)
         {
-            var discount = await GetByIdAsync(id);
-            if (discount == null)
-                throw new NotFoundException($"Size discount with ID {id} not found");
+            try
+            {
+                var discount = await GetByIdAsync(id);
+                if (discount == null)
+                    throw new NotFoundException($"Không tìm thấy giảm giá với ID {id}");
 
-            // Check if this discount is used by any customizations or combos
-            var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
-                .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
+                // Check if this discount is used by any customizations or combos
+                var isUsedByCustomization = await _unitOfWork.Repository<Customization>()
+                    .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
 
-            var isUsedByCombo = await _unitOfWork.Repository<Combo>()
-                .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
+                var isUsedByCombo = await _unitOfWork.Repository<Combo>()
+                    .AnyAsync(c => c.AppliedDiscountId == id && !c.IsDelete);
 
-            if (isUsedByCustomization || isUsedByCombo)
-                throw new ValidationException("Cannot delete this discount as it is used by existing customizations or combos");
+                if (isUsedByCustomization || isUsedByCombo)
+                    throw new ValidationException("Không thể xóa giảm giá này vì nó đang được sử dụng bởi các tùy chỉnh hoặc combo hiện có");
 
-            discount.SoftDelete();
-            await _unitOfWork.CommitAsync();
+                discount.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa giảm giá theo kích thước với ID {DiscountId}", id);
+                throw;
+            }
         }
 
         public async Task<SizeDiscount> GetApplicableDiscountAsync(int size)
         {
-            if (size <= 0)
-                throw new ValidationException("Size must be greater than 0");
+            try
+            {
+                if (size <= 0)
+                    throw new ValidationException("Kích thước phải lớn hơn 0");
 
-            // Get the highest applicable discount tier for this size
-            var now = DateTime.UtcNow;
+                // Get the highest applicable discount tier for this size
+                var now = DateTime.UtcNow;
 
-            return await _unitOfWork.Repository<SizeDiscount>()
-                .FindAll(sd => sd.MinSize <= size &&
-                            (sd.StartDate == null || sd.StartDate <= now) &&
-                            (sd.EndDate == null || sd.EndDate >= now) &&
-                            !sd.IsDelete)
-                .OrderByDescending(sd => sd.MinSize)
-                .FirstOrDefaultAsync();
+                // Use a try-catch block specifically for the database query
+                try
+                {
+                    return await _unitOfWork.Repository<SizeDiscount>()
+                        .FindAll(sd => sd.MinSize <= size &&
+                                    (sd.StartDate == null || sd.StartDate <= now) &&
+                                    (sd.EndDate == null || sd.EndDate >= now) &&
+                                    !sd.IsDelete)
+                        .OrderByDescending(sd => sd.MinSize)
+                        .FirstOrDefaultAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi cơ sở dữ liệu khi tìm giảm giá áp dụng cho kích thước {Size}", size);
+
+                    // In case of database error, try a more resilient approach with explicit loading
+                    var allDiscounts = await _unitOfWork.Repository<SizeDiscount>()
+                        .FindAll(sd => !sd.IsDelete)
+                        .ToListAsync();
+
+                    return allDiscounts
+                        .Where(sd => sd.MinSize <= size &&
+                                (sd.StartDate == null || sd.StartDate <= now) &&
+                                (sd.EndDate == null || sd.EndDate >= now))
+                        .OrderByDescending(sd => sd.MinSize)
+                        .FirstOrDefault();
+                }
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi không xác định khi tìm giảm giá áp dụng cho kích thước {Size}", size);
+
+                // In case of any other error, return null instead of throwing
+                // This ensures that the combo and customization services can continue to function
+                return null;
+            }
+        }
+
+        public Task<IEnumerable<SizeDiscount>> GetAllAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
