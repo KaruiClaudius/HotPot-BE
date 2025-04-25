@@ -284,31 +284,40 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     throw new NotFoundException($"Payment with ID {paymentId} not found");
                 }
 
-                // Create receipt record
-                var receipt = new PaymentReceipt
-                {
-                    PaymentId = payment.PaymentId,
-                    OrderId = payment.OrderId ?? 0,
-                    Amount = payment.Price,
-                    GeneratedAt = DateTime.UtcNow,
-                    ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMdd}-{payment.TransactionCode}",
-                };
+                // Try to get existing receipt
+                var receipt = await _unitOfWork.Repository<PaymentReceipt>()
+                    .AsQueryable(r => r.PaymentId == paymentId)
+                    .FirstOrDefaultAsync();
 
-                await _unitOfWork.Repository<PaymentReceipt>().InsertAsync(receipt);
-                await _unitOfWork.CommitAsync();
+                // If no receipt exists, create one
+                if (receipt == null)
+                {
+                    receipt = new PaymentReceipt
+                    {
+                        PaymentId = payment.PaymentId,
+                        OrderId = payment.OrderId ?? 0,
+                        Amount = payment.Price,
+                        GeneratedAt = DateTime.UtcNow,
+                        ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMdd}-{payment.TransactionCode}",
+                    };
+
+                    await _unitOfWork.Repository<PaymentReceipt>().InsertAsync(receipt);
+                    await _unitOfWork.CommitAsync();
+                }
 
                 // Return receipt DTO
                 return new PaymentReceiptDto
                 {
                     ReceiptId = receipt.ReceiptId,
                     OrderId = payment.OrderId ?? 0,
+                    OrderCode = payment.Order?.OrderCode ?? "Unknown",
                     PaymentId = payment.PaymentId,
-                    TransactionCode = payment.TransactionCode.ToString(),
+                    TransactionCode = payment.TransactionCode.ToString() ?? "Unknown",
                     Amount = payment.Price,
                     PaymentDate = payment.UpdatedAt ?? payment.CreatedAt,
                     CustomerName = payment.User?.Name ?? "Unknown",
-                    CustomerPhone = payment.User?.PhoneNumber ?? "Unknown",
-                    PaymentMethod = payment.Type.ToString(),
+                    CustomerPhone = payment.User.PhoneNumber ?? "Unknown",
+                    PaymentMethod = payment.Type.ToString() ?? "Unknown",
                 };
             }
             catch (Exception ex)
