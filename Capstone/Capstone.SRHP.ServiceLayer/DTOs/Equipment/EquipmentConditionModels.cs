@@ -55,10 +55,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         public DateTime? UpdatedAt { get; set; }
         public DateTime? FinishDate { get; set; }
         public string EquipmentSerialNumber { get; set; }
-        public string EquipmentType { get; set; } // "HotPot" or "Utensil"
 
-        // Additional maintenance information
-        public string MaintenanceNotes { get; set; }
     }
 
     public class EquipmentConditionListItemDto
@@ -82,9 +79,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Equipment
         [Required]
         public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Pending;
 
-        // Only one of these should be provided
-        public int? HotPotInventoryId { get; set; }
-        public bool UpdateEquipmentStatus { get; set; } = false; 
+        [Required]
+        public int HotPotInventoryId { get; set; }
+        public bool UpdateEquipmentStatus { get; set; } = false;
 
     }
 

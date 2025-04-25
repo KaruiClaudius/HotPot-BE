@@ -33,42 +33,40 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<EquipmentConditionDetailDto>>> CreateConditionLog(
-     [FromBody] CreateEquipmentConditionRequest request)
+    [FromBody] CreateEquipmentConditionRequest request)
         {
             try
             {
                 var result = await _equipmentConditionService.LogEquipmentConditionAsync(request);
 
-                // Determine equipment type and name for the notification
-                //string equipmentType = DetermineEquipmentType(request);
+                // Get equipment name for the notification
                 string equipmentName = await GetEquipmentNameAsync(request);
 
                 // Notify administrators about the new condition log
                 await _notificationService.NotifyRole(
                     "Administrators",
                     "ConditionIssue",
-                    "New Equipment Condition Issue",
+                    "New HotPot Condition Issue",
                     $"New issue reported for {equipmentName}: {request.Name}",
                     new Dictionary<string, object>
                     {
                 { "ConditionLogId", result.DamageDeviceId },
-                //{ "EquipmentType", equipmentType },
-                { "EquipmentName", equipmentName },
+                { "HotPotName", equipmentName },
                 { "IssueName", request.Name },
                 { "Description", request.Description },
                 { "Status", request.Status.ToString() },
                 { "ReportTime", DateTime.UtcNow },
                     });
 
-
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
-                    ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Equipment condition logged successfully"));
+                    ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "HotPot condition logged successfully"));
             }
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<EquipmentConditionDetailDto>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -141,7 +139,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     new Dictionary<string, object>
                     {
                 { "ConditionLogId", id },
-                { "EquipmentType", result.EquipmentType },
                 { "EquipmentName", result.EquipmentName },
                 { "IssueName", result.Name },
                 { "Description", result.Description },
@@ -158,42 +155,18 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        //private string DetermineEquipmentType(CreateEquipmentConditionRequest request)
-        //{
-        //    if (request.HotPotInventoryId.HasValue)
-        //        return "HotPot";
-        //    else
-        //        return "Unknown";
-        //}
-
         private async Task<string> GetEquipmentNameAsync(CreateEquipmentConditionRequest request)
         {
             try
             {
-                if (request.HotPotInventoryId.HasValue)
-                {
-                    var hotpot = await _hotpotService.GetByInvetoryIdAsync(request.HotPotInventoryId.Value);
-                    return hotpot?.Hotpot.Name ?? $"HotPot #{request.HotPotInventoryId.Value}";
-                }
-
-                return "Unknown Equipment";
+                var hotpot = await _hotpotService.GetByInvetoryIdAsync(request.HotPotInventoryId);
+                return hotpot?.Hotpot.Name ?? $"HotPot #{request.HotPotInventoryId}";
             }
             catch
             {
-                return "Unknown Equipment";
+                return $"HotPot #{request.HotPotInventoryId}";
             }
         }
-
-        //private string DeterminePriority(CreateEquipmentConditionRequest request)
-        //{
-        //    // Logic to determine priority based on the issue type, description, or status
-        //    if (request.Status == MaintenanceStatus.InProgress)
-        //        return "High";       
-        //    else if (request.Status == MaintenanceStatus.InProgress)
-        //        return "Medium";
-        //    else
-        //        return "Normal";
-        //}
 
     }
 }

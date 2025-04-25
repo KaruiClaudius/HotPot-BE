@@ -24,12 +24,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         // Existing methods remain the same
         public async Task<EquipmentConditionDetailDto> LogEquipmentConditionAsync(CreateEquipmentConditionRequest request)
         {
-            // Validate that HotPotInventoryId is provided
-            if (!request.HotPotInventoryId.HasValue)
-            {
-                throw new ArgumentException("HotPotInventoryId must be provided");
-            }
-
             // Create entity from request
             var conditionLog = new DamageDevice
             {
@@ -45,7 +39,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Load related entities
             conditionLog.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value)
+                .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId)
                 .Include(h => h.Hotpot)
                 .FirstOrDefaultAsync();
 
