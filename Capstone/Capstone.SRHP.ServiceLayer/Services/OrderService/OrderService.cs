@@ -738,7 +738,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     Quantity = (int)item.Quantity,
-                    UnitPrice = combo.BasePrice,
+                    UnitPrice = combo.TotalPrice,
                     ComboId = item.ComboID
                 };
 

@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.ModelLayer;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Microsoft.EntityFrameworkCore;
