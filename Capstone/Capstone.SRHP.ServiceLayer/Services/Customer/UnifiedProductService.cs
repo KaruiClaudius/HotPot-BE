@@ -343,17 +343,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 .Include(i => i.IngredientType)
                 .Where(i => !i.IsDelete);
 
+            var ingredientsToProcess = await ingredientQuery.ToListAsync();
+
+
             // Apply availability filter
             if (onlyAvailable)
             {
-                ingredientQuery = ingredientQuery.Where(i => i.Quantity > 0);
+                ingredientsToProcess = ingredientsToProcess.Where(i => i.Quantity > 0).ToList();
             }
 
-            // Apply quantity filter
+            // Apply quantity filter in memory
             if (minQuantity.HasValue)
             {
-                ingredientQuery = ingredientQuery.Where(i => i.Quantity >= minQuantity.Value);
+                ingredientsToProcess = ingredientsToProcess.Where(i => i.Quantity >= minQuantity.Value).ToList();
             }
+
+
 
             // Apply search filter 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -384,15 +389,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             }
 
 
-            // Process ingredients to get the latest price
-            var ingredientDtos = listIngredients.Select(i =>
+            // Process ingredients to get the latest prices
+            var ingredientDtos = ingredientsToProcess.Select(i =>
             {
                 var latestPrice = i.IngredientPrices != null && i.IngredientPrices.Any()
-                         ? i.IngredientPrices
-                             .OrderByDescending(p => p.EffectiveDate)
-                             .FirstOrDefault()?.Price ?? 0
-                         : 0;
-
+                    ? i.IngredientPrices
+                        .OrderByDescending(p => p.EffectiveDate)
+                        .FirstOrDefault()?.Price ?? 0
+                    : 0;
 
                 return new UnifiedProductDto
                 {
