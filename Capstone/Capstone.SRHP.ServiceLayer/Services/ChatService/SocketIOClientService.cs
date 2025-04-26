@@ -30,7 +30,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             {
                 EIO = EngineIO.V4,
                 Reconnection = true,
-                ReconnectionAttempts = 5,
+                ReconnectionAttempts = 3,
                 ReconnectionDelay = 1000,
                 Transport = TransportProtocol.WebSocket,
                 ConnectionTimeout = TimeSpan.FromSeconds(10)

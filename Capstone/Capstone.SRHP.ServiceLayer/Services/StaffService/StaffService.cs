@@ -328,6 +328,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     {
                         AssignmentId = assignment.AssignmentId,
                         OrderId = assignment.OrderId, // This is RentOrder.OrderId
+                        RentOrderDetailId = null, // Add this property to store RentOrderDetailId separately
                         StaffId = assignment.StaffId,
                         StaffName = assignment.Staff?.Name,
                         AssignedDate = assignment.AssignedDate,
@@ -350,7 +351,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     assignmentDtos.Add(new StaffPickupAssignmentDto
                     {
                         AssignmentId = assignment.AssignmentId,
-                        OrderId = detail.RentOrderDetailId, // Use RentOrderDetailId instead of RentOrder.OrderId
+                        OrderId = assignment.OrderId, // IMPORTANT: Keep this as the actual OrderId
+                        RentOrderDetailId = detail.RentOrderDetailId, // Store RentOrderDetailId separately
                         StaffId = assignment.StaffId,
                         StaffName = assignment.Staff?.Name,
                         AssignedDate = assignment.AssignedDate,
