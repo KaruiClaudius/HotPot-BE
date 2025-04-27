@@ -503,6 +503,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired(false) // Optional relationship
                     .OnDelete(DeleteBehavior.Cascade); // Messages are deleted when session is deleted
             }
+
             DataSeeder.SeedData(modelBuilder);
         }
     }

@@ -413,7 +413,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     TypeId = ingredient.IngredientTypeId,
                     TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                     Quantity = ingredient.Quantity,
-                    MeasurementUnit = ingredient.Unit,
+                    Unit = ingredient.Unit,
                     MeasurementValue = ingredient.MeasurementValue,
                     FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
                 });
@@ -941,7 +941,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 TypeId = i.Ingredient.IngredientTypeId,
                 TypeName = i.Ingredient.IngredientType?.Name ?? "Unknown",
                 Quantity = i.Ingredient.Quantity,
-                MeasurementUnit = i.Ingredient.Unit,
+                Unit = i.Ingredient.Unit,
                 MeasurementValue = i.Ingredient.MeasurementValue,
                 FormattedQuantity = FormatQuantity(i.Ingredient.Quantity, i.Ingredient.Unit)
             }).ToList();
@@ -990,7 +990,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 TypeId = ingredient.IngredientTypeId,
                 TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Quantity = ingredient.Quantity,
-                MeasurementUnit = ingredient.Unit,
+                Unit = ingredient.Unit,
                 MeasurementValue = ingredient.MeasurementValue,
                 FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
             };
