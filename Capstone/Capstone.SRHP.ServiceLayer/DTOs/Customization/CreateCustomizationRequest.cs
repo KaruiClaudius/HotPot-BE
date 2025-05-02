@@ -19,8 +19,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         [Required]
         public int? ComboId { get; set; }
 
-        [Required]
-        public int BrothId { get; set; }
 
         [Required]
         public List<CustomizationIngredientsRequest> Ingredients { get; set; }

@@ -173,8 +173,6 @@ public class CustomerCustomizationController : ControllerBase
                 imageURLs = combo.ImageURLs;
             }
 
-
-
             var customization = await _customizationService.CreateCustomizationAsync(
                 request.ComboId,
                 userId,
