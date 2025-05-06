@@ -24,13 +24,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
-        // Helper method to generate batch numbers
-        private string GenerateBatchNumber(int ingredientId)
-        {
-            // Format: ING-{ingredientId}-{timestamp}
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-            return $"ING-{ingredientId}-{timestamp}";
-        }
 
         [HttpGet("ingredient/{ingredientId}")]
         [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status200OK)]
@@ -192,15 +185,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(request.IngredientId);
-
-                // Add batch with calculated quantity
+                // Add batch with calculated quantity (not an initial batch)
                 var batch = await _ingredientService.AddBatchAsync(
                     request.IngredientId,
                     calculatedQuantity,
                     request.BestBeforeDate,
-                    batchNumber);
+                    false); // Not an initial batch
 
                 // Map to DTO
                 var batchDto = new IngredientBatchDto
@@ -252,6 +242,151 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Status = "Error",
                     Message = "Failed to create batch"
+                });
+            }
+        }
+
+        [HttpPost("multiple")]
+        [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<List<IngredientBatchDto>>>> CreateMultipleBatches([FromBody] MultipleBatchRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Admin creating multiple batches for {Count} ingredients", request.Batches.Count);
+
+                // Validate request
+                if (request.Batches == null || !request.Batches.Any())
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "No batches provided"
+                    });
+                }
+
+                // Prepare the batch data
+                var batchItems = new List<(int ingredientId, int quantity, DateTime bestBeforeDate)>();
+                var ingredientIds = request.Batches.Select(b => b.IngredientId).Distinct().ToList();
+
+                // Get all ingredients in a single query
+                var ingredients = new Dictionary<int, Ingredient>();
+                foreach (var id in ingredientIds)
+                {
+                    try
+                    {
+                        var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
+                        ingredients[id] = ingredient;
+                    }
+                    catch (NotFoundException ex)
+                    {
+                        return NotFound(new ApiErrorResponse
+                        {
+                            Status = "Error",
+                            Message = ex.Message
+                        });
+                    }
+                }
+
+                foreach (var item in request.Batches)
+                {
+                    // Validate each batch
+                    if (item.TotalAmount <= 0)
+                    {
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = $"Total amount must be greater than 0 for ingredient ID {item.IngredientId}"
+                        });
+                    }
+
+                    if (item.BestBeforeDate <= DateTime.UtcNow)
+                    {
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = $"Best before date must be in the future for ingredient ID {item.IngredientId}"
+                        });
+                    }
+
+                    var ingredient = ingredients[item.IngredientId];
+
+                    // Calculate quantity based on total amount and measurement value
+                    int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
+
+                    if (calculatedQuantity <= 0)
+                    {
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = $"Calculated quantity must be greater than 0 for ingredient ID {item.IngredientId}. Check your total amount and measurement value."
+                        });
+                    }
+
+                    batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate));
+                }
+
+                // Add all batches in a single transaction
+                var createdBatches = await _ingredientService.AddMultipleBatchesAsync(batchItems);
+
+                // Map to DTOs
+                var batchDtos = new List<IngredientBatchDto>();
+                foreach (var batch in createdBatches)
+                {
+                    var ingredient = ingredients[batch.IngredientId];
+
+                    var dto = new IngredientBatchDto
+                    {
+                        IngredientBatchId = batch.IngredientBatchId,
+                        IngredientId = batch.IngredientId,
+                        IngredientName = ingredient.Name,
+                        InitialQuantity = batch.InitialQuantity,
+                        RemainingQuantity = batch.RemainingQuantity,
+                        Unit = ingredient.Unit,
+                        MeasurementValue = ingredient.MeasurementValue,
+                        BestBeforeDate = batch.BestBeforeDate,
+                        BatchNumber = batch.BatchNumber ?? string.Empty,
+                        ReceivedDate = batch.ReceivedDate
+                    };
+
+                    batchDtos.Add(dto);
+                }
+
+                return CreatedAtAction(
+                    nameof(GetBatchById),
+                    new { batchId = createdBatches.FirstOrDefault()?.IngredientBatchId ?? 0 },
+                    new ApiResponse<List<IngredientBatchDto>>
+                    {
+                        Success = true,
+                        Message = $"Successfully added {createdBatches.Count} batches for {ingredientIds.Count} different ingredients with batch number {createdBatches.FirstOrDefault()?.BatchNumber}",
+                        Data = batchDtos
+                    });
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "Validation error creating multiple batches");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Validation Error",
+                    Message = ex.Message
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Ingredient not found");
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating multiple batches");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to create batches"
                 });
             }
         }

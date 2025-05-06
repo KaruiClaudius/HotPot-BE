@@ -29,6 +29,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             _logger = logger;
         }
 
+        private string GenerateBatchNumber(bool isInitial = false)
+        {
+            // Format: [INI-]BATCH-{timestamp}
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            return isInitial ? $"INI-BATCH-{timestamp}" : $"BATCH-{timestamp}";
+        }
+
         #region Ingredient Methods
 
         public async Task<PagedResult<Ingredient>> GetIngredientsAsync(
@@ -518,19 +525,46 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             });
         }
 
+        public async Task<decimal> GetIngredientCurrentQuantityAsync(int ingredientId)
+        {
+            try
+            {
+                // Sum the remaining quantities of all non-expired, non-deleted batches
+                var totalQuantity = await _unitOfWork.Repository<IngredientBatch>()
+                    .FindAll(b => b.IngredientId == ingredientId &&
+                                 b.BestBeforeDate > DateTime.UtcNow &&
+                                 !b.IsDelete)
+                    .SumAsync(b => b.RemainingQuantity);
+
+                return totalQuantity;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating current quantity for ingredient {IngredientId}", ingredientId);
+                throw;
+            }
+        }
+
+        //fix before use 
         public async Task UpdateIngredientQuantityAsync(int id, int quantityChange)
         {
             if (quantityChange > 0)
             {
-                // Adding quantity - create a new batch with default expiration (30 days)
-                await AddBatchAsync(id, quantityChange, DateTime.UtcNow.AddDays(30));
+                var ingredient = await GetIngredientByIdAsync(id);
+
+                await AddBatchAsync(
+                    id,
+                    quantityChange,
+                    ingredient.IngredientBatches?.OrderBy(b => b.BestBeforeDate).FirstOrDefault()?.BestBeforeDate ?? DateTime.UtcNow
+                );
             }
             else if (quantityChange < 0)
             {
                 // Removing quantity - consume from batches
-                await ConsumeIngredientAsync(id, Math.Abs(quantityChange));
+                //await ConsumeIngredientAsync(id, Math.Abs(quantityChange));
             }
         }
+
         public async Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync()
         {
             try
@@ -990,6 +1024,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
         #region Ingredient Batch Methods
 
+        public async Task<List<IngredientBatch>> GetAvailableBatchesAsync(int ingredientId)
+        {
+            try
+            {
+                // Get all non-deleted batches for this ingredient that have remaining quantity
+                var batches = await _unitOfWork.Repository<IngredientBatch>()
+                    .FindAll(b => b.IngredientId == ingredientId &&
+                                 b.RemainingQuantity > 0 &&
+                                 b.BestBeforeDate > DateTime.UtcNow &&
+                                 !b.IsDelete)
+                    .OrderBy(b => b.BestBeforeDate) // FIFO - use oldest batches first
+                    .ToListAsync();
+
+                return batches;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available batches for ingredient {IngredientId}", ingredientId);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId)
         {
             try
@@ -1037,7 +1093,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-        public async Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string batchNumber = null)
+        public async Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, bool isInitial = false)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -1050,6 +1106,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Check if ingredient exists
                 var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                // Generate batch number with appropriate prefix
+                string batchNumber = GenerateBatchNumber(isInitial);
 
                 var batch = new IngredientBatch
                 {
@@ -1073,7 +1132,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     quantity * ingredient.MeasurementValue,
                     ingredient.Unit,
                     bestBeforeDate,
-                    batchNumber ?? "N/A");
+                    batchNumber);
 
                 return batch;
             },
@@ -1082,6 +1141,78 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!(ex is NotFoundException || ex is ValidationException))
                 {
                     _logger.LogError(ex, "Error adding batch for ingredient with ID {IngredientId}", ingredientId);
+                }
+            });
+        }
+
+        public async Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate)> batches)
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var createdBatches = new List<IngredientBatch>();
+
+                // Validate all ingredients exist first
+                var ingredientIds = batches.Select(b => b.ingredientId).Distinct().ToList();
+                var ingredients = await _unitOfWork.Repository<Ingredient>()
+                    .FindAll(i => ingredientIds.Contains(i.IngredientId) && !i.IsDelete)
+                    .ToListAsync();
+
+                var foundIngredientIds = ingredients.Select(i => i.IngredientId).ToHashSet();
+                var missingIngredientIds = ingredientIds.Where(id => !foundIngredientIds.Contains(id)).ToList();
+
+                if (missingIngredientIds.Any())
+                {
+                    throw new ValidationException($"Không tìm thấy nguyên liệu với ID: {string.Join(", ", missingIngredientIds)}");
+                }
+
+                // Generate a single batch number for all batches in this operation
+                string batchNumber = GenerateBatchNumber(false);
+
+                // Process all batches
+                foreach (var (ingredientId, quantity, bestBeforeDate) in batches)
+                {
+                    // Validate
+                    if (quantity <= 0)
+                        throw new ValidationException($"Số lượng phải lớn hơn 0 cho nguyên liệu ID {ingredientId}");
+
+                    if (bestBeforeDate <= DateTime.UtcNow)
+                        throw new ValidationException($"Ngày hết hạn phải sau ngày hiện tại cho nguyên liệu ID {ingredientId}");
+
+                    var ingredient = ingredients.First(i => i.IngredientId == ingredientId);
+
+                    var batch = new IngredientBatch
+                    {
+                        IngredientId = ingredientId,
+                        InitialQuantity = quantity,
+                        RemainingQuantity = quantity,
+                        BestBeforeDate = bestBeforeDate,
+                        BatchNumber = batchNumber, // Use the same batch number for all batches in this operation
+                        ReceivedDate = DateTime.UtcNow
+                    };
+
+                    _unitOfWork.Repository<IngredientBatch>().Insert(batch);
+                    createdBatches.Add(batch);
+
+                    // Log with physical quantity information
+                    _logger.LogInformation(
+                        "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} units ({PhysicalQuantity} {Unit}), Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
+                        ingredient.Name,
+                        ingredientId,
+                        quantity,
+                        quantity * ingredient.MeasurementValue,
+                        ingredient.Unit,
+                        bestBeforeDate,
+                        batchNumber);
+                }
+
+                await _unitOfWork.CommitAsync();
+                return createdBatches;
+            },
+            ex =>
+            {
+                if (!(ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error adding multiple batches");
                 }
             });
         }
@@ -1174,75 +1305,56 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             });
         }
 
-        public async Task<int> ConsumeIngredientAsync(int ingredientId, int quantity)
+        public async Task<int> ConsumeIngredientAsync(int ingredientId, int quantity, int orderId, int? orderDetailId = null, int? comboId = null, int? customizationId = null)
         {
-            int actualConsumed = 0;
-
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
-                if (quantity <= 0)
-                    throw new ValidationException("Số lượng tiêu thụ phải lớn hơn 0");
+                // Get available batches for this ingredient
+                var batches = await GetAvailableBatchesAsync(ingredientId);
 
-                var ingredient = await GetIngredientByIdAsync(ingredientId);
+                // Use FIFO (First In, First Out) for batch selection
+                int remainingQuantity = quantity;
+                int consumedQuantity = 0;
 
-                if (ingredient.Quantity < quantity)
-                    throw new ValidationException($"Không đủ số lượng nguyên liệu. Hiện có: {GetFormattedQuantity(ingredient)}, Cần: {quantity * ingredient.MeasurementValue} {ingredient.Unit}");
-
-                // Get valid batches ordered by expiration date (FIFO)
-                var batches = ingredient.IngredientBatches
-                    .Where(b => !b.IsDelete && b.RemainingQuantity > 0 && b.BestBeforeDate > DateTime.UtcNow)
-                    .OrderBy(b => b.BestBeforeDate)
-                    .ToList();
-
-                int remainingToConsume = quantity;
-                actualConsumed = 0;
-
-                foreach (var batch in batches)
+                foreach (var batch in batches.OrderBy(b => b.BestBeforeDate))
                 {
-                    if (remainingToConsume <= 0) break;
+                    if (remainingQuantity <= 0) break;
 
-                    int consumeFromBatch = Math.Min(batch.RemainingQuantity, remainingToConsume);
-                    batch.RemainingQuantity -= consumeFromBatch;
-                    remainingToConsume -= consumeFromBatch;
-                    actualConsumed += consumeFromBatch;
-                    batch.SetUpdateDate();
+                    int quantityFromBatch = Math.Min(quantity, batch.RemainingQuantity);
 
-                    _logger.LogInformation(
-                        "Consumed {ConsumedQuantity} units ({PhysicalQuantity} {Unit}) from batch {BatchNumber} of ingredient {IngredientName} (ID: {IngredientId})",
-                        consumeFromBatch,
-                        consumeFromBatch * ingredient.MeasurementValue,
-                        ingredient.Unit,
-                        batch.BatchNumber ?? "N/A",
-                        ingredient.Name,
-                        ingredientId);
+                    // Record usage
+                    var usage = new IngredientUsage
+                    {
+                        IngredientId = ingredientId,
+                        IngredientBatchId = batch.IngredientBatchId,
+                        QuantityUsed = quantityFromBatch,
+                        OrderId = orderId,
+                        OrderDetailId = orderDetailId,
+                        ComboId = comboId,
+                        CustomizationId = customizationId,
+                        UsageDate = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Repository<IngredientUsage>().InsertAsync(usage);
+
+                    // Update batch remaining quantity
+                    batch.RemainingQuantity -= quantityFromBatch;
+                    await _unitOfWork.Repository<IngredientBatch>().Update(batch, batch.IngredientBatchId);
+
+                    consumedQuantity += quantityFromBatch;
+                    remainingQuantity -= quantityFromBatch;
                 }
 
-                if (remainingToConsume > 0)
-                {
-                    _logger.LogWarning(
-                        "Could not consume entire requested quantity. Requested: {RequestedQuantity} ({PhysicalQuantity} {Unit}), Consumed: {ConsumedQuantity} ({ConsumedPhysicalQuantity} {Unit})",
-                        quantity,
-                        quantity * ingredient.MeasurementValue,
-                        ingredient.Unit,
-                        actualConsumed,
-                        actualConsumed * ingredient.MeasurementValue,
-                        ingredient.Unit);
-                }
-            },
-            ex =>
+                await _unitOfWork.CommitAsync();
+
+                return consumedQuantity;
+            }
+            catch (Exception ex)
             {
-                if (!(ex is NotFoundException || ex is ValidationException))
-                {
-                    _logger.LogError(ex, "Error consuming ingredient with ID {IngredientId}", ingredientId);
-                }
-
-                // Reset actualConsumed on error
-                actualConsumed = 0;
-            });
-
-            return actualConsumed;
+                _logger.LogError(ex, "Error consuming ingredient {IngredientId}", ingredientId);
+                throw;
+            }
         }
-
         public async Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7)
         {
             try

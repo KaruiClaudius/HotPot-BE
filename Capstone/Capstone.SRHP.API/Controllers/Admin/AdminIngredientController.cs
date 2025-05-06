@@ -247,15 +247,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Create ingredient with initial price
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
 
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(createdIngredient.IngredientId);
-
-                // Add initial batch with calculated quantity
+                // Add initial batch with calculated quantity and initial flag
                 await _ingredientService.AddBatchAsync(
                     createdIngredient.IngredientId,
                     calculatedQuantity,
                     request.BestBeforeDate,
-                    batchNumber);
+                    true); // Mark as initial batch
 
                 // Get the updated ingredient with batch information
                 var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(createdIngredient.IngredientId);
@@ -576,15 +573,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Check if ingredient exists
                 var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
 
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(id);
-
-                // Add new batch
+                // Add new batch (not an initial batch)
                 await _ingredientService.AddBatchAsync(
                     id,
                     request.Quantity,
                     request.BestBeforeDate,
-                    batchNumber);
+                    false); // Not an initial batch
 
                 // Get updated ingredient with batch information
                 var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
@@ -652,13 +646,5 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
             };
         }
-
-        private string GenerateBatchNumber(int ingredientId)
-        {
-            // Format: ING-{ingredientId}-{timestamp}
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-            return $"ING-{ingredientId}-{timestamp}";
-        }
-
     }
 }

@@ -81,6 +81,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IIngredientService, IngredientService>();
             services.AddScoped<ICustomizationService, CustomizationService>();
             services.AddScoped<ISizeDiscountService, SizeDiscountService>();
+            services.AddScoped<IIngredientReportService, IngredientReportService>();
 
             services.AddScoped<IOrderService, OrderService>();
 

@@ -20,7 +20,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         private readonly IIngredientService _ingredientService;
         private readonly ISizeDiscountService _sizeDiscountService;
         private readonly ILogger<ComboService> _logger;
-        private const int BROTH_TYPE_ID = 1; // Adjust this to match your broth type ID
 
         public ComboService(IUnitOfWork unitOfWork, IIngredientService ingredientService, ISizeDiscountService sizeDiscountService, ILogger<ComboService> logger)
         {
@@ -956,7 +955,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 throw new ValidationException($"Không tìm thấy video hướng dẫn với ID {turtorialVideoId}");
         }
 
+        public async Task<IEnumerable<Combo>> GetCombosByGroupIdentifierAsync(string groupIdentifier)
+        { 
+            if (string.IsNullOrEmpty(groupIdentifier))
+                throw new ValidationException("Group identifier cannot be empty");
 
+            return await _unitOfWork.Repository<Combo>()
+                .IncludeNested(query =>
+                    query.Include(c => c.ComboIngredients)
+                         .ThenInclude(ci => ci.Ingredient)
+                         .Include(c => c.AppliedDiscount)
+                         .Include(c => c.TurtorialVideo)
+                         .Include(c => c.AllowedIngredientTypes)
+                         .ThenInclude(ait => ait.IngredientType))
+                .Where(c => c.Description == groupIdentifier && c.IsCustomizable && !c.IsDelete)
+                .OrderBy(c => c.Size)
+                .ToListAsync();
+        }
 
         // Method to update prices when ingredients change
         public async Task UpdatePricesAsync(int comboId)
