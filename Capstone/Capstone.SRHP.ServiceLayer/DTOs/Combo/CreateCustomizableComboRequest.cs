@@ -21,9 +21,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [Range(1, int.MaxValue)]
         public int Size { get; set; }
 
-        [Required]
-        public int HotpotBrothID { get; set; }
-
         public string[]? ImageURLs { get; set; }
 
         [Required]

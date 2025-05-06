@@ -21,8 +21,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public int? Size { get; set; }
 
 
-        public int? HotpotBrothID { get; set; }
-
         public string[]? ImageURLs { get; set; }
 
         public int? TurtorialVideoID { get; set; }

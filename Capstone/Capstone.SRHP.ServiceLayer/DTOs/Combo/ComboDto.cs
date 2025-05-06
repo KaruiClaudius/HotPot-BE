@@ -17,7 +17,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
         public bool IsCustomizable { get; set; }
-        public int HotpotBrothID { get; set; }
         public string HotpotBrothName { get; set; }
         public string[] ImageURLs { get; set; }
 

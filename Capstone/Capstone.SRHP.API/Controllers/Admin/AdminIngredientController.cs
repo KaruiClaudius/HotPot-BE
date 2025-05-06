@@ -220,9 +220,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Calculate quantity based on total amount and measurement value
-                // For example, if total is 5kg and measurement is 200g, then quantity is 5000/200 = 25 units
-                int calculatedQuantity = (int)Math.Ceiling(request.TotalAmount / request.MeasurementValue);
+                // Calculate quantity based on total amount and measurement value - ROUND DOWN
+                int calculatedQuantity = (int)Math.Floor(request.TotalAmount / request.MeasurementValue);
 
                 if (calculatedQuantity <= 0)
                 {
@@ -265,13 +264,27 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var ingredientDto = MapToIngredientDto(updatedIngredient);
                 ingredientDto.Price = request.Price;
 
+                // Calculate the leftover amount
+                double leftoverAmount = request.TotalAmount % request.MeasurementValue;
+
+                // Create the response message
+                string responseMessage;
+                if (leftoverAmount > 0)
+                {
+                    responseMessage = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit}). Note: {leftoverAmount:F2} {request.Unit} leftover will not be counted in inventory.";
+                }
+                else
+                {
+                    responseMessage = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit}).";
+                }
+
                 return CreatedAtAction(
                     nameof(GetIngredientById),
                     new { id = createdIngredient.IngredientId },
                     new ApiResponse<IngredientDto>
                     {
                         Success = true,
-                        Message = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit})",
+                        Message = responseMessage,
                         Data = ingredientDto
                     });
             }

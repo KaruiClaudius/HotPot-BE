@@ -32,6 +32,68 @@ namespace Capstone.HPTY.API.Controllers.Admin
             return $"ING-{ingredientId}-{timestamp}";
         }
 
+        [HttpGet("ingredient/{ingredientId}")]
+        [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<List<IngredientBatchDto>>>> GetIngredientBatches(int ingredientId)
+        {
+            try
+            {
+                _logger.LogInformation("Admin retrieving batches for ingredient ID: {IngredientId}", ingredientId);
+
+                // Get the ingredient to access its unit and measurement value
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(ingredientId);
+
+                // Get all batches for this ingredient
+                var batches = await _ingredientService.GetIngredientBatchesAsync(ingredientId);
+
+                // Map to DTOs
+                var batchDtos = batches.Select(b => new IngredientBatchDto
+                {
+                    IngredientBatchId = b.IngredientBatchId,
+                    IngredientId = b.IngredientId,
+                    IngredientName = ingredient.Name,
+                    InitialQuantity = b.InitialQuantity,
+                    RemainingQuantity = b.RemainingQuantity,
+                    Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
+                    BestBeforeDate = b.BestBeforeDate,
+                    BatchNumber = b.BatchNumber ?? string.Empty,
+                    ReceivedDate = b.ReceivedDate
+                }).ToList();
+
+                // Calculate total remaining quantity in physical units
+                double totalPhysicalQuantity = batchDtos.Sum(b => b.RemainingQuantity * ingredient.MeasurementValue);
+
+                return Ok(new ApiResponse<List<IngredientBatchDto>>
+                {
+                    Success = true,
+                    Message = $"Retrieved {batchDtos.Count} batches for ingredient '{ingredient.Name}'. Total remaining: {totalPhysicalQuantity} {ingredient.Unit}",
+                    Data = batchDtos
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", ingredientId);
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batches for ingredient ID: {IngredientId}", ingredientId);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to retrieve ingredient batches"
+                });
+            }
+        }
+
+
+
         [HttpGet("{batchId}")]
         [ProducesResponseType(typeof(ApiResponse<IngredientBatchDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
@@ -131,9 +193,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 // Generate batch number if not provided
-                string batchNumber = string.IsNullOrWhiteSpace(request.BatchNumber)
-                    ? GenerateBatchNumber(request.IngredientId)
-                    : request.BatchNumber;
+                string batchNumber = GenerateBatchNumber(request.IngredientId);
 
                 // Add batch with calculated quantity
                 var batch = await _ingredientService.AddBatchAsync(
@@ -264,17 +324,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     bestBeforeDate = request.BestBeforeDate.Value;
                 }
 
-                if (string.IsNullOrWhiteSpace(request.BatchNumber))
-                {
-                    request.BatchNumber = existingBatch.BatchNumber;
-                }
-
                 // Update batch
                 await _ingredientService.UpdateBatchAsync(
                     batchId,
                     quantity,
                     bestBeforeDate,
-                    request.BatchNumber);
+                    existingBatch.BatchNumber);
 
                 // Get updated batch
                 var updatedBatch = await _ingredientService.GetBatchByIdAsync(batchId);

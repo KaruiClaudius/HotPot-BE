@@ -12,7 +12,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public int? Quantity { get; set; }
         public double? TotalAmount { get; set; }
         public DateTime? BestBeforeDate { get; set; }
-        public string? BatchNumber { get; set; }
     }
 
 }

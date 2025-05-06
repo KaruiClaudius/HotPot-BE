@@ -150,7 +150,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
         #region Helper Methods for Querying Products
 
-        private async Task<PagedUnifiedProductResult> GetProductsByTypeAsync(
+       private async Task<PagedUnifiedProductResult> GetProductsByTypeAsync(
        string productType,
        string searchTerm,
        int? typeId,
@@ -189,21 +189,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
 
         private async Task<PagedUnifiedProductResult> GetAllProductTypesAsync(
-        string searchTerm,
-        int? typeId,
-        string material,
-        string size,
-        decimal? minPrice,
-        decimal? maxPrice,
-        bool onlyAvailable,
-        int? minQuantity,
-        int pageNumber,
-        int pageSize,
-        string sortBy,
-        bool ascending)
+            string searchTerm,
+            int? typeId,
+            string material,
+            string size,
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool onlyAvailable,
+            int? minQuantity,
+            int pageNumber,
+            int pageSize,
+            string sortBy,
+            bool ascending)
         {
             // Create a union query of all product types
-            var currentDate =  DateTime.UtcNow.AddHours(7);
+            var currentDate = DateTime.UtcNow.AddHours(7);
 
             // Hotpot query
             var hotpotQuery = _unitOfWork.Repository<Hotpot>()
@@ -246,7 +246,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     i.Material != null && EF.Functions.Collate(i.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                     i.Size != null && EF.Functions.Collate(i.Size.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
                     );
-
             }
 
             if (!string.IsNullOrWhiteSpace(material))
@@ -341,19 +340,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             var ingredientQuery = _unitOfWork.Repository<Ingredient>()
                 .AsQueryable()
                 .Include(i => i.IngredientType)
+                .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate > currentDate))
                 .Where(i => !i.IsDelete);
-
-            // Apply availability filter
-            if (onlyAvailable)
-            {
-                ingredientQuery = ingredientQuery.Where(i => i.Quantity > 0);
-            }
-
-            // Apply quantity filter
-            if (minQuantity.HasValue)
-            {
-                ingredientQuery = ingredientQuery.Where(i => i.Quantity >= minQuantity.Value);
-            }
 
             // Apply search filter 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -372,9 +360,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ingredientQuery = ingredientQuery.Where(i => i.IngredientTypeId == typeId.Value);
             }
 
-            // We need to materialize the ingredients to work with the latest prices
-            var listIngredients = await ingredientQuery.ToListAsync();
-            foreach (var ingredient in listIngredients)
+            // Execute the database queries to get the results
+            var hotpots = await hotpotDtoQuery.ToListAsync();
+            var utensils = await utensilDtoQuery.ToListAsync();
+            var ingredients = await ingredientQuery.ToListAsync();
+
+            // Load ingredient prices separately
+            foreach (var ingredient in ingredients)
             {
                 await _unitOfWork.Repository<IngredientPrice>()
                     .FindAll(p => p.IngredientId == ingredient.IngredientId &&
@@ -383,69 +375,55 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     .LoadAsync();
             }
 
-
-            // Process ingredients to get the latest price
-            var ingredientDtos = listIngredients.Select(i =>
+            // Process ingredients in memory
+            var ingredientDtos = new List<UnifiedProductDto>();
+            foreach (var ingredient in ingredients)
             {
-                var latestPrice = i.IngredientPrices != null && i.IngredientPrices.Any()
-                         ? i.IngredientPrices
-                             .OrderByDescending(p => p.EffectiveDate)
-                             .FirstOrDefault()?.Price ?? 0
-                         : 0;
+                // Skip if not available and onlyAvailable is true
+                if (onlyAvailable && ingredient.Quantity <= 0)
+                    continue;
 
+                // Skip if below minimum quantity
+                if (minQuantity.HasValue && ingredient.Quantity < minQuantity.Value)
+                    continue;
 
-                return new UnifiedProductDto
+                var latestPrice = ingredient.IngredientPrices != null && ingredient.IngredientPrices.Any()
+                    ? ingredient.IngredientPrices
+                        .OrderByDescending(p => p.EffectiveDate)
+                        .FirstOrDefault()?.Price ?? 0
+                    : 0;
+
+                // Skip if below minimum price
+                if (minPrice.HasValue && latestPrice < minPrice.Value)
+                    continue;
+
+                // Skip if above maximum price
+                if (maxPrice.HasValue && latestPrice > maxPrice.Value)
+                    continue;
+
+                ingredientDtos.Add(new UnifiedProductDto
                 {
-                    Id = i.IngredientId,
-                    Name = i.Name,
-                    Description = i.Description ?? string.Empty,
+                    Id = ingredient.IngredientId,
+                    Name = ingredient.Name,
+                    Description = ingredient.Description ?? string.Empty,
                     Price = latestPrice,
-                    ImageURLs = i.ImageURL != null ? new[] { i.ImageURL } : new string[0],
-                    IsAvailable = i.Quantity > 0,
+                    ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
+                    IsAvailable = ingredient.Quantity > 0,
                     ProductType = "Ingredient",
-                    TypeId = i.IngredientTypeId,
-                    TypeName = i.IngredientType?.Name ?? "Unknown",
-                    Quantity = i.Quantity
-                };
-            }).ToList();
-
-            // Apply ingredient-specific filters in memory
-            var filteredIngredientDtos = ingredientDtos.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                searchTerm = searchTerm.ToLower();
-                filteredIngredientDtos = filteredIngredientDtos.Where(p =>
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    (p.Description != null && p.Description.ToLower().Contains(searchTerm)) ||
-                    (p.TypeName != null && p.TypeName.ToLower().Contains(searchTerm)));
+                    TypeId = ingredient.IngredientTypeId,
+                    TypeName = ingredient.IngredientType?.Name ?? "Unknown",
+                    Quantity = ingredient.Quantity,
+                    Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
+                    FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
+                });
             }
-
-            if (typeId.HasValue)
-            {
-                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.TypeId == typeId.Value);
-            }
-
-            if (minPrice.HasValue)
-            {
-                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.Price >= minPrice.Value);
-            }
-
-            if (maxPrice.HasValue)
-            {
-                filteredIngredientDtos = filteredIngredientDtos.Where(p => p.Price <= maxPrice.Value);
-            }
-
-            // Combine all queries
-            var hotpots = await hotpotDtoQuery.ToListAsync();
-            var utensils = await utensilDtoQuery.ToListAsync();
-            var ingredients = filteredIngredientDtos.ToList();
 
             // Combine the results
             var allProducts = new List<UnifiedProductDto>();
             allProducts.AddRange(hotpots);
             allProducts.AddRange(utensils);
-            allProducts.AddRange(ingredients);
+            allProducts.AddRange(ingredientDtos);
 
             // Get total count
             var totalCount = allProducts.Count;
@@ -825,37 +803,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
         #region Helper Methods for Ingredients
 
-        private async Task<PagedUnifiedProductResult> GetIngredientsAsync(
-        string searchTerm,
-        int? typeId,
-        decimal? minPrice,
-        decimal? maxPrice,
-        bool onlyAvailable,
-        int? minQuantity,
-        int pageNumber,
-        int pageSize,
-        string sortBy,
-        bool ascending)
+        private string FormatQuantity(decimal quantity, string unit)
         {
-            var currentDate =  DateTime.UtcNow.AddHours(7);
+            if (string.IsNullOrEmpty(unit))
+                return quantity.ToString("0.##");
 
-            // Start with base query that includes the latest price
+            return $"{quantity.ToString("0.##")} {unit}";
+        }
+
+        private async Task<PagedUnifiedProductResult> GetIngredientsAsync(
+            string searchTerm,
+            int? typeId,
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool onlyAvailable,
+            int? minQuantity,
+            int pageNumber,
+            int pageSize,
+            string sortBy,
+            bool ascending)
+        {
+            var currentDate = DateTime.UtcNow.AddHours(7);
+
+            // Start with base query that includes the latest price and batches
             var query = _unitOfWork.Repository<Ingredient>()
                 .AsQueryable()
                 .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= currentDate))
+                .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate > currentDate))
                 .Where(i => !i.IsDelete);
-            // Apply availability filter
-            if (onlyAvailable)
-            {
-                query = query.Where(i => i.Quantity > 0);
-            }
-
-            // Apply quantity filter
-            if (minQuantity.HasValue)
-            {
-                query = query.Where(i => i.Quantity >= minQuantity.Value);
-            }
 
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -877,30 +852,50 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             // Get total count before applying pagination and price filters
             var totalCount = await query.CountAsync();
 
-            // We need to materialize the query to work with the latest prices
+            // Execute the database query to get the ingredients
             var ingredients = await query.ToListAsync();
 
-            // Apply price filters (we need to do this in memory because we need the latest price)
-            var filteredIngredients = ingredients.Select(i => new
+            // Load ingredient prices separately
+            foreach (var ingredient in ingredients)
             {
-                Ingredient = i,
-                LatestPrice = i.IngredientPrices
-                    .OrderByDescending(p => p.EffectiveDate)
-                    .FirstOrDefault()?.Price ?? 0
-            });
-
-            if (minPrice.HasValue)
-            {
-                filteredIngredients = filteredIngredients.Where(i => i.LatestPrice >= minPrice.Value);
+                await _unitOfWork.Repository<IngredientPrice>()
+                    .FindAll(p => p.IngredientId == ingredient.IngredientId &&
+                                 !p.IsDelete &&
+                                 p.EffectiveDate <= currentDate)
+                    .LoadAsync();
             }
 
-            if (maxPrice.HasValue)
+            // Process ingredients in memory
+            var filteredIngredients = new List<(Ingredient Ingredient, decimal LatestPrice)>();
+            foreach (var ingredient in ingredients)
             {
-                filteredIngredients = filteredIngredients.Where(i => i.LatestPrice <= maxPrice.Value);
+                // Skip if not available and onlyAvailable is true
+                if (onlyAvailable && ingredient.Quantity <= 0)
+                    continue;
+
+                // Skip if below minimum quantity
+                if (minQuantity.HasValue && ingredient.Quantity < minQuantity.Value)
+                    continue;
+
+                var latestPrice = ingredient.IngredientPrices != null && ingredient.IngredientPrices.Any()
+                    ? ingredient.IngredientPrices
+                        .OrderByDescending(p => p.EffectiveDate)
+                        .FirstOrDefault()?.Price ?? 0
+                    : 0;
+
+                // Skip if below minimum price
+                if (minPrice.HasValue && latestPrice < minPrice.Value)
+                    continue;
+
+                // Skip if above maximum price
+                if (maxPrice.HasValue && latestPrice > maxPrice.Value)
+                    continue;
+
+                filteredIngredients.Add((ingredient, latestPrice));
             }
 
-            // Apply sorting
-            IEnumerable<dynamic> orderedIngredients;
+            // Apply sorting in memory
+            IEnumerable<(Ingredient Ingredient, decimal LatestPrice)> orderedIngredients;
 
             switch (sortBy?.ToLower())
             {
@@ -927,7 +922,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     break;
             }
 
-            // Apply pagination
+            // Apply pagination in memory
             var pagedIngredients = orderedIngredients
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -940,12 +935,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Name = i.Ingredient.Name,
                 Description = i.Ingredient.Description ?? string.Empty,
                 Price = i.LatestPrice,
-                ImageURLs = i.Ingredient.ImageURL != null ? new string[] { i.Ingredient.ImageURL } : new string[0],
+                ImageURLs = !string.IsNullOrEmpty(i.Ingredient.ImageURL) ? new[] { i.Ingredient.ImageURL } : Array.Empty<string>(),
                 IsAvailable = i.Ingredient.Quantity > 0,
                 ProductType = "Ingredient",
                 TypeId = i.Ingredient.IngredientTypeId,
                 TypeName = i.Ingredient.IngredientType?.Name ?? "Unknown",
-                Quantity = i.Ingredient.Quantity
+                Quantity = i.Ingredient.Quantity,
+                Unit = i.Ingredient.Unit,
+                MeasurementValue = i.Ingredient.MeasurementValue,
+                FormattedQuantity = FormatQuantity(i.Ingredient.Quantity, i.Ingredient.Unit)
             }).ToList();
 
             return new PagedUnifiedProductResult
@@ -959,15 +957,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
         private async Task<UnifiedProductDto> GetIngredientByIdAsync(int id)
         {
-            var currentDate =  DateTime.UtcNow.AddHours(7);
+            var currentDate = DateTime.UtcNow.AddHours(7);
 
             var ingredient = await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
-                .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= currentDate))
+                .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
                 .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
 
             if (ingredient == null)
                 return null;
+
+            // Load ingredient prices separately
+            await _unitOfWork.Repository<IngredientPrice>()
+                .FindAll(p => p.IngredientId == ingredient.IngredientId &&
+                             !p.IsDelete &&
+                             p.EffectiveDate <= currentDate)
+                .LoadAsync();
 
             var latestPrice = ingredient.IngredientPrices
                 .OrderByDescending(p => p.EffectiveDate)
@@ -979,16 +984,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Name = ingredient.Name,
                 Description = ingredient.Description ?? string.Empty,
                 Price = latestPrice,
-                ImageURLs = ingredient.ImageURL != null ? new[] { ingredient.ImageURL } : new string[0],
+                ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                 IsAvailable = ingredient.Quantity > 0,
                 ProductType = "Ingredient",
                 TypeId = ingredient.IngredientTypeId,
                 TypeName = ingredient.IngredientType?.Name ?? "Unknown",
-                Quantity = ingredient.Quantity
+                Quantity = ingredient.Quantity,
+                Unit = ingredient.Unit,
+                MeasurementValue = ingredient.MeasurementValue,
+                FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
             };
         }
+
+        // Helper method to format quantity with measurement unit
+
+
+
+        #endregion
+
     }
-
-    #endregion
-
 }
