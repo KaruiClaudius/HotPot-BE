@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -161,20 +162,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.BestBeforeDate <= DateTime.UtcNow)
+                // Get the ingredient to access its measurement value and type
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(request.IngredientId);
+
+                // Validate expiry date based on ingredient type
+                if (!IngredientTypeExpiryConfig.IsValidExpiryDate(ingredient.IngredientTypeId, request.BestBeforeDate))
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Best before date must be in the future"
+                        Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(ingredient.IngredientTypeId)
                     });
                 }
 
-                // Get the ingredient to access its measurement value
-                var ingredient = await _ingredientService.GetIngredientByIdAsync(request.IngredientId);
-
                 // Calculate quantity based on total amount and measurement value
-                int calculatedQuantity = (int)Math.Ceiling(request.TotalAmount / ingredient.MeasurementValue);
+                int calculatedQuantity = (int)Math.Floor(request.TotalAmount / ingredient.MeasurementValue);
 
                 if (calculatedQuantity <= 0)
                 {
@@ -245,7 +247,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 });
             }
         }
-
         [HttpPost("multiple")]
         [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
@@ -288,42 +289,51 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     }
                 }
 
+                // Validate all batches before processing
+                var validationErrors = new List<string>();
+
                 foreach (var item in request.Batches)
                 {
-                    // Validate each batch
+                    // Validate total amount
                     if (item.TotalAmount <= 0)
                     {
-                        return BadRequest(new ApiErrorResponse
-                        {
-                            Status = "Validation Error",
-                            Message = $"Total amount must be greater than 0 for ingredient ID {item.IngredientId}"
-                        });
-                    }
-
-                    if (item.BestBeforeDate <= DateTime.UtcNow)
-                    {
-                        return BadRequest(new ApiErrorResponse
-                        {
-                            Status = "Validation Error",
-                            Message = $"Best before date must be in the future for ingredient ID {item.IngredientId}"
-                        });
+                        validationErrors.Add($"Total amount must be greater than 0 for ingredient '{ingredients[item.IngredientId].Name}' (ID: {item.IngredientId})");
+                        continue;
                     }
 
                     var ingredient = ingredients[item.IngredientId];
+
+                    // Validate expiry date based on ingredient type
+                    if (!IngredientTypeExpiryConfig.IsValidExpiryDate(ingredient.IngredientTypeId, item.BestBeforeDate))
+                    {
+                        int minDays = IngredientTypeExpiryConfig.GetMinExpiryDays(ingredient.IngredientTypeId);
+                        int maxDays = IngredientTypeExpiryConfig.GetMaxExpiryDays(ingredient.IngredientTypeId);
+
+                        validationErrors.Add($"Best before date for '{ingredient.Name}' (ID: {item.IngredientId}) must be between {minDays} days and {maxDays} days from now");
+                        continue;
+                    }
 
                     // Calculate quantity based on total amount and measurement value
                     int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
 
                     if (calculatedQuantity <= 0)
                     {
-                        return BadRequest(new ApiErrorResponse
-                        {
-                            Status = "Validation Error",
-                            Message = $"Calculated quantity must be greater than 0 for ingredient ID {item.IngredientId}. Check your total amount and measurement value."
-                        });
+                        validationErrors.Add($"Calculated quantity must be greater than 0 for ingredient '{ingredient.Name}' (ID: {item.IngredientId}). Check your total amount and measurement value.");
+                        continue;
                     }
 
                     batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate));
+                }
+
+                // If there are validation errors, return them
+                if (validationErrors.Any())
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "One or more batches failed validation",
+                        Errors = validationErrors
+                    });
                 }
 
                 // Add all batches in a single transaction
@@ -346,7 +356,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         MeasurementValue = ingredient.MeasurementValue,
                         BestBeforeDate = batch.BestBeforeDate,
                         BatchNumber = batch.BatchNumber ?? string.Empty,
-                        ReceivedDate = batch.ReceivedDate
+                        ReceivedDate = batch.ReceivedDate,
+                       
                     };
 
                     batchDtos.Add(dto);
@@ -358,7 +369,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<List<IngredientBatchDto>>
                     {
                         Success = true,
-                        Message = $"Successfully added {createdBatches.Count} batches for {ingredientIds.Count} different ingredients with batch number {createdBatches.FirstOrDefault()?.BatchNumber}",
+                        Message = $"Successfully added {createdBatches.Count} batches for {ingredientIds.Count} different ingredients",
                         Data = batchDtos
                     });
             }

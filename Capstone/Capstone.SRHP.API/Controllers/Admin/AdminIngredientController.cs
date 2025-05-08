@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -217,12 +218,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.BestBeforeDate <= DateTime.UtcNow)
+                // Validate expiry date based on ingredient type
+                if (!IngredientTypeExpiryConfig.IsValidExpiryDate(request.IngredientTypeID, request.BestBeforeDate))
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Best before date must be in the future"
+                        Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(request.IngredientTypeID)
                     });
                 }
 
@@ -544,87 +546,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Status = "Error",
                     Message = "Failed to retrieve low stock ingredients"
-                });
-            }
-        }
-
-        [HttpPost("{id}/restock")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> RestockIngredient(int id, [FromBody] RestockIngredientRequest request)
-        {
-            try
-            {
-                _logger.LogInformation("Admin restocking ingredient with ID: {IngredientId}", id);
-
-                // Validate request
-                if (request.Quantity <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Quantity must be greater than 0"
-                    });
-                }
-
-                if (request.BestBeforeDate <= DateTime.UtcNow)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Best before date must be in the future"
-                    });
-                }
-
-                // Check if ingredient exists
-                var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
-
-                // Add new batch (not an initial batch)
-                await _ingredientService.AddBatchAsync(
-                    id,
-                    request.Quantity,
-                    request.BestBeforeDate,
-                    false); // Not an initial batch
-
-                // Get updated ingredient with batch information
-                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
-                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-
-                var ingredientDto = MapToIngredientDto(updatedIngredient);
-                ingredientDto.Price = currentPrice;
-
-                return Ok(new ApiResponse<IngredientDto>
-                {
-                    Success = true,
-                    Message = $"Ingredient restocked successfully with {request.Quantity} units ({request.Quantity * updatedIngredient.MeasurementValue} {updatedIngredient.Unit})",
-                    Data = ingredientDto
-                });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error restocking ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restocking ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to restock ingredient"
                 });
             }
         }
