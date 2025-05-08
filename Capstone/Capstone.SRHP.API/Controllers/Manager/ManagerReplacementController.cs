@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -160,7 +161,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 var dto = MapToDetailDto(request);
                 string equipmentName = dto.EquipmentName;
- 
+
                 // Notify the specific staff member who was assigned
                 if (request.AssignedStaffId.HasValue)
                 {

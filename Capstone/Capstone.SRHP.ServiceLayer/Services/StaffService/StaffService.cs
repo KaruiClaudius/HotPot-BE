@@ -56,18 +56,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
         }
 
-        public async Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null)
+        public async Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null, int? orderId = null)
         {
             try
             {
-                _logger.LogInformation("Getting available staff for task type: {TaskType}", taskType);
+                _logger.LogInformation("Getting available staff for task type: {TaskType}, orderId: {OrderId}", taskType, orderId);
 
                 // Get current day of week
                 var today = DateTime.Now.DayOfWeek;
                 var workDay = MapDayOfWeekToWorkDays(today);
 
                 // Build query for staff users
-                // First filter by role and deletion status
                 var staffQuery = _unitOfWork.Repository<User>()
                     .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
@@ -91,6 +90,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                 var staffUsers = await staffQuery.ToListAsync();
 
+                // Get the specific order if orderId is provided (for shipping assignment)
+                Order specificOrder = null;
+                if (orderId.HasValue && taskType == StaffTaskType.Shipping)
+                {
+                    specificOrder = await _unitOfWork.Repository<Order>()
+                        .FindAsync(o => o.OrderId == orderId.Value && !o.IsDelete);
+
+                    if (specificOrder == null)
+                        throw new NotFoundException($"Order with ID {orderId.Value} not found");
+                }
+
                 // Get all active assignments in a single query for each type
                 var activePickupAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
                     .AsQueryable(a => a.CompletedDate == null)
@@ -99,7 +109,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                 var activeShippingOrders = await _unitOfWork.Repository<ShippingOrder>()
                     .AsQueryable(so => !so.IsDelivered && !so.IsDelete)
-                    .Select(so => new { so.StaffId })
+                    .Select(so => new { so.StaffId, so.OrderId })
                     .ToListAsync();
 
                 var activeReplacementRequests = await _unitOfWork.Repository<ReplacementRequest>()
@@ -110,22 +120,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .Select(rr => new { StaffId = rr.AssignedStaffId.Value })
                     .ToListAsync();
 
+                // Get orders that are still in Processing status (not yet Processed)
+                var processingOrders = await _unitOfWork.Repository<Order>()
+                    .AsQueryable(o => o.Status == OrderStatus.Processing &&
+                                     o.PreparationStaffId != null &&
+                                     !o.IsDelete)
+                    .Select(o => new { StaffId = o.PreparationStaffId.Value, o.OrderId })
+                    .ToListAsync();
+
                 // Combine all active assignments
-                var allActiveAssignments = new List<(int StaffId, bool HasActiveOrder)>();
+                var allActiveAssignments = new List<(int StaffId, int? OrderId, bool HasActiveOrder)>();
 
                 // Add pickup assignments
                 allActiveAssignments.AddRange(
-                    activePickupAssignments.Select(a => (a.StaffId, a.AssignedDate != null))
+                    activePickupAssignments.Select(a => (a.StaffId, (int?)null, a.AssignedDate != null))
                 );
 
                 // Add shipping orders
                 allActiveAssignments.AddRange(
-                    activeShippingOrders.Select(so => (so.StaffId, true))
+                    activeShippingOrders.Select(so => (so.StaffId, (int?)so.OrderId, true))
                 );
 
                 // Add replacement requests
                 allActiveAssignments.AddRange(
-                    activeReplacementRequests.Select(rr => (rr.StaffId, true))
+                    activeReplacementRequests.Select(rr => (rr.StaffId, (int?)null, true))
+                );
+
+                // Add processing orders (staff is busy until order is Processed)
+                allActiveAssignments.AddRange(
+                    processingOrders.Select(o => (o.StaffId, (int?)o.OrderId, true))
                 );
 
                 // Group assignments by staff ID
@@ -136,7 +159,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         g => new
                         {
                             Count = g.Count(),
-                            HasActiveOrder = g.Any(a => a.HasActiveOrder)
+                            HasActiveOrder = g.Any(a => a.HasActiveOrder),
+                            OrderIds = g.Where(a => a.OrderId.HasValue).Select(a => a.OrderId.Value).ToList()
                         }
                     );
 
@@ -151,9 +175,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     assignmentsByStaff.TryGetValue(staff.UserId, out var assignmentInfo);
                     bool hasActiveOrder = assignmentInfo?.HasActiveOrder ?? false;
                     int assignmentCount = assignmentInfo?.Count ?? 0;
+                    var staffOrderIds = assignmentInfo?.OrderIds ?? new List<int>();
 
-                    // Staff is not available if they're not scheduled today or currently working on an order
+                    // Default availability check
                     bool isAvailable = isScheduledToday && !hasActiveOrder;
+
+                    // Special handling for shipping task when the staff prepared the order
+                    if (taskType == StaffTaskType.Shipping && specificOrder != null &&
+                        specificOrder.PreparationStaffId == staff.UserId)
+                    {
+                        // If this staff prepared the order and it's now Processed, they can ship it
+                        // even if they have other active orders
+                        if (specificOrder.Status == OrderStatus.Processed)
+                        {
+                            // Check if they're already assigned to other shipping tasks
+                            bool alreadyShipping = activeShippingOrders.Any(so =>
+                                so.StaffId == staff.UserId && so.OrderId != specificOrder.OrderId);
+
+                            // They can ship this order if they're not already shipping something else
+                            isAvailable = isScheduledToday && !alreadyShipping;
+                        }
+                    }
 
                     // Check if staff is eligible for the task type (if specified)
                     bool isEligible = true;
@@ -172,7 +214,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         IsAvailable = isAvailable,
                         IsEligible = isEligible,
                         AssignmentCount = assignmentCount,
-                        WorkDays = staff.WorkDays
+                        WorkDays = staff.WorkDays,
+                        // Add a flag to indicate if this staff prepared the specific order
+                        PreparedThisOrder = specificOrder != null && specificOrder.PreparationStaffId == staff.UserId
                     });
                 }
 
@@ -184,8 +228,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw;
             }
         }
-
-
 
         public async Task<User> CreateStaffAsync(User staff)
         {
