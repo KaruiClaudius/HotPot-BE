@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ComboService
@@ -400,6 +401,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     _logger.LogError(ex, "Lỗi khi tạo combo", ex);
                 }
             });
+        }
+
+        public async Task<string> GenerateGroupIdentifierAsync(string comboName)
+        {
+            // Create a base identifier from the combo name (remove spaces, special chars)
+            string baseIdentifier = Regex.Replace(comboName, @"[^a-zA-Z0-9]", "").ToLower();
+
+            // Add a timestamp or random component to ensure uniqueness
+            string uniqueIdentifier = $"{baseIdentifier}_{DateTime.UtcNow.Ticks}";
+
+            return uniqueIdentifier;
         }
 
         private async Task ReactivateOrCreateComboIngredients(int comboId, List<ComboIngredient> ingredients)

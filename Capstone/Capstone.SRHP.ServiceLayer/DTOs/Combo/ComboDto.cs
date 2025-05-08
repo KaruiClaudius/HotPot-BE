@@ -37,7 +37,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public int ComboId { get; set; }
         public string Name { get; set; }
         public int Size { get; set; }
-        public decimal TotalPrice { get; set; }
     }
 
     public class ComboDetailDto : ComboDto

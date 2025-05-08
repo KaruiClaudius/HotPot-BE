@@ -14,8 +14,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [StringLength(100)]
         public string Name { get; set; }
 
-        [Required]
-
         [StringLength(1000)]
         public string? GroupIdentifier  { get; set; }
 
@@ -30,7 +28,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 
         [Required]
         public List<ComboAllowedIngredientTypeRequest> AllowedIngredientTypes { get; set; }
-
-        public bool IsFirstInGroup { get; set; }
     }
 }

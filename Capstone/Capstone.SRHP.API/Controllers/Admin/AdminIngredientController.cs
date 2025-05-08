@@ -97,9 +97,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IngredientDetailDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> GetIngredientById(int id)
+        public async Task<ActionResult<ApiResponse<IngredientDetailDto>>> GetIngredientById(int id)
         {
             try
             {
@@ -116,15 +116,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
+                // Get current price
                 var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-                var ingredientDto = MapToIngredientDto(ingredient);
-                ingredientDto.Price = currentPrice;
 
-                return Ok(new ApiResponse<IngredientDto>
+                // Get batches for this ingredient
+                var batches = await _ingredientService.GetIngredientBatchesAsync(id);
+
+                // Map to detailed DTO including batches
+                var ingredientDetailDto = await MapToIngredientDetailDto(ingredient, batches);
+                ingredientDetailDto.Price = currentPrice;
+
+                return Ok(new ApiResponse<IngredientDetailDto>
                 {
                     Success = true,
                     Message = "Ingredient retrieved successfully",
-                    Data = ingredientDto
+                    Data = ingredientDetailDto
                 });
             }
             catch (NotFoundException ex)
@@ -645,6 +651,50 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 UpdatedAt = ingredient.UpdatedAt,
                 IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
             };
+        }
+
+        private async Task<IngredientDetailDto> MapToIngredientDetailDto(Ingredient ingredient, IEnumerable<IngredientBatch> batches)
+        {
+            if (ingredient == null) return null;
+
+            // First map the base ingredient properties
+            var detailDto = new IngredientDetailDto
+            {
+                IngredientId = ingredient.IngredientId,
+                Name = ingredient.Name,
+                Description = ingredient.Description ?? string.Empty,
+                ImageURL = ingredient.ImageURL ?? string.Empty,
+                MinStockLevel = ingredient.MinStockLevel,
+                Quantity = ingredient.Quantity,
+                Unit = ingredient.Unit,
+                MeasurementValue = ingredient.MeasurementValue != 0 ? ingredient.MeasurementValue : 1.0, // Default to 1.0 if zero
+                IngredientTypeID = ingredient.IngredientTypeId,
+                IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
+                Price = 0, // This will be set later from the current price
+                CreatedAt = ingredient.CreatedAt,
+                UpdatedAt = ingredient.UpdatedAt,
+                IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
+            };
+
+            // Map batches
+            if (batches != null)
+            {
+                detailDto.Batches = batches.Select(b => new IngredientBatchDto
+                {
+                    IngredientBatchId = b.IngredientBatchId,
+                    IngredientId = b.IngredientId,
+                    IngredientName = ingredient.Name,
+                    InitialQuantity = b.InitialQuantity,
+                    RemainingQuantity = b.RemainingQuantity,
+                    Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
+                    BestBeforeDate = b.BestBeforeDate,
+                    BatchNumber = b.BatchNumber ?? string.Empty,
+                    ReceivedDate = b.ReceivedDate
+                }).ToList();
+            }
+
+            return detailDto;
         }
     }
 }

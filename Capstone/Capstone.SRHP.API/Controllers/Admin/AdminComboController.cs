@@ -159,14 +159,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                // Validate group if not first in group
-                if (!request.IsFirstInGroup && !string.IsNullOrEmpty(request.GroupIdentifier))
+                string groupIdentifier = request.GroupIdentifier;
+                bool isFirstInGroup = string.IsNullOrEmpty(groupIdentifier);
+
+                // If this is the first combo in a group, generate a new group identifier
+                if (isFirstInGroup)
+                {
+                    groupIdentifier = await _comboService.GenerateGroupIdentifierAsync(request.Name);
+                }
+                else
                 {
                     // Verify that the group exists
-                    var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(request.GroupIdentifier);
+                    var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
                     if (!existingGroupCombos.Any())
                     {
-                        return BadRequest(new { message = $"No existing combo group found with identifier '{request.GroupIdentifier}'" });
+                        return BadRequest(new { message = $"No existing combo group found with identifier '{groupIdentifier}'" });
                     }
 
                     // Verify that no combo in this group has the same size
@@ -190,7 +197,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var combo = new Combo
                 {
                     Name = request.Name,
-                    Description = request.GroupIdentifier,
+                    Description = groupIdentifier, // Set the group identifier here
                     Size = request.Size,
                     IsCustomizable = true,
                     ImageURLs = request.ImageURLs
@@ -397,7 +404,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                                 ComboId = c.ComboId,
                                 Name = c.Name,
                                 Size = c.Size,
-                                TotalPrice = c.TotalPrice
                             })
                             .ToList();
                     }
@@ -489,7 +495,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                             ComboId = c.ComboId,
                             Name = c.Name,
                             Size = c.Size,
-                            TotalPrice = c.TotalPrice
                         })
                         .ToList();
                 }
