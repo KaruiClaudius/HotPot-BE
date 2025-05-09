@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;

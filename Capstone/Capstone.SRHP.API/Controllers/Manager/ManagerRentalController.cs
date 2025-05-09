@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
