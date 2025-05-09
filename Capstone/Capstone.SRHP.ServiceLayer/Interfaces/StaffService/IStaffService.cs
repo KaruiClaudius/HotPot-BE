@@ -15,17 +15,17 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
     {
         Task<User> GetStaffByIdAsync(int userId);
         Task<IEnumerable<User>> GetAllStaffAsync();
-        Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null);
+        Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null, int? orderId = null);
         Task<User> CreateStaffAsync(User staff);
         Task UpdateStaffAsync(int userId, User staffUpdate);
         Task DeleteStaffAsync(int userId);
 
 
         // Pickup Interface
-        Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null);      
+        Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null);
         Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId);
         Task<PagedResult<StaffPickupAssignmentDto>> GetStaffAssignmentsPaginatedAsync(int staffId, bool pendingOnly, int pageNumber, int pageSize);
         Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10);
-      
-}
+
+    }
 }

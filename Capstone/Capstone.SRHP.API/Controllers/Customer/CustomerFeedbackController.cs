@@ -1,10 +1,9 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -84,9 +83,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     new Dictionary<string, object>
                     {
                 { "FeedbackId", feedback.FeedbackId },
-                { "CustomerName", customerName },              
-                { "FeedbackTitle", feedback.Title },                       
-                { "SubmissionDate", feedback.CreatedAt },            
+                { "CustomerName", customerName },
+                { "FeedbackTitle", feedback.Title },
+                { "SubmissionDate", feedback.CreatedAt },
                     });
 
                 return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId },
@@ -126,5 +125,5 @@ namespace Capstone.HPTY.API.Controllers.Customer
             return Ok(ApiResponse<ServiceLayer.DTOs.Management.FeedbackStatusSummary>.SuccessResponse(summary, "Feedback status summary retrieved successfully"));
         }
     }
-    
+
 }

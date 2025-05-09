@@ -11,6 +11,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
     {
         public int AssignmentId { get; set; }
         public int OrderId { get; set; }
+        public int? RentOrderDetailId { get; set; } // New property to store RentOrderDetailId
         public string OrderCode { get; set; }
         public int StaffId { get; set; }
         public string StaffName { get; set; }

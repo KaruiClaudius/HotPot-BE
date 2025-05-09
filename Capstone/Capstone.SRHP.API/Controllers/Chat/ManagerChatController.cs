@@ -5,6 +5,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -16,11 +17,13 @@ public class ManagerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
     private readonly SocketIOClientService _socketService;
+    private readonly IHubContext<ChatHub> _hubContext;
 
-    public ManagerChatController(IChatService chatService, SocketIOClientService socketService)
+    public ManagerChatController(IChatService chatService, SocketIOClientService socketService, IHubContext<ChatHub> hubContext)
     {
         _chatService = chatService;
         _socketService = socketService;
+        _hubContext = hubContext;
     }
 
     // MANAGER-SPECIFIC ENDPOINTS
@@ -92,6 +95,62 @@ public class ManagerChatController : ControllerBase
         }
     }
 
+    //[HttpPut("sessions/{sessionId}/assign")]
+    //[ProducesResponseType(StatusCodes.Status200OK)]
+    //[ProducesResponseType(StatusCodes.Status404NotFound)]
+    //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+    //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    //public async Task<ActionResult<ApiResponse<ChatSessionDto>>> AssignManagerToSession(
+    //        int sessionId,
+    //        [FromBody] AssignManagerRequest request) // Assuming AssignManagerRequest has ManagerId
+    //{
+    //    try
+    //    {
+    //        if (request == null || request.ManagerId <= 0)
+    //        {
+    //            return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse("Invalid request. Manager ID is required."));
+    //        }
+    //        // Potentially validate that the request.ManagerId is the currently authenticated manager.
+
+    //        var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, request.ManagerId);
+
+    //        // Notify the customer that a manager has accepted their chat via SignalR.
+    //        // Client listens for "ReceiveChatAccepted".
+    //        // Target the specific customer.
+    //        await _hubContext.Clients.Group($"user_{session.CustomerId}").SendAsync("ReceiveChatAccepted", new
+    //        {
+    //            sessionId = session.ChatSessionId,
+    //            managerId = session.ManagerId,
+    //            managerName = session.ManagerName ?? "Manager", // Use actual manager name
+    //            customerId = session.CustomerId
+    //        });
+
+    //        // Also, the manager who accepted might want to join a session-specific group
+    //        // And the customer should also join this group to receive messages for this session.
+    //        string sessionGroup = $"session_{sessionId}";
+    //        // The hub's OnConnected or a dedicated client-invokable hub method should handle group joining.
+    //        // For instance, after accepting, the manager's client could call:
+    //        // await connection.invoke("JoinChatSessionGroup", sessionId.toString());
+    //        // And the customer's client too.
+
+    //        return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Manager assigned to chat session successfully"));
+    //    }
+    //    catch (NotFoundException ex)
+    //    {
+    //        return NotFound(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
+    //    }
+    //    catch (ValidationException ex) // Assuming ValidationException is a custom exception
+    //    {
+    //        return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        // Log the exception ex
+    //        return StatusCode(StatusCodes.Status500InternalServerError,
+    //            ApiResponse<ChatSessionDto>.ErrorResponse("An error occurred while assigning the manager. Please try again later."));
+    //    }
+    //}
+
     // SHARED FUNCTIONALITY ENDPOINTS
 
     [HttpGet("messages/session/{sessionId}")]
@@ -157,6 +216,32 @@ public class ManagerChatController : ControllerBase
         }
     }
 
+    //[HttpPut("sessions/{sessionId}/end")]
+    //public async Task<ActionResult<ApiResponse<ChatSessionDto>>> EndChatSession(int sessionId)
+    //{
+    //    // Implementation similar to CustomerChatController, using _hubContext
+    //    try
+    //    {
+    //        var session = await _chatService.EndChatSessionAsync(sessionId);
+    //        await _hubContext.Clients.Group($"user_{session.CustomerId}").SendAsync("ReceiveChatEnded", sessionId);
+    //        if (session.ManagerId.HasValue)
+    //        {
+    //            await _hubContext.Clients.Group($"user_{session.ManagerId.Value}").SendAsync("ReceiveChatEnded", sessionId);
+    //        }
+    //        // Or more broadly to a session group:
+    //        // await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("ReceiveChatEnded", sessionId);
+    //        return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Chat session ended successfully"));
+    //    }
+    //    catch (NotFoundException ex)
+    //    {
+    //        return NotFound(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse(ex.Message));
+    //    }
+    //}
+
     [HttpPost("messages")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -182,6 +267,61 @@ public class ManagerChatController : ControllerBase
         }
     }
 
+    //[HttpPost("messages")]
+    //[ProducesResponseType(StatusCodes.Status201Created)]
+    //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+    //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    //public async Task<ActionResult<ApiResponse<ChatMessageDto>>> SendMessage([FromBody] SendMessageRequest request)
+    //{
+    //    try
+    //    {
+    //        // Validate that the sender is the authenticated user
+    //        var currentUserId = int.Parse(User.FindFirst("id")?.Value ?? "0");
+    //        if (currentUserId != request.SenderId)
+    //        {
+    //            return Unauthorized(ApiResponse<ChatMessageDto>.ErrorResponse("You can only send messages as yourself"));
+    //        }
+
+    //        if (string.IsNullOrWhiteSpace(request.Message))
+    //        {
+    //            return BadRequest(ApiResponse<ChatMessageDto>.ErrorResponse("Message cannot be empty"));
+    //        }
+
+    //        var message = await _chatService.SaveMessageAsync(request.SenderId, request.ReceiverId, request.Message);
+
+    //        // Get the chat session to determine the session ID
+    //        var chatSession = await _chatService.GetChatSessionForUsersAsync(request.SenderId, request.ReceiverId);
+    //        if (chatSession == null)
+    //        {
+    //            return BadRequest(ApiResponse<ChatMessageDto>.ErrorResponse("No active chat session found between these users"));
+    //        }
+
+    //        // Send to session group
+    //        await _hubContext.Clients.Group($"session_{chatSession.ChatSessionId}")
+    //            .SendAsync("ReceiveMessage", message);
+
+    //        // Also send to specific users for redundancy
+    //        await _hubContext.Clients.Group($"user_{message.ReceiverUserId}")
+    //            .SendAsync("ReceiveMessage", message);
+    //        await _hubContext.Clients.Group($"user_{message.SenderUserId}")
+    //            .SendAsync("ReceiveMessage", message);
+
+    //        return StatusCode(StatusCodes.Status201Created,
+    //            ApiResponse<ChatMessageDto>.SuccessResponse(message, "Message sent successfully"));
+    //    }
+    //    catch (NotFoundException ex)
+    //    {
+    //        return NotFound(ApiResponse<ChatMessageDto>.ErrorResponse(ex.Message));
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        // Log the exception
+    //        return StatusCode(StatusCodes.Status500InternalServerError,
+    //            ApiResponse<ChatMessageDto>.ErrorResponse("An error occurred while sending the message"));
+    //    }
+    //}
+
     [HttpPut("messages/{messageId}/read")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -200,6 +340,29 @@ public class ManagerChatController : ControllerBase
 
         return Ok(ApiResponse<bool>.SuccessResponse(true, "Message marked as read successfully"));
     }
+
+    //[HttpPut("messages/{messageId}/read")]
+    //public async Task<ActionResult<ApiResponse<bool>>> MarkMessageAsRead(int messageId)
+    //{
+    //    // Implementation similar to CustomerChatController, using _hubContext
+    //    try
+    //    {
+    //        var result = await _chatService.MarkMessageAsReadAsync(messageId);
+    //        if (!result) return NotFound(ApiResponse<bool>.ErrorResponse($"Message with ID {messageId} not found"));
+
+    //        var message = await _chatService.GetMessageByIdAsync(messageId);
+    //        if (message != null)
+    //        {
+    //            await _hubContext.Clients.Group($"user_{message.SenderUserId}")
+    //                                     .SendAsync("ReceiveMessageReadConfirmation", messageId, message.ReceiverUserId);
+    //        }
+    //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Message marked as read successfully"));
+    //    }
+    //    catch (NotFoundException ex)
+    //    {
+    //        return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
+    //    }
+    //}
 
     [HttpGet("sessions/{sessionId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]

@@ -63,6 +63,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+
+
         public async Task<PagedResult<RentalListingDto>> GetPendingPickupsAsync(int pageNumber = 1, int pageSize = 10)
         {
             try
@@ -282,7 +284,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync( int? hotpotInventoryId = null)
+        public async Task<IEnumerable<RentalHistoryItem>> GetRentalHistoryByEquipmentAsync(int? hotpotInventoryId = null)
         {
             try
             {
@@ -586,6 +588,140 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 PageSize = pageSize
             };
         }
+
+        public async Task<RentOrderDetailResponse> GetOrderDetailAsync(int rentOrderDetailId)
+        {
+            // Get the rent order detail with related entities
+            var rentOrderDetail = await _unitOfWork.Repository<RentOrderDetail>()
+                .AsQueryable(d => d.RentOrderDetailId == rentOrderDetailId && !d.IsDelete)
+                .Include(d => d.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
+                .FirstOrDefaultAsync();
+
+            if (rentOrderDetail == null)
+                throw new NotFoundException($"Rent order detail with ID {rentOrderDetailId} not found");
+
+            // Get the associated rent order
+            var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                .AsQueryable(r => r.OrderId == rentOrderDetail.OrderId && !r.IsDelete)
+                .FirstOrDefaultAsync();
+
+            if (rentOrder == null)
+                throw new NotFoundException($"Rent order with ID {rentOrderDetail.OrderId} not found");
+
+            // Get customer information
+            var order = await _unitOfWork.Repository<Order>()
+                .AsQueryable(o => o.OrderId == rentOrderDetail.OrderId && !o.IsDelete)
+                .Include(o => o.User)
+                .FirstOrDefaultAsync();
+
+            // Map to response DTO
+            var response = new RentOrderDetailResponse
+            {
+                Id = rentOrderDetail.RentOrderDetailId,
+                OrderId = rentOrderDetail.OrderId,
+                EquipmentType = rentOrderDetail.HotpotInventoryId.HasValue ? "Hotpot" : "Unknown",
+                EquipmentId = rentOrderDetail.HotpotInventoryId ?? 0,
+                EquipmentName = rentOrderDetail.HotpotInventoryId.HasValue && rentOrderDetail.HotpotInventory?.Hotpot != null
+                    ? rentOrderDetail.HotpotInventory.Hotpot.Name
+                    : "Unknown Equipment",
+                RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
+                ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
+                ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
+                Status = rentOrder.ActualReturnDate.HasValue ? "Returned" : "Pending",
+                CustomerName = order?.User?.Name ?? "Unknown",
+                CustomerAddress = order?.Address ?? order?.User?.Address ?? "Unknown",
+                CustomerPhone = order?.User?.PhoneNumber ?? "Unknown",
+                Notes = rentOrder.RentalNotes
+            };
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets detailed information about a rent order by its order ID
+        /// </summary>
+        /// <param name="orderId">The ID of the order</param>
+        /// <returns>A list of detailed responses for all items in the order</returns>
+        public async Task<List<RentOrderDetailResponse>> GetOrderDetailsByOrderIdAsync(int orderId)
+        {
+            // Get the rent order
+            var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                .AsQueryable(r => r.OrderId == orderId && !r.IsDelete)
+                .FirstOrDefaultAsync();
+
+            if (rentOrder == null)
+                throw new NotFoundException($"Rent order with ID {orderId} not found");
+
+            // Get customer information
+            var order = await _unitOfWork.Repository<Order>()
+                .AsQueryable(o => o.OrderId == orderId && !o.IsDelete)
+                .Include(o => o.User)
+                .FirstOrDefaultAsync();
+
+            // Get all details for this order
+            var details = await _unitOfWork.Repository<RentOrderDetail>()
+                .AsQueryable(d => d.OrderId == orderId && !d.IsDelete)
+                .Include(d => d.HotpotInventory)
+                    .ThenInclude(h => h != null ? h.Hotpot : null)
+                .ToListAsync();
+
+            if (!details.Any())
+            {
+                // Return a single item with basic order info if no details found
+                return new List<RentOrderDetailResponse>
+        {
+            new RentOrderDetailResponse
+            {
+                Id = 0,
+                OrderId = orderId,
+                EquipmentType = "Unknown",
+                EquipmentId = 0,
+                EquipmentName = "No Equipment",
+                RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
+                ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
+                ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
+                Status = rentOrder.ActualReturnDate.HasValue ? "Returned" : "Pending",
+                CustomerName = order?.User?.Name ?? "Unknown",
+                CustomerAddress = order?.Address ?? order?.User?.Address ?? "Unknown",
+                CustomerPhone = order?.User?.PhoneNumber ?? "Unknown",
+                Notes = rentOrder.RentalNotes
+            }
+        };
+            }
+
+            // Map all details to response DTOs
+            var responses = details.Select(detail => new RentOrderDetailResponse
+            {
+                Id = detail.RentOrderDetailId,
+                OrderId = detail.OrderId,
+                EquipmentType = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Unknown",
+                EquipmentId = detail.HotpotInventoryId ?? 0,
+                EquipmentName = detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null
+                    ? detail.HotpotInventory.Hotpot.Name
+                    : "Unknown Equipment",
+                RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
+                ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
+                ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
+                Status = rentOrder.ActualReturnDate.HasValue ? "Returned" : "Pending",
+                CustomerName = order?.User?.Name ?? "Unknown",
+                CustomerAddress = order?.Address ?? order?.User?.Address ?? "Unknown",
+                CustomerPhone = order?.User?.PhoneNumber ?? "Unknown",
+                Notes = rentOrder.RentalNotes
+            }).ToList();
+
+            return responses;
+        }
+
+        //public async Task<int?> GetOrderUserIdAsync(int orderId)
+        //{
+        //    var order = await _unitOfWork.Repository<Order>()
+        //        .AsQueryable(o => o.OrderId == orderId && !o.IsDelete)
+        //        .Select(o => new { o.UserId })
+        //        .FirstOrDefaultAsync();
+
+        //    return order?.UserId;
+        //}
 
         private string DetermineRentalStatus(RentOrderDetail rentOrderDetail)
         {

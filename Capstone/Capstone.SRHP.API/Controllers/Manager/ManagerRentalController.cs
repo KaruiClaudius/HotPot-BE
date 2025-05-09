@@ -1,14 +1,14 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
+using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -64,6 +64,10 @@ namespace Capstone.HPTY.API.Controllers.Manager
         {
             try
             {
+                // First get the order detail to have all the necessary information
+                var orderDetail = await _rentOrderService.GetOrderDetailAsync(request.RentOrderDetailId);
+
+                // Assign staff to pickup using the correct IDs
                 var result = await _staffService.AssignStaffToPickupAsync(
                     request.StaffId,
                     request.RentOrderDetailId,
@@ -71,17 +75,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Get the created assignment
                 var assignments = await _staffService.GetStaffAssignmentsAsync(request.StaffId);
-                var assignmentDto = assignments.FirstOrDefault(a => a.OrderId == request.RentOrderDetailId);
+
+                // Find the assignment with the matching OrderId
+                var assignmentDto = assignments.FirstOrDefault(a => a.OrderId == orderDetail.OrderId);
 
                 if (assignmentDto == null)
                 {
-                    return NotFound(ApiResponse<StaffPickupAssignmentDto>.ErrorResponse($"Assignment for rent order detail {request.RentOrderDetailId} not found"));
+                    return NotFound(ApiResponse<StaffPickupAssignmentDto>.ErrorResponse(
+                        $"Assignment for order {orderDetail.OrderId} not found"));
                 }
-
-                // Get additional information for a more detailed notification
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(request.RentOrderDetailId);
-                string customerName = rentOrder.Order?.User?.Name ?? "Customer";
-                string pickupAddress = rentOrder.Order?.Address ?? "No address provided";
 
                 // Get staff information
                 var staff = await _staffService.GetStaffByIdAsync(request.StaffId);
@@ -92,34 +94,20 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     request.StaffId,
                     "NewAssignment",
                     "New Pickup Assignment",
-                    $"You have been assigned to pick up equipment from {customerName}",
+                    $"You have been assigned to pick up equipment from {orderDetail.CustomerName}",
                     new Dictionary<string, object>
                     {
                 { "AssignmentId", assignmentDto.AssignmentId },
-                { "OrderId", assignmentDto.OrderId },
-                { "CustomerName", customerName },
-                { "PickupAddress", pickupAddress },
+                { "OrderId", orderDetail.OrderId },
+                { "CustomerName", orderDetail.CustomerName },
+                { "PickupAddress", orderDetail.CustomerAddress },
                 { "Notes", request.Notes ?? "No additional notes" },
                 { "AssignmentType", "Pickup" },
                     });
 
-                // Also notify the customer about the pickup assignment
-                if (rentOrder.Order?.UserId != null)
-                {
-                    await _notificationService.NotifyUser(
-                        rentOrder.Order.UserId,
-                        "PickupScheduled",
-                        "Equipment Pickup Scheduled",
-                        $"A staff member has been assigned to pick up your rented equipment",
-                        new Dictionary<string, object>
-                        {
-                    { "OrderId", assignmentDto.OrderId },
-                    { "StaffName", staffName },                
-                    { "Notes", "Please ensure the equipment is ready for pickup." }
-                        });
-                }
 
-                return Ok(ApiResponse<StaffPickupAssignmentDto>.SuccessResponse(assignmentDto, "Staff allocated for equipment pickup successfully"));
+                return Ok(ApiResponse<StaffPickupAssignmentDto>.SuccessResponse(
+                    assignmentDto, "Staff allocated for equipment pickup successfully"));
             }
             catch (NotFoundException ex)
             {

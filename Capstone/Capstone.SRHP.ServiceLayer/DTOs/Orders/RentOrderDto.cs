@@ -42,7 +42,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
 
     public class RentOrderDetailResponse
     {
-        public int Id { get; set; }
+        public int Id { get; set; } // Rent Order Detail Id
         public int OrderId { get; set; }
         public string EquipmentType { get; set; }
         public int EquipmentId { get; set; }

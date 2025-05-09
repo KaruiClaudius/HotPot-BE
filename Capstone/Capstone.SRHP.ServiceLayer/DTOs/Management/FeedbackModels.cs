@@ -37,7 +37,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int UserId { get; set; }
     }
 
-   
+
 
     public class ManagerFeedbackStats
     {
@@ -97,7 +97,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     // Basic order info needed for feedback
     public class OrderInfoDto
     {
-        public int OrderId { get; set; }    
+        public int OrderId { get; set; }
     }
 
     public class FeedbackStatusSummary

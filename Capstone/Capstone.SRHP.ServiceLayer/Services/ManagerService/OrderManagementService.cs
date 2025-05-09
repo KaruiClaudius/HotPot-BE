@@ -68,22 +68,58 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 // Check staff availability on current day
                 var today = DateTime.Now.DayOfWeek;
-                var currentDay = today switch
-                {
-                    DayOfWeek.Sunday => WorkDays.Sunday,
-                    DayOfWeek.Monday => WorkDays.Monday,
-                    DayOfWeek.Tuesday => WorkDays.Tuesday,
-                    DayOfWeek.Wednesday => WorkDays.Wednesday,
-                    DayOfWeek.Thursday => WorkDays.Thursday,
-                    DayOfWeek.Friday => WorkDays.Friday,
-                    DayOfWeek.Saturday => WorkDays.Saturday,
-                    _ => WorkDays.None
-                };
+                var currentDay = MapDayOfWeekToWorkDays(today);
 
                 // Check if staff is available on the current day
                 if ((staff.WorkDays & currentDay) == 0)
                 {
                     throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+                }
+
+                // Check for double-booking
+                bool isDoubleBooked = false;
+
+                if (taskType == StaffTaskType.Preparation)
+                {
+                    // Check if staff is already assigned to another preparation task
+                    var activePreparationAssignment = await _unitOfWork.Repository<Order>()
+                        .AsQueryable(o => o.PreparationStaffId == staffId &&
+                                         o.Status == OrderStatus.Processing &&
+                                         !o.IsDelete)
+                        .AnyAsync();
+
+                    isDoubleBooked = activePreparationAssignment;
+                }
+                else if (taskType == StaffTaskType.Shipping)
+                {
+                    // Special case: If this staff prepared this order and it's now Processed,
+                    // they can ship it even if they have other preparation tasks
+                    bool preparedThisOrder = order.PreparationStaffId == staffId &&
+                                            order.Status == OrderStatus.Processed;
+
+                    if (!preparedThisOrder)
+                    {
+                        // Check if staff is already assigned to another shipping task
+                        var activeShippingAssignment = await _unitOfWork.Repository<ShippingOrder>()
+                            .AsQueryable(so => so.StaffId == staffId &&
+                                             !so.IsDelivered &&
+                                             !so.IsDelete)
+                            .AnyAsync();
+
+                        // Check if staff is busy with preparation
+                        var activePreparationAssignment = await _unitOfWork.Repository<Order>()
+                            .AsQueryable(o => o.PreparationStaffId == staffId &&
+                                            o.Status == OrderStatus.Processing &&
+                                            !o.IsDelete)
+                            .AnyAsync();
+
+                        isDoubleBooked = activeShippingAssignment || activePreparationAssignment;
+                    }
+                }
+
+                if (isDoubleBooked)
+                {
+                    throw new ValidationException($"Staff with ID {staffId} is already assigned to another task and cannot be double-booked.");
                 }
 
                 // Create the response object
@@ -109,13 +145,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 }
                 else if (taskType == StaffTaskType.Shipping)
                 {
+                    // Validate order status for shipping
+                    if (order.Status != OrderStatus.Processed)
+                    {
+                        throw new ValidationException($"Order with ID {orderId} is not ready for shipping. Current status: {order.Status}");
+                    }
+
                     // Handle shipping assignment
                     ShippingOrder shippingOrder;
 
                     // Check if shipping order already exists
                     var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
                         .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
-
                     if (existingShippingOrder != null)
                     {
                         _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
@@ -195,10 +236,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                         response.OrderSize = orderSize;
                     }
-
-                    // Update order status to Shipping
-                    order.Status = OrderStatus.Shipping;
-                    order.SetUpdateDate();
 
                     // Add shipping details to response
                     response.Status = order.Status;
@@ -586,7 +623,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                 // Explicitly declare as IQueryable<Order>
                 IQueryable<Order> query = _unitOfWork.Repository<Order>()
-                    .GetAll(o => o.ShippingOrder == null && !o.IsDelete)
+                    .GetAll(o =>
+                        o.ShippingOrder == null &&
+                        !o.IsDelete &&
+                        o.Status != OrderStatus.Cart) // Exclude Cart orders
                     .Include(o => o.User)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
@@ -639,6 +679,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw;
             }
         }
+
         public async Task<PagedResult<PendingDeliveryDTO>> GetPendingDeliveriesPaged(ShippingOrderQueryParams queryParams)
         {
             try
@@ -1039,5 +1080,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
+        private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
+        {
+            return dayOfWeek switch
+            {
+                DayOfWeek.Sunday => WorkDays.Sunday,
+                DayOfWeek.Monday => WorkDays.Monday,
+                DayOfWeek.Tuesday => WorkDays.Tuesday,
+                DayOfWeek.Wednesday => WorkDays.Wednesday,
+                DayOfWeek.Thursday => WorkDays.Thursday,
+                DayOfWeek.Friday => WorkDays.Friday,
+                DayOfWeek.Saturday => WorkDays.Saturday,
+                _ => WorkDays.None
+            };
+        }
     }
 }

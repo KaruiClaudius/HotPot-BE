@@ -9,10 +9,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
         // Generic notification method
         Task ReceiveNotification(NotificationDto notification);
 
-        // Category-specific methods (optional, for backward compatibility)
-        Task ReceiveEquipmentNotification(NotificationDto notification);
-        Task ReceiveFeedbackNotification(NotificationDto notification);
-        Task ReceiveScheduleNotification(NotificationDto notification);
-        Task ReceiveRentalNotification(NotificationDto notification);
     }
 }

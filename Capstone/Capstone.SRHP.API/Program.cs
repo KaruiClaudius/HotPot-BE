@@ -1,13 +1,9 @@
 using System.Reflection;
 using Capstone.HPTY.API.AppStarts;
-using Capstone.HPTY.API.Hubs;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
 
