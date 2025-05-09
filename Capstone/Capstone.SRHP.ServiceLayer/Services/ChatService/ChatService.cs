@@ -296,5 +296,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 
             return sessions.ToDtoList();
         }
+
+        public async Task<ChatSessionDto> GetChatSessionForUsersAsync(int userId1, int userId2)
+        {
+            // Find a session where one user is the customer and the other is the manager
+            var session = await _unitOfWork.Repository<ChatSession>()
+                .AsQueryable()
+                .Where(s => s.IsActive &&
+                           ((s.CustomerId == userId1 && s.ManagerId == userId2) ||
+                            (s.CustomerId == userId2 && s.ManagerId == userId1)))
+                .Include(s => s.Customer)
+                .Include(s => s.Manager)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            return session?.ToDto();
+        }
     }
 }

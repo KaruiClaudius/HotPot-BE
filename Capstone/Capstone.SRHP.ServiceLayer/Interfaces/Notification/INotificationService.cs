@@ -8,8 +8,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
     public interface INotificationService
     {
         // Equipment and inventory
-        Task NotifyEquipmentIssue(int equipmentId, string equipmentType, string equipmentName, string issue, string details);
-        Task NotifyInventoryStatus(string itemType, string itemName, int quantity, int threshold, bool isLow);
+        //Task NotifyEquipmentIssue(int equipmentId, string equipmentType, string equipmentName, string issue, string details);
+        //Task NotifyInventoryStatus(string itemType, string itemName, int quantity, int threshold, bool isLow);
 
         // Generic notifications
         Task NotifyUser(int userId, string type, string title, string message, Dictionary<string, object> data = null);

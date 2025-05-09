@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.API.SideServices;
+﻿using Capstone.HPTY.API.SideServices;
 using Capstone.HPTY.ServiceLayer.DTOs.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.SignalR;
@@ -18,51 +17,51 @@ public class SignalRNotificationService : INotificationService
     }
 
     // Equipment notifications
-    public async Task NotifyEquipmentIssue(int equipmentId, string equipmentType, string equipmentName, string issue, string details)
-    {
-        var notification = new NotificationDto
-        {
-            Type = "EquipmentIssue",
-            Title = "Equipment Issue Detected",
-            Message = $"Issue detected with {equipmentName}: {issue}",
-            Timestamp = DateTime.UtcNow,
-            Data = new Dictionary<string, object>
-            {
-                { "EquipmentId", equipmentId },
-                { "EquipmentType", equipmentType },
-                { "EquipmentName", equipmentName },
-                { "Issue", issue },
-                { "Details", details }
-            }
-        };
+    //public async Task NotifyEquipmentIssue(int equipmentId, string equipmentType, string equipmentName, string issue, string details)
+    //{
+    //    var notification = new NotificationDto
+    //    {
+    //        Type = "EquipmentIssue",
+    //        Title = "Equipment Issue Detected",
+    //        Message = $"Issue detected with {equipmentName}: {issue}",
+    //        Timestamp = DateTime.UtcNow,
+    //        Data = new Dictionary<string, object>
+    //        {
+    //            { "EquipmentId", equipmentId },
+    //            { "EquipmentType", equipmentType },
+    //            { "EquipmentName", equipmentName },
+    //            { "Issue", issue },
+    //            { "Details", details }
+    //        }
+    //    };
 
-        await _hubContext.Clients.Group("Administrators").ReceiveNotification(notification);
-        await _hubContext.Clients.Group("Managers").ReceiveNotification(notification);
-    }
+    //    await _hubContext.Clients.Group("Administrators").ReceiveNotification(notification);
+    //    await _hubContext.Clients.Group("Managers").ReceiveNotification(notification);
+    //}
 
     // Inventory notifications
-    public async Task NotifyInventoryStatus(string itemType, string itemName, int quantity, int threshold, bool isLow)
-    {
-        var notification = new NotificationDto
-        {
-            Type = isLow ? "LowStock" : "InventoryUpdate",
-            Title = isLow ? "Low Stock Alert" : "Inventory Update",
-            Message = isLow
-                ? $"Low stock for {itemName}: {quantity} remaining (threshold: {threshold})"
-                : $"Inventory update for {itemName}: {quantity} in stock",
-            Timestamp = DateTime.UtcNow,
-            Data = new Dictionary<string, object>
-            {
-                { "ItemType", itemType },
-                { "ItemName", itemName },
-                { "Quantity", quantity },
-                { "Threshold", threshold }
-            }
-        };
+    //public async Task NotifyInventoryStatus(string itemType, string itemName, int quantity, int threshold, bool isLow)
+    //{
+    //    var notification = new NotificationDto
+    //    {
+    //        Type = isLow ? "LowStock" : "InventoryUpdate",
+    //        Title = isLow ? "Low Stock Alert" : "Inventory Update",
+    //        Message = isLow
+    //            ? $"Low stock for {itemName}: {quantity} remaining (threshold: {threshold})"
+    //            : $"Inventory update for {itemName}: {quantity} in stock",
+    //        Timestamp = DateTime.UtcNow,
+    //        Data = new Dictionary<string, object>
+    //        {
+    //            { "ItemType", itemType },
+    //            { "ItemName", itemName },
+    //            { "Quantity", quantity },
+    //            { "Threshold", threshold }
+    //        }
+    //    };
 
-        await _hubContext.Clients.Group("Administrators").ReceiveNotification(notification);
-        await _hubContext.Clients.Group("Managers").ReceiveNotification(notification);
-    }
+    //    await _hubContext.Clients.Group("Administrators").ReceiveNotification(notification);
+    //    await _hubContext.Clients.Group("Managers").ReceiveNotification(notification);
+    //}
 
     // User notifications
     public async Task NotifyUser(int userId, string type, string title, string message, Dictionary<string, object> data = null)
