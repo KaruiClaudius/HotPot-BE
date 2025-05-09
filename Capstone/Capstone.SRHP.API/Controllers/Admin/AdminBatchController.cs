@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,13 +25,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
-        // Helper method to generate batch numbers
-        private string GenerateBatchNumber(int ingredientId)
-        {
-            // Format: ING-{ingredientId}-{timestamp}
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-            return $"ING-{ingredientId}-{timestamp}";
-        }
 
         [HttpGet("ingredient/{ingredientId}")]
         [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status200OK)]
@@ -168,20 +162,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.BestBeforeDate <= DateTime.UtcNow)
+                // Get the ingredient to access its measurement value and type
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(request.IngredientId);
+
+                // Validate expiry date based on ingredient type
+                if (!IngredientTypeExpiryConfig.IsValidExpiryDate(ingredient.IngredientTypeId, request.BestBeforeDate))
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Best before date must be in the future"
+                        Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(ingredient.IngredientTypeId)
                     });
                 }
 
-                // Get the ingredient to access its measurement value
-                var ingredient = await _ingredientService.GetIngredientByIdAsync(request.IngredientId);
-
                 // Calculate quantity based on total amount and measurement value
-                int calculatedQuantity = (int)Math.Ceiling(request.TotalAmount / ingredient.MeasurementValue);
+                int calculatedQuantity = (int)Math.Floor(request.TotalAmount / ingredient.MeasurementValue);
 
                 if (calculatedQuantity <= 0)
                 {
@@ -192,15 +187,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(request.IngredientId);
-
-                // Add batch with calculated quantity
+                // Add batch with calculated quantity (not an initial batch)
                 var batch = await _ingredientService.AddBatchAsync(
                     request.IngredientId,
                     calculatedQuantity,
                     request.BestBeforeDate,
-                    batchNumber);
+                    false); // Not an initial batch
 
                 // Map to DTO
                 var batchDto = new IngredientBatchDto
@@ -252,6 +244,160 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Status = "Error",
                     Message = "Failed to create batch"
+                });
+            }
+        }
+        [HttpPost("multiple")]
+        [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<List<IngredientBatchDto>>>> CreateMultipleBatches([FromBody] MultipleBatchRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Admin creating multiple batches for {Count} ingredients", request.Batches.Count);
+
+                // Validate request
+                if (request.Batches == null || !request.Batches.Any())
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "No batches provided"
+                    });
+                }
+
+                // Prepare the batch data
+                var batchItems = new List<(int ingredientId, int quantity, DateTime bestBeforeDate)>();
+                var ingredientIds = request.Batches.Select(b => b.IngredientId).Distinct().ToList();
+
+                // Get all ingredients in a single query
+                var ingredients = new Dictionary<int, Ingredient>();
+                foreach (var id in ingredientIds)
+                {
+                    try
+                    {
+                        var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
+                        ingredients[id] = ingredient;
+                    }
+                    catch (NotFoundException ex)
+                    {
+                        return NotFound(new ApiErrorResponse
+                        {
+                            Status = "Error",
+                            Message = ex.Message
+                        });
+                    }
+                }
+
+                // Validate all batches before processing
+                var validationErrors = new List<string>();
+
+                foreach (var item in request.Batches)
+                {
+                    // Validate total amount
+                    if (item.TotalAmount <= 0)
+                    {
+                        validationErrors.Add($"Total amount must be greater than 0 for ingredient '{ingredients[item.IngredientId].Name}' (ID: {item.IngredientId})");
+                        continue;
+                    }
+
+                    var ingredient = ingredients[item.IngredientId];
+
+                    // Validate expiry date based on ingredient type
+                    if (!IngredientTypeExpiryConfig.IsValidExpiryDate(ingredient.IngredientTypeId, item.BestBeforeDate))
+                    {
+                        int minDays = IngredientTypeExpiryConfig.GetMinExpiryDays(ingredient.IngredientTypeId);
+                        int maxDays = IngredientTypeExpiryConfig.GetMaxExpiryDays(ingredient.IngredientTypeId);
+
+                        validationErrors.Add($"Best before date for '{ingredient.Name}' (ID: {item.IngredientId}) must be between {minDays} days and {maxDays} days from now");
+                        continue;
+                    }
+
+                    // Calculate quantity based on total amount and measurement value
+                    int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
+
+                    if (calculatedQuantity <= 0)
+                    {
+                        validationErrors.Add($"Calculated quantity must be greater than 0 for ingredient '{ingredient.Name}' (ID: {item.IngredientId}). Check your total amount and measurement value.");
+                        continue;
+                    }
+
+                    batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate));
+                }
+
+                // If there are validation errors, return them
+                if (validationErrors.Any())
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "One or more batches failed validation",
+                        Errors = validationErrors
+                    });
+                }
+
+                // Add all batches in a single transaction
+                var createdBatches = await _ingredientService.AddMultipleBatchesAsync(batchItems);
+
+                // Map to DTOs
+                var batchDtos = new List<IngredientBatchDto>();
+                foreach (var batch in createdBatches)
+                {
+                    var ingredient = ingredients[batch.IngredientId];
+
+                    var dto = new IngredientBatchDto
+                    {
+                        IngredientBatchId = batch.IngredientBatchId,
+                        IngredientId = batch.IngredientId,
+                        IngredientName = ingredient.Name,
+                        InitialQuantity = batch.InitialQuantity,
+                        RemainingQuantity = batch.RemainingQuantity,
+                        Unit = ingredient.Unit,
+                        MeasurementValue = ingredient.MeasurementValue,
+                        BestBeforeDate = batch.BestBeforeDate,
+                        BatchNumber = batch.BatchNumber ?? string.Empty,
+                        ReceivedDate = batch.ReceivedDate,
+                       
+                    };
+
+                    batchDtos.Add(dto);
+                }
+
+                return CreatedAtAction(
+                    nameof(GetBatchById),
+                    new { batchId = createdBatches.FirstOrDefault()?.IngredientBatchId ?? 0 },
+                    new ApiResponse<List<IngredientBatchDto>>
+                    {
+                        Success = true,
+                        Message = $"Successfully added {createdBatches.Count} batches for {ingredientIds.Count} different ingredients",
+                        Data = batchDtos
+                    });
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "Validation error creating multiple batches");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Validation Error",
+                    Message = ex.Message
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Ingredient not found");
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating multiple batches");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to create batches"
                 });
             }
         }

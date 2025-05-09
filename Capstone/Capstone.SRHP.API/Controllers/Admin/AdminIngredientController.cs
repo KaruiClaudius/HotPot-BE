@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
+using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -97,9 +98,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IngredientDetailDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> GetIngredientById(int id)
+        public async Task<ActionResult<ApiResponse<IngredientDetailDto>>> GetIngredientById(int id)
         {
             try
             {
@@ -116,15 +117,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
+                // Get current price
                 var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-                var ingredientDto = MapToIngredientDto(ingredient);
-                ingredientDto.Price = currentPrice;
 
-                return Ok(new ApiResponse<IngredientDto>
+                // Get batches for this ingredient
+                var batches = await _ingredientService.GetIngredientBatchesAsync(id);
+
+                // Map to detailed DTO including batches
+                var ingredientDetailDto = await MapToIngredientDetailDto(ingredient, batches);
+                ingredientDetailDto.Price = currentPrice;
+
+                return Ok(new ApiResponse<IngredientDetailDto>
                 {
                     Success = true,
                     Message = "Ingredient retrieved successfully",
-                    Data = ingredientDto
+                    Data = ingredientDetailDto
                 });
             }
             catch (NotFoundException ex)
@@ -211,12 +218,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.BestBeforeDate <= DateTime.UtcNow)
+                // Validate expiry date based on ingredient type
+                if (!IngredientTypeExpiryConfig.IsValidExpiryDate(request.IngredientTypeID, request.BestBeforeDate))
                 {
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "Best before date must be in the future"
+                        Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(request.IngredientTypeID)
                     });
                 }
 
@@ -247,15 +255,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Create ingredient with initial price
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
 
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(createdIngredient.IngredientId);
-
-                // Add initial batch with calculated quantity
+                // Add initial batch with calculated quantity and initial flag
                 await _ingredientService.AddBatchAsync(
                     createdIngredient.IngredientId,
                     calculatedQuantity,
                     request.BestBeforeDate,
-                    batchNumber);
+                    true); // Mark as initial batch
 
                 // Get the updated ingredient with batch information
                 var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(createdIngredient.IngredientId);
@@ -545,90 +550,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpPost("{id}/restock")]
-        [ProducesResponseType(typeof(ApiResponse<IngredientDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<IngredientDto>>> RestockIngredient(int id, [FromBody] RestockIngredientRequest request)
-        {
-            try
-            {
-                _logger.LogInformation("Admin restocking ingredient with ID: {IngredientId}", id);
-
-                // Validate request
-                if (request.Quantity <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Quantity must be greater than 0"
-                    });
-                }
-
-                if (request.BestBeforeDate <= DateTime.UtcNow)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Best before date must be in the future"
-                    });
-                }
-
-                // Check if ingredient exists
-                var ingredient = await _ingredientService.GetIngredientByIdAsync(id);
-
-                // Generate batch number if not provided
-                string batchNumber = GenerateBatchNumber(id);
-
-                // Add new batch
-                await _ingredientService.AddBatchAsync(
-                    id,
-                    request.Quantity,
-                    request.BestBeforeDate,
-                    batchNumber);
-
-                // Get updated ingredient with batch information
-                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(id);
-                var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
-
-                var ingredientDto = MapToIngredientDto(updatedIngredient);
-                ingredientDto.Price = currentPrice;
-
-                return Ok(new ApiResponse<IngredientDto>
-                {
-                    Success = true,
-                    Message = $"Ingredient restocked successfully with {request.Quantity} units ({request.Quantity * updatedIngredient.MeasurementValue} {updatedIngredient.Unit})",
-                    Data = ingredientDto
-                });
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning(ex, "Validation error restocking ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Validation Error",
-                    Message = ex.Message
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", id);
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restocking ingredient with ID: {IngredientId}", id);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to restock ingredient"
-                });
-            }
-        }
-
 
         private static IngredientDto MapToIngredientDto(Ingredient ingredient)
         {
@@ -653,12 +574,48 @@ namespace Capstone.HPTY.API.Controllers.Admin
             };
         }
 
-        private string GenerateBatchNumber(int ingredientId)
+        private async Task<IngredientDetailDto> MapToIngredientDetailDto(Ingredient ingredient, IEnumerable<IngredientBatch> batches)
         {
-            // Format: ING-{ingredientId}-{timestamp}
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-            return $"ING-{ingredientId}-{timestamp}";
-        }
+            if (ingredient == null) return null;
 
+            // First map the base ingredient properties
+            var detailDto = new IngredientDetailDto
+            {
+                IngredientId = ingredient.IngredientId,
+                Name = ingredient.Name,
+                Description = ingredient.Description ?? string.Empty,
+                ImageURL = ingredient.ImageURL ?? string.Empty,
+                MinStockLevel = ingredient.MinStockLevel,
+                Quantity = ingredient.Quantity,
+                Unit = ingredient.Unit,
+                MeasurementValue = ingredient.MeasurementValue != 0 ? ingredient.MeasurementValue : 1.0, // Default to 1.0 if zero
+                IngredientTypeID = ingredient.IngredientTypeId,
+                IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
+                Price = 0, // This will be set later from the current price
+                CreatedAt = ingredient.CreatedAt,
+                UpdatedAt = ingredient.UpdatedAt,
+                IsLowStock = ingredient.Quantity <= ingredient.MinStockLevel
+            };
+
+            // Map batches
+            if (batches != null)
+            {
+                detailDto.Batches = batches.Select(b => new IngredientBatchDto
+                {
+                    IngredientBatchId = b.IngredientBatchId,
+                    IngredientId = b.IngredientId,
+                    IngredientName = ingredient.Name,
+                    InitialQuantity = b.InitialQuantity,
+                    RemainingQuantity = b.RemainingQuantity,
+                    Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
+                    BestBeforeDate = b.BestBeforeDate,
+                    BatchNumber = b.BatchNumber ?? string.Empty,
+                    ReceivedDate = b.ReceivedDate
+                }).ToList();
+            }
+
+            return detailDto;
+        }
     }
 }

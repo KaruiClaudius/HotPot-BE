@@ -18,6 +18,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
+using Capstone.HPTY.ServiceLayer.Services.ComboService;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -29,6 +30,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IDiscountService _discountService;
         private readonly IIngredientService _ingredientService;
         private readonly IUtensilService _utensilService;
+        private readonly IComboService _comboService;
+        private readonly ICustomizationService _customizationService;
 
         public PaymentService(
             PayOS payOS,
@@ -36,7 +39,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             ILogger<PaymentService> logger,
             IDiscountService discountService,
             IIngredientService ingredientService,
-            IUtensilService utensilService)
+            IUtensilService utensilService,
+            IComboService comboService,
+            ICustomizationService customizationService)
         {
             _payOS = payOS;
             _unitOfWork = unitOfWork;
@@ -44,6 +49,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _discountService = discountService;
             _ingredientService = ingredientService;
             _utensilService = utensilService;
+            _comboService = comboService;
+            _customizationService = customizationService;
         }
 
         public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId,
@@ -762,7 +769,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
 
-
+        //fix before use, questionale logic
         public async Task<Response> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
         {
             try
@@ -808,7 +815,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         order.SetUpdateDate();
                         await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
-                        // If the order has already been processed (items shipped), we can't return inventory
                         if (order.Status == OrderStatus.Processing)
                         {
                             // Return inventory for sell items
@@ -1032,10 +1038,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         try
                         {
-                            // Use the ConsumeIngredientAsync method instead of directly modifying Quantity
+                            // Use the updated ConsumeIngredientAsync method
                             int consumed = await _ingredientService.ConsumeIngredientAsync(
                                 detail.IngredientId.Value,
-                                detail.Quantity);
+                                detail.Quantity,
+                                order.OrderId,
+                                detail.SellOrderDetailId);
 
                             if (consumed < detail.Quantity)
                             {
@@ -1054,6 +1062,89 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 "Error consuming ingredient ID {IngredientId} with quantity {Quantity}",
                                 detail.IngredientId.Value,
                                 detail.Quantity);
+                        }
+                    }
+                    else if (detail.ComboId.HasValue)
+                    {
+                        // For combos, we need to get the ingredients and consume them
+                        var combo = await _comboService.GetByIdAsync(detail.ComboId.Value);
+                        if (combo != null && combo.ComboIngredients != null)
+                        {
+                            foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
+                            {
+                                try
+                                {
+                                    // Calculate quantity needed based on order size
+                                    int quantityNeeded = comboIngredient.Quantity * detail.Quantity;
+
+                                    // Consume the ingredient
+                                    int consumed = await _ingredientService.ConsumeIngredientAsync(
+                                        comboIngredient.IngredientId,
+                                        quantityNeeded,
+                                        order.OrderId,
+                                        detail.SellOrderDetailId,
+                                        detail.ComboId);
+
+                                    if (consumed < quantityNeeded)
+                                    {
+                                        _logger.LogWarning(
+                                            "Could not consume full quantity for ingredient ID {IngredientId} in combo {ComboId}. Requested: {Requested}, Consumed: {Consumed}",
+                                            comboIngredient.IngredientId,
+                                            detail.ComboId.Value,
+                                            quantityNeeded,
+                                            consumed);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex,
+                                        "Error consuming ingredient ID {IngredientId} for combo {ComboId}",
+                                        comboIngredient.IngredientId,
+                                        detail.ComboId.Value);
+                                }
+                            }
+                        }
+                    }
+                    else if (detail.CustomizationId.HasValue)
+                    {
+                        // For customizations, we need to get the ingredients and consume them
+                        var customization = await _customizationService.GetByIdAsync(detail.CustomizationId.Value);
+                        if (customization != null && customization.CustomizationIngredients != null)
+                        {
+                            foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
+                            {
+                                try
+                                {
+                                    // Calculate quantity needed based on order size
+                                    int quantityNeeded = customizationIngredient.Quantity * detail.Quantity;
+
+                                    // Consume the ingredient
+                                    int consumed = await _ingredientService.ConsumeIngredientAsync(
+                                        customizationIngredient.IngredientId,
+                                        quantityNeeded,
+                                        order.OrderId,
+                                        detail.SellOrderDetailId,
+                                        null,
+                                        detail.CustomizationId);
+
+                                    if (consumed < quantityNeeded)
+                                    {
+                                        _logger.LogWarning(
+                                            "Could not consume full quantity for ingredient ID {IngredientId} in customization {CustomizationId}. Requested: {Requested}, Consumed: {Consumed}",
+                                            customizationIngredient.IngredientId,
+                                            detail.CustomizationId.Value,
+                                            quantityNeeded,
+                                            consumed);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex,
+                                        "Error consuming ingredient ID {IngredientId} for customization {CustomizationId}",
+                                        customizationIngredient.IngredientId,
+                                        detail.CustomizationId.Value);
+                                }
+                            }
                         }
                     }
                     else if (detail.UtensilId.HasValue)

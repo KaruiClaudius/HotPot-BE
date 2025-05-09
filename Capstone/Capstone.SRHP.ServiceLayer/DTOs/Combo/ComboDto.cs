@@ -12,24 +12,46 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
     {
         public int ComboId { get; set; }
         public string Name { get; set; }
-        public string Description { get; set; }
         public int Size { get; set; }
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
-        public bool IsCustomizable { get; set; }
-        public string HotpotBrothName { get; set; }
         public string[] ImageURLs { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    }
+    public class RegularComboDto : ComboDto
+    {
+        public string Description { get; set; }
         public List<ComboIngredientDto> Ingredients { get; set; }
+    }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public class CustomizableComboDto : ComboDto
+    {
+        public string GroupIdentifier { get; set; } 
         public List<ComboAllowedIngredientTypeDto> AllowedIngredientTypes { get; set; }
 
+        // Group information
+        public bool IsPartOfGroup { get; set; }
+        public List<CustomizableComboVariantDto> GroupVariants { get; set; }
+    }
+    public class CustomizableComboVariantDto
+    {
+        public int ComboId { get; set; }
+        public string Name { get; set; }
+        public int Size { get; set; }
     }
 
     public class ComboDetailDto : ComboDto
     {
+        // Regular combo specific properties
+        public string Description { get; set; }
+        public List<ComboIngredientDto> Ingredients { get; set; }
+
+        // Customizable combo specific properties
+        public string GroupIdentifier { get; set; }
+        public List<ComboAllowedIngredientTypeDto> AllowedIngredientTypes { get; set; }
+        public bool IsPartOfGroup { get; set; }
+        public List<CustomizableComboVariantDto> GroupVariants { get; set; }
+
+        // Common detail properties
         public int? AppliedDiscountID { get; set; }
         public decimal AppliedDiscountPercentage { get; set; }
         public int TurtorialVideoID { get; set; }
@@ -39,5 +61,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public DateTime UpdatedAt { get; set; }
         public TutorialVideoDto TutorialVideo { get; set; }
 
+        // Flag to indicate the type of combo
+        public bool IsCustomizable { get; set; }
     }
 }

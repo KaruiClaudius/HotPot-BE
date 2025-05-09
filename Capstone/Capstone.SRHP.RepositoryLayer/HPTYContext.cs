@@ -48,6 +48,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
         public virtual DbSet<PaymentReceipt> PaymentReceipts { get; set; }
         public virtual DbSet<IngredientBatch> IngredientBatchs { get; set; }
+        public virtual DbSet<IngredientUsage> IngredientUsages { get; set; }
 
         public virtual DbSet<Vehicle> Vehicles { get; set; }
 
@@ -462,7 +463,33 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired();
             });
 
-
+            modelBuilder.Entity<IngredientUsage>(entity =>
+            {
+                entity.HasOne(i => i.Ingredient)
+                    .WithMany()
+                    .HasForeignKey(i => i.IngredientId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.IngredientBatch)
+                    .WithMany()
+                    .HasForeignKey(i => i.IngredientBatchId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.Order)
+                    .WithMany()
+                    .HasForeignKey(i => i.OrderId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.OrderDetail)
+                    .WithMany()
+                    .HasForeignKey(i => i.OrderDetailId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.Combo)
+                    .WithMany()
+                    .HasForeignKey(i => i.ComboId)
+                    .OnDelete(DeleteBehavior.NoAction);                
+                entity.HasOne(i => i.Customization)
+                    .WithMany()
+                    .HasForeignKey(i => i.CustomizationId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
 
             // Configure ChatMessage entity
             modelBuilder.Entity<ChatMessage>(entity =>

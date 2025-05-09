@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public string Name { get; set; }
 
         [StringLength(1000)]
-        public string? Description { get; set; }
+        public string? GroupIdentifier  { get; set; }
 
         [Required]
         [Range(1, int.MaxValue)]

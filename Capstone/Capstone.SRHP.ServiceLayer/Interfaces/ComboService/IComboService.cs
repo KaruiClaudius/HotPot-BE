@@ -39,7 +39,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task<IEnumerable<Ingredient>> GetAvailableIngredientsForTypeAsync(int comboId, int ingredientTypeId);
         Task<decimal> CalculateTotalPriceAsync(int comboId, int size);
         Task<IEnumerable<ComboIngredient>> GetComboIngredientsAsync(int comboId);
-
-
+        Task<string> GenerateGroupIdentifierAsync(string comboName);
+        Task<IEnumerable<Combo>> GetCombosByGroupIdentifierAsync(string groupIdentifier);
     }
 }
