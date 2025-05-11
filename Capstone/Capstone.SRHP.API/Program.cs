@@ -5,6 +5,7 @@ using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
 using System.Runtime.CompilerServices;
+using Capstone.HPTY.API.Hubs;
 [assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
 
 

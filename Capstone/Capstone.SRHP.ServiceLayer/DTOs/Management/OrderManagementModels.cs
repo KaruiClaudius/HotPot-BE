@@ -13,7 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     public class StaffAssignmentRequest
     {
         [Required]
-        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
 
         [Required]
         public int StaffId { get; set; }
