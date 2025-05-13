@@ -6,6 +6,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
+using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -16,82 +17,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IUtensilService _utensilService;
+        public readonly IStaffAssignmentService _staffAssignmentService;
         private readonly ILogger<EquipmentReturnService> _logger;
 
         public EquipmentReturnService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
             IUtensilService utensilService,
+            IStaffAssignmentService staffAssignmentService,
             ILogger<EquipmentReturnService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _utensilService = utensilService;
+            _staffAssignmentService = staffAssignmentService;
             _logger = logger;
         }
 
-        public async Task<bool> CompletePickupAssignmentAsync(
-     int assignmentId,
-     EquipmentReturnRequest request)
+        public async Task<bool> CompletePickupAssignmentAsync(int assignmentId)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
-                // Get the assignment
-                var assignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .GetById(assignmentId);
+                _logger.LogInformation("Completing pickup assignment {AssignmentId}", assignmentId);
 
-                if (assignment == null)
-                    throw new NotFoundException($"Assignment with ID {assignmentId} not found");
-
-                // Update assignment
-                assignment.CompletedDate = request.ReturnDate;
-                assignment.Notes = string.IsNullOrEmpty(assignment.Notes)
-                    ? $"Return condition: {request.ReturnCondition}"
-                    : $"{assignment.Notes}\nReturn condition: {request.ReturnCondition}";
-                assignment.SetUpdateDate();
-
-                await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(assignment);
-
-                // Process the equipment return
-                var rentOrderId = assignment.OrderId;
-                await ProcessEquipmentReturnInternalAsync(rentOrderId, request);
-
-                // Get staff information for notification
-                var staff = await _unitOfWork.Repository<User>().GetById(request.StaffId);
-                string staffName = staff?.Name ?? "Staff member";
-
-                // Notify the staff member who completed the assignment
-                await _notificationService.NotifyUser(
-                    request.StaffId,
-                    "AssignmentCompleted",
-                    "Assignment Completed",
-                    "You have successfully completed a pickup assignment",
-                    new Dictionary<string, object>
-                    {
-                { "AssignmentId", assignmentId },
-                { "OrderId", assignment.OrderId },
-                { "CompletionDate", request.ReturnDate },
-                { "ReturnCondition", request.ReturnCondition }
-                    });
-
-                // Notify managers about the completed assignment
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "AssignmentCompleted",
-                    "Assignment Completed",
-                    $"{staffName} has completed a pickup assignment",
-                    new Dictionary<string, object>
-                    {
-                { "AssignmentId", assignmentId },
-                { "OrderId", assignment.OrderId },
-                { "StaffId", request.StaffId },
-                { "StaffName", staffName },
-                { "CompletionDate", request.ReturnDate },
-                { "ReturnCondition", request.ReturnCondition }
-                    });
-
-                return true;
-            });
+                // Use the unified staff assignment service to complete the assignment
+                return await _staffAssignmentService.CompleteAssignmentAsync(assignmentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing pickup assignment {AssignmentId}", assignmentId);
+                throw;
+            }
         }
 
         public async Task<RentOrder> GetRentOrderAsync(int orderId)
@@ -312,7 +268,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                 {
                     var hotpotCount = hotpotRentals.Count;
                     equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
-                }       
+                }
 
                 return equipmentItems.Any()
                     ? string.Join(", ", equipmentItems)

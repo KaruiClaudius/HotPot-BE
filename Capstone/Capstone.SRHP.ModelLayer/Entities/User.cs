@@ -87,5 +87,10 @@ namespace Capstone.HPTY.ModelLayer.Entities
         //manager
         [InverseProperty("Managers")]
         public virtual ICollection<WorkShift>? MangerWorkShifts { get; set; } = new List<WorkShift>();
+
+        // Add these navigation properties
+        public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
+        public virtual ICollection<StaffAssignment> ManagedAssignments { get; set; } = new List<StaffAssignment>();
+
     }
 }

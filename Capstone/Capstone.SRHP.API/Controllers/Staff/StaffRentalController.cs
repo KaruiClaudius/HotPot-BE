@@ -28,7 +28,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             _rentOrderService = rentOrderService;
             _staffService = staffService;
             _equipmentReturnService = equipmentReturnService;
-            
+
         }
 
         [HttpGet("my-assignments")]
@@ -146,8 +146,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                     // Process the assignment completion
                     result = await _equipmentReturnService.CompletePickupAssignmentAsync(
-                        request.AssignmentId.Value,
-                        equipmentReturnRequest);
+                        request.AssignmentId.Value);
                 }
                 else if (request.RentOrderId.HasValue)
                 {

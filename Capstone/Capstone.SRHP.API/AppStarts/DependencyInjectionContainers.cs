@@ -67,10 +67,14 @@ namespace Capstone.HPTY.API.AppStarts
             // Core Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddHttpContextAccessor();
 
             // Auth Services
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IAuthService, AuthService>();
+
+            // Identity Services
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             // Business Services
             services.AddScoped<IComboService, ComboService>();
@@ -107,6 +111,8 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IStaffService, StaffService>();
             services.AddScoped<IStaffPaymentService, StaffPaymentService>();
             services.AddScoped<IStaffOrderService, StaffOrderService>();
+            services.AddScoped<IStaffAssignmentService, StaffAssignmentService>();
+
 
             // Notification Services
             services.AddScoped<INotificationService, SignalRNotificationService>();

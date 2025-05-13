@@ -219,34 +219,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        //[HttpPost("notify-customer")]
-        //[ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<bool>>> NotifyCustomerDirectly([FromBody] NotifyCustomerRequest request)
-        //{
-        //    try
-        //    {
-        //        // Validate the request
-        //        if (request.CustomerId <= 0)
-        //        {
-        //            return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid customer ID"));
-        //        }
-
-        //        // Send a direct notification to the customer
-        //        await _notificationService.NotifyCustomerDirectlyAsync(
-        //            request.CustomerId,
-        //            request.ConditionLogId,
-        //            request.Message,
-        //            request.EstimatedResolutionTime);
-
-        //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Customer notified successfully"));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-        //    }
-        //}
-
         #endregion
 
         #region Dashboard and Reporting

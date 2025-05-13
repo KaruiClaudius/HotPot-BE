@@ -26,12 +26,24 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         // Preparation staff information
         public int? PreparationStaffId { get; set; }
         public string PreparationStaffName { get; set; }
+        public int? PreparationAssignmentId { get; set; }
+        public DateTime? PreparationAssignedDate { get; set; }
+        public DateTime? PreparationCompletedDate { get; set; }
 
         // Shipping information
         public int? ShippingStaffId { get; set; }
         public string ShippingStaffName { get; set; }
+        public int? ShippingAssignmentId { get; set; }
+        public DateTime? ShippingAssignedDate { get; set; }
+        public DateTime? ShippingCompletedDate { get; set; }
         public bool IsDelivered { get; set; }
-        public string DeliveryNotes { get; set; }
+
+        // Pickup information
+        public int? PickupStaffId { get; set; }
+        public string PickupStaffName { get; set; }
+        public int? PickupAssignmentId { get; set; }
+        public DateTime? PickupAssignedDate { get; set; }
+        public DateTime? PickupCompletedDate { get; set; }
 
         // Order details
         public List<OrderDetailDto> OrderDetails { get; set; } = new List<OrderDetailDto>();
@@ -45,5 +57,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         public decimal DiscountAmount { get; set; }
         public string DiscountCode { get; set; }
         public string PaymentStatus { get; set; }
+
+        // All assignments for this order
+        public List<StaffAssignmentInfoDto> Assignments { get; set; } = new List<StaffAssignmentInfoDto>();
+    }
+
+    public class StaffAssignmentInfoDto
+    {
+        public int AssignmentId { get; set; }
+        public int StaffId { get; set; }
+        public string StaffName { get; set; }
+        public StaffTaskType TaskType { get; set; }
+        public DateTime AssignedDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
+        public bool IsActive { get; set; }
     }
 }
