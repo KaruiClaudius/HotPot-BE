@@ -415,7 +415,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     Quantity = ingredient.Quantity,
                     Unit = ingredient.Unit,
                     MeasurementValue = ingredient.MeasurementValue,
-                    FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
+                    FormattedQuantity = FormatQuantity(ingredient.MeasurementValue, ingredient.Unit)
                 });
             }
 
@@ -803,7 +803,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
 
         #region Helper Methods for Ingredients
 
-        private string FormatQuantity(decimal quantity, string unit)
+        private string FormatQuantity(double quantity, string unit)
         {
             if (string.IsNullOrEmpty(unit))
                 return quantity.ToString("0.##");
@@ -943,7 +943,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Quantity = i.Ingredient.Quantity,
                 Unit = i.Ingredient.Unit,
                 MeasurementValue = i.Ingredient.MeasurementValue,
-                FormattedQuantity = FormatQuantity(i.Ingredient.Quantity, i.Ingredient.Unit)
+                FormattedQuantity = FormatQuantity(i.Ingredient.MeasurementValue, i.Ingredient.Unit)
             }).ToList();
 
             return new PagedUnifiedProductResult
@@ -992,7 +992,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Quantity = ingredient.Quantity,
                 Unit = ingredient.Unit,
                 MeasurementValue = ingredient.MeasurementValue,
-                FormattedQuantity = FormatQuantity(ingredient.Quantity, ingredient.Unit)
+                FormattedQuantity = FormatQuantity(ingredient.MeasurementValue, ingredient.Unit)
             };
         }
 

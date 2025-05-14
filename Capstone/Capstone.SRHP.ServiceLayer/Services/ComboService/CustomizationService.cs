@@ -25,7 +25,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         private readonly IComboService _comboService;
         private readonly ISizeDiscountService _sizeDiscountService;
         private readonly ILogger<CustomizationService> _logger;
-        private const int BROTH_TYPE_ID = 1;
 
         public CustomizationService(
             IUnitOfWork unitOfWork,
@@ -242,21 +241,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             Combo combo = null;
             List<ComboAllowedIngredientType> allowedTypes = null;
 
-            if (comboId.HasValue)
-            {
-                // Get the combo
-                combo = await _comboService.GetByIdAsync(comboId.Value);
-                if (combo == null)
-                    throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
+            //if (comboId.HasValue)
+            //{
+            //    // Get the combo
+            //    combo = await _comboService.GetByIdAsync(comboId.Value);
+            //    if (combo == null)
+            //        throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
 
-                if (!combo.IsCustomizable)
-                    throw new ValidationException("Combo này không thể tùy chỉnh");
+            //    if (!combo.IsCustomizable)
+            //        throw new ValidationException("Combo này không thể tùy chỉnh");
 
-                // Get all allowed ingredient types for this combo
-                allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
-                    .FindAll(ait => ait.ComboId == comboId.Value && !ait.IsDelete)
-                    .ToListAsync();
-            }
+            //    // Get all allowed ingredient types for this combo
+            //    allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+            //        .FindAll(ait => ait.ComboId == comboId.Value && !ait.IsDelete)
+            //        .ToListAsync();
+            //}
 
             return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
             {
@@ -360,6 +359,177 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             });
         }
 
+        #region Create Customization Backup
+
+        //public async Task<Customization> CreateCustomizationAsync(
+        //    int? comboId,  // Accept nullable comboId
+        //    int userId,
+        //    string name,
+        //    string? note,
+        //    int size,
+        //    List<CustomizationIngredientsRequest> ingredients,
+        //    string[]? imageURLs = null)
+        //{
+        //    // Validate inputs
+        //    if (string.IsNullOrWhiteSpace(name))
+        //        throw new ValidationException("Tên tùy chỉnh không được để trống");
+
+        //    if (size <= 0)
+        //        throw new ValidationException("Kích thước phải lớn hơn 0");
+
+        //    // Treat comboId = 0 as null (create from scratch)
+        //    if (comboId == 0)
+        //    {
+        //        comboId = null;
+        //    }
+
+        //    // Validate user
+        //    var user = await _unitOfWork.Repository<User>()
+        //        .FindAsync(u => u.UserId == userId && !u.IsDelete);
+
+        //    if (user == null)
+        //        throw new ValidationException($"Không tìm thấy người dùng với ID {userId}");
+
+        //    // Validate image URLs if provided
+        //    if (imageURLs != null && imageURLs.Length > 0)
+        //    {
+        //        foreach (var url in imageURLs)
+        //        {
+        //            if (string.IsNullOrWhiteSpace(url))
+        //            {
+        //                throw new ValidationException("URL hình ảnh không được để trống");
+        //            }
+
+        //            // Optional: Add URL format validation if needed
+        //            if (!Uri.TryCreate(url, UriKind.Absolute, out _) && !url.StartsWith("/"))
+        //            {
+        //                throw new ValidationException($"Định dạng URL hình ảnh không hợp lệ: {url}");
+        //            }
+        //        }
+        //    }
+
+        //    // Different validation paths based on whether this is a combo-based customization or from scratch
+        //    Combo combo = null;
+        //    List<ComboAllowedIngredientType> allowedTypes = null;
+
+        //    if (comboId.HasValue)
+        //    {
+        //        // Get the combo
+        //        combo = await _comboService.GetByIdAsync(comboId.Value);
+        //        if (combo == null)
+        //            throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
+
+        //        if (!combo.IsCustomizable)
+        //            throw new ValidationException("Combo này không thể tùy chỉnh");
+
+        //        // Get all allowed ingredient types for this combo
+        //        allowedTypes = await _unitOfWork.Repository<ComboAllowedIngredientType>()
+        //            .FindAll(ait => ait.ComboId == comboId.Value && !ait.IsDelete)
+        //            .ToListAsync();
+        //    }
+
+        //    return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
+        //    {
+        //        // Check for soft-deleted customization with the same name for this user
+        //        var existingCustomization = await _unitOfWork.Repository<Customization>()
+        //            .FindAsync(c => c.Name == name && c.UserId == userId && c.IsDelete);
+
+        //        if (existingCustomization != null)
+        //        {
+        //            // Reactivate the soft-deleted customization
+        //            existingCustomization.IsDelete = false;
+        //            existingCustomization.Note = note;
+        //            existingCustomization.ComboId = comboId;
+        //            existingCustomization.Size = size;
+        //            existingCustomization.ImageURL = imageURLs != null ? JsonSerializer.Serialize(imageURLs) : null;
+        //            existingCustomization.SetUpdateDate();
+
+        //            // Get applicable discount for this size
+        //            var applicableDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
+        //            existingCustomization.AppliedDiscountId = applicableDiscount?.SizeDiscountId;
+
+        //            await _unitOfWork.Repository<Customization>().Update(existingCustomization, existingCustomization.CustomizationId);
+        //            await _unitOfWork.CommitAsync();
+
+        //            // Update ingredients
+        //            await UpdateCustomizationIngredientsAsync(existingCustomization.CustomizationId, ingredients);
+
+        //            // Recalculate prices
+        //            await UpdatePricesAsync(existingCustomization.CustomizationId);
+
+        //            return await GetByIdAsync(existingCustomization.CustomizationId) ??
+        //                throw new InvalidOperationException("Tạo tùy chỉnh thất bại");
+        //        }
+
+        //        // Get applicable discount for this size
+        //        var newDiscount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
+
+        //        // Create new customization
+        //        var customization = new Customization
+        //        {
+        //            Name = name,
+        //            Note = note,
+        //            UserId = userId,
+        //            ComboId = comboId,
+        //            Size = size,
+        //            AppliedDiscountId = newDiscount?.SizeDiscountId,
+        //            BasePrice = 0,
+        //            TotalPrice = 0,
+        //            ImageURLs = imageURLs
+        //        };
+
+        //        _unitOfWork.Repository<Customization>().Insert(customization);
+        //        await _unitOfWork.CommitAsync();
+
+        //        // If this is a combo-based customization, validate ingredient types
+        //        if (combo != null && allowedTypes != null && allowedTypes.Any())
+        //        {
+        //            await ValidateCustomizationIngredientsAsync(ingredients, allowedTypes);
+        //        }
+
+        //        // Add selected ingredients
+        //        foreach (var ingredientDto in ingredients)
+        //        {
+        //            // Validate ingredient exists (we already did this for combo-based customizations)
+        //            var ingredient = await _unitOfWork.Repository<Ingredient>()
+        //                .FindAsync(i => i.IngredientId == ingredientDto.IngredientID && !i.IsDelete);
+
+        //            if (ingredient == null)
+        //                throw new ValidationException($"Không tìm thấy nguyên liệu với ID {ingredientDto.IngredientID}");
+
+        //            // Validate quantity
+        //            if (ingredientDto.Quantity <= 0)
+        //                throw new ValidationException("Số lượng nguyên liệu phải lớn hơn 0");
+
+        //            // Add ingredient to customization
+        //            var customizationIngredient = new CustomizationIngredient
+        //            {
+        //                CustomizationId = customization.CustomizationId,
+        //                IngredientId = ingredientDto.IngredientID,
+        //                Quantity = ingredientDto.Quantity
+        //            };
+
+        //            _unitOfWork.Repository<CustomizationIngredient>().Insert(customizationIngredient);
+        //        }
+
+        //        await _unitOfWork.CommitAsync();
+
+        //        // Calculate prices
+        //        await UpdatePricesAsync(customization.CustomizationId);
+
+        //        return await GetByIdAsync(customization.CustomizationId) ??
+        //            throw new InvalidOperationException("Tạo tùy chỉnh thất bại");
+        //    },
+        //    ex =>
+        //    {
+        //        // Only log for exceptions that aren't validation or not found
+        //        if (!(ex is NotFoundException || ex is ValidationException))
+        //        {
+        //            _logger.LogError(ex, "Lỗi khi tạo tùy chỉnh", ex);
+        //        }
+        //    });
+        //}
+        #endregion
 
 
         public async Task UpdateAsync(int id, Customization entity, List<CustomizationIngredientsRequest> ingredients)
