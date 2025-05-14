@@ -129,7 +129,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 string adminName = feedback.ApprovedByUserName ?? "Admin";
 
                 // Notify managers about the newly approved feedback
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "FeedbackApproved",
                     "Feedback Approved",
@@ -147,7 +147,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Notify the customer that their feedback was approved
                 if (feedback.UserId != 0)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         feedback.UserId,
                         "FeedbackResponse",
                         "Feedback Approved",
@@ -190,7 +190,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Notify the customer that their feedback was rejected
                 if (feedback.UserId != 0)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         feedback.UserId,
                         "FeedbackResponse",
                         "Feedback Not Approved",

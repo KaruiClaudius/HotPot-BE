@@ -71,7 +71,7 @@ namespace Capstone.HPTY.API.SideServices
                         utensil.Name, utensil.Quantity);
 
                     // Notify inventory managers about low stock
-                    await notificationService.NotifyRole(
+                    await notificationService.NotifyRoleAsync(
                         "InventoryManagers",
                         "LowStock",
                         "Low Utensil Stock Alert",
@@ -98,7 +98,7 @@ namespace Capstone.HPTY.API.SideServices
                     var typeSummaries = lowStockByType.Select(kvp =>
                         $"{kvp.Key}: {kvp.Value.Count} items, lowest: {kvp.Value.Min(u => u.Quantity)}");
 
-                    await notificationService.NotifyRole(
+                    await notificationService.NotifyRoleAsync(
                         "Administrators",
                         "LowStockSummary",
                         "Low Stock Summary",
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.API.SideServices
                         hotpot.HotpotName ?? "Unknown", hotpot.SeriesNumber);
 
                     // Notify about unavailable hotpot
-                    await notificationService.NotifyRole(
+                    await notificationService.NotifyRoleAsync(
                         "Managers",
                         "UnavailableEquipment",
                         "HotPot Unavailable",
@@ -151,7 +151,7 @@ namespace Capstone.HPTY.API.SideServices
                         utensil.Name, utensil.Quantity, reason);
 
                     // Notify about unavailable utensil
-                    await notificationService.NotifyRole(
+                    await notificationService.NotifyRoleAsync(
                         "Managers",
                         "UnavailableEquipment",
                         "Utensil Unavailable",
@@ -174,7 +174,7 @@ namespace Capstone.HPTY.API.SideServices
                 int totalUnavailable = unavailableHotpots.Count + unavailableUtensils.Count;
                 if (totalUnavailable > 0)
                 {
-                    await notificationService.NotifyRole(
+                    await notificationService.NotifyRoleAsync(
                         "Administrators",
                         "UnavailableEquipmentSummary",
                         "Unavailable Equipment Summary",

@@ -89,7 +89,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
                         // Get additional information for a more detailed notification
                         string equipmentSummary = await GetEquipmentSummaryForRentOrder(request.RentOrderId.Value);
 
-                        await _notificationService.NotifyUser(
+                        await _notificationService.NotifyUserAsync(
                             rentOrder.Order.UserId,
                             "RentalReturned",
                             "Rental Returned",

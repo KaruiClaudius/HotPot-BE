@@ -179,7 +179,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 .ReturnsAsync(hotpotInventory);
 
             _mockNotificationService
-                .Setup(s => s.NotifyRole(
+                .Setup(s => s.NotifyRoleAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -197,7 +197,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             result.Result.Should().BeOfType<CreatedAtActionResult>();
 
             // Verify notification was sent with correct parameters
-            _mockNotificationService.Verify(s => s.NotifyRole(
+            _mockNotificationService.Verify(s => s.NotifyRoleAsync(
                 "Administrators",
                 "ConditionIssue",
                 "New HotPot Condition Issue", // Changed from "New Equipment Condition Issue"

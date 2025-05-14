@@ -21,8 +21,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
         private readonly INotificationService _notificationService;
 
 
-        public CustomerRentalController(IRentOrderService rentOrderService, 
-            INotificationService notificationService, 
+        public CustomerRentalController(IRentOrderService rentOrderService,
+            INotificationService notificationService,
             IEquipmentReturnService equipmentReturnService)
         {
             _rentOrderService = rentOrderService;
@@ -173,7 +173,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 string equipmentSummary = await GetEquipmentSummaryForRental(rentOrder);
 
                 // Send notification to the customer about the extension
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     userId,
                     "RentalExtended",
                     "Rental Period Extended",

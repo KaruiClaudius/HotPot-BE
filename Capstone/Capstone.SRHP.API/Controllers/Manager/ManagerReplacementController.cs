@@ -88,7 +88,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = dto.EquipmentName;
 
                 // Notify staff about the review decision
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Staff",
                     "ReplacementReviewed",
                     $"Replacement Request {statusText.ToUpper()}",
@@ -107,7 +107,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementReviewed",
                         $"Your Replacement Request was {statusText}",
@@ -164,7 +164,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the specific staff member who was assigned
                 if (request.AssignedStaffId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.AssignedStaffId.Value,
                         "ReplacementAssignment",
                         "New Replacement Assignment",
@@ -186,7 +186,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementInProgress",
                         "Your Replacement Request is in Progress",

@@ -248,7 +248,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 string workDaysText = GetWorkDaysText(staff.WorkDays.GetValueOrDefault());
 
                 // Notify the staff member about their schedule update
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     staff.UserId,
                     "ScheduleUpdate",
                     "Your Work Days Updated",
@@ -263,7 +263,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     });
 
                 // Notify managers about the staff schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Staff Work Days Updated",

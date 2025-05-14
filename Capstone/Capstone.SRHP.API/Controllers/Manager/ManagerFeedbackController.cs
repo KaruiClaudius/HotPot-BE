@@ -97,7 +97,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<ApiResponse<ManagerFeedbackDetailDto>>> RespondToFeedback(
-      int id, [FromBody] RespondToFeedbackRequest request)
+int id, [FromBody] RespondToFeedbackRequest request)
         {
             try
             {
@@ -108,7 +108,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string managerName = feedback.Manager?.Name ?? "Manager";
 
                 // Notify the customer about the response via the simplified notification service
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     feedback.User.UserId,
                     "FeedbackResponse",
                     "Response to Your Feedback",
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     });
 
                 // Also notify other managers about the response for transparency
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "FeedbackResponseAdded",
                     "Feedback Response Added",

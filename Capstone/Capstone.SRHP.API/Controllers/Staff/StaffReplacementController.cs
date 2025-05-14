@@ -163,7 +163,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 string equipmentName = dto.EquipmentName;
 
                 // Notify managers about the verification
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementVerified",
                     $"Equipment Verified as {verificationResult.ToUpper()}",
@@ -187,7 +187,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementVerified",
                         $"Your Equipment was Verified as {verificationResult.ToUpper()}",
@@ -262,7 +262,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 string equipmentName = dto.EquipmentName;
 
                 // Notify managers about the completion
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCompleted",
                     "Replacement Request Completed",
@@ -283,7 +283,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementCompleted",
                         "Your Replacement Request is Complete",

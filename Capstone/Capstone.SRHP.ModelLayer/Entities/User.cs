@@ -92,5 +92,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
         public virtual ICollection<StaffAssignment> ManagedAssignments { get; set; } = new List<StaffAssignment>();
 
+        [InverseProperty("User")]
+        public virtual ICollection<UserNotification> Notifications { get; set; } = new List<UserNotification>();
     }
 }

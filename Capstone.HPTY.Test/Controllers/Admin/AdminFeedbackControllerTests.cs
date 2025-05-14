@@ -288,7 +288,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockFeedbackService.Setup(s => s.ApproveFeedbackAsync(id, request.AdminUserId))
                 .ReturnsAsync(feedbackDetail);
 
-            mockNotificationService.Setup(s => s.NotifyRole(
+            mockNotificationService.Setup(s => s.NotifyRoleAsync(
                 "Managers",
                 "FeedbackApproved",
                 "Feedback Approved",
@@ -296,7 +296,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
 
-            mockNotificationService.Setup(s => s.NotifyUser(
+            mockNotificationService.Setup(s => s.NotifyUserAsync(
                 feedbackDetail.UserId,
                 "FeedbackResponse",
                 "Feedback Approved",
@@ -375,7 +375,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockFeedbackService.Setup(s => s.RejectFeedbackAsync(id, request.AdminUserId, request.RejectionReason))
                 .ReturnsAsync(feedbackDetail);
 
-            mockNotificationService.Setup(s => s.NotifyUser(
+            mockNotificationService.Setup(s => s.NotifyUserAsync(
                 feedbackDetail.UserId,
                 "FeedbackResponse",
                 "Feedback Not Approved",
@@ -618,7 +618,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockFeedbackService.Setup(s => s.ApproveFeedbackAsync(id, request.AdminUserId))
                 .ReturnsAsync(feedbackDetail);
 
-            mockNotificationService.Setup(s => s.NotifyRole(
+            mockNotificationService.Setup(s => s.NotifyRoleAsync(
                 "Managers",
                 "FeedbackApproved",
                 "Feedback Approved",
@@ -638,7 +638,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             Assert.Equal("Feedback approved successfully", apiResponse.Message);
 
             // Verify that NotifyUser was not called
-            mockNotificationService.Verify(s => s.NotifyUser(
+            mockNotificationService.Verify(s => s.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -690,7 +690,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             Assert.Equal("Feedback rejected successfully", apiResponse.Message);
 
             // Verify that NotifyUser was not called
-            mockNotificationService.Verify(s => s.NotifyUser(
+            mockNotificationService.Verify(s => s.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),

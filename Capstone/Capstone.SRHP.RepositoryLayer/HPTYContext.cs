@@ -50,6 +50,9 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<IngredientUsage> IngredientUsages { get; set; }
         public virtual DbSet<StaffAssignment> StaffAssignments { get; set; }
         public virtual DbSet<Vehicle> Vehicles { get; set; }
+        public virtual DbSet<Notification> Notifications { get; set; }
+        public virtual DbSet<UserNotification> UserNotifications { get; set; }
+        public virtual DbSet<NotificationTemplate> NotificationTemplates { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -525,6 +528,31 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasForeignKey(sa => sa.OrderId)
                     .OnDelete(DeleteBehavior.Cascade); // Or Restrict, as appropriate
             });
+
+            modelBuilder.Entity<UserNotification>()
+                .HasOne(un => un.Notification)
+                .WithMany(n => n.UserNotifications)
+                .HasForeignKey(un => un.NotificationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserNotification>()
+                .HasOne(un => un.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(un => un.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Add indexes for better performance
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => n.CreatedAt);
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.TargetType, n.TargetId });
+
+            modelBuilder.Entity<UserNotification>()
+                .HasIndex(un => un.UserId);
+
+            modelBuilder.Entity<UserNotification>()
+                .HasIndex(un => new { un.UserId, un.IsRead });
 
             if (modelBuilder.Model.FindEntityType(typeof(ChatMessage))
                 .FindProperty("SessionId") != null)
