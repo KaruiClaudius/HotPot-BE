@@ -72,4 +72,55 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         public DateTime? CompletedDate { get; set; }
         public bool IsActive { get; set; }
     }
+
+    public class StaffAssignedOrderBaseDto
+    {
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public string Status { get; set; }
+        public string CustomerName { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? AssignedAt { get; set; }
+    }
+
+    // Specialized DTO for preparation staff
+    public class PreparationStaffOrderDto : StaffAssignedOrderBaseDto
+    {
+        // Preparation-specific details
+        public List<OrderItemSummaryDto> OrderItems { get; set; } = new List<OrderItemSummaryDto>();
+        public List<HotpotSummaryDto> HotpotItems { get; set; } = new List<HotpotSummaryDto>();
+        public string Notes { get; set; }
+        public bool HasSellItems { get; set; }
+        public bool HasRentItems { get; set; }
+    }
+
+    // Specialized DTO for shipping staff
+    public class ShippingStaffOrderDto : StaffAssignedOrderBaseDto
+    {
+        // Shipping-specific details
+        public string CustomerPhone { get; set; }
+        public string ShippingAddress { get; set; }
+        public DateTime? DeliveryTime { get; set; }
+        public VehicleInfoDto Vehicle { get; set; }
+        public OrderSize OrderSize { get; set; }
+        public bool IsDelivered { get; set; }
+    }
+
+    // Summary DTO for order items (ingredients, combos, etc.)
+    public class OrderItemSummaryDto
+    {
+        public int ItemId { get; set; }
+        public string ItemName { get; set; }
+        public string ItemType { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    // Summary DTO for hotpot items
+    public class HotpotSummaryDto
+    {
+        public int HotpotInventoryId { get; set; }
+        public string HotpotName { get; set; }
+        public string SeriesNumber { get; set; }
+        public int Quantity { get; set; }
+    }
 }

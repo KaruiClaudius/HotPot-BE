@@ -26,6 +26,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet]
+        [AllowAnonymous]
+        [Authorize(Roles = "Admin,Manager")]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<IngredientDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<IngredientDto>>>> GetAllIngredients(
             [FromQuery] string searchTerm = null,

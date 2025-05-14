@@ -32,111 +32,139 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             _logger = logger;
         }
 
-        public async Task<IEnumerable<StaffOrderDto>> GetAssignedOrdersAsync(int staffId)
+        public async Task<IEnumerable<StaffAssignedOrderBaseDto>> GetAssignedOrdersAsync(int staffId, StaffTaskType staffTaskType)
         {
             try
             {
-                _logger.LogInformation("Getting orders assigned to staff {StaffId}", staffId);
+                _logger.LogInformation("Getting orders assigned to staff {StaffId} with task type {TaskType}",
+                    staffId, staffTaskType);
 
-                // Get active assignments for this staff member
+                // Get active assignments for this staff member with the specified task type
                 var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
-                    .GetAll(a => a.StaffId == staffId && a.CompletedDate == null && !a.IsDelete)
-                    .Select(a => a.OrderId)
-                    .Distinct()
+                    .GetAll(a => a.StaffId == staffId &&
+                                 a.TaskType == staffTaskType &&
+                                 a.CompletedDate == null &&
+                                 !a.IsDelete)
                     .ToListAsync();
 
                 if (!activeAssignments.Any())
                 {
-                    return Enumerable.Empty<StaffOrderDto>();
+                    return Enumerable.Empty<StaffAssignedOrderBaseDto>();
                 }
 
-                // Get the orders with details
-                var orders = await _unitOfWork.Repository<Order>()
-                    .GetAll(o => activeAssignments.Contains(o.OrderId) && !o.IsDelete)
-                    .Include(o => o.User)
-                    .Include(o => o.ShippingOrder)
-                        .ThenInclude(so => so != null ? so.Vehicle : null)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.RentOrder.RentOrderDetails)
-                        .ThenInclude(rd => rd.HotpotInventory)
-                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .ToListAsync();
+                // Get the order IDs from assignments
+                var orderIds = activeAssignments.Select(a => a.OrderId).Distinct().ToList();
 
-                // Get the assignments for these orders to enrich the DTOs
-                var assignments = await _unitOfWork.Repository<StaffAssignment>()
-                    .GetAll(a => activeAssignments.Contains(a.OrderId) && !a.IsDelete)
-                    .Include(a => a.Staff)
-                    .ToListAsync();
+                // For preparation staff, only show orders with Processing status
+                IQueryable<Order> ordersQuery;
 
-                // Map to DTOs with assignment information
-                return orders.Select(o => MapToStaffOrderDto(o, assignments.Where(a => a.OrderId == o.OrderId).ToList())).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting orders assigned to staff {StaffId}", staffId);
-                throw;
-            }
-        }
-
-        public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status, int staffId)
-        {
-            try
-            {
-                _logger.LogInformation("Getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
-
-                // Get active assignments for this staff member
-                var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
-                    .GetAll(a => a.StaffId == staffId && a.CompletedDate == null && !a.IsDelete)
-                    .Select(a => a.OrderId)
-                    .Distinct()
-                    .ToListAsync();
-
-                if (!activeAssignments.Any())
+                if (staffTaskType == StaffTaskType.Preparation)
                 {
-                    return Enumerable.Empty<StaffOrderDto>();
+                    // For preparation staff
+                    var preparationOrders = await _unitOfWork.Repository<Order>()
+                        .GetAll(o => orderIds.Contains(o.OrderId) &&
+                                     o.Status == OrderStatus.Processing &&
+                                     !o.IsDelete)
+                        .Include(o => o.User)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Ingredient)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Customization)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Combo)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Utensil)
+                        .Include(o => o.RentOrder)
+                            .ThenInclude(ro => ro.RentOrderDetails)
+                                .ThenInclude(rd => rd.HotpotInventory)
+                                    .ThenInclude(hi => hi.Hotpot)
+                        .AsSplitQuery() // Use split query to avoid cartesian explosion
+                        .ToListAsync();
+
+                    return preparationOrders.Select(o => MapToPreparationStaffOrderDto(o,
+                        activeAssignments.FirstOrDefault(a => a.OrderId == o.OrderId))).ToList();
+                }
+                else if (staffTaskType == StaffTaskType.Shipping)
+                {
+                    // For shipping staff
+                    var shippingOrders = await _unitOfWork.Repository<Order>()
+                        .GetAll(o => orderIds.Contains(o.OrderId) && !o.IsDelete)
+                        .Include(o => o.User)
+                        .Include(o => o.ShippingOrder)
+                            .ThenInclude(so => so.Vehicle)
+                        .ToListAsync();
+
+                    return shippingOrders.Select(o => MapToShippingStaffOrderDto(o,
+                        activeAssignments.FirstOrDefault(a => a.OrderId == o.OrderId))).ToList();
                 }
 
-                // Get the orders with the specified status
-                var orders = await _unitOfWork.Repository<Order>()
-                    .GetAll(o => activeAssignments.Contains(o.OrderId) && o.Status == status && !o.IsDelete)
-                    .Include(o => o.User)
-                    .Include(o => o.ShippingOrder)
-                        .ThenInclude(so => so != null ? so.Vehicle : null)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Utensil)
-                    .Include(o => o.RentOrder.RentOrderDetails)
-                        .ThenInclude(rd => rd.HotpotInventory)
-                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .ToListAsync();
-
-                // Get the assignments for these orders
-                var assignments = await _unitOfWork.Repository<StaffAssignment>()
-                    .GetAll(a => activeAssignments.Contains(a.OrderId) && !a.IsDelete)
-                    .Include(a => a.Staff)
-                    .ToListAsync();
-
-                // Map to DTOs with assignment information
-                return orders.Select(o => MapToStaffOrderDto(o, assignments.Where(a => a.OrderId == o.OrderId).ToList())).ToList();
+                // Default case (shouldn't happen with the current implementation)
+                return Enumerable.Empty<StaffAssignedOrderBaseDto>();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
+                _logger.LogError(ex, "Error getting orders assigned to staff {StaffId} with task type {TaskType}",
+                    staffId, staffTaskType);
                 throw;
             }
         }
+
+        //public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status, int staffId)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
+
+        //        // Get active assignments for this staff member
+        //        var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
+        //            .GetAll(a => a.StaffId == staffId && a.CompletedDate == null && !a.IsDelete)
+        //            .Select(a => a.OrderId)
+        //            .Distinct()
+        //            .ToListAsync();
+
+        //        if (!activeAssignments.Any())
+        //        {
+        //            return Enumerable.Empty<StaffOrderDto>();
+        //        }
+
+        //        // Get the orders with the specified status
+        //        var orders = await _unitOfWork.Repository<Order>()
+        //            .GetAll(o => activeAssignments.Contains(o.OrderId) && o.Status == status && !o.IsDelete)
+        //            .Include(o => o.User)
+        //            .Include(o => o.ShippingOrder)
+        //                .ThenInclude(so => so != null ? so.Vehicle : null)
+        //            .Include(o => o.SellOrder.SellOrderDetails)
+        //                .ThenInclude(od => od.Ingredient)
+        //            .Include(o => o.SellOrder.SellOrderDetails)
+        //                .ThenInclude(od => od.Customization)
+        //            .Include(o => o.SellOrder.SellOrderDetails)
+        //                .ThenInclude(od => od.Combo)
+        //            .Include(o => o.SellOrder.SellOrderDetails)
+        //                .ThenInclude(od => od.Utensil)
+        //            .Include(o => o.RentOrder.RentOrderDetails)
+        //                .ThenInclude(rd => rd.HotpotInventory)
+        //                    .ThenInclude(hi => hi != null ? hi.Hotpot : null)
+        //            .ToListAsync();
+
+        //        // Get the assignments for these orders
+        //        var assignments = await _unitOfWork.Repository<StaffAssignment>()
+        //            .GetAll(a => activeAssignments.Contains(a.OrderId) && !a.IsDelete)
+        //            .Include(a => a.Staff)
+        //            .ToListAsync();
+
+        //        // Map to DTOs with assignment information
+        //        return orders.Select(o => MapToStaffOrderDto(o, assignments.Where(a => a.OrderId == o.OrderId).ToList())).ToList();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
+        //        throw;
+        //    }
+        //}
 
         public async Task<StaffOrderDto> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, int staffId, string? notes = null)
         {
@@ -715,6 +743,116 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 DamageFee = detail.RentOrder?.DamageFee,
                 RentalNotes = detail.RentOrder?.RentalNotes,
                 ReturnCondition = detail.RentOrder?.ReturnCondition
+            };
+        }
+
+        private PreparationStaffOrderDto MapToPreparationStaffOrderDto(Order order, StaffAssignment assignment)
+        {
+            if (order == null) return null;
+
+            var dto = new PreparationStaffOrderDto
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                Status = order.Status.ToString(),
+                CustomerName = order.User?.Name ?? "Unknown",
+                CreatedAt = order.CreatedAt,
+                AssignedAt = assignment?.AssignedDate,
+                Notes = order.Notes ?? string.Empty,
+                HasSellItems = order.HasSellItems,
+                HasRentItems = order.HasRentItems
+            };
+
+            // Add sell order items
+            if (order.SellOrder?.SellOrderDetails != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails)
+                {
+                    string itemName = "Unknown";
+                    string itemType = "Unknown";
+                    int itemId = 0;
+
+                    if (detail.Ingredient != null)
+                    {
+                        itemName = detail.Ingredient.Name;
+                        itemType = "Ingredient";
+                        itemId = detail.IngredientId ?? 0; // Handle nullable
+                    }
+                    else if (detail.Customization != null)
+                    {
+                        itemName = detail.Customization.Name;
+                        itemType = "Customization";
+                        itemId = detail.CustomizationId ?? 0; // Handle nullable
+                    }
+                    else if (detail.Combo != null)
+                    {
+                        itemName = detail.Combo.Name;
+                        itemType = "Combo";
+                        itemId = detail.ComboId ?? 0; // Handle nullable
+                    }
+                    else if (detail.Utensil != null)
+                    {
+                        itemName = detail.Utensil.Name;
+                        itemType = "Utensil";
+                        itemId = detail.UtensilId ?? 0; // Handle nullable
+                    }
+
+                    dto.OrderItems.Add(new OrderItemSummaryDto
+                    {
+                        ItemId = itemId,
+                        ItemName = itemName,
+                        ItemType = itemType,
+                        Quantity = detail.Quantity
+                    });
+                }
+            }
+
+            // Add hotpot rental items
+            if (order.RentOrder?.RentOrderDetails != null)
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails)
+                {
+                    if (detail.HotpotInventory?.Hotpot != null)
+                    {
+                        dto.HotpotItems.Add(new HotpotSummaryDto
+                        {
+                            HotpotInventoryId = detail.HotpotInventoryId.GetValueOrDefault(),
+                            HotpotName = detail.HotpotInventory.Hotpot.Name,
+                            SeriesNumber = detail.HotpotInventory.SeriesNumber ?? "Unknown",
+                            Quantity = detail.Quantity
+                        });
+                    }
+                }
+            }
+
+            return dto;
+        }
+
+        private ShippingStaffOrderDto MapToShippingStaffOrderDto(Order order, StaffAssignment assignment)
+        {
+            if (order == null) return null;
+
+            return new ShippingStaffOrderDto
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                Status = order.Status.ToString(),
+                CustomerName = order.User?.Name ?? "Unknown",
+                CreatedAt = order.CreatedAt,
+                AssignedAt = assignment?.AssignedDate,
+                CustomerPhone = order.User?.PhoneNumber ?? "Unknown",
+                ShippingAddress = order.Address ?? "Unknown",
+                DeliveryTime = order.DeliveryTime,
+                IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
+                OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
+                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                {
+                    VehicleId = order.ShippingOrder.VehicleId ?? 0,
+                    VehicleName = order.ShippingOrder.Vehicle.Name,
+                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                    VehicleType = order.ShippingOrder.Vehicle.Type,
+                    OrderSize = order.ShippingOrder.OrderSize
+                } : null
             };
         }
     }
