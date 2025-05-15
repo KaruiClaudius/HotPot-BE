@@ -42,10 +42,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         // Order allocation
         public async Task<MultiStaffAssignmentResponse> AssignMultipleStaffToOrderAsync(
-            string orderCode,
-            List<int>? preparationStaffIds,
-            int? shippingStaffId,
-            int? vehicleId = null)
+    string orderCode,
+    List<int>? preparationStaffIds,
+    int? shippingStaffId,
+    int? vehicleId = null)
         {
             try
             {
@@ -71,29 +71,99 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     List<StaffAssignmentResponse> preparationAssignmentResponses = new List<StaffAssignmentResponse>();
                     StaffAssignmentResponse shippingAssignmentResponse = null;
 
+                    // Get existing staff assignments for this order
+                    var existingAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                        .GetAll(sa => sa.OrderId == order.OrderId && !sa.IsDelete)
+                        .Include(sa => sa.Staff)
+                        .ToListAsync();
+
                     // 1. Assign preparation staff if provided
                     if (preparationStaffIds != null && preparationStaffIds.Any())
                     {
-                        // Assign each preparation staff
+                        // Get existing preparation assignments
+                        var existingPrepAssignments = existingAssignments
+                            .Where(a => a.TaskType == StaffTaskType.Preparation)
+                            .ToList();
+
+                        // Get IDs of staff already assigned to preparation
+                        var existingPrepStaffIds = existingPrepAssignments
+                            .Select(a => a.StaffId)
+                            .ToHashSet();
+
+                        // Assign each preparation staff that isn't already assigned
                         foreach (var prepStaffId in preparationStaffIds.Where(id => id > 0))
                         {
-                            var response = await AssignStaffToTaskAsync(
-                                orderCode,
-                                prepStaffId,
-                                StaffTaskType.Preparation);
+                            // Skip if staff is already assigned to preparation
+                            if (existingPrepStaffIds.Contains(prepStaffId))
+                            {
+                                _logger.LogInformation("Staff {StaffId} is already assigned to preparation for order {OrderId}, skipping",
+                                    prepStaffId, order.OrderId);
 
-                            preparationAssignmentResponses.Add(response);
+                                // Add the existing assignment to our response
+                                var existingAssignment = existingPrepAssignments
+                                    .FirstOrDefault(a => a.StaffId == prepStaffId);
+
+                                if (existingAssignment != null)
+                                {
+                                    preparationAssignmentResponses.Add(new StaffAssignmentResponse
+                                    {
+                                        AssignmentId = existingAssignment.StaffAssignmentId,
+                                        OrderId = order.OrderId,
+                                        OrderCode = order.OrderCode,
+                                        StaffId = existingAssignment.StaffId,
+                                        StaffName = existingAssignment.Staff?.Name,
+                                        Status = order.Status,
+                                        AssignedAt = existingAssignment.AssignedDate,
+                                        TaskType = StaffTaskType.Preparation
+                                    });
+                                }
+
+                                continue;
+                            }
+
+                            try
+                            {
+                                var response = await AssignStaffToTaskAsync(
+                                    orderCode,
+                                    prepStaffId,
+                                    StaffTaskType.Preparation);
+
+                                preparationAssignmentResponses.Add(response);
+                            }
+                            catch (BusinessException ex) when (ex.Message.Contains("already actively assigned"))
+                            {
+                                // Log the exception but continue with other staff
+                                _logger.LogWarning(ex, "Staff {StaffId} is already assigned to preparation for order {OrderId}",
+                                    prepStaffId, order.OrderId);
+
+                                // Add the existing assignment to our response if we can find it
+                                var existingAssignment = existingPrepAssignments
+                                    .FirstOrDefault(a => a.StaffId == prepStaffId);
+
+                                if (existingAssignment != null)
+                                {
+                                    preparationAssignmentResponses.Add(new StaffAssignmentResponse
+                                    {
+                                        AssignmentId = existingAssignment.StaffAssignmentId,
+                                        OrderId = order.OrderId,
+                                        OrderCode = order.OrderCode,
+                                        StaffId = existingAssignment.StaffId,
+                                        StaffName = existingAssignment.Staff?.Name,
+                                        Status = order.Status,
+                                        AssignedAt = existingAssignment.AssignedDate,
+                                        TaskType = StaffTaskType.Preparation
+                                    });
+                                }
+                            }
                         }
                     }
                     else
                     {
                         // Get existing preparation assignments if any
-                        var existingPrepAssignments = await _unitOfWork.Repository<StaffAssignment>()
-                            .AsQueryable()
-                            .Include(a => a.Staff)
-                            .Where(a => a.OrderId == order.OrderId && a.TaskType == StaffTaskType.Preparation && !a.IsDelete)
+                        var existingPrepAssignments = existingAssignments
+                            .Where(a => a.TaskType == StaffTaskType.Preparation)
                             .OrderByDescending(a => a.CreatedAt)
-                            .ToListAsync();
+                            .ToList();
 
                         if (existingPrepAssignments.Any())
                         {
@@ -114,18 +184,105 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         }
                     }
 
-                    // 2. Assign shipping staff if provided (unchanged)
+                    // 2. Assign shipping staff if provided
                     if (shippingStaffId.HasValue && shippingStaffId.Value > 0)
                     {
-                        // Create a request object for the shipping assignment
-                        var shippingRequest = new StaffAssignmentRequest
+                        // Check if shipping staff is already assigned
+                        var existingShippingAssignment = existingAssignments
+                            .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == shippingStaffId.Value);
+
+                        if (existingShippingAssignment != null)
                         {
-                            OrderCode = orderCode,
-                            StaffId = shippingStaffId.Value,
-                            TaskType = StaffTaskType.Shipping,
-                            VehicleId = vehicleId
-                        };
-                        shippingAssignmentResponse = await AssignShippingStaffAsync(shippingRequest);
+                            _logger.LogInformation("Staff {StaffId} is already assigned to shipping for order {OrderId}, skipping",
+                                shippingStaffId.Value, order.OrderId);
+
+                            // Use existing shipping assignment
+                            var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                                .AsQueryable()
+                                .Include(so => so.Staff)
+                                .Include(so => so.Vehicle)
+                                .Where(so => so.OrderId == order.OrderId && !so.IsDelete)
+                                .OrderByDescending(so => so.CreatedAt)
+                                .FirstOrDefaultAsync();
+
+                            if (existingShippingOrder != null)
+                            {
+                                shippingAssignmentResponse = new StaffAssignmentResponse
+                                {
+                                    AssignmentId = existingShippingAssignment.StaffAssignmentId,
+                                    OrderId = order.OrderId,
+                                    OrderCode = order.OrderCode,
+                                    StaffId = existingShippingAssignment.StaffId,
+                                    StaffName = existingShippingAssignment.Staff?.Name,
+                                    Status = order.Status,
+                                    AssignedAt = existingShippingAssignment.AssignedDate,
+                                    TaskType = StaffTaskType.Shipping,
+                                    ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                    IsDelivered = existingShippingOrder.IsDelivered,
+                                    VehicleId = existingShippingOrder.VehicleId,
+                                    VehicleName = existingShippingOrder.Vehicle?.Name,
+                                    VehicleType = existingShippingOrder.Vehicle?.Type,
+                                    OrderSize = existingShippingOrder.OrderSize
+                                };
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                // Create a request object for the shipping assignment
+                                var shippingRequest = new StaffAssignmentRequest
+                                {
+                                    OrderCode = orderCode,
+                                    StaffId = shippingStaffId.Value,
+                                    TaskType = StaffTaskType.Shipping,
+                                    VehicleId = vehicleId
+                                };
+                                shippingAssignmentResponse = await AssignShippingStaffAsync(shippingRequest);
+                            }
+                            catch (BusinessException ex) when (ex.Message.Contains("already actively assigned"))
+                            {
+                                // Log the exception but continue
+                                _logger.LogWarning(ex, "Staff {StaffId} is already assigned to shipping for order {OrderId}",
+                                    shippingStaffId.Value, order.OrderId);
+
+                                // Try to get the existing shipping assignment
+                                var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                                    .AsQueryable()
+                                    .Include(so => so.Staff)
+                                    .Include(so => so.Vehicle)
+                                    .Where(so => so.OrderId == order.OrderId && !so.IsDelete)
+                                    .OrderByDescending(so => so.CreatedAt)
+                                    .FirstOrDefaultAsync();
+
+                                if (existingShippingOrder != null)
+                                {
+                                    var existingShippingAssign = existingAssignments
+                                        .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == shippingStaffId.Value);
+
+                                    if (existingShippingAssign != null)
+                                    {
+                                        shippingAssignmentResponse = new StaffAssignmentResponse
+                                        {
+                                            AssignmentId = existingShippingAssign.StaffAssignmentId,
+                                            OrderId = order.OrderId,
+                                            OrderCode = order.OrderCode,
+                                            StaffId = existingShippingAssign.StaffId,
+                                            StaffName = existingShippingAssign.Staff?.Name,
+                                            Status = order.Status,
+                                            AssignedAt = existingShippingAssign.AssignedDate,
+                                            TaskType = StaffTaskType.Shipping,
+                                            ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                            IsDelivered = existingShippingOrder.IsDelivered,
+                                            VehicleId = existingShippingOrder.VehicleId,
+                                            VehicleName = existingShippingOrder.Vehicle?.Name,
+                                            VehicleType = existingShippingOrder.Vehicle?.Type,
+                                            OrderSize = existingShippingOrder.OrderSize
+                                        };
+                                    }
+                                }
+                            }
+                        }
                     }
                     else
                     {
@@ -140,23 +297,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                         if (existingShippingOrder != null)
                         {
-                            shippingAssignmentResponse = new StaffAssignmentResponse
+                            var existingShippingAssignment = existingAssignments
+                                .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == existingShippingOrder.StaffId);
+
+                            if (existingShippingAssignment != null)
                             {
-                                AssignmentId = 0,
-                                OrderId = order.OrderId,
-                                OrderCode = order.OrderCode,
-                                StaffId = existingShippingOrder.StaffId,
-                                StaffName = existingShippingOrder.Staff?.Name,
-                                Status = order.Status,
-                                AssignedAt = existingShippingOrder.CreatedAt,
-                                TaskType = StaffTaskType.Shipping,
-                                ShippingOrderId = existingShippingOrder.ShippingOrderId,
-                                IsDelivered = existingShippingOrder.IsDelivered,
-                                VehicleId = existingShippingOrder.VehicleId,
-                                VehicleName = existingShippingOrder.Vehicle?.Name,
-                                VehicleType = existingShippingOrder.Vehicle?.Type,
-                                OrderSize = existingShippingOrder.OrderSize
-                            };
+                                shippingAssignmentResponse = new StaffAssignmentResponse
+                                {
+                                    AssignmentId = existingShippingAssignment.StaffAssignmentId,
+                                    OrderId = order.OrderId,
+                                    OrderCode = order.OrderCode,
+                                    StaffId = existingShippingOrder.StaffId,
+                                    StaffName = existingShippingOrder.Staff?.Name,
+                                    Status = order.Status,
+                                    AssignedAt = existingShippingAssignment.AssignedDate,
+                                    TaskType = StaffTaskType.Shipping,
+                                    ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                    IsDelivered = existingShippingOrder.IsDelivered,
+                                    VehicleId = existingShippingOrder.VehicleId,
+                                    VehicleName = existingShippingOrder.Vehicle?.Name,
+                                    VehicleType = existingShippingOrder.Vehicle?.Type,
+                                    OrderSize = existingShippingOrder.OrderSize
+                                };
+                            }
                         }
                     }
 
@@ -251,19 +414,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 _logger.LogInformation("Getting order details for order {OrderId}", orderId);
 
                 var order = await _unitOfWork.Repository<Order>()
-             .AsQueryable()
-             .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
-             .Include(o => o.User)
-             .Include(o => o.ShippingOrder)
-                 .ThenInclude(so => so.Staff)
-             .Include(o => o.ShippingOrder)
-                 .ThenInclude(so => so.Vehicle)
-             .Include(o => o.SellOrder)
-                 .ThenInclude(so => so.SellOrderDetails)
-             .Include(o => o.RentOrder)
-                 .ThenInclude(ro => ro.RentOrderDetails)
-             .AsSplitQuery()
-             .FirstOrDefaultAsync();
+                    .AsQueryable()
+                    .Where(o => o.OrderCode.Equals(orderId) && !o.IsDelete)
+                    .Include(o => o.User)
+                    .Include(o => o.ShippingOrder)
+                        .ThenInclude(so => so.Staff)
+                    .Include(o => o.ShippingOrder)
+                        .ThenInclude(so => so.Vehicle)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                    .Include(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails)
+                    .AsSplitQuery()
+                    .FirstOrDefaultAsync();
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
@@ -275,12 +438,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .OrderByDescending(sa => sa.AssignedDate)
                     .ToListAsync();
 
-                // Find the most recent preparation and shipping assignments
-                var preparationAssignment = staffAssignments
+                // Get all preparation assignments
+                var preparationAssignments = staffAssignments
                     .Where(sa => sa.TaskType == StaffTaskType.Preparation)
                     .OrderByDescending(sa => sa.AssignedDate)
-                    .FirstOrDefault();
+                    .ToList();
 
+                // Get the most recent shipping assignment
                 var shippingAssignment = staffAssignments
                     .Where(sa => sa.TaskType == StaffTaskType.Shipping)
                     .OrderByDescending(sa => sa.AssignedDate)
@@ -309,9 +473,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         .LoadAsync();
                 }
 
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-
                 // Map to DTO
                 var orderDetailDTO = new OrderDetailDTO
                 {
@@ -331,17 +492,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     UserName = order.User?.Name ?? string.Empty,
                     UserPhone = order.User.PhoneNumber ?? string.Empty,
 
-                    // Staff assignments
-                    PreparationAssignment = preparationAssignment != null ? new StaffAssignmentDTO
+                    // Multiple preparation staff assignments
+                    PreparationAssignments = preparationAssignments.Select(pa => new StaffAssignmentDTO
                     {
-                        AssignmentId = preparationAssignment.StaffAssignmentId,
-                        StaffId = preparationAssignment.StaffId,
-                        StaffName = preparationAssignment.Staff?.Name ?? string.Empty,
-                        TaskType = preparationAssignment.TaskType,
-                        AssignedDate = preparationAssignment.AssignedDate,
-                        CompletedDate = preparationAssignment.CompletedDate
-                    } : null,
+                        AssignmentId = pa.StaffAssignmentId,
+                        StaffId = pa.StaffId,
+                        StaffName = pa.Staff?.Name ?? string.Empty,
+                        TaskType = pa.TaskType,
+                        AssignedDate = pa.AssignedDate,
+                        CompletedDate = pa.CompletedDate
+                    }).ToList(),
 
+                    // Shipping assignment
                     ShippingAssignment = shippingAssignment != null ? new StaffAssignmentDTO
                     {
                         AssignmentId = shippingAssignment.StaffAssignmentId,
@@ -426,7 +588,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     {
                         RentalStartDate = order.RentOrder.RentalStartDate,
                         ExpectedReturnDate = order.RentOrder.ExpectedReturnDate,
-
                     };
 
                     foreach (var detail in order.RentOrder.RentOrderDetails)
@@ -586,23 +747,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Get all order IDs in the current page
                 var orderIds = pagedResult.Items.Select(o => o.OrderId).ToList();
 
-
+                // Get all staff assignments for these orders
                 var staffAssignments = await _unitOfWork.Repository<StaffAssignment>()
-               .GetAll(sa => orderIds.Contains(sa.OrderId) && !sa.IsDelete)
-               .Include(sa => sa.Staff)
-               .ToListAsync();
+                    .GetAll(sa => orderIds.Contains(sa.OrderId) && !sa.IsDelete)
+                    .Include(sa => sa.Staff)
+                    .ToListAsync();
 
-                // Group assignments by order ID and task type
-                var assignmentsByOrder = staffAssignments
-                    .GroupBy(sa => sa.OrderId)
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.GroupBy(sa => sa.TaskType)
-                            .ToDictionary(
-                                tg => tg.Key,
-                                tg => tg.OrderByDescending(sa => sa.AssignedDate).FirstOrDefault()
-                            )
-                    );
+                // Group assignments by order ID and task type, but keep all preparation assignments
+                var assignmentsByOrder = new Dictionary<int, Dictionary<StaffTaskType, List<StaffAssignment>>>();
+
+                foreach (var assignment in staffAssignments)
+                {
+                    if (!assignmentsByOrder.ContainsKey(assignment.OrderId))
+                    {
+                        assignmentsByOrder[assignment.OrderId] = new Dictionary<StaffTaskType, List<StaffAssignment>>();
+                    }
+
+                    if (!assignmentsByOrder[assignment.OrderId].ContainsKey(assignment.TaskType))
+                    {
+                        assignmentsByOrder[assignment.OrderId][assignment.TaskType] = new List<StaffAssignment>();
+                    }
+
+                    assignmentsByOrder[assignment.OrderId][assignment.TaskType].Add(assignment);
+                }
 
                 // Map to DTOs
                 var dtoPagedResult = new PagedResult<OrderWithDetailsDTO>
@@ -610,13 +777,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Items = pagedResult.Items.Select(o =>
                     {
                         // Get assignments for this order
-                        var orderAssignments = assignmentsByOrder.GetValueOrDefault(o.OrderId, new Dictionary<StaffTaskType, StaffAssignment>());
+                        var orderAssignments = assignmentsByOrder.GetValueOrDefault(o.OrderId,
+                            new Dictionary<StaffTaskType, List<StaffAssignment>>());
 
-                        // Get the most recent preparation and shipping assignments
-                        var preparationAssignment = orderAssignments.GetValueOrDefault(StaffTaskType.Preparation);
-                        var shippingAssignment = orderAssignments.GetValueOrDefault(StaffTaskType.Shipping);
+                        // Get all preparation assignments
+                        var preparationAssignments = orderAssignments.GetValueOrDefault(StaffTaskType.Preparation,
+                            new List<StaffAssignment>());
 
-                        return new OrderWithDetailsDTO
+                        // Get the most recent shipping assignment
+                        var shippingAssignments = orderAssignments.GetValueOrDefault(StaffTaskType.Shipping,
+                            new List<StaffAssignment>());
+                        var shippingAssignment = shippingAssignments.OrderByDescending(sa => sa.AssignedDate).FirstOrDefault();
+
+                        // Create the DTO
+                        var dto = new OrderWithDetailsDTO
                         {
                             OrderId = o.OrderCode,
                             Address = o.Address,
@@ -631,48 +805,62 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                             UserName = o.User?.Name ?? string.Empty,
 
                             // Staff assignment status
-                            IsPreparationStaffAssigned = preparationAssignment != null,
+                            IsPreparationStaffAssigned = preparationAssignments.Any(),
                             IsShippingStaffAssigned = shippingAssignment != null,
 
-                            // Staff assignments
-                            PreparationAssignment = preparationAssignment != null ? new StaffAssignmentSummaryDTO
-                            {
-                                StaffId = preparationAssignment.StaffId,
-                                StaffName = preparationAssignment.Staff?.Name ?? string.Empty,
-                                AssignedDate = preparationAssignment.AssignedDate
-                            } : null,
+                            // Multiple preparation assignments
+                            PreparationAssignments = preparationAssignments
+                                .OrderByDescending(pa => pa.AssignedDate)
+                                .Select(pa => new StaffAssignmentSummaryDTO
+                                {
+                                    StaffId = pa.StaffId,
+                                    StaffName = pa.Staff?.Name ?? string.Empty,
+                                    AssignedDate = pa.AssignedDate
+                                })
+                                .ToList(),
 
-                            ShippingAssignment = shippingAssignment != null ? new StaffAssignmentSummaryDTO
-                            {
-                                StaffId = shippingAssignment.StaffId,
-                                StaffName = shippingAssignment.Staff?.Name ?? string.Empty,
-                                AssignedDate = shippingAssignment.AssignedDate
-                            } : null,
+                            // Shipping assignment
+                            ShippingAssignment = shippingAssignment != null
+                                ? new StaffAssignmentSummaryDTO
+                                {
+                                    StaffId = shippingAssignment.StaffId,
+                                    StaffName = shippingAssignment.Staff?.Name ?? string.Empty,
+                                    AssignedDate = shippingAssignment.AssignedDate
+                                }
+                                : null,
 
                             // Shipping information
-                            ShippingInfo = o.ShippingOrder != null ? new ShippingInfoDTO
-                            {
-                                ShippingOrderId = o.ShippingOrder.ShippingOrderId,
-                                DeliveryTime = o.DeliveryTime,
-                                IsDelivered = o.ShippingOrder.IsDelivered,
-                                DeliveryNotes = o.ShippingOrder.DeliveryNotes ?? string.Empty,
-                                Staff = o.ShippingOrder.Staff != null ? new StaffDTO
+                            ShippingInfo = o.ShippingOrder != null
+                                ? new ShippingInfoDTO
                                 {
-                                    StaffId = o.ShippingOrder.Staff.UserId,
-                                    Name = o.ShippingOrder.Staff.Name
-                                } : null
-                            } : null,
+                                    ShippingOrderId = o.ShippingOrder.ShippingOrderId,
+                                    DeliveryTime = o.DeliveryTime,
+                                    IsDelivered = o.ShippingOrder.IsDelivered,
+                                    DeliveryNotes = o.ShippingOrder.DeliveryNotes ?? string.Empty,
+                                    Staff = o.ShippingOrder.Staff != null
+                                        ? new StaffDTO
+                                        {
+                                            StaffId = o.ShippingOrder.Staff.UserId,
+                                            Name = o.ShippingOrder.Staff.Name
+                                        }
+                                        : null
+                                }
+                                : null,
 
                             // Vehicle information
-                            VehicleInfo = o.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
-                            {
-                                VehicleId = o.ShippingOrder.Vehicle.VehicleId,
-                                VehicleName = o.ShippingOrder.Vehicle.Name,
-                                LicensePlate = o.ShippingOrder.Vehicle.LicensePlate,
-                                VehicleType = o.ShippingOrder.Vehicle.Type,
-                                OrderSize = o.ShippingOrder.OrderSize
-                            } : null
+                            VehicleInfo = o.ShippingOrder?.Vehicle != null
+                                ? new VehicleInfoDto
+                                {
+                                    VehicleId = o.ShippingOrder.Vehicle.VehicleId,
+                                    VehicleName = o.ShippingOrder.Vehicle.Name,
+                                    LicensePlate = o.ShippingOrder.Vehicle.LicensePlate,
+                                    VehicleType = o.ShippingOrder.Vehicle.Type,
+                                    OrderSize = o.ShippingOrder.OrderSize
+                                }
+                                : null
                         };
+
+                        return dto;
                     }).ToList(),
                     PageNumber = pagedResult.PageNumber,
                     PageSize = pagedResult.PageSize,

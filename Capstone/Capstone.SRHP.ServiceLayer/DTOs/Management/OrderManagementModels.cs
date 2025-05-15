@@ -62,7 +62,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public bool IsShippingStaffAssigned { get; set; }
 
         // Staff assignments (simplified for list view)
-        public StaffAssignmentSummaryDTO PreparationAssignment { get; set; }
+        public List<StaffAssignmentSummaryDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
         public StaffAssignmentSummaryDTO ShippingAssignment { get; set; }
 
         // Shipping information
@@ -186,7 +186,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string UserPhone { get; set; }
 
         // Staff assignments
-        public StaffAssignmentDTO PreparationAssignment { get; set; }
+        public List<StaffAssignmentDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentDTO>();
         public StaffAssignmentDTO ShippingAssignment { get; set; }
 
         // Shipping information
