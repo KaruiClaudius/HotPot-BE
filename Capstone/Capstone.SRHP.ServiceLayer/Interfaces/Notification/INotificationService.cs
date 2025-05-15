@@ -24,7 +24,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
         Task MarkAllAsReadAsync(int userId);
         Task MarkAsDeliveredAsync(int notificationId, int userId);
 
-        // Template-based notifications
-        Task<int> CreateFromTemplateAsync(string templateCode, Dictionary<string, string> placeholders, string targetType, string targetId, Dictionary<string, object> data = null);
     }
 }

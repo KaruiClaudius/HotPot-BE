@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.ServiceLayer.DTOs.Notification;
+﻿using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -19,10 +20,10 @@ namespace Capstone.HPTY.API.Controllers.Notification
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<NotificationDto>>> GetNotifications(
-            [FromQuery] bool includeRead = false,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+        [ProducesResponseType(typeof(PaginatedNotificationsResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<PaginatedNotificationsResponse>> GetNotifications(
+           [FromQuery] GetNotificationsRequest request)
         {
             // Get user ID from claims
             if (!int.TryParse(User.FindFirst("id")?.Value, out int userId))
@@ -30,89 +31,128 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Unauthorized("User ID not found in token");
             }
 
-            var notifications = await _notificationService.GetUserNotificationsAsync(userId, includeRead, page, pageSize);
-            return Ok(notifications);
+            var notifications = await _notificationService.GetUserNotificationsAsync(
+                userId,
+                request.IncludeRead,
+                request.Page,
+                request.PageSize);
+
+
+            var response = new PaginatedNotificationsResponse
+            {
+                Notifications = notifications,
+                CurrentPage = request.Page,
+                PageSize = request.PageSize,
+                HasPreviousPage = request.Page > 1,
+            };
+
+            return Ok(response);
         }
 
         [HttpGet("count")]
-        public async Task<ActionResult<int>> GetUnreadCount()
+        public async Task<ActionResult<ApiResponse<NotificationCountResponse>>> GetUnreadCount()
         {
             // Get user ID from claims
             if (!int.TryParse(User.FindFirst("id")?.Value, out int userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(new ApiResponse<NotificationCountResponse>
+                {
+                    Success = false,
+                    Message = "User ID not found in token"
+                });
             }
 
-            int count = await _notificationService.GetUnreadNotificationCountAsync(userId);
-            return Ok(count);
+            try
+            {
+                int count = await _notificationService.GetUnreadNotificationCountAsync(userId);
+
+                return Ok(new ApiResponse<NotificationCountResponse>
+                {
+                    Success = true,
+                    Data = new NotificationCountResponse
+                    {
+                        UnreadCount = count,
+                        // If you don't have a method to get total count, you can omit this
+                        TotalCount = count // This should be replaced with actual total count if available
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<NotificationCountResponse>
+                {
+                    Success = false,
+                    Message = $"Error retrieving notification count: {ex.Message}"
+                });
+            }
         }
 
         [HttpPut("{id}/read")]
-        public async Task<ActionResult> MarkAsRead(int id)
+        public async Task<ActionResult<ApiResponse<object>>> MarkAsRead(int id)
         {
             // Get user ID from claims
             if (!int.TryParse(User.FindFirst("id")?.Value, out int userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "User ID not found in token"
+                });
             }
 
-            await _notificationService.MarkAsReadAsync(id, userId);
-            return NoContent();
+            try
+            {
+                await _notificationService.MarkAsReadAsync(id, userId);
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Notification marked as read"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Error marking notification as read: {ex.Message}"
+                });
+            }
         }
 
         [HttpPut("read-all")]
-        public async Task<ActionResult> MarkAllAsRead()
+        public async Task<ActionResult<ApiResponse<object>>> MarkAllAsRead()
         {
             // Get user ID from claims
             if (!int.TryParse(User.FindFirst("id")?.Value, out int userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "User ID not found in token"
+                });
             }
 
-            await _notificationService.MarkAllAsReadAsync(userId);
-            return NoContent();
+            try
+            {
+                await _notificationService.MarkAllAsReadAsync(userId);
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "All notifications marked as read"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Error marking all notifications as read: {ex.Message}"
+                });
+            }
         }
 
-        [HttpPost("send-user")]
-        [Authorize(Roles = "Admin,Manager")]
-        public async Task<ActionResult> SendUserNotification([FromBody] SendNotificationRequest request)
-        {
-            await _notificationService.NotifyUserAsync(
-                request.TargetId,
-                request.Type,
-                request.Title,
-                request.Message,
-                request.Data);
-
-            return Ok();
-        }
-
-        [HttpPost("send-role")]
-        [Authorize(Roles = "Admin,Manager")]
-        public async Task<ActionResult> SendRoleNotification([FromBody] SendRoleNotificationRequest request)
-        {
-            await _notificationService.NotifyRoleAsync(
-                request.Role,
-                request.Type,
-                request.Title,
-                request.Message,
-                request.Data);
-
-            return Ok();
-        }
-
-        [HttpPost("send-all")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> SendAllNotification([FromBody] SendNotificationRequest request)
-        {
-            await _notificationService.NotifyAllAsync(
-                request.Type,
-                request.Title,
-                request.Message,
-                request.Data);
-
-            return Ok();
-        }
     }
 }
 

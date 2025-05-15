@@ -327,44 +327,5 @@ namespace Capstone.HPTY.ServiceLayer.Services.Notification
             }
         }
 
-        public async Task<int> CreateFromTemplateAsync(string templateCode, Dictionary<string, string> placeholders, string targetType, string targetId, Dictionary<string, object> data = null)
-        {
-            try
-            {
-                var template = await _unitOfWork.Repository<NotificationTemplate>()
-                    .FindAsync(t => t.Code == templateCode && !t.IsDelete);
-
-                if (template == null)
-                {
-                    throw new Exception($"Template with code {templateCode} not found");
-                }
-
-                string title = template.Title;
-                string message = template.MessageTemplate;
-
-                // Replace placeholders in title and message
-                if (placeholders != null)
-                {
-                    foreach (var placeholder in placeholders)
-                    {
-                        title = title.Replace($"{{{placeholder.Key}}}", placeholder.Value);
-                        message = message.Replace($"{{{placeholder.Key}}}", placeholder.Value);
-                    }
-                }
-                // Create notification using the processed template
-                return await CreateNotificationAsync(
-                    template.Type,
-                    title,
-                    message,
-                    targetType,
-                    targetId,
-                    data);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error creating notification from template {templateCode}");
-                throw;
-            }
-        }
     }
 }

@@ -17,43 +17,51 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Notification
         public DateTime? DeliveredAt { get; set; }
     }
 
-    public class UserNotificationDto
+    public class GetNotificationsRequest
     {
-        public int Id { get; set; }
-        public int NotificationId { get; set; }
-        public NotificationDto Notification { get; set; }
-        public bool IsRead { get; set; }
-        public DateTime? ReadAt { get; set; }
-        public bool IsDelivered { get; set; }
-        public DateTime? DeliveredAt { get; set; }
+        public bool IncludeRead { get; set; } = false;
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
     }
 
-    public class NotificationTemplateDto
+    public class PaginatedNotificationsResponse
     {
-        public int Id { get; set; }
-        public string Code { get; set; }
-        public string Title { get; set; }
-        public string MessageTemplate { get; set; }
-        public string Type { get; set; }
-        public string Description { get; set; }
+        /// <summary>
+        /// List of notifications for the current page
+        /// </summary>
+        public List<NotificationDto> Notifications { get; set; }
+
+        /// <summary>
+        /// Current page number
+        /// </summary>
+        public int CurrentPage { get; set; }
+
+        /// <summary>
+        /// Number of items per page
+        /// </summary>
+        public int PageSize { get; set; }
+
+
+
+        /// <summary>
+        /// Whether there is a previous page
+        /// </summary>
+        public bool HasPreviousPage { get; set; }
+
     }
 
-    public class SendNotificationRequest
+    public class NotificationCountResponse
     {
-        public int TargetId { get; set; }
-        public string Type { get; set; }
-        public string Title { get; set; }
-        public string Message { get; set; }
-        public Dictionary<string, object> Data { get; set; }
+        /// <summary>
+        /// Number of unread notifications
+        /// </summary>
+        public int UnreadCount { get; set; }
+
+        /// <summary>
+        /// Total number of notifications
+        /// </summary>
+        public int TotalCount { get; set; }
     }
 
-    public class SendRoleNotificationRequest
-    {
-        public string Role { get; set; }
-        public string Type { get; set; }
-        public string Title { get; set; }
-        public string Message { get; set; }
-        public Dictionary<string, object> Data { get; set; }
-    }
 
 }
