@@ -24,7 +24,6 @@ using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
-using Capstone.HPTY.ServiceLayer.Services.Notification;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;

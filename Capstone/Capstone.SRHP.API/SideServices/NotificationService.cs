@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.API.SideServices;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
@@ -11,7 +10,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.Notification
+namespace Capstone.HPTY.API.SideServices
 {
     public class NotificationService : INotificationService
     {
@@ -36,7 +35,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Notification
         {
             try
             {
-                var notification = new ModelLayer.Entities.Notification
+                var notification = new Notification
                 {
                     Type = type,
                     Title = title,
@@ -46,7 +45,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Notification
                     DataJson = data != null ? JsonSerializer.Serialize(data) : null
                 };
 
-                await _unitOfWork.Repository<ModelLayer.Entities.Notification>().InsertAsync(notification);
+                await _unitOfWork.Repository<Notification>().InsertAsync(notification);
                 await _unitOfWork.CommitAsync();
 
                 return notification.NotificationId;

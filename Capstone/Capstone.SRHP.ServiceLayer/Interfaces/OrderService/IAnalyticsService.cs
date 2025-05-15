@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Capstone.HPTY.RepositoryLayer.Migrations;
 using Capstone.HPTY.ServiceLayer.DTOs.Dashboard;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
@@ -16,6 +17,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
             string productType = null,
             bool? hasHotpot = null,
             string paymentStatus = null,
-            int topProductsLimit = 5);
+            int topProductsLimit = 5,
+            int? year = null);
     }
 }
