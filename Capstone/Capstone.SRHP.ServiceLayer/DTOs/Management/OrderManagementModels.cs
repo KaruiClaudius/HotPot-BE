@@ -261,7 +261,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         [Required]
         public string OrderCode { get; set; }
 
-        public int? PreparationStaffId { get; set; }
+        public List<int>? PreparationStaffIds { get; set; }
 
         public int? ShippingStaffId { get; set; }
 
@@ -274,10 +274,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public OrderStatus Status { get; set; }
 
         // Preparation details
-        public int? PreparationStaffId { get; set; }
-        public string PreparationStaffName { get; set; }
-        public int? PreparationAssignmentId { get; set; }
-        public DateTime? PreparationAssignedAt { get; set; }
+        // Replace single preparation staff properties with a collection
+        public List<StaffAssignmentSummaryDTO> PreparationStaffAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
 
         // Shipping details
         public int? ShippingStaffId { get; set; }

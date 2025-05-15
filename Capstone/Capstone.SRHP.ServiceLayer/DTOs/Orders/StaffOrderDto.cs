@@ -98,6 +98,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     public class ShippingStaffOrderDto : StaffAssignedOrderBaseDto
     {
         // Shipping-specific details
+        public List<OrderItemSummaryDto> OrderItems { get; set; } = new List<OrderItemSummaryDto>();
+        public List<HotpotSummaryDto> HotpotItems { get; set; } = new List<HotpotSummaryDto>();
         public string CustomerPhone { get; set; }
         public string ShippingAddress { get; set; }
         public DateTime? DeliveryTime { get; set; }

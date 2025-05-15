@@ -34,5 +34,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string? StaffName { get; set; }
         public int? PageNumber { get; set; } = 1;
         public int? PageSize { get; set; } = 10;
+        // filter order code as well
     }
 }
