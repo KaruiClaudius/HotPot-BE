@@ -152,7 +152,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     return Unauthorized(new { message = "User ID not found in token" });
                 }
 
-                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, staffId, request.Notes);
+                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, staffId);
 
                 return Ok(new ApiResponse<StaffOrderDto>
                 {

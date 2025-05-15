@@ -113,60 +113,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-        //public async Task<IEnumerable<StaffOrderDto>> GetOrdersByStatusAsync(OrderStatus status, int staffId)
-        //{
-        //    try
-        //    {
-        //        _logger.LogInformation("Getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
-
-        //        // Get active assignments for this staff member
-        //        var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
-        //            .GetAll(a => a.StaffId == staffId && a.CompletedDate == null && !a.IsDelete)
-        //            .Select(a => a.OrderId)
-        //            .Distinct()
-        //            .ToListAsync();
-
-        //        if (!activeAssignments.Any())
-        //        {
-        //            return Enumerable.Empty<StaffOrderDto>();
-        //        }
-
-        //        // Get the orders with the specified status
-        //        var orders = await _unitOfWork.Repository<Order>()
-        //            .GetAll(o => activeAssignments.Contains(o.OrderId) && o.Status == status && !o.IsDelete)
-        //            .Include(o => o.User)
-        //            .Include(o => o.ShippingOrder)
-        //                .ThenInclude(so => so != null ? so.Vehicle : null)
-        //            .Include(o => o.SellOrder.SellOrderDetails)
-        //                .ThenInclude(od => od.Ingredient)
-        //            .Include(o => o.SellOrder.SellOrderDetails)
-        //                .ThenInclude(od => od.Customization)
-        //            .Include(o => o.SellOrder.SellOrderDetails)
-        //                .ThenInclude(od => od.Combo)
-        //            .Include(o => o.SellOrder.SellOrderDetails)
-        //                .ThenInclude(od => od.Utensil)
-        //            .Include(o => o.RentOrder.RentOrderDetails)
-        //                .ThenInclude(rd => rd.HotpotInventory)
-        //                    .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-        //            .ToListAsync();
-
-        //        // Get the assignments for these orders
-        //        var assignments = await _unitOfWork.Repository<StaffAssignment>()
-        //            .GetAll(a => activeAssignments.Contains(a.OrderId) && !a.IsDelete)
-        //            .Include(a => a.Staff)
-        //            .ToListAsync();
-
-        //        // Map to DTOs with assignment information
-        //        return orders.Select(o => MapToStaffOrderDto(o, assignments.Where(a => a.OrderId == o.OrderId).ToList())).ToList();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error getting orders with status {Status} assigned to staff {StaffId}", status, staffId);
-        //        throw;
-        //    }
-        //}
-
-        public async Task<StaffOrderDto> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, int staffId, string? notes = null)
+        public async Task<StaffOrderDto> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, int staffId)
         {
             try
             {
@@ -207,25 +154,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         {
                             preparationAssignment.CompletedDate = DateTime.UtcNow;
                             preparationAssignment.SetUpdateDate();
-
-                            // Add preparation completion note to order if provided
-                            if (!string.IsNullOrWhiteSpace(notes))
-                            {
-                                order.Notes = string.IsNullOrWhiteSpace(order.Notes)
-                                    ? $"Preparation completed: {notes}"
-                                    : $"{order.Notes}\n\nPreparation completed ({DateTime.UtcNow:g}): {notes}";
-                            }
-
-                            // Notify shipping staff if assigned
-                            var shippingAssignment = await _unitOfWork.Repository<StaffAssignment>()
-                                .FindAsync(a => a.OrderId == orderId && a.TaskType == StaffTaskType.Shipping && a.CompletedDate == null && !a.IsDelete);
-
-                            if (shippingAssignment != null)
-                            {
-                                _logger.LogInformation("Order {OrderId} is ready for shipping. Notifying staff {StaffId}",
-                                    orderId, shippingAssignment.StaffId);
-                                // In a real system, send notification to shipping staff
-                            }
                         }
                         break;
 
@@ -234,15 +162,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         var shippingStartAssignment = staffAssignments.FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping);
                         if (shippingStartAssignment != null)
                         {
-                            // Add shipping started note if provided
-                            if (!string.IsNullOrWhiteSpace(notes))
-                            {
-                                shippingStartAssignment.SetUpdateDate();
-
-                                order.Notes = string.IsNullOrWhiteSpace(order.Notes)
-                                    ? $"Shipping started: {notes}"
-                                    : $"{order.Notes}\n\nShipping started ({DateTime.UtcNow:g}): {notes}";
-                            }
+                            shippingStartAssignment.SetUpdateDate();
                         }
                         break;
 
@@ -265,14 +185,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                     order.ShippingOrder.Vehicle.Status = VehicleStatus.Available;
                                     order.ShippingOrder.Vehicle.SetUpdateDate();
                                 }
-                            }
-
-                            // Add delivery completion note if provided
-                            if (!string.IsNullOrWhiteSpace(notes))
-                            {
-                                order.Notes = string.IsNullOrWhiteSpace(order.Notes)
-                                    ? $"Delivery completed: {notes}"
-                                    : $"{order.Notes}\n\nDelivery completed ({DateTime.UtcNow:g}): {notes}";
                             }
                         }
                         break;
@@ -456,60 +368,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-        // New method to efficiently update order properties using EF Core's SetValues
-        public async Task<StaffOrderDto> UpdateOrderPropertiesAsync(int orderId, Order orderUpdate)
-        {
-            try
-            {
-                _logger.LogInformation("Updating properties for order {OrderId}", orderId);
-
-                var order = await _unitOfWork.Repository<Order>()
-                    .FindAsync(o => o.OrderId == orderId && !o.IsDelete);
-
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-
-                // Using the approach from source [0] to update entity properties
-                // This is a cleaner way to update multiple properties
-                _unitOfWork.Context.Entry(order).CurrentValues.SetValues(orderUpdate);
-
-                // Mark the entity as updated
-                order.SetUpdateDate();
-
-                await _unitOfWork.CommitAsync();
-
-                return await GetOrderWithDetailsAsync(orderId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating properties for order {OrderId}", orderId);
-                throw;
-            }
-        }
-
-        // New method to efficiently update multiple orders using ExecuteUpdate (EF Core 7+)
-        public async Task<int> UpdateOrdersStatusAsync(OrderStatus currentStatus, OrderStatus newStatus)
-        {
-            try
-            {
-                _logger.LogInformation("Bulk updating orders from status {CurrentStatus} to {NewStatus}", currentStatus, newStatus);
-
-                // Using the approach from source [1] and [2] for bulk updates
-                // This is much more efficient than loading all entities and updating them one by one
-                return await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Where(o => o.Status == currentStatus && !o.IsDelete)
-                    .ExecuteUpdateAsync(o =>
-                        o.SetProperty(x => x.Status, newStatus)
-                         .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error bulk updating orders from status {CurrentStatus} to {NewStatus}", currentStatus, newStatus);
-                throw;
-            }
-        }
-
         public async Task<VehicleInfoDto> GetVehicleInfoAsync(int orderId)
         {
             try
@@ -624,57 +482,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 DeliveryTime = order.DeliveryTime,
 
                 // Preparation staff information from assignments
-                PreparationStaffId = preparationAssignment?.StaffId,
-                PreparationStaffName = preparationAssignment?.Staff?.Name,
-                PreparationAssignmentId = preparationAssignment?.StaffAssignmentId,
-                PreparationAssignedDate = preparationAssignment?.AssignedDate,
-                PreparationCompletedDate = preparationAssignment?.CompletedDate,
+                //PreparationStaffId = preparationAssignment?.StaffId,
+                //PreparationStaffName = preparationAssignment?.Staff?.Name,
+                //PreparationAssignmentId = preparationAssignment?.StaffAssignmentId,
+                //PreparationAssignedDate = preparationAssignment?.AssignedDate,
+                //PreparationCompletedDate = preparationAssignment?.CompletedDate,
 
                 // Shipping information from assignments
-                ShippingStaffId = shippingAssignment?.StaffId,
-                ShippingStaffName = shippingAssignment?.Staff?.Name,
-                ShippingAssignmentId = shippingAssignment?.StaffAssignmentId,
-                ShippingAssignedDate = shippingAssignment?.AssignedDate,
-                ShippingCompletedDate = shippingAssignment?.CompletedDate,
-                IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
+                //ShippingStaffId = shippingAssignment?.StaffId,
+                //ShippingStaffName = shippingAssignment?.Staff?.Name,
+                //ShippingAssignmentId = shippingAssignment?.StaffAssignmentId,
+                //ShippingAssignedDate = shippingAssignment?.AssignedDate,
+                //ShippingCompletedDate = shippingAssignment?.CompletedDate,
+                //IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
 
                 // Pickup information from assignments
-                PickupStaffId = pickupAssignment?.StaffId,
-                PickupStaffName = pickupAssignment?.Staff?.Name,
-                PickupAssignmentId = pickupAssignment?.StaffAssignmentId,
-                PickupAssignedDate = pickupAssignment?.AssignedDate,
-                PickupCompletedDate = pickupAssignment?.CompletedDate,
+                //PickupStaffId = pickupAssignment?.StaffId,
+                //PickupStaffName = pickupAssignment?.Staff?.Name,
+                //PickupAssignmentId = pickupAssignment?.StaffAssignmentId,
+                //PickupAssignedDate = pickupAssignment?.AssignedDate,
+                //PickupCompletedDate = pickupAssignment?.CompletedDate,
 
                 // Order details
                 OrderDetails = order.SellOrder?.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
                 RentalDetails = order.RentOrder?.RentOrderDetails?.Select(MapToRentalDetailDto).ToList() ?? new List<RentalDetailDto>(),
 
                 // Vehicle information
-                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
-                {
-                    VehicleId = order.ShippingOrder.VehicleId ?? 0,
-                    VehicleName = order.ShippingOrder.Vehicle.Name,
-                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
-                    VehicleType = order.ShippingOrder.Vehicle.Type
-                } : null,
-                OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
+                //Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
+                //{
+                //    VehicleId = order.ShippingOrder.VehicleId ?? 0,
+                //    VehicleName = order.ShippingOrder.Vehicle.Name,
+                //    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                //    VehicleType = order.ShippingOrder.Vehicle.Type
+                //} : null,
+                //OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
 
                 // Payment information
-                DiscountAmount = order.Discount?.DiscountPercentage ?? 0,
-                DiscountCode = order.Discount?.Title,
-                PaymentStatus = order.Payments?.Any(p => p.Status == PaymentStatus.Success) == true ? "Paid" : "Unpaid",
+                //DiscountAmount = order.Discount?.DiscountPercentage ?? 0,
+                //DiscountCode = order.Discount?.Title,
+                //PaymentStatus = order.Payments?.Any(p => p.Status == PaymentStatus.Success) == true ? "Paid" : "Unpaid",
 
                 // Assignment information
-                Assignments = assignments?.Select(a => new StaffAssignmentInfoDto
-                {
-                    AssignmentId = a.StaffAssignmentId,
-                    StaffId = a.StaffId,
-                    StaffName = a.Staff?.Name,
-                    TaskType = a.TaskType,
-                    AssignedDate = a.AssignedDate,
-                    CompletedDate = a.CompletedDate,
-                    IsActive = a.CompletedDate == null
-                }).ToList() ?? new List<StaffAssignmentInfoDto>()
+                //Assignments = assignments?.Select(a => new StaffAssignmentInfoDto
+                //{
+                //    AssignmentId = a.StaffAssignmentId,
+                //    StaffId = a.StaffId,
+                //    StaffName = a.Staff?.Name,
+                //    TaskType = a.TaskType,
+                //    AssignedDate = a.AssignedDate,
+                //    CompletedDate = a.CompletedDate,
+                //    IsActive = a.CompletedDate == null
+                //}).ToList() ?? new List<StaffAssignmentInfoDto>()
             };
         }
 
