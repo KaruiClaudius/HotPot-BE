@@ -92,10 +92,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     // For shipping staff
                     var shippingOrders = await _unitOfWork.Repository<Order>()
-                        .GetAll(o => orderIds.Contains(o.OrderId) && !o.IsDelete)
+                        .GetAll(o => orderIds.Contains(o.OrderId) && o.Status == OrderStatus.Processed && !o.IsDelete)
                         .Include(o => o.User)
                         .Include(o => o.ShippingOrder)
                             .ThenInclude(so => so.Vehicle)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Ingredient)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Customization)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Combo)
+                        .Include(o => o.SellOrder)
+                            .ThenInclude(so => so.SellOrderDetails)
+                                .ThenInclude(od => od.Utensil)
+                        .Include(o => o.RentOrder)
+                            .ThenInclude(ro => ro.RentOrderDetails)
+                                .ThenInclude(rd => rd.HotpotInventory)
+                                    .ThenInclude(hi => hi.Hotpot)
+                        .AsSplitQuery()
                         .ToListAsync();
 
                     return shippingOrders.Select(o => MapToShippingStaffOrderDto(o,
@@ -481,58 +498,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 UpdatedAt = order.UpdatedAt,
                 DeliveryTime = order.DeliveryTime,
 
-                // Preparation staff information from assignments
-                //PreparationStaffId = preparationAssignment?.StaffId,
-                //PreparationStaffName = preparationAssignment?.Staff?.Name,
-                //PreparationAssignmentId = preparationAssignment?.StaffAssignmentId,
-                //PreparationAssignedDate = preparationAssignment?.AssignedDate,
-                //PreparationCompletedDate = preparationAssignment?.CompletedDate,
-
-                // Shipping information from assignments
-                //ShippingStaffId = shippingAssignment?.StaffId,
-                //ShippingStaffName = shippingAssignment?.Staff?.Name,
-                //ShippingAssignmentId = shippingAssignment?.StaffAssignmentId,
-                //ShippingAssignedDate = shippingAssignment?.AssignedDate,
-                //ShippingCompletedDate = shippingAssignment?.CompletedDate,
-                //IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
-
-                // Pickup information from assignments
-                //PickupStaffId = pickupAssignment?.StaffId,
-                //PickupStaffName = pickupAssignment?.Staff?.Name,
-                //PickupAssignmentId = pickupAssignment?.StaffAssignmentId,
-                //PickupAssignedDate = pickupAssignment?.AssignedDate,
-                //PickupCompletedDate = pickupAssignment?.CompletedDate,
-
                 // Order details
                 OrderDetails = order.SellOrder?.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
                 RentalDetails = order.RentOrder?.RentOrderDetails?.Select(MapToRentalDetailDto).ToList() ?? new List<RentalDetailDto>(),
-
-                // Vehicle information
-                //Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
-                //{
-                //    VehicleId = order.ShippingOrder.VehicleId ?? 0,
-                //    VehicleName = order.ShippingOrder.Vehicle.Name,
-                //    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
-                //    VehicleType = order.ShippingOrder.Vehicle.Type
-                //} : null,
-                //OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
-
-                // Payment information
-                //DiscountAmount = order.Discount?.DiscountPercentage ?? 0,
-                //DiscountCode = order.Discount?.Title,
-                //PaymentStatus = order.Payments?.Any(p => p.Status == PaymentStatus.Success) == true ? "Paid" : "Unpaid",
-
-                // Assignment information
-                //Assignments = assignments?.Select(a => new StaffAssignmentInfoDto
-                //{
-                //    AssignmentId = a.StaffAssignmentId,
-                //    StaffId = a.StaffId,
-                //    StaffName = a.Staff?.Name,
-                //    TaskType = a.TaskType,
-                //    AssignedDate = a.AssignedDate,
-                //    CompletedDate = a.CompletedDate,
-                //    IsActive = a.CompletedDate == null
-                //}).ToList() ?? new List<StaffAssignmentInfoDto>()
             };
         }
 
@@ -690,7 +658,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         {
             if (order == null) return null;
 
-            return new ShippingStaffOrderDto
+            var dto = new ShippingStaffOrderDto
             {
                 OrderId = order.OrderId,
                 OrderCode = order.OrderCode,
@@ -703,15 +671,79 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 DeliveryTime = order.DeliveryTime,
                 IsDelivered = order.ShippingOrder?.IsDelivered ?? false,
                 OrderSize = order.ShippingOrder?.OrderSize ?? OrderSize.Small,
-                Vehicle = order.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
-                {
-                    VehicleId = order.ShippingOrder.VehicleId ?? 0,
-                    VehicleName = order.ShippingOrder.Vehicle.Name,
-                    LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
-                    VehicleType = order.ShippingOrder.Vehicle.Type,
-                    OrderSize = order.ShippingOrder.OrderSize
-                } : null
+                Vehicle = order.ShippingOrder?.Vehicle != null
+                    ? new VehicleInfoDto
+                    {
+                        VehicleId = order.ShippingOrder.VehicleId ?? 0,
+                        VehicleName = order.ShippingOrder.Vehicle.Name,
+                        LicensePlate = order.ShippingOrder.Vehicle.LicensePlate,
+                        VehicleType = order.ShippingOrder.Vehicle.Type,
+                        OrderSize = order.ShippingOrder.OrderSize
+                    }
+                    : null,
+                OrderItems = new List<OrderItemSummaryDto>(),
+                HotpotItems = new List<HotpotSummaryDto>()
             };
+
+            // Add sell order items
+            if (order.SellOrder?.SellOrderDetails != null)
+            {
+                dto.OrderItems.AddRange(order.SellOrder.SellOrderDetails.Select(detail =>
+                {
+                    string itemName = "Unknown";
+                    string itemType = "Unknown";
+                    int itemId = 0;
+
+                    if (detail.Ingredient != null)
+                    {
+                        itemName = detail.Ingredient.Name;
+                        itemType = "Ingredient";
+                        itemId = detail.IngredientId ?? 0;
+                    }
+                    else if (detail.Customization != null)
+                    {
+                        itemName = detail.Customization.Name;
+                        itemType = "Customization";
+                        itemId = detail.CustomizationId ?? 0;
+                    }
+                    else if (detail.Combo != null)
+                    {
+                        itemName = detail.Combo.Name;
+                        itemType = "Combo";
+                        itemId = detail.ComboId ?? 0;
+                    }
+                    else if (detail.Utensil != null)
+                    {
+                        itemName = detail.Utensil.Name;
+                        itemType = "Utensil";
+                        itemId = detail.UtensilId ?? 0;
+                    }
+
+                    return new OrderItemSummaryDto
+                    {
+                        ItemId = itemId,
+                        ItemName = itemName,
+                        ItemType = itemType,
+                        Quantity = detail.Quantity
+                    };
+                }));
+            }
+
+            // Add hotpot rental items
+            if (order.RentOrder?.RentOrderDetails != null)
+            {
+                dto.HotpotItems.AddRange(order.RentOrder.RentOrderDetails
+                    .Where(detail => detail.HotpotInventory?.Hotpot != null)
+                    .Select(detail => new HotpotSummaryDto
+                    {
+                        HotpotInventoryId = detail.HotpotInventoryId.GetValueOrDefault(),
+                        HotpotName = detail.HotpotInventory.Hotpot.Name,
+                        SeriesNumber = detail.HotpotInventory.SeriesNumber ?? "Unknown",
+                        Quantity = detail.Quantity
+                    }));
+            }
+
+            return dto;
         }
     }
 }

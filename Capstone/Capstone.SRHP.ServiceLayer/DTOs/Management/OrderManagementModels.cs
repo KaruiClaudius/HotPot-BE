@@ -62,7 +62,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public bool IsShippingStaffAssigned { get; set; }
 
         // Staff assignments (simplified for list view)
-        public StaffAssignmentSummaryDTO PreparationAssignment { get; set; }
+        public List<StaffAssignmentSummaryDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
         public StaffAssignmentSummaryDTO ShippingAssignment { get; set; }
 
         // Shipping information
@@ -186,7 +186,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string UserPhone { get; set; }
 
         // Staff assignments
-        public StaffAssignmentDTO PreparationAssignment { get; set; }
+        public List<StaffAssignmentDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentDTO>();
         public StaffAssignmentDTO ShippingAssignment { get; set; }
 
         // Shipping information
@@ -261,7 +261,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         [Required]
         public string OrderCode { get; set; }
 
-        public int? PreparationStaffId { get; set; }
+        public List<int>? PreparationStaffIds { get; set; }
 
         public int? ShippingStaffId { get; set; }
 
@@ -274,10 +274,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public OrderStatus Status { get; set; }
 
         // Preparation details
-        public int? PreparationStaffId { get; set; }
-        public string PreparationStaffName { get; set; }
-        public int? PreparationAssignmentId { get; set; }
-        public DateTime? PreparationAssignedAt { get; set; }
+        // Replace single preparation staff properties with a collection
+        public List<StaffAssignmentSummaryDTO> PreparationStaffAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
 
         // Shipping details
         public int? ShippingStaffId { get; set; }

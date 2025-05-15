@@ -38,7 +38,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             {
                 var result = await _orderManagementService.AssignMultipleStaffToOrderAsync(
                     request.OrderCode,
-                    request.PreparationStaffId,
+                    request.PreparationStaffIds,
                     request.ShippingStaffId,
                     request.VehicleId);
 

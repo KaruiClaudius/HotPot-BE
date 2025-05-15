@@ -12,10 +12,10 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
     {
         // Order allocation
         Task<MultiStaffAssignmentResponse> AssignMultipleStaffToOrderAsync(
-             string orderCode,
-             int? preparationStaffId,
-             int? shippingStaffId,
-             int? vehicleId = null);
+            string orderCode,
+            List<int>? preparationStaffIds,
+            int? shippingStaffId,
+            int? vehicleId = null);
 
         // Order status tracking
         Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderCode, OrderStatus status);

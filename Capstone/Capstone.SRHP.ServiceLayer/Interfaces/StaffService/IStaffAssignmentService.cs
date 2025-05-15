@@ -37,5 +37,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
             StaffTaskType? taskType = null,
             int pageNumber = 1,
             int pageSize = 10);
+
+        Task<PagedResult<StaffAssignmentHistoryDto>> GetStaffAssignmentHistoryAsync(
+            StaffAssignmentHistoryFilterRequest filter, int managerId);
     }
 }
