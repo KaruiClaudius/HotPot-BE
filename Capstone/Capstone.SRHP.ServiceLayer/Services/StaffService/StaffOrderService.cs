@@ -92,7 +92,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     // For shipping staff
                     var shippingOrders = await _unitOfWork.Repository<Order>()
-                        .GetAll(o => orderIds.Contains(o.OrderId) && !o.IsDelete)
+                        .GetAll(o => orderIds.Contains(o.OrderId) && o.Status == OrderStatus.Processed && !o.IsDelete)
                         .Include(o => o.User)
                         .Include(o => o.ShippingOrder)
                             .ThenInclude(so => so.Vehicle)
