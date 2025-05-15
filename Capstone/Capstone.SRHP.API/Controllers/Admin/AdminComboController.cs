@@ -16,12 +16,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminComboController : ControllerBase
     {
         private readonly IComboService _comboService;
+        private readonly IIngredientService _ingredientService;
         private readonly ILogger<AdminHotpotController> _logger;
 
-        public AdminComboController(IComboService comboService, ILogger<AdminHotpotController> logger)
+        public AdminComboController(IComboService comboService, ILogger<AdminHotpotController> logger, IIngredientService ingredientService)
         {
             _comboService = comboService;
             _logger = logger;
+            _ingredientService = ingredientService;
         }
 
         [HttpGet]
@@ -420,7 +422,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         ComboIngredientId = ci.ComboIngredientId,
                         IngredientID = ci.IngredientId,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                        Quantity = ci.Quantity
+                        Quantity = ci.Quantity,
+                        ImageURL = ci.Ingredient?.ImageURL,
+                        TotalPrice = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result
                     })
                     .ToList() ?? new List<ComboIngredientDto>();
             }
@@ -448,7 +452,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         ComboIngredientId = ci.ComboIngredientId,
                         IngredientID = ci.IngredientId,
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                        Quantity = ci.Quantity
+                        Quantity = ci.Quantity,
                     })
                     .ToList() ?? new List<ComboIngredientDto>()
             };
@@ -474,7 +478,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         Id = ait.ComboAllowedIngredientTypeId,
                         IngredientTypeId = ait.IngredientTypeId,
                         IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                        MinQuantity = ait.MinQuantity
+                        MinQuantity = ait.MinQuantity,
                     })
                     .ToList() ?? new List<ComboAllowedIngredientTypeDto>()
             };
