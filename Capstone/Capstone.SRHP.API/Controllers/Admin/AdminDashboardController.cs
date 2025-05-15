@@ -43,7 +43,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
             [FromQuery] string productType = null,
             [FromQuery] bool? hasHotpot = null,
             [FromQuery] string paymentStatus = null,
-            [FromQuery] int topProductsLimit = 5)
+            [FromQuery] int topProductsLimit = 5,
+            [FromQuery] int? year = null)
         {
             try
             {
@@ -64,7 +65,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     productType,
                     hasHotpot,
                     paymentStatus,
-                    topProductsLimit);
+                    topProductsLimit,
+                    year);
 
                 return Ok(dashboardData);
             }

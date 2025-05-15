@@ -36,7 +36,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             string productType = null,
             bool? hasHotpot = null,
             string paymentStatus = null,
-            int topProductsLimit = 5)
+            int topProductsLimit = 5,
+            int? year = null)
         {
             try
             {
@@ -139,7 +140,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var response = new ConsolidatedDashboardResponse
                 {
                     OverallMetrics = CalculateOverallMetrics(orders),
-                    MonthlyData = CalculateMonthlyMetrics(orders),
+                    MonthlyData = CalculateMonthlyMetrics(orders, year),
                     OrdersByStatus = CalculateOrderStatusMetrics(orders),
                     ProductConsumption = CalculateProductConsumptionStats(orders, topProductsLimit)
                 };
@@ -235,56 +236,48 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             };
         }
 
-        private List<MonthlyMetrics> CalculateMonthlyMetrics(List<Order> orders)
+        private List<MonthlyMetrics> CalculateMonthlyMetrics(List<Order> orders, int? year = null)
         {
-            // Get the end date (either the latest order date or today)
-            DateTime endDate = orders.Any() ? orders.Max(o => o.CreatedAt) : DateTime.Now;
+            
+            int targetYear = year ?? DateTime.Now.Year;
 
-            // Create a list to hold the last 12 months
-            var last12Months = new List<MonthlyMetrics>();
+            // Create a list to hold all months in the current year
+            var monthlyMetrics = new List<MonthlyMetrics>();
 
-            // Start with 11 months before the end date
-            var currentMonth = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-11);
-
-            // Loop through 12 months
-            for (int i = 0; i < 12; i++)
+            // Initialize metrics for all months in the current year
+            for (int month = 1; month <= 12; month++)
             {
-                // Add this month to the list
-                last12Months.Add(new MonthlyMetrics
+                monthlyMetrics.Add(new MonthlyMetrics
                 {
-                    Year = currentMonth.Year,
-                    Month = currentMonth.Month,
-                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(currentMonth.Month),
+                    Year = targetYear,
+                    Month = month,
+                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
                     Revenue = 0,
                     OrderCount = 0,
-                    CompletedOrderCount = 0, // New property
+                    CompletedOrderCount = 0,
                     OrdersByStatus = new Dictionary<string, int>()
                 });
-
-                // Move to the next month
-                currentMonth = currentMonth.AddMonths(1);
             }
 
-            // Filter orders to only include those from the last 12 months
-            var startDate = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-11);
-            var relevantOrders = orders.Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate).ToList();
+            // Filter orders to only include those from the current year
+            var startDate = new DateTime(targetYear, 1, 1);
+            var endDate = new DateTime(targetYear, 12, 31, 23, 59, 59);
+            var currentYearOrders = orders.Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate).ToList();
 
-            // Group orders by year and month
-            var groupedOrders = relevantOrders
-                .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
+            // Group orders by month
+            var groupedOrders = currentYearOrders
+                .GroupBy(o => o.CreatedAt.Month)
                 .ToDictionary(
-                    g => $"{g.Key.Year}-{g.Key.Month}",
+                    g => g.Key,
                     g => g.ToList()
                 );
 
             // Fill in the data for months that have orders
-            foreach (var monthData in last12Months)
+            foreach (var monthData in monthlyMetrics)
             {
-                string key = $"{monthData.Year}-{monthData.Month}";
-
-                if (groupedOrders.ContainsKey(key))
+                if (groupedOrders.ContainsKey(monthData.Month))
                 {
-                    var monthOrders = groupedOrders[key];
+                    var monthOrders = groupedOrders[monthData.Month];
                     var completedMonthOrders = monthOrders.Where(o => o.Status != OrderStatus.Pending).ToList();
 
                     // Revenue only from completed orders
@@ -316,8 +309,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
             }
 
-            // Return the list (already sorted by year and month)
-            return last12Months;
+            return monthlyMetrics;
         }
 
         private OrderStatusMetrics CalculateOrderStatusMetrics(List<Order> orders)
@@ -476,7 +468,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             foreach (var order in orders.Where(o => o.RentOrder?.RentOrderDetails != null))
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
-                {         
+                {
                     // Process hotpots
                     if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
                     {
