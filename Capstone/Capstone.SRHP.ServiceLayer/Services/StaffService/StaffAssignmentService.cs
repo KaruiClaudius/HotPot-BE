@@ -706,6 +706,108 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
+        public async Task<PagedResult<StaffAssignmentHistoryDto>> GetStaffAssignmentHistoryAsync(
+    StaffAssignmentHistoryFilterRequest filter, int managerId)
+        {
+            try
+            {
+                _logger.LogInformation($"Getting staff assignment history for manager ID: {managerId}");
+
+                // Start with all staff assignments that aren't deleted and belong to this manager
+                var query = _unitOfWork.Repository<StaffAssignment>()
+                    .AsQueryable()
+                    .Where(sa => !sa.IsDelete && sa.ManagerId == managerId);
+
+                // Apply filters
+                if (filter.StartDate.HasValue)
+                {
+                    query = query.Where(sa => sa.AssignedDate >= filter.StartDate.Value);
+                }
+
+                if (filter.EndDate.HasValue)
+                {
+                    // Add one day to include the end date fully
+                    var endDatePlusOne = filter.EndDate.Value.AddDays(1);
+                    query = query.Where(sa => sa.AssignedDate < endDatePlusOne);
+                }
+
+                if (filter.TaskType.HasValue)
+                {
+                    query = query.Where(sa => sa.TaskType == filter.TaskType.Value);
+                }
+
+                if (filter.IsActive.HasValue)
+                {
+                    query = query.Where(sa => sa.CompletedDate == null == filter.IsActive.Value);
+                }
+
+                if (filter.StaffId.HasValue)
+                {
+                    query = query.Where(sa => sa.StaffId == filter.StaffId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(filter.StaffName))
+                {
+                    query = query.Where(sa => sa.Staff.Name.Contains(filter.StaffName));
+                }
+
+                // Include related data
+                query = query
+                    .Include(sa => sa.Staff)
+                    .Include(sa => sa.Order)
+                        .ThenInclude(o => o.User)
+                    .OrderByDescending(sa => sa.AssignedDate);
+
+                // Get total count for pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply pagination
+                var pageNumber = filter.PageNumber ?? 1;
+                var pageSize = filter.PageSize ?? 10;
+
+                var assignments = await query
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                // Map to DTOs
+                var assignmentDtos = assignments.Select(MapToStaffAssignmentHistoryDto).ToList();
+
+                return new PagedResult<StaffAssignmentHistoryDto>
+                {
+                    Items = assignmentDtos,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving staff assignment history");
+                throw;
+            }
+        }
+
+        private StaffAssignmentHistoryDto MapToStaffAssignmentHistoryDto(StaffAssignment assignment)
+        {
+            return new StaffAssignmentHistoryDto
+            {
+                StaffAssignmentId = assignment.StaffAssignmentId,
+                StaffId = assignment.StaffId,
+                StaffName = assignment.Staff?.Name,
+                OrderId = assignment.OrderId,
+                OrderCode = assignment.Order?.OrderCode,
+                CustomerName = assignment.Order?.User?.Name,
+                TaskType = assignment.TaskType,
+                TaskTypeName = assignment.TaskType.ToString(),
+                AssignedDate = assignment.AssignedDate,
+                CompletedDate = assignment.CompletedDate,
+                IsActive = assignment.IsActive,
+                OrderStatus = assignment.Order?.Status ?? OrderStatus.Pending,
+                OrderStatusName = (assignment.Order?.Status ?? OrderStatus.Pending).ToString()
+            };
+        }
+
 
         private async Task<OrderSize> EstimateOrderSizeAsync(string orderCode)
         {
