@@ -149,7 +149,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 {
                     string equipmentName = GetEquipmentName(request);
                     string statusMessage = GetCustomerFriendlyStatusMessage(request.Status);
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementStatusUpdate",
                         "Replacement Request Update",
@@ -165,20 +165,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "ReplacementStatusUpdate",
-                    "Replacement Status Update",
-                    $"Replacement request #{request.ReplacementRequestId} is now {request.Status}",
-                    new Dictionary<string, object>
-                    {
+                await _notificationService.NotifyRoleAsync(
+                     "Managers",
+                     "ReplacementStatusUpdate",
+                     "Replacement Status Update",
+                     $"Replacement request #{request.ReplacementRequestId} is now {request.Status}",
+                     new Dictionary<string, object>
+                     {
                         { "ReplacementRequestId", request.ReplacementRequestId },
                         { "EquipmentType", "HotPot" },
                         { "EquipmentName", GetEquipmentName(request) },
                         { "Status", request.Status.ToString() },
                         { "ReviewNotes", request.ReviewNotes },
                         { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
-                    });
+                     });
 
                 return request;
             },
@@ -242,34 +242,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about the assignment
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementStatusUpdate",
                         "Replacement Request Update",
                         $"Your replacement request for {equipmentName} is now being processed",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "Status", request.Status.ToString() },
-                        { "StaffName", staff.Name },
-                        { "Message", "A staff member has been assigned to handle your replacement request." }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "Status", request.Status.ToString() },
+                    { "StaffName", staff.Name },
+                    { "Message", "A staff member has been assigned to handle your replacement request." }
                         });
                 }
 
                 // Notify staff about the assignment
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     staffId,
                     "StaffReplacementAssignment",
                     "New Replacement Assignment",
                     $"You have been assigned to handle a replacement for {equipmentName}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "RequestReason", request.RequestReason },
-                    { "Status", request.Status.ToString() },
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "RequestReason", request.RequestReason },
+                { "Status", request.Status.ToString() },
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -282,6 +282,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 }
             });
         }
+
         public async Task<ReplacementRequest> MarkReplacementAsCompletedAsync(int requestId, string completionNotes)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -355,34 +356,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about completion
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementCompleted",
                         "Replacement Request Completed",
                         $"Your replacement request for {equipmentName} has been completed",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "CompletionNotes", completionNotes },
-                        { "CompletionDate", request.CompletionDate }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "CompletionNotes", completionNotes },
+                    { "CompletionDate", request.CompletionDate }
                         });
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCompleted",
                     "Replacement Request Completed",
                     $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been completed",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "CompletionNotes", completionNotes },
-                    { "CompletionDate", request.CompletionDate },
-                    { "StaffName", request.AssignedStaff?.Name ?? "Unknown Staff" },
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "CompletionNotes", completionNotes },
+                { "CompletionDate", request.CompletionDate },
+                { "StaffName", request.AssignedStaff?.Name ?? "Unknown Staff" },
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -534,36 +535,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about verification
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "EquipmentVerification",
                         "Equipment Verification Result",
                         $"Your {equipmentName} has been {statusMessage}",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "IsFaulty", isFaulty },
-                        { "Status", request.Status.ToString() },
-                        { "VerificationNotes", verificationNotes }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "IsFaulty", isFaulty },
+                    { "Status", request.Status.ToString() },
+                    { "VerificationNotes", verificationNotes }
                         });
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "EquipmentVerification",
                     "Equipment Verification Result",
                     $"Equipment for replacement request #{request.ReplacementRequestId} has been {(isFaulty ? "confirmed faulty" : "found working properly")}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "IsFaulty", isFaulty },
-                    { "Status", request.Status.ToString() },
-                    { "VerificationNotes", verificationNotes },
-                    { "StaffName", staffId.ToString() }, // We should load staff name here
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "IsFaulty", isFaulty },
+                { "Status", request.Status.ToString() },
+                { "VerificationNotes", verificationNotes },
+                { "StaffName", staffId.ToString() }, // We should load staff name here
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -640,21 +641,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     softDeletedRequest.Customer = customer;
                     softDeletedRequest.HotPotInventory = hotpotInventory;
 
-                    await _notificationService.NotifyRole(
-                    "Managers",
-                    "NewReplacementRequest",
-                    "New Replacement Request",
-                    $"New replacement request for {GetEquipmentName(request)} from {customer.Name}",
-                    new Dictionary<string, object>
-                    {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentType", "HotPot" },
-                        { "EquipmentName", GetEquipmentName(request) },
-                        { "RequestReason", request.RequestReason },
-                        { "CustomerName", customer.Name },
-                        { "CustomerId", customer.UserId },
-                        { "RequestDate", request.RequestDate }
-                    });
+                    await _notificationService.NotifyRoleAsync(
+                        "Managers",
+                        "NewReplacementRequest",
+                        "New Replacement Request",
+                        $"New replacement request for {GetEquipmentName(request)} from {customer.Name}",
+                        new Dictionary<string, object>
+                        {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentType", "HotPot" },
+                    { "EquipmentName", GetEquipmentName(request) },
+                    { "RequestReason", request.RequestReason },
+                    { "CustomerName", customer.Name },
+                    { "CustomerId", customer.UserId },
+                    { "RequestDate", request.RequestDate }
+                        });
 
                     return softDeletedRequest;
                 }
@@ -675,20 +676,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 string equipmentName = GetEquipmentName(request);
 
                 // Notify managers about the new request
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "NewReplacementRequest",
                     "New Replacement Request",
                     $"New replacement request for {equipmentName} from {customer.Name}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentType", "HotPot" },
-                    { "EquipmentName", equipmentName },
-                    { "RequestReason", request.RequestReason },
-                    { "CustomerName", customer.Name },
-                    { "CustomerId", customer.UserId },
-                    { "RequestDate", request.RequestDate }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentType", "HotPot" },
+                { "EquipmentName", equipmentName },
+                { "RequestReason", request.RequestReason },
+                { "CustomerName", customer.Name },
+                { "CustomerId", customer.UserId },
+                { "RequestDate", request.RequestDate }
                     });
 
                 return request;
@@ -774,18 +775,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 string equipmentName = GetEquipmentName(request);
 
                 // Notify managers about the cancellation
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCancelled",
                     "Replacement Request Cancelled",
                     $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been cancelled by the customer",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "CustomerName", customer.Name },
-                    { "CustomerId", customer.UserId },
-                    { "CancellationDate", DateTime.UtcNow }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "CustomerName", customer.Name },
+                { "CustomerId", customer.UserId },
+                { "CancellationDate", DateTime.UtcNow }
                     });
 
                 return request;

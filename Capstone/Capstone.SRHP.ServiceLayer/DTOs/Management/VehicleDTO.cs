@@ -81,7 +81,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
     public class OrderSizeDTO
     {
-        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
         public OrderSize Size { get; set; }
         public VehicleType SuggestedVehicleType { get; set; }
     }

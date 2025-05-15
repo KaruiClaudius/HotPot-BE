@@ -12,7 +12,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     {
         [Required]
         public OrderStatus Status { get; set; }
-        public string? Notes { get; set; }
+
 
     }
 }

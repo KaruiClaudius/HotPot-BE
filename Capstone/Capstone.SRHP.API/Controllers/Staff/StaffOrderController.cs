@@ -28,8 +28,9 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
         [HttpGet("assigned")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetAssignedOrders()
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>>> GetAssignedOrders(
+    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation) // Default to Preparation if not specified
         {
             var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
@@ -39,60 +40,60 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
             try
             {
-                _logger.LogInformation("Staff {StaffId} retrieving assigned orders", userId);
-                var orders = await _staffOrderService.GetAssignedOrdersAsync(userId);
+                _logger.LogInformation("Staff {StaffId} retrieving assigned orders for task type {TaskType}", userId, taskType);
+                var orders = await _staffOrderService.GetAssignedOrdersAsync(userId, taskType);
 
-                return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
+                return Ok(new ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>
                 {
                     Success = true,
-                    Message = "Assigned orders retrieved successfully",
+                    Message = $"Assigned {taskType} orders retrieved successfully",
                     Data = orders
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving assigned orders for staff ID: {StaffId}", userId);
+                _logger.LogError(ex, "Error retrieving {TaskType} orders for staff ID: {StaffId}", taskType, userId);
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve assigned orders"
+                    Message = $"Failed to retrieve {taskType} orders"
                 });
             }
         }
 
 
-        [HttpGet("by-status/{status}")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetOrdersByStatus(OrderStatus status)
-        {
-            try
-            {
-                var userIdClaim = User.FindFirstValue("id");
-                if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
-                {
-                    return Unauthorized(new { message = "User ID not found in token" });
-                }
+        //[HttpGet("by-status/{status}")]
+        //[ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
+        //public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetOrdersByStatus(OrderStatus status)
+        //{
+        //    try
+        //    {
+        //        var userIdClaim = User.FindFirstValue("id");
+        //        if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
+        //        {
+        //            return Unauthorized(new { message = "User ID not found in token" });
+        //        }
 
-                _logger.LogInformation("Staff {StaffId} retrieving orders with status: {Status}", staffId, status);
-                var orders = await _staffOrderService.GetOrdersByStatusAsync(status, staffId);
+        //        _logger.LogInformation("Staff {StaffId} retrieving orders with status: {Status}", staffId, status);
+        //        var orders = await _staffOrderService.GetOrdersByStatusAsync(status, staffId);
 
-                return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
-                {
-                    Success = true,
-                    Message = $"Orders with status {status} retrieved successfully",
-                    Data = orders
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = $"Failed to retrieve orders with status {status}"
-                });
-            }
-        }
+        //        return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
+        //        {
+        //            Success = true,
+        //            Message = $"Orders with status {status} retrieved successfully",
+        //            Data = orders
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
+        //        return BadRequest(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = $"Failed to retrieve orders with status {status}"
+        //        });
+        //    }
+        //}
 
 
         [HttpGet("{id}")]
@@ -151,7 +152,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     return Unauthorized(new { message = "User ID not found in token" });
                 }
 
-                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, staffId, request.Notes);
+                var updatedOrder = await _staffOrderService.UpdateOrderStatusAsync(id, request.Status, staffId);
 
                 return Ok(new ApiResponse<StaffOrderDto>
                 {

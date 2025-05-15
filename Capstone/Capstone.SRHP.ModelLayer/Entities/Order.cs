@@ -99,5 +99,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
             OrderCode = code;
         }
+
+        // Add this navigation property
+        public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
     }
 }

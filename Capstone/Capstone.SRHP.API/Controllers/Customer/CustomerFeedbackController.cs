@@ -75,7 +75,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 string customerName = feedback.User?.Name ?? "Customer";
 
                 // Notify admins about the new feedback that needs approval
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Admins",
                     "NewFeedback",
                     "New Feedback Received",

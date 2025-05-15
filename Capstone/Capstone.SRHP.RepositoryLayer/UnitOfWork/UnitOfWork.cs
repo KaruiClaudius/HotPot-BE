@@ -15,10 +15,16 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
     public class UnitOfWork : IUnitOfWork
     {
         private readonly HPTYContext _context;
+        private IDbContextTransaction _currentTransaction;
+        private Dictionary<string, object> _repositories;
+        private bool _disposed;
+
 
         public UnitOfWork(HPTYContext context)
         {
             _context = context;
+            _repositories = new Dictionary<string, object>();
+
         }
 
         private readonly Dictionary<Type, object> reposotories = new Dictionary<Type, object>();
@@ -156,5 +162,7 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
                 }
             });
         }
+
+
     }
 }

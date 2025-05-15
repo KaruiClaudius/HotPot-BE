@@ -73,7 +73,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = result.HotpotName ?? $"HotPot #{result.SeriesNumber}";
 
                 // Notify administrators about the status change using the simplified notification service
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "EquipmentStatusChange",
                     "HotPot Status Changed",
@@ -145,7 +145,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Check if the quantity is below the threshold and notify administrators
                 if (result.Quantity <= DEFAULT_LOW_STOCK_THRESHOLD && result.Quantity > 0)
                 {
-                    await _notificationService.NotifyRole(
+                    await _notificationService.NotifyRoleAsync(
                         "Administrators",
                         "LowStock",
                         "Low Utensil Stock Alert",
@@ -160,13 +160,13 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "UtensilTypeId", result.UtensilTypeId },
                     { "UtensilTypeName", result.UtensilTypeName },
                     { "UpdateTime", DateTime.UtcNow },
-                        });                
+                        });
                 }
 
                 // If quantity is 0, notify about out of stock
                 if (result.Quantity == 0)
                 {
-                    await _notificationService.NotifyRole(
+                    await _notificationService.NotifyRoleAsync(
                         "Administrators",
                         "OutOfStock",
                         "Utensil Out of Stock",
@@ -181,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "UpdateTime", DateTime.UtcNow },
                     { "Priority", "High" }
                         });
-               
+
                 }
 
                 return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil quantity updated successfully"));
@@ -213,7 +213,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string statusText = result.Status ? "Available" : "Unavailable";
 
                 // Notify administrators about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "EquipmentStatusChange",
                     "Utensil Status Changed",

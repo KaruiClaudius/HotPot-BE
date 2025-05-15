@@ -1,19 +1,28 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.DTOs.Notification;
+using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.Notification
 {
     public interface INotificationService
     {
-        // Equipment and inventory
-        //Task NotifyEquipmentIssue(int equipmentId, string equipmentType, string equipmentName, string issue, string details);
-        //Task NotifyInventoryStatus(string itemType, string itemName, int quantity, int threshold, bool isLow);
+        // Create and store notifications
+        Task<int> CreateNotificationAsync(string type, string title, string message, string targetType, string targetId, Dictionary<string, object> data = null);
+        Task<int> CreateUserNotificationAsync(int notificationId, int userId);
 
-        // Generic notifications
-        Task NotifyUser(int userId, string type, string title, string message, Dictionary<string, object> data = null);
-        Task NotifyRole(string role, string type, string title, string message, Dictionary<string, object> data = null);
-        Task NotifyFeedback(string target, string targetId, string feedbackType, string title, string message, Dictionary<string, object> data = null);
+        // Send notifications through SignalR
+        Task NotifyUserAsync(int userId, string type, string title, string message, Dictionary<string, object> data = null);
+        Task NotifyRoleAsync(string role, string type, string title, string message, Dictionary<string, object> data = null);
+        Task NotifyAllAsync(string type, string title, string message, Dictionary<string, object> data = null);
+
+        // Manage notifications
+        Task<List<NotificationDto>> GetUserNotificationsAsync(int userId, bool includeRead = false, int page = 1, int pageSize = 20);
+        Task<int> GetUnreadNotificationCountAsync(int userId);
+        Task MarkAsReadAsync(int userNotificationId, int userId);
+        Task MarkAllAsReadAsync(int userId);
+        Task MarkAsDeliveredAsync(int notificationId, int userId);
+
     }
 }

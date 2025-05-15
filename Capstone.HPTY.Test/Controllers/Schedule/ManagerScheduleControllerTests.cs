@@ -659,7 +659,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .ReturnsAsync(updatedStaff);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyUser(
+                .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
                     "Your Work Days Updated",
@@ -668,7 +668,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Returns(Task.CompletedTask);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyRole(
+                .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Staff Work Days Updated",
@@ -695,14 +695,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                 assignDto.StaffId, assignDto.WorkDays), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
                 "ScheduleUpdate",
                 "Your Work Days Updated",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
                 "Staff Work Days Updated",
@@ -734,7 +734,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .ReturnsAsync(updatedStaff);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyUser(
+                .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
                     "Your Work Days Updated",
@@ -743,7 +743,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Returns(Task.CompletedTask);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyRole(
+                .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Staff Work Days Updated",
@@ -787,14 +787,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                                It.IsAny<int>(), It.IsAny<WorkDays>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -826,14 +826,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                 It.IsAny<int>(), It.IsAny<WorkDays>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -869,14 +869,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                 assignDto.StaffId, assignDto.WorkDays), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -913,14 +913,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                 assignDto.StaffId, assignDto.WorkDays), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 It.IsAny<int>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Never);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -1166,7 +1166,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .ReturnsAsync(updatedStaff);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyUser(
+                .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
                     "Your Work Days Updated",
@@ -1175,7 +1175,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Returns(Task.CompletedTask);
 
             this.mockNotificationService
-                .Setup(n => n.NotifyRole(
+                .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Staff Work Days Updated",
@@ -1201,14 +1201,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockScheduleService.Verify(s => s.AssignStaffWorkDaysAsync(
                 assignDto.StaffId, assignDto.WorkDays), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyUser(
+            this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
                 "ScheduleUpdate",
                 "Your Work Days Updated",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
-            this.mockNotificationService.Verify(n => n.NotifyRole(
+            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
                 "Staff Work Days Updated",

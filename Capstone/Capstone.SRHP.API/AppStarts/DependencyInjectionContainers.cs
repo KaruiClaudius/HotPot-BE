@@ -24,6 +24,7 @@ using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
+using Capstone.HPTY.ServiceLayer.Services.Notification;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
@@ -67,10 +68,14 @@ namespace Capstone.HPTY.API.AppStarts
             // Core Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddHttpContextAccessor();
 
             // Auth Services
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IAuthService, AuthService>();
+
+            // Identity Services
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             // Business Services
             services.AddScoped<IComboService, ComboService>();
@@ -107,9 +112,11 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IStaffService, StaffService>();
             services.AddScoped<IStaffPaymentService, StaffPaymentService>();
             services.AddScoped<IStaffOrderService, StaffOrderService>();
+            services.AddScoped<IStaffAssignmentService, StaffAssignmentService>();
+
 
             // Notification Services
-            services.AddScoped<INotificationService, SignalRNotificationService>();
+            services.AddScoped<INotificationService, NotificationService>();
 
             // Background Services
             services.AddHostedService<EquipmentStockMonitorService>();
@@ -139,7 +146,9 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddSingleton<IEventPublisher, EventPublisher>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
             services.AddSingleton<SocketIOClientService>();
-
+            //services.AddScoped<OrderNotificationHandler>();
+            //services.AddScoped<FeedbackNotificationHandler>();
+            //services.AddScoped<ReplacementRequestNotificationHandler>();
 
             // External Services
             services.AddHttpClient();

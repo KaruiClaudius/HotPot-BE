@@ -43,7 +43,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = await GetEquipmentNameAsync(request);
 
                 // Notify administrators about the new condition log
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "ConditionIssue",
                     "New HotPot Condition Issue",
@@ -131,7 +131,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     return NotFound(ApiResponse<EquipmentConditionDetailDto>.ErrorResponse($"Condition log with ID {id} not found"));
 
                 // Notify administrators about the status update using the simplified notification service
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "EquipmentStatusUpdate",
                     "Equipment Status Updated",

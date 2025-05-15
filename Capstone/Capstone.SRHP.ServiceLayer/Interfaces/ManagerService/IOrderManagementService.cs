@@ -11,23 +11,23 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ManagerService
     public interface IOrderManagementService
     {
         // Order allocation
-        Task<StaffAssignmentResponse> AssignStaffToOrderAsync(int orderId, int staffId, StaffTaskType taskType, int? vehicleId = null);
-        Task<PagedResult<UnallocatedOrderDTO>> GetUnallocatedOrdersPaged(OrderQueryParams queryParams);
-        Task<IEnumerable<StaffShippingOrderDTO>> GetOrdersByStaff(int staffId);
+        Task<MultiStaffAssignmentResponse> AssignMultipleStaffToOrderAsync(
+             string orderCode,
+             int? preparationStaffId,
+             int? shippingStaffId,
+             int? vehicleId = null);
 
         // Order status tracking
-        Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderId, OrderStatus status);
-        Task<OrderDetailDTO> GetOrderWithDetails(string orderId);
+        Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderCode, OrderStatus status);
+        Task<OrderDetailDTO> GetOrderWithDetails(string orderCode);
         Task<PagedResult<OrderWithDetailsDTO>> GetOrdersByStatusPaged(OrderQueryParams queryParams);
 
         // Delivery progress monitoring
         Task<DeliveryStatusUpdateDTO> UpdateDeliveryStatus(int shippingOrderId, bool isDelivered, string notes = null);
         Task<DeliveryTimeUpdateDTO> UpdateDeliveryTime(int shippingOrderId, DateTime deliveryTime);
-        Task<PagedResult<PendingDeliveryDTO>> GetPendingDeliveriesPaged(ShippingOrderQueryParams queryParams);
 
         // Vehicle related 
-        Task<OrderSize> EstimateOrderSizeAsync(int orderId);
-        Task<VehicleType> SuggestVehicleTypeAsync(int orderId);
-        Task<ShippingOrderAllocationDTO> AllocateOrderToStaffWithVehicle(int orderId, int staffId, int? vehicleId = null);
+        Task<OrderSize> EstimateOrderSizeAsync(string orderCode);
+        Task<VehicleType> SuggestVehicleTypeAsync(string orderCode);
     }
 }

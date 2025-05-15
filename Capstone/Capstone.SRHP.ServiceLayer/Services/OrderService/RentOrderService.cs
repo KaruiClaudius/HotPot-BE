@@ -454,12 +454,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var today = DateTime.Today;
 
-            // Get assigned order IDs
-            var assignedOrderIds = await _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.CompletedDate == null)
-                .Select(a => a.OrderId)
-                .ToListAsync();
-
             // Load orders with users first to filter by those with customer names
             var ordersWithUsers = await _unitOfWork.Repository<Order>()
                 .AsQueryable(o => !o.IsDelete)
@@ -476,7 +470,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .AsQueryable(r => r.ExpectedReturnDate.Date <= today &&
                                   r.ActualReturnDate == null &&
                                   !r.IsDelete &&
-                                  !assignedOrderIds.Contains(r.OrderId) &&
                                   orderIdsWithCustomers.Contains(r.OrderId))
                 .OrderBy(r => r.OrderId);
 

@@ -101,7 +101,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 var createdShift = await _scheduleService.CreateWorkShiftAsync(workShift);
 
                 // Notify all managers about the new shift
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "New Work Shift Created",
@@ -163,7 +163,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     foreach (var staff in shiftWithStaff.Staff)
                     {
                         // Notify each staff member about their schedule update
-                        await _notificationService.NotifyUser(
+                        await _notificationService.NotifyUserAsync(
                             staff.UserId,
                             "ScheduleUpdate",
                             "Work Shift Updated",
@@ -181,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 }
 
                 // Notify all managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Work Shift Updated",
@@ -239,7 +239,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 {
                     foreach (var staff in staffMembers)
                     {
-                        await _notificationService.NotifyUser(
+                        await _notificationService.NotifyUserAsync(
                             staff.UserId,
                             "ScheduleUpdate",
                             "Work Shift Deleted",
@@ -257,7 +257,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 }
 
                 // Notify all managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Work Shift Deleted",
@@ -321,7 +321,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 string workDaysText = GetWorkDaysText(manager.WorkDays.Value);
 
                 // Notify the manager about their schedule update
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     manager.UserId,
                     "ScheduleUpdate",
                     "Your Schedule Has Been Updated",
@@ -338,7 +338,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     });
 
                 // Notify all other managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
                     "Manager Schedule Updated",

@@ -90,7 +90,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string staffName = staff?.Name ?? "Staff Member";
 
                 // Notify the staff member about the new assignment
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     request.StaffId,
                     "NewAssignment",
                     "New Pickup Assignment",
@@ -195,7 +195,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     int extensionDays = (parsedDate - rentOrder.ExpectedReturnDate).Days;
                     string extensionType = extensionDays > 0 ? "extended" : "reduced";
 
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         rentOrder.Order.UserId,
                         "RentalDateAdjusted",
                         "Rental Return Date Adjusted",
@@ -213,7 +213,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         });
 
                     // Also notify staff about the adjustment
-                    await _notificationService.NotifyRole(
+                    await _notificationService.NotifyRoleAsync(
                         "Staff",
                         "RentalDateAdjusted",
                         "Rental Return Date Adjusted",

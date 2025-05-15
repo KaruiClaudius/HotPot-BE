@@ -88,7 +88,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = dto.EquipmentName;
 
                 // Notify staff about the review decision
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Staff",
                     "ReplacementReviewed",
                     $"Replacement Request {statusText.ToUpper()}",
@@ -107,7 +107,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementReviewed",
                         $"Your Replacement Request was {statusText}",
@@ -164,7 +164,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the specific staff member who was assigned
                 if (request.AssignedStaffId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.AssignedStaffId.Value,
                         "ReplacementAssignment",
                         "New Replacement Assignment",
@@ -186,7 +186,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementInProgress",
                         "Your Replacement Request is in Progress",
@@ -218,34 +218,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
             }
         }
-
-        //[HttpPost("notify-customer")]
-        //[ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<bool>>> NotifyCustomerDirectly([FromBody] NotifyCustomerRequest request)
-        //{
-        //    try
-        //    {
-        //        // Validate the request
-        //        if (request.CustomerId <= 0)
-        //        {
-        //            return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid customer ID"));
-        //        }
-
-        //        // Send a direct notification to the customer
-        //        await _notificationService.NotifyCustomerDirectlyAsync(
-        //            request.CustomerId,
-        //            request.ConditionLogId,
-        //            request.Message,
-        //            request.EstimatedResolutionTime);
-
-        //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Customer notified successfully"));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-        //    }
-        //}
 
         #endregion
 

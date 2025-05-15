@@ -15,5 +15,6 @@ namespace Capstone.HPTY.ModelLayer.Enum
     {
         Preparation = 1,
         Shipping = 2,
+        Pickup = 3,
     }
 }
