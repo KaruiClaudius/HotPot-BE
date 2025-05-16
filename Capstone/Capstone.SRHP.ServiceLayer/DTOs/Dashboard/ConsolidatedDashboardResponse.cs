@@ -19,5 +19,17 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Dashboard
 
         // Product consumption statistics
         public ProductConsumptionStats ProductConsumption { get; set; }
+
+        public int SelectedYear { get; set; }
+        public DateRangeInfo DateRange { get; set; }
     }
+
+    public class DateRangeInfo
+    {
+        public DateTime FromDate { get; set; }
+        public DateTime ToDate { get; set; }
+        public bool IsFullYear { get; set; }
+    }
+
+
 }

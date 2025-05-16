@@ -37,30 +37,40 @@ namespace Capstone.HPTY.API.Controllers.Admin
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<ConsolidatedDashboardResponse>> GetDashboard(
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null,
-            [FromQuery] string status = null,
-            [FromQuery] string productType = null,
-            [FromQuery] bool? hasHotpot = null,
-            [FromQuery] string paymentStatus = null,
-            [FromQuery] int topProductsLimit = 5,
-            [FromQuery] int? year = null)
+          [FromQuery] DateTime? fromDate = null,
+          [FromQuery] DateTime? toDate = null,
+          [FromQuery] string status = null,
+          [FromQuery] string productType = null,
+          [FromQuery] bool? hasHotpot = null,
+          [FromQuery] string paymentStatus = null,
+          [FromQuery] int topProductsLimit = 5,
+          [FromQuery] int? year = null)
         {
             try
             {
-                // Set default date range if not provided (current year)
-                if (!toDate.HasValue)
-                    toDate = DateTime.UtcNow;
-
-                if (!fromDate.HasValue)
+                // If year is specified, it takes precedence over fromDate and toDate
+                if (year.HasValue)
                 {
-                    // Default to start of current year
-                    fromDate = new DateTime(toDate.Value.Year, 1, 1);
+                    // Year parameter will override fromDate and toDate in the service
+                    fromDate = null;
+                    toDate = null;
+                }
+                else
+                {
+                    // Set default date range if not provided (current year)
+                    if (!toDate.HasValue)
+                        toDate = DateTime.UtcNow;
+
+                    if (!fromDate.HasValue)
+                    {
+                        // Default to start of current year
+                        fromDate = new DateTime(toDate.Value.Year, 1, 1);
+                    }
                 }
 
                 var dashboardData = await _analyticsService.GetConsolidatedDashboardDataAsync(
-                    fromDate.Value,
-                    toDate.Value,
+                    fromDate ?? DateTime.MinValue,  // These will be overridden if year is specified
+                    toDate ?? DateTime.MaxValue,    // These will be overridden if year is specified
                     status,
                     productType,
                     hasHotpot,

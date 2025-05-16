@@ -857,8 +857,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         private async Task ValidateCustomizationIngredientsAsync(
-        List<CustomizationIngredientsRequest> ingredients,
-        List<ComboAllowedIngredientType> allowedTypes)
+            List<CustomizationIngredientsRequest> ingredients,
+            List<ComboAllowedIngredientType> allowedTypes)
         {
             // Group allowed types by IngredientTypeId.
             var allowedTypesByTypeId = allowedTypes
