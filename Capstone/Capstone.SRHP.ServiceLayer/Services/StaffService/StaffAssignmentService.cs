@@ -707,7 +707,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         }
 
         public async Task<PagedResult<StaffAssignmentHistoryDto>> GetStaffAssignmentHistoryAsync(
-    StaffAssignmentHistoryFilterRequest filter, int managerId)
+     StaffAssignmentHistoryFilterRequest filter, int managerId)
         {
             try
             {
@@ -751,6 +751,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     query = query.Where(sa => sa.Staff.Name.Contains(filter.StaffName));
                 }
 
+                // Add filter for OrderCode
+                if (!string.IsNullOrWhiteSpace(filter.OrderCode))
+                {
+                    query = query.Where(sa => sa.Order.OrderCode.Contains(filter.OrderCode));
+                }
+
                 // Include related data
                 query = query
                     .Include(sa => sa.Staff)
@@ -758,20 +764,77 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         .ThenInclude(o => o.User)
                     .OrderByDescending(sa => sa.AssignedDate);
 
-                // Get total count for pagination
-                var totalCount = await query.CountAsync();
+                // Get all matching assignments
+                var allAssignments = await query.ToListAsync();
 
-                // Apply pagination
+                // Group assignments by OrderId and TaskType for preparation tasks
+                var groupedAssignments = new List<StaffAssignment>();
+                var processedOrderTaskTypes = new HashSet<string>(); // Track processed order-tasktype combinations
+
+                foreach (var assignment in allAssignments)
+                {
+                    // Create a unique key for each order-tasktype combination
+                    string key = $"{assignment.OrderId}-{assignment.TaskType}";
+
+                    // For preparation tasks, we want to group them
+                    if (assignment.TaskType == StaffTaskType.Preparation)
+                    {
+                        // If this is the first time we're seeing this order-tasktype combination
+                        if (!processedOrderTaskTypes.Contains(key))
+                        {
+                            // Add it to our processed set
+                            processedOrderTaskTypes.Add(key);
+                            // Add the assignment to our result list
+                            groupedAssignments.Add(assignment);
+                        }
+                        // Otherwise, we've already included this order-tasktype, so skip
+                    }
+                    else
+                    {
+                        // For non-preparation tasks, include all assignments
+                        groupedAssignments.Add(assignment);
+                    }
+                }
+
+                // Apply pagination after grouping
+                var totalCount = groupedAssignments.Count;
                 var pageNumber = filter.PageNumber ?? 1;
                 var pageSize = filter.PageSize ?? 10;
 
-                var assignments = await query
+                var pagedAssignments = groupedAssignments
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
-                    .ToListAsync();
+                    .ToList();
 
-                // Map to DTOs
-                var assignmentDtos = assignments.Select(MapToStaffAssignmentHistoryDto).ToList();
+                // Map to DTOs with additional staff information
+                var assignmentDtos = new List<StaffAssignmentHistoryDto>();
+
+                foreach (var assignment in pagedAssignments)
+                {
+                    var dto = MapToStaffAssignmentHistoryDto(assignment);
+
+                    // If this is a preparation task, find all other staff assigned to this order
+                    if (assignment.TaskType == StaffTaskType.Preparation)
+                    {
+                        // Find all other preparation assignments for this order
+                        var additionalStaff = allAssignments
+                            .Where(a => a.OrderId == assignment.OrderId &&
+                                   a.TaskType == StaffTaskType.Preparation &&
+                                   a.StaffAssignmentId != assignment.StaffAssignmentId)
+                            .Select(a => new StaffInfo
+                            {
+                                StaffId = a.StaffId,
+                                StaffName = a.Staff?.Name,
+                                AssignedDate = a.AssignedDate,
+                                CompletedDate = a.CompletedDate
+                            })
+                            .ToList();
+
+                        dto.AdditionalPreparationStaff = additionalStaff;
+                    }
+
+                    assignmentDtos.Add(dto);
+                }
 
                 return new PagedResult<StaffAssignmentHistoryDto>
                 {
@@ -804,7 +867,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 CompletedDate = assignment.CompletedDate,
                 IsActive = assignment.IsActive,
                 OrderStatus = assignment.Order?.Status ?? OrderStatus.Pending,
-                OrderStatusName = (assignment.Order?.Status ?? OrderStatus.Pending).ToString()
+                OrderStatusName = (assignment.Order?.Status ?? OrderStatus.Pending).ToString(),
+                AdditionalPreparationStaff = new List<StaffInfo>() // Will be populated in the main method
             };
         }
 

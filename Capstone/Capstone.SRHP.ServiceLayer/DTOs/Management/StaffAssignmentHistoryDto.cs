@@ -22,7 +22,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public bool IsActive { get; set; }
         public OrderStatus OrderStatus { get; set; }
         public string OrderStatusName { get; set; }
+
+        // Add this property for multiple preparation staff
+        public List<StaffInfo> AdditionalPreparationStaff { get; set; } = new List<StaffInfo>();
     }
+    public class StaffInfo
+    {
+        public int StaffId { get; set; }
+        public string StaffName { get; set; }
+        public DateTime AssignedDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
+        public bool IsActive => CompletedDate == null;
+    }
+
 
     public class StaffAssignmentHistoryFilterRequest
     {
@@ -32,6 +44,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public bool? IsActive { get; set; }
         public int? StaffId { get; set; }
         public string? StaffName { get; set; }
+        public string? OrderCode { get; set; } // Add this property
         public int? PageNumber { get; set; } = 1;
         public int? PageSize { get; set; } = 10;
         // filter order code as well
