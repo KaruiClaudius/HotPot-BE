@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
 {
@@ -13,5 +14,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customization
         public string Name { get; set; }
         public int Quantity { get; set; }
         public decimal Price { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string FormattedQuantity { get; set; }
     }
 }
