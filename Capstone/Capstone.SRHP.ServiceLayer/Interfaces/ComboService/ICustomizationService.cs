@@ -28,7 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task<Customization?> GetByIdAsync(int id);
 
         Task<Customization> CreateCustomizationAsync(
-                 int? comboId,  // Accept nullable comboId
+                 int? comboId,
                  int userId,
                  string name,
                  string? note,
