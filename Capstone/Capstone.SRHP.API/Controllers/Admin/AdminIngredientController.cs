@@ -184,15 +184,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.TotalAmount <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Total amount must be greater than 0"
-                    });
-                }
-
                 if (request.Price < 0)
                 {
                     return BadRequest(new ApiErrorResponse
@@ -220,28 +211,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Validate expiry date based on ingredient type
-                if (!IngredientTypeExpiryConfig.IsValidExpiryDate(request.IngredientTypeID, request.BestBeforeDate))
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(request.IngredientTypeID)
-                    });
-                }
-
-                // Calculate quantity based on total amount and measurement value - ROUND DOWN
-                int calculatedQuantity = (int)Math.Floor(request.TotalAmount / request.MeasurementValue);
-
-                if (calculatedQuantity <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
-                    });
-                }
-
                 // Create ingredient entity
                 var ingredient = new Ingredient
                 {
@@ -257,33 +226,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Create ingredient with initial price
                 var createdIngredient = await _ingredientService.CreateIngredientAsync(ingredient, request.Price);
 
-                // Add initial batch with calculated quantity and initial flag
-                await _ingredientService.AddBatchAsync(
-                    createdIngredient.IngredientId,
-                    calculatedQuantity,
-                    request.BestBeforeDate,
-                    true); // Mark as initial batch
-
-                // Get the updated ingredient with batch information
-                var updatedIngredient = await _ingredientService.GetIngredientByIdAsync(createdIngredient.IngredientId);
 
                 // Map to DTO
-                var ingredientDto = MapToIngredientDto(updatedIngredient);
+                var ingredientDto = MapToIngredientDto(createdIngredient);
                 ingredientDto.Price = request.Price;
 
-                // Calculate the leftover amount
-                double leftoverAmount = request.TotalAmount % request.MeasurementValue;
-
-                // Create the response message
-                string responseMessage;
-                if (leftoverAmount > 0)
-                {
-                    responseMessage = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit}). Note: {leftoverAmount:F2} {request.Unit} leftover will not be counted in inventory.";
-                }
-                else
-                {
-                    responseMessage = $"Ingredient created successfully with {calculatedQuantity} units ({request.TotalAmount} {request.Unit}).";
-                }
 
                 return CreatedAtAction(
                     nameof(GetIngredientById),
@@ -291,7 +238,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientDto>
                     {
                         Success = true,
-                        Message = responseMessage,
+                        Message = "Ingredient created successfully.",
                         Data = ingredientDto
                     });
             }
