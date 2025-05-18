@@ -4,7 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -14,7 +14,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class IngredientService : IIngredientService
     {
@@ -39,15 +39,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         #region Ingredient Methods
 
         public async Task<PagedResult<Ingredient>> GetIngredientsAsync(
-            string searchTerm = null,
-            int? typeId = null,
-            bool? isLowStock = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "Name",
-            bool ascending = true)
+                   string searchTerm = null,
+                   int? typeId = null,
+                   bool? isLowStock = null,
+                   decimal? minPrice = null,
+                   decimal? maxPrice = null,
+                   int pageNumber = 1,
+                   int pageSize = 10,
+                   string sortBy = "Name",
+                   bool ascending = true)
         {
             try
             {
@@ -318,6 +318,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .Include(i => i.IngredientType)
                     .Include(i => i.IngredientPrices.Where(p => !p.IsDelete))
                     .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                     .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
 
                 if (ingredient == null)
@@ -355,9 +356,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (string.IsNullOrWhiteSpace(entity.Unit))
                     throw new ValidationException("Đơn vị đo lường không được để trống");
 
-                if (entity.MeasurementValue <= 0)
-                    throw new ValidationException("Giá trị đo lường phải lớn hơn 0");
-
                 // Check if ingredient type exists
                 var ingredientType = await _unitOfWork.Repository<IngredientType>()
                     .FindAsync(t => t.IngredientTypeId == entity.IngredientTypeId && !t.IsDelete);
@@ -384,14 +382,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         existingIngredient.MinStockLevel = entity.MinStockLevel;
                         existingIngredient.IngredientTypeId = entity.IngredientTypeId;
                         existingIngredient.Unit = entity.Unit;
-                        existingIngredient.MeasurementValue = entity.MeasurementValue; // Ensure non-null
                         existingIngredient.SetUpdateDate();
 
-                        // Add new price
+                        // Add new price with UnitSize
                         var price = new IngredientPrice
                         {
                             IngredientId = existingIngredient.IngredientId,
                             Price = initialPrice,
+                            UnitSize = 1, // Default unit size
                             EffectiveDate = DateTime.UtcNow
                         };
 
@@ -402,16 +400,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     }
                 }
 
-                // Create new ingredient (without setting Quantity as it's now calculated)
+               // Create new ingredient
                 _unitOfWork.Repository<Ingredient>().Insert(entity);
                 await _unitOfWork.CommitAsync();
 
-                // Add initial price
+                // Add initial price with UnitSize
                 var initialPriceEntity = new IngredientPrice
                 {
                     IngredientId = entity.IngredientId,
                     Price = initialPrice,
-                    EffectiveDate = DateTime.UtcNow
+                    UnitSize = 1, // Default unit size
+                    EffectiveDate = DateTime.UtcNow.AddHours(7) 
                 };
 
                 _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
@@ -446,8 +445,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (string.IsNullOrWhiteSpace(entity.Unit))
                     throw new ValidationException("Đơn vị đo lường không được để trống");
 
-                if (entity.MeasurementValue <= 0)
-                    throw new ValidationException("Giá trị đo lường phải lớn hơn 0");
 
                 // Check if ingredient type exists
                 var ingredientType = await _unitOfWork.Repository<IngredientType>()
@@ -473,7 +470,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 existingIngredient.MinStockLevel = entity.MinStockLevel;
                 existingIngredient.IngredientTypeId = entity.IngredientTypeId;
                 existingIngredient.Unit = entity.Unit;
-                existingIngredient.MeasurementValue = entity.MeasurementValue; // Ensure non-null
                 existingIngredient.SetUpdateDate();
 
                 await _unitOfWork.CommitAsync();
@@ -561,29 +557,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             else if (quantityChange < 0)
             {
                 // Removing quantity - consume from batches
-                //await ConsumeIngredientAsync(id, Math.Abs(quantityChange));
-            }
-        }
-
-        public async Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync()
-        {
-            try
-            {
-                // Get all ingredients with their batches
-                var ingredients = await _unitOfWork.Repository<Ingredient>()
-                    .Include(i => i.IngredientType)
-                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete))
-                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
-                    .Where(i => !i.IsDelete)
-                    .ToListAsync();
-
-                // Filter for low stock
-                return ingredients.Where(i => i.Quantity <= i.MinStockLevel).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving low stock ingredients");
-                throw;
+                await ConsumeIngredientAsync(id, Math.Abs(quantityChange), 0); // 0 as a placeholder for orderID
             }
         }
 
@@ -596,6 +570,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .Include(i => i.IngredientType)
                     .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
                     .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
+                    .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                     .Where(i => !i.IsDelete && i.IngredientTypeId == typeId)
                     .OrderBy(i => i.Name)
                     .ToListAsync();
@@ -609,24 +584,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-        public double GetPhysicalQuantity(Ingredient ingredient)
-        {
-            if (ingredient == null)
-                throw new ArgumentNullException(nameof(ingredient));
-
-            // Since MeasurementValue is now non-nullable, we don't need the null check
-            return (double)(ingredient.Quantity * ingredient.MeasurementValue);
-        }
-
         public string GetFormattedQuantity(Ingredient ingredient)
         {
             if (ingredient == null)
                 throw new ArgumentNullException(nameof(ingredient));
 
-            double physicalQuantity = GetPhysicalQuantity(ingredient);
-
-            // Since Unit is now non-nullable, we don't need the null check
-            return $"{physicalQuantity} {ingredient.Unit}";
+            // Simply format with the unit
+            return $"{ingredient.Quantity} {ingredient.Unit}";
         }
 
         public async Task<Dictionary<int, string>> GetFormattedQuantitiesAsync(IEnumerable<int> ingredientIds)
@@ -653,6 +617,245 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
+        #endregion
+
+        #region Ingredient Packaging Methods
+
+        public async Task<IEnumerable<IngredientPackaging>> GetPackagingOptionsAsync(int ingredientId)
+        {
+            try
+            {
+                var packagingOptions = await _unitOfWork.Repository<IngredientPackaging>()
+                    .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete)
+                    .OrderBy(p => p.Quantity)
+                    .ToListAsync();
+
+                return packagingOptions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving packaging options for ingredient {IngredientId}", ingredientId);
+                throw;
+            }
+        }
+
+        public async Task<IngredientPackaging> GetPackagingByIdAsync(int packagingId)
+        {
+            try
+            {
+                var packaging = await _unitOfWork.Repository<IngredientPackaging>()
+                    .Include(p => p.Ingredient)
+                    .FirstOrDefaultAsync(p => p.PackagingId == packagingId && !p.IsDelete);
+
+                if (packaging == null)
+                    throw new NotFoundException($"Không tìm thấy quy cách đóng gói với ID {packagingId}");
+
+                return packaging;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving packaging with ID {PackagingId}", packagingId);
+                throw;
+            }
+        }
+
+        public async Task<IngredientPackaging> AddPackagingAsync(IngredientPackaging packaging)
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Validate
+                if (string.IsNullOrWhiteSpace(packaging.Name))
+                    throw new ValidationException("Tên quy cách đóng gói không được để trống");
+
+                if (packaging.Quantity <= 0)
+                    throw new ValidationException("Số lượng phải lớn hơn 0");
+
+                // Check if ingredient exists
+                var ingredient = await GetIngredientByIdAsync(packaging.IngredientId);
+
+                // Check if a packaging with the same name exists for this ingredient
+                var existingPackaging = await _unitOfWork.Repository<IngredientPackaging>()
+                    .FindAsync(p => p.IngredientId == packaging.IngredientId &&
+                                   p.Name == packaging.Name &&
+                                   !p.IsDelete);
+
+                if (existingPackaging != null)
+                    throw new ValidationException($"Quy cách đóng gói với tên {packaging.Name} đã tồn tại cho nguyên liệu này");
+
+                // If this is marked as default, unmark any existing defaults
+                if (packaging.IsDefault)
+                {
+                    var existingDefaults = await _unitOfWork.Repository<IngredientPackaging>()
+                        .FindAll(p => p.IngredientId == packaging.IngredientId &&
+                                     p.IsDefault &&
+                                     !p.IsDelete)
+                        .ToListAsync();
+
+                    foreach (var defaultPackaging in existingDefaults)
+                    {
+                        defaultPackaging.IsDefault = false;
+                        await _unitOfWork.Repository<IngredientPackaging>().Update(defaultPackaging, defaultPackaging.PackagingId);
+                    }
+                }
+
+                _unitOfWork.Repository<IngredientPackaging>().Insert(packaging);
+                await _unitOfWork.CommitAsync();
+
+                return packaging;
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error adding packaging for ingredient with ID {IngredientId}", packaging.IngredientId);
+                }
+            });
+        }
+
+
+        public async Task UpdatePackagingAsync(int packagingId, IngredientPackaging packaging)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+            var existingPackaging = await GetPackagingByIdAsync(packagingId);
+
+                // Validate
+                if (string.IsNullOrWhiteSpace(packaging.Name))
+                    throw new ValidationException("Tên quy cách đóng gói không được để trống");
+
+                if (packaging.Quantity <= 0)
+                    throw new ValidationException("Số lượng phải lớn hơn 0");
+
+                // Check for name uniqueness if name is changed (within the same ingredient)
+                if (packaging.Name != existingPackaging.Name)
+                {
+                    var nameExists = await _unitOfWork.Repository<IngredientPackaging>()
+                        .AnyAsync(p => p.Name == packaging.Name &&
+                                      p.PackagingId != packagingId &&
+                                      p.IngredientId == existingPackaging.IngredientId &&
+                                      !p.IsDelete);
+
+                    if (nameExists)
+                        throw new ValidationException($"Quy cách đóng gói với tên {packaging.Name} đã tồn tại cho nguyên liệu này");
+                }
+
+                // If this is being marked as default, unmark any existing defaults
+                if (packaging.IsDefault && !existingPackaging.IsDefault)
+                {
+                    var existingDefaults = await _unitOfWork.Repository<IngredientPackaging>()
+                        .FindAll(p => p.IngredientId == existingPackaging.IngredientId &&
+                                     p.IsDefault &&
+                                     p.PackagingId != packagingId &&
+                                     !p.IsDelete)
+                        .ToListAsync();
+
+                    foreach (var defaultPackaging in existingDefaults)
+                    {
+                        defaultPackaging.IsDefault = false;
+                        await _unitOfWork.Repository<IngredientPackaging>().Update(defaultPackaging, defaultPackaging.PackagingId);
+                    }
+                }
+
+                // Update properties
+                existingPackaging.Name = packaging.Name;
+                existingPackaging.Quantity = packaging.Quantity;
+                existingPackaging.IsDefault = packaging.IsDefault;
+                existingPackaging.SetUpdateDate();
+
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error updating packaging with ID {PackagingId}", packagingId);
+                }
+            });
+        }
+
+        public async Task DeletePackagingAsync(int packagingId)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var packaging = await GetPackagingByIdAsync(packagingId);
+
+                // Check if this packaging is in use in any orders
+                var isUsedInOrders = await _unitOfWork.Repository<SellOrderDetail>()
+                    .AnyAsync(sod => sod.PackagingId == packagingId && !sod.IsDelete);
+
+                if (isUsedInOrders)
+                    throw new ValidationException("Không thể xóa quy cách đóng gói đang được sử dụng trong đơn hàng");
+
+                // If this is the default packaging, we need to set another one as default
+                if (packaging.IsDefault)
+                {
+                    var otherPackagings = await _unitOfWork.Repository<IngredientPackaging>()
+                        .FindAll(p => p.IngredientId == packaging.IngredientId &&
+                                     p.PackagingId != packagingId &&
+                                     !p.IsDelete)
+                        .OrderBy(p => p.Quantity)
+                        .ToListAsync();
+
+                    if (otherPackagings.Any())
+                    {
+                        var newDefault = otherPackagings.First();
+                        newDefault.IsDefault = true;
+                        await _unitOfWork.Repository<IngredientPackaging>().Update(newDefault, newDefault.PackagingId);
+                    }
+                }
+
+                packaging.SoftDelete();
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error deleting packaging with ID {PackagingId}", packagingId);
+                }
+            });
+        }
+
+        public async Task<IngredientPackaging> GetDefaultPackagingAsync(int ingredientId)
+        {
+            try
+            {
+                // First check if the ingredient exists
+                await GetIngredientByIdAsync(ingredientId);
+
+                var defaultPackaging = await _unitOfWork.Repository<IngredientPackaging>()
+                    .FindAsync(p => p.IngredientId == ingredientId &&
+                                   p.IsDefault &&
+                                   !p.IsDelete);
+
+                if (defaultPackaging == null)
+                {
+                    // If no default is set, get the smallest packaging
+                    defaultPackaging = await _unitOfWork.Repository<IngredientPackaging>()
+                        .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete)
+                        .OrderBy(p => p.Quantity)
+                        .FirstOrDefaultAsync();
+
+                    if (defaultPackaging == null)
+                        throw new NotFoundException($"Không tìm thấy quy cách đóng gói cho nguyên liệu với ID {ingredientId}");
+                }
+
+                return defaultPackaging;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving default packaging for ingredient {IngredientId}", ingredientId);
+                throw;
+            }
+        }
         #endregion
 
         #region Ingredient Type Methods
@@ -974,21 +1177,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             });
         }
 
-        public async Task<IEnumerable<Ingredient>> GetBrothsAsync()
-        {
-            try
-            {
-                // Assuming broth is ingredient type with ID 1
-                const int BROTH_TYPE_ID = 1;
-
-                return await GetIngredientsByTypeAsync(BROTH_TYPE_ID);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving broths");
-                throw;
-            }
-        }
 
         public async Task<int> GetTotalIngredientCountAsync()
         {
@@ -1125,11 +1313,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Log with physical quantity information
                 _logger.LogInformation(
-                    "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} units ({PhysicalQuantity} {Unit}), Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
+                    "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} {Unit}, Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
                     ingredient.Name,
                     ingredientId,
                     quantity,
-                    quantity * ingredient.MeasurementValue,
                     ingredient.Unit,
                     bestBeforeDate,
                     batchNumber);
@@ -1195,11 +1382,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                     // Log with physical quantity information
                     _logger.LogInformation(
-                        "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} units ({PhysicalQuantity} {Unit}), Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
+                        "Added new batch for ingredient {IngredientName} (ID: {IngredientId}): {Quantity} {Unit}, Best before: {BestBeforeDate}, Batch number: {BatchNumber}",
                         ingredient.Name,
                         ingredientId,
                         quantity,
-                        quantity * ingredient.MeasurementValue,
                         ingredient.Unit,
                         bestBeforeDate,
                         batchNumber);
@@ -1231,10 +1417,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (quantity < batch.InitialQuantity - batch.RemainingQuantity)
                     throw new ValidationException("Số lượng không thể nhỏ hơn số lượng đã sử dụng");
 
-                // Calculate physical quantities for logging
-                double oldPhysicalQuantity = (double)(batch.InitialQuantity * ingredient.MeasurementValue);
-                double newPhysicalQuantity = (double)(quantity * ingredient.MeasurementValue);
-
                 // Update batch properties
                 int quantityDifference = quantity - batch.InitialQuantity;
                 batch.InitialQuantity = quantity;
@@ -1250,15 +1432,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 // Log the update with physical quantity information
                 _logger.LogInformation(
-                    "Updated batch {BatchId} for ingredient {IngredientName} (ID: {IngredientId}): Changed quantity from {OldQuantity} units ({OldPhysicalQuantity} {Unit}) to {NewQuantity} units ({NewPhysicalQuantity} {Unit})",
+                    "Updated batch {BatchId} for ingredient {IngredientName} (ID: {IngredientId}): Changed quantity from {OldQuantity} to {NewQuantity} {Unit}",
                     batchId,
                     ingredient.Name,
                     ingredient.IngredientId,
                     batch.InitialQuantity - quantityDifference,
-                    oldPhysicalQuantity,
-                    ingredient.Unit,
                     batch.InitialQuantity,
-                    newPhysicalQuantity,
                     ingredient.Unit);
             },
             ex =>
@@ -1269,7 +1448,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
             });
         }
-
         public async Task DeleteBatchAsync(int batchId)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -1320,7 +1498,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     if (remainingQuantity <= 0) break;
 
-                    int quantityFromBatch = Math.Min(quantity, batch.RemainingQuantity);
+                    int quantityFromBatch = Math.Min(remainingQuantity, batch.RemainingQuantity);
 
                     // Record usage
                     var usage = new IngredientUsage
@@ -1355,6 +1533,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 throw;
             }
         }
+
+
         public async Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7)
         {
             try

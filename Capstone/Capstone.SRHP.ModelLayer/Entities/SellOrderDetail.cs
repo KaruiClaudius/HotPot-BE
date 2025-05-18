@@ -22,6 +22,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public int OrderId { get; set; }
 
         public int? IngredientId { get; set; }
+        public int? PackagingId { get; set; }
         public int? CustomizationId { get; set; }
         public int? ComboId { get; set; }
         public int? UtensilId { get; set; }
@@ -30,6 +31,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [ForeignKey(nameof(IngredientId))]
         public virtual Ingredient? Ingredient { get; set; }
+        [ForeignKey(nameof(PackagingId))]
+        public virtual IngredientPackaging? Packaging { get; set; }
 
         [ForeignKey(nameof(CustomizationId))]
         public virtual Customization? Customization { get; set; }

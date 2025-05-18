@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,7 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class ComboService : IComboService
     {
@@ -31,17 +31,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<PagedResult<Combo>> GetCombosAsync(
-            string searchTerm = null,
-            bool? isCustomizable = null,
-            bool activeOnly = true,
-            int? minSize = null,
-            int? maxSize = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "Name",
-            bool ascending = true)
+                    string searchTerm = null,
+                    bool? isCustomizable = null,
+                    bool activeOnly = true,
+                    int? minSize = null,
+                    int? maxSize = null,
+                    decimal? minPrice = null,
+                    decimal? maxPrice = null,
+                    int pageNumber = 1,
+                    int pageSize = 10,
+                    string sortBy = "Name",
+                    bool ascending = true)
         {
             // Validate pagination parameters
             if (pageNumber < 1)
@@ -173,6 +173,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .IncludeNested(query =>
                         query.Include(c => c.ComboIngredients)
                              .ThenInclude(ci => ci.Ingredient)
+                             .ThenInclude(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                              .Include(c => c.AppliedDiscount)
                              .Include(c => c.TurtorialVideo)
                              .Include(c => c.AllowedIngredientTypes)
@@ -197,12 +198,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
 
         public async Task<Combo> CreateComboWithVideoAsync(
-            Combo combo,
-            TurtorialVideo video,
-            List<ComboIngredient> baseIngredients = null,
-            List<ComboAllowedIngredientType> allowedTypes = null)
+           Combo combo,
+           TurtorialVideo video,
+           List<ComboIngredient> baseIngredients = null,
+           List<ComboAllowedIngredientType> allowedTypes = null)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync<Combo>(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 // Check for soft-deleted combo with the same name
                 var existingCombo = await _unitOfWork.Repository<Combo>()
@@ -402,7 +403,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
             });
         }
-
         public async Task<string> GenerateGroupIdentifierAsync(string comboName)
         {
             // Create a base identifier from the combo name (remove spaces, special chars)
@@ -507,11 +507,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task UpdateAsync(
-             int id,
-             Combo combo,
-             TurtorialVideo video = null,
-             List<ComboIngredient> baseIngredients = null,
-             List<ComboAllowedIngredientType> allowedTypes = null)
+              int id,
+              Combo combo,
+              TurtorialVideo video = null,
+              List<ComboIngredient> baseIngredients = null,
+              List<ComboAllowedIngredientType> allowedTypes = null)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -879,9 +879,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (!isAllowed)
                     throw new ValidationException($"Loại nguyên liệu với ID {ingredientTypeId} không được phép cho combo này");
 
-                // Get all available ingredients of this type
+                // Get all available ingredients of this type with their packaging options
                 return await _unitOfWork.Repository<Ingredient>()
-                    .FindAll(i => i.IngredientTypeId == ingredientTypeId && i.Quantity > 0 && !i.IsDelete)
+                    .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
+                    .Where(i => i.IngredientTypeId == ingredientTypeId && !i.IsDelete)
                     .ToListAsync();
             }
             catch (NotFoundException)
@@ -895,31 +897,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách nguyên liệu có sẵn cho loại {IngredientTypeId} và combo {ComboId}", ingredientTypeId, comboId);
-                throw;
-            }
-        }
-
-
-        public async Task<IEnumerable<ComboIngredient>> GetComboIngredientsAsync(int comboId)
-        {
-            try
-            {
-                var combo = await GetByIdAsync(comboId);
-                if (combo == null)
-                    throw new NotFoundException($"Không tìm thấy combo với ID {comboId}");
-
-                return await _unitOfWork.Repository<ComboIngredient>()
-                    .Include(ci => ci.Ingredient)
-                    .Where(ci => ci.ComboId == comboId && !ci.IsDelete)
-                    .ToListAsync();
-            }
-            catch (NotFoundException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy danh sách nguyên liệu cho combo với ID {ComboId}", comboId);
                 throw;
             }
         }
@@ -951,12 +928,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             decimal finalPrice = basePrice;
             if (discountPercentage > 0)
             {
-                finalPrice = basePrice * (1 - (discountPercentage / 100m));
+                finalPrice = basePrice * (1 - discountPercentage / 100m);
             }
 
             return finalPrice;
         }
-
 
         private async Task ValidateTurtorialVideo(int turtorialVideoId)
         {
@@ -968,7 +944,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<IEnumerable<Combo>> GetCombosByGroupIdentifierAsync(string groupIdentifier)
-        { 
+        {
             if (string.IsNullOrEmpty(groupIdentifier))
                 throw new ValidationException("Group identifier cannot be empty");
 
@@ -976,6 +952,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 .IncludeNested(query =>
                     query.Include(c => c.ComboIngredients)
                          .ThenInclude(ci => ci.Ingredient)
+                         .ThenInclude(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                          .Include(c => c.AppliedDiscount)
                          .Include(c => c.TurtorialVideo)
                          .Include(c => c.AllowedIngredientTypes)
@@ -994,6 +971,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .IncludeNested(query =>
                         query.Include(c => c.ComboIngredients)
                              .ThenInclude(ci => ci.Ingredient)
+                             .ThenInclude(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
                              .Include(c => c.AppliedDiscount))
                     .FirstOrDefaultAsync(c => c.ComboId == comboId && !c.IsDelete);
 
@@ -1003,11 +981,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Calculate base price from ingredients
                 decimal basePrice = 0;
 
+                // Get all ingredient prices at once to avoid multiple database calls
+                var ingredientIds = combo.ComboIngredients
+                    .Where(ci => !ci.IsDelete)
+                    .Select(ci => ci.IngredientId)
+                    .ToList();
+
+                var ingredientPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
+
                 // Add prices of all ingredients
                 foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
                 {
-                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientId);
-                    basePrice += ingredientPrice * comboIngredient.Quantity;
+                    if (ingredientPrices.TryGetValue(comboIngredient.IngredientId, out decimal price))
+                    {
+                        basePrice += price * comboIngredient.Quantity;
+                    }
+                    else
+                    {
+                        // If price not found in the dictionary, get it individually
+                        var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(comboIngredient.IngredientId);
+                        basePrice += ingredientPrice * comboIngredient.Quantity;
+                    }
                 }
 
                 // Calculate per-person base price
@@ -1024,7 +1018,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (combo.AppliedDiscount != null)
                 {
                     decimal discountPercentage = combo.AppliedDiscount.DiscountPercentage;
-                    totalPrice = basePrice * (1 - (discountPercentage / 100m));
+                    totalPrice = basePrice * (1 - discountPercentage / 100m);
                 }
 
                 // Update total price
@@ -1045,6 +1039,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 throw;
             }
         }
+
 
 
     }

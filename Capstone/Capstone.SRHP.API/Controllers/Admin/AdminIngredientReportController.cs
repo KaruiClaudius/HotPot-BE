@@ -1,5 +1,5 @@
 ﻿using Capstone.HPTY.ServiceLayer.DTOs.Payments;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

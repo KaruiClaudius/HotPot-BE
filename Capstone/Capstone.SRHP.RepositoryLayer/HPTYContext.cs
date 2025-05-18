@@ -51,6 +51,7 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Vehicle> Vehicles { get; set; }
         public virtual DbSet<Notification> Notifications { get; set; }
         public virtual DbSet<UserNotification> UserNotifications { get; set; }
+        public virtual DbSet<IngredientPackaging> IngredientPackagings { get; set; }
         public virtual DbSet<NotificationTemplate> NotificationTemplates { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
@@ -104,27 +105,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasForeignKey(u => u.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                //entity.HasOne(u => u.Customer)
-                //    .WithOne(c => c.User)
-                //    .HasForeignKey<Customer>(c => c.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
-
-                //entity.HasOne(u => u.Staff)
-                //    .WithOne(s => s.User)
-                //    .HasForeignKey<Staff>(s => s.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
-
-                //entity.HasOne(u => u.Manager)
-                //    .WithOne(m => m.User)
-                //    .HasForeignKey<Manager>(m => m.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
             });
-
-            //modelBuilder.Entity<Customer>(entity =>
-            //{
-            //    entity.Property(c => c.LoyatyPoint)
-            //        .HasDefaultValue(0);
-            //});
 
             modelBuilder.Entity<User>()
                 .HasMany(u => u.StaffWorkShifts)

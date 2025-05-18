@@ -26,12 +26,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
  
         [Required]
         [StringLength(50)]
-        public string Unit { get; set; }
-
-        // For the MeasurementValue field
-        [Column(TypeName = "float")]
-        [Range(0.0001, double.MaxValue, ErrorMessage = "Measurement value must be greater than zero")]
-        public double MeasurementValue { get; set; }
+        public string? Unit { get; set; }
 
         [Required]
         [Column(TypeName = "int")]
@@ -51,5 +46,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ICollection<ComboIngredient>? ComboIngredients { get; set; }
         public virtual ICollection<IngredientPrice>? IngredientPrices { get; set; }
         public virtual ICollection<IngredientBatch>? IngredientBatches { get; set; }
+        public virtual ICollection<IngredientPackaging>? IngredientPackagings { get; set; }
+        public virtual ICollection<IngredientUsage>? IngredientUsages { get; set; }
     }
 }

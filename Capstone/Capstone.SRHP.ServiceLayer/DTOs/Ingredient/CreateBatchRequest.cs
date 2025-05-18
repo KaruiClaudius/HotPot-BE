@@ -13,8 +13,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public int IngredientId { get; set; }
 
         [Required]
-        [Range(0.0001, double.MaxValue, ErrorMessage = "Total amount must be greater than 0")]
-        public double TotalAmount { get; set; }
+        [Range(0, int.MaxValue, ErrorMessage = "Total amount must be greater than 0")]
+        public int TotalAmount { get; set; }
 
         [Required]
         public DateTime BestBeforeDate { get; set; }

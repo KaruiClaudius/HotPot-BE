@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -368,7 +368,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         Name = ci.Ingredient?.Name ?? string.Empty,
                         Quantity = ci.Quantity,
                         Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result,
-                        FormattedQuantity = FormatQuantity(ci.Ingredient.MeasurementValue, ci.Ingredient.Unit)
+                        FormattedQuantity = FormatQuantity(ci.Ingredient.Quantity, ci.Ingredient.Unit)
                     })
                     .ToList()
             };
@@ -378,7 +378,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
         #endregion
 
-        private string FormatQuantity(double quantity, string unit)
+        private string FormatQuantity(int quantity, string unit)
         {
             if (string.IsNullOrEmpty(unit))
                 return quantity.ToString("0.##");

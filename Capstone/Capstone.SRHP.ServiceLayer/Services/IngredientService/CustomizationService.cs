@@ -5,7 +5,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Auth;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Customization;
 using Capstone.HPTY.ServiceLayer.DTOs.SizeDiscount;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -16,7 +16,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class CustomizationService : ICustomizationService
     {
@@ -41,17 +41,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
         }
 
         public async Task<PagedResult<Customization>> GetCustomizationsAsync(
-            string searchTerm = null,
-            int? userId = null,
-            int? comboId = null,
-            int? minSize = null,
-            int? maxSize = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "CreatedAt",
-            bool ascending = false)
+               string searchTerm = null,
+               int? userId = null,
+               int? comboId = null,
+               int? minSize = null,
+               int? maxSize = null,
+               decimal? minPrice = null,
+               decimal? maxPrice = null,
+               int pageNumber = 1,
+               int pageSize = 10,
+               string sortBy = "CreatedAt",
+               bool ascending = false)
         {
             try
             {
@@ -141,7 +141,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 foreach (var customization in items)
                 {
                     customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                        .IncludeNested(q => q
                         .Include(ci => ci.Ingredient)
+                        .ThenInclude(i => i.IngredientPackagings.Where(p => !p.IsDelete)))
                         .Where(ci => ci.CustomizationId == customization.CustomizationId && !ci.IsDelete)
                         .ToListAsync();
                 }
@@ -174,9 +176,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 if (customization != null)
                 {
-                    // Load ingredients
+                    // Load ingredients with their packaging options
                     customization.CustomizationIngredients = await _unitOfWork.Repository<CustomizationIngredient>()
+                        .IncludeNested(q => q
                         .Include(ci => ci.Ingredient)
+                        .ThenInclude(i => i.IngredientPackagings.Where(p => !p.IsDelete)))
                         .Where(ci => ci.CustomizationId == id && !ci.IsDelete)
                         .ToListAsync();
                 }
@@ -480,7 +484,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .ToListAsync();
             }
 
-            return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 // Check for soft-deleted customization with the same name for this user
                 var existingCustomization = await _unitOfWork.Repository<Customization>()
@@ -753,14 +757,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Recalculate prices
                 await UpdatePricesAsync(id);
             },
-            ex =>
+        ex =>
+        {
+            // Only log for exceptions that aren't validation or not found
+            if (!(ex is NotFoundException || ex is ValidationException))
             {
-                // Only log for exceptions that aren't validation or not found
-                if (!(ex is NotFoundException || ex is ValidationException))
-                {
-                    _logger.LogError(ex, "Lỗi khi cập nhật tùy chỉnh", ex);
-                }
-            });
+                _logger.LogError(ex, "Lỗi khi cập nhật tùy chỉnh", ex);
+            }
+        });
         }
 
 
@@ -840,11 +844,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             // Calculate base price from ingredients
             decimal basePrice = 0;
 
+            // Get all ingredient IDs to fetch prices in bulk
+            var ingredientIds = customization.CustomizationIngredients
+                .Where(ci => !ci.IsDelete)
+                .Select(ci => ci.IngredientId)
+                .ToList();
+
+            // Get current prices for all ingredients at once
+            var ingredientPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
+
             // Add prices of all ingredients
             foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
             {
-                var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(customizationIngredient.IngredientId);
-                basePrice += ingredientPrice * customizationIngredient.Quantity;
+                if (ingredientPrices.TryGetValue(customizationIngredient.IngredientId, out decimal price))
+                {
+                    basePrice += price * customizationIngredient.Quantity;
+                }
+                else
+                {
+                    // Fallback to individual price lookup if not found in bulk result
+                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(customizationIngredient.IngredientId);
+                    basePrice += ingredientPrice * customizationIngredient.Quantity;
+                }
             }
 
             // Update base price
@@ -855,7 +876,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (customization.AppliedDiscount != null)
             {
                 decimal discountPercentage = customization.AppliedDiscount.DiscountPercentage;
-                totalPrice = basePrice * (1 - (discountPercentage / 100m));
+                totalPrice = basePrice * (1 - discountPercentage / 100m);
             }
 
             // Update total price
@@ -866,7 +887,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             await _unitOfWork.Repository<Customization>().Update(customization, customizationId);
             await _unitOfWork.CommitAsync();
         }
-
 
         public async Task DeleteAsync(int id)
         {
@@ -906,7 +926,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-
         public async Task<CustomizationPriceEstimate> CalculatePriceEstimateAsync(
             int? comboId, // Accept nullable comboId
             int size,
@@ -935,6 +954,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Validate size
                 if (size <= 0)
                     throw new ValidationException("Kích thước phải lớn hơn 0");
+
+                // Get all ingredient IDs to fetch prices in bulk
+                var ingredientIds = ingredients.Select(i => i.IngredientID).Distinct().ToList();
+
+                // Get current prices for all ingredients at once
+                var ingredientPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
 
                 // Calculate base price
                 decimal basePrice = 0;
@@ -972,8 +997,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     // For from-scratch customizations, no ingredient type validation is needed
 
                     // Add to base price
-                    var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
-                    basePrice += ingredientPrice * ingredientDto.Quantity;
+                    if (ingredientPrices.TryGetValue(ingredientDto.IngredientID, out decimal price))
+                    {
+                        basePrice += price * ingredientDto.Quantity;
+                    }
+                    else
+                    {
+                        // Fallback to individual price lookup if not found in bulk result
+                        var ingredientPrice = await _ingredientService.GetCurrentPriceAsync(ingredientDto.IngredientID);
+                        basePrice += ingredientPrice * ingredientDto.Quantity;
+                    }
                 }
 
                 // Get applicable discount
@@ -1023,6 +1056,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 }
                 ingredientsByType[typeId].Add(ingredientDto);
             }
+
 
             // Loop through each allowed type (skip type 8)
             foreach (var kvp in allowedTypesByTypeId)

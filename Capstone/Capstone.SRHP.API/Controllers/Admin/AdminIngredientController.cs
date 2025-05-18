@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using Capstone.HPTY.ServiceLayer.Extensions;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -202,15 +202,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.MeasurementValue <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Measurement value must be greater than 0"
-                    });
-                }
-
                 // Create ingredient entity
                 var ingredient = new Ingredient
                 {
@@ -220,7 +211,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     MinStockLevel = request.MinStockLevel,
                     IngredientTypeId = request.IngredientTypeID,
                     Unit = request.Unit,
-                    MeasurementValue = request.MeasurementValue
                 };
 
                 // Create ingredient with initial price
@@ -302,15 +292,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                if (request.MeasurementValue.HasValue && request.MeasurementValue.Value <= 0)
-                {
-                    return BadRequest(new ApiErrorResponse
-                    {
-                        Status = "Validation Error",
-                        Message = "Measurement value must be greater than 0"
-                    });
-                }
-
                 // Update properties that are provided in the request
                 if (!string.IsNullOrEmpty(request.Name))
                     existingIngredient.Name = request.Name;
@@ -323,9 +304,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 if (!string.IsNullOrEmpty(request.Unit))
                     existingIngredient.Unit = request.Unit;
-
-                if (request.MeasurementValue.HasValue)
-                    existingIngredient.MeasurementValue = request.MeasurementValue.Value;
 
                 if (request.MinStockLevel.HasValue)
                     existingIngredient.MinStockLevel = request.MinStockLevel.Value;
@@ -459,45 +437,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-        [HttpGet("low-stock")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<IngredientDto>>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<IngredientDto>>>> GetLowStockIngredients()
-        {
-            try
-            {
-                _logger.LogInformation("Admin retrieving low stock ingredients");
-
-                var lowStockIngredients = await _ingredientService.GetLowStockIngredientsAsync();
-                var ingredientIds = lowStockIngredients.Select(i => i.IngredientId).ToList();
-                var currentPrices = await _ingredientService.GetCurrentPricesAsync(ingredientIds);
-
-                var ingredientDtos = lowStockIngredients.Select(ingredient =>
-                {
-                    var dto = MapToIngredientDto(ingredient);
-                    if (currentPrices.ContainsKey(ingredient.IngredientId))
-                    {
-                        dto.Price = currentPrices[ingredient.IngredientId];
-                    }
-                    return dto;
-                }).ToList();
-
-                return Ok(new ApiResponse<IEnumerable<IngredientDto>>
-                {
-                    Success = true,
-                    Message = "Low stock ingredients retrieved successfully",
-                    Data = ingredientDtos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving low stock ingredients");
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve low stock ingredients"
-                });
-            }
-        }
 
 
         private static IngredientDto MapToIngredientDto(Ingredient ingredient)
@@ -513,7 +452,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
                 Unit = ingredient.Unit,
-                MeasurementValue = ingredient.MeasurementValue != 0 ? ingredient.MeasurementValue : 1.0, // Default to 1.0 if zero
                 IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Price = 0, // This will be set later from the current price
@@ -537,7 +475,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 MinStockLevel = ingredient.MinStockLevel,
                 Quantity = ingredient.Quantity,
                 Unit = ingredient.Unit,
-                MeasurementValue = ingredient.MeasurementValue != 0 ? ingredient.MeasurementValue : 1.0, // Default to 1.0 if zero
                 IngredientTypeID = ingredient.IngredientTypeId,
                 IngredientTypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Price = 0, // This will be set later from the current price
@@ -557,7 +494,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     InitialQuantity = b.InitialQuantity,
                     RemainingQuantity = b.RemainingQuantity,
                     Unit = ingredient.Unit,
-                    MeasurementValue = ingredient.MeasurementValue,
                     BestBeforeDate = b.BestBeforeDate,
                     BatchNumber = b.BatchNumber ?? string.Empty,
                     ReceivedDate = b.ReceivedDate

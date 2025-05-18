@@ -15,10 +15,10 @@ using Microsoft.Extensions.Logging;
 
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
-using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -32,6 +32,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IUtensilService _utensilService;
         private readonly IComboService _comboService;
         private readonly ICustomizationService _customizationService;
+        private readonly INotificationService _notificationService;
+
 
         public PaymentService(
             PayOS payOS,
@@ -41,7 +43,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             IIngredientService ingredientService,
             IUtensilService utensilService,
             IComboService comboService,
-            ICustomizationService customizationService)
+            ICustomizationService customizationService,
+            INotificationService notificationService)
         {
             _payOS = payOS;
             _unitOfWork = unitOfWork;
@@ -51,126 +54,140 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _utensilService = utensilService;
             _comboService = comboService;
             _customizationService = customizationService;
+            _notificationService = notificationService;
         }
 
         public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId,
                DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
         {
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                // 1. Get the order with all details
-                var order = await GetOrderByIdAsync(orderId);
-
-                // 2. Verify inventory availability
-                var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
-                if (!verificationResults.AllItemsAvailable)
-                {
-                    return new Response(-1, $"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}", null);
-                }
-
-                if (order.HasRentItems)
-                {
-                    // Get current time with offset (local current time)
-                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
-
-                    // Check if provided date is valid (future compared to current time)
-                    if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
-                    {
-                        throw new ValidationException("Expected return date must be in the future");
-                    }
-                }
-                // 3. Update the order details
-                var updateRequest = new UpdateOrderRequest
-                {
-                    Address = address,
-                    Notes = notes,
-                    DiscountId = discountId,
-                    ExpectedReturnDate = expectedReturnDate,
-                    DeliveryTime = deliveryTime
-                };
-
                 try
                 {
-                    await OrderUpdateAsync(orderId, updateRequest);
-                }
-                catch (ValidationException ex)
-                {
-                    return new Response(-1, ex.Message, null);
-                }
+                    // 1. Get the order with all details
+                    var order = await GetOrderByIdAsync(orderId);
 
-                // 4. Get user information
-                var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
-                if (user == null)
-                {
-                    return new Response(-1, "User not found", null);
-                }
-
-                // 5. Generate transaction code
-                int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
-
-                // 6. Create payment data
-                ItemData item = new ItemData(paymentRequest.productName, 1, paymentRequest.price);
-                List<ItemData> items = new List<ItemData> { item };
-
-                if (paymentRequest.cancelUrl == null || paymentRequest.returnUrl == null)
-                {
-                    paymentRequest = paymentRequest with
+                    // 2. Verify inventory availability
+                    var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
+                    if (!verificationResults.AllItemsAvailable)
                     {
-                        cancelUrl = paymentRequest.cancelUrl ?? "",
-                        returnUrl = paymentRequest.returnUrl ?? ""
+                        return new Response(-1, $"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}", null);
+                    }
+
+                    if (order.HasRentItems)
+                    {
+                        // Get current time with offset (local current time)
+                        DateTime currentTime = DateTime.UtcNow.AddHours(7);
+
+                        // Check if provided date is valid (future compared to current time)
+                        if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
+                        {
+                            throw new ValidationException("Expected return date must be in the future");
+                        }
+                    }
+                    // 3. Update the order details
+                    var updateRequest = new UpdateOrderRequest
+                    {
+                        Address = address,
+                        Notes = notes,
+                        DiscountId = discountId,
+                        ExpectedReturnDate = expectedReturnDate,
+                        DeliveryTime = deliveryTime,
                     };
+
+                    try
+                    {
+                        await OrderUpdateAsync(orderId, updateRequest);
+                    }
+                    catch (ValidationException ex)
+                    {
+                        return new Response(-1, ex.Message, null);
+                    }
+
+                    // 4. Get user information
+                    var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
+                    if (user == null)
+                    {
+                        return new Response(-1, "User not found", null);
+                    }
+
+                    user.LoyatyPoint += paymentRequest.price / 1000000;
+
+                    // 5. Generate transaction code
+                    int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
+
+                    // 6. Create payment data
+                    ItemData item = new ItemData(paymentRequest.productName, 1, paymentRequest.price);
+                    List<ItemData> items = new List<ItemData> { item };
+
+                    if (paymentRequest.cancelUrl == null || paymentRequest.returnUrl == null)
+                    {
+                        paymentRequest = paymentRequest with
+                        {
+                            cancelUrl = paymentRequest.cancelUrl ?? "",
+                            returnUrl = paymentRequest.returnUrl ?? ""
+                        };
+                    }
+
+                    string buyerName = !string.IsNullOrEmpty(paymentRequest.buyerName) ? paymentRequest.buyerName : user.Name;
+                    string? buyerPhone = !string.IsNullOrEmpty(paymentRequest.buyerPhone) ? paymentRequest.buyerPhone : user.PhoneNumber;
+
+                    PaymentData paymentData = new PaymentData(
+                        orderCode,
+                        paymentRequest.price,
+                        paymentRequest.description,
+                        items,
+                        paymentRequest.cancelUrl,
+                        paymentRequest.returnUrl,
+                        buyerName,
+                        buyerPhone
+                    );
+
+                    // 7. Create payment link
+                    CreatePaymentResult createPayment = await _payOS.createPaymentLink(paymentData);
+
+                    // 8. Create payment record
+                    var paymentTransaction = new Payment
+                    {
+                        TransactionCode = orderCode,
+                        UserId = userId,
+                        OrderId = orderId,
+                        Price = paymentRequest.price,
+                        Type = PaymentType.Online,
+                        Status = PaymentStatus.Pending,
+                        Purpose = PaymentPurpose.OrderPayment
+                    };
+
+                    await _unitOfWork.Repository<Payment>().InsertAsync(paymentTransaction);
+
+                    await _unitOfWork.CommitAsync();
+
+                    var currentUserInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    return new Response(0, "success", new
+                    {
+                        paymentInfo = createPayment,
+                        userInfo = currentUserInfo
+                    });
                 }
-
-                string buyerName = !string.IsNullOrEmpty(paymentRequest.buyerName) ? paymentRequest.buyerName : user.Name;
-                string? buyerPhone = !string.IsNullOrEmpty(paymentRequest.buyerPhone) ? paymentRequest.buyerPhone : user.PhoneNumber;
-
-                PaymentData paymentData = new PaymentData(
-                    orderCode,
-                    paymentRequest.price,
-                    paymentRequest.description,
-                    items,
-                    paymentRequest.cancelUrl,
-                    paymentRequest.returnUrl,
-                    buyerName,
-                    buyerPhone
-                );
-
-                // 7. Create payment link
-                CreatePaymentResult createPayment = await _payOS.createPaymentLink(paymentData);
-
-                // 8. Create payment record
-                var paymentTransaction = new Payment
+                catch (Exception exception)
                 {
-                    TransactionCode = orderCode,
-                    UserId = userId,
-                    OrderId = orderId,
-                    Price = paymentRequest.price,
-                    Type = PaymentType.Online,
-                    Status = PaymentStatus.Pending,
-                    Purpose = PaymentPurpose.OrderPayment
-                };
-
-                await _unitOfWork.Repository<Payment>().InsertAsync(paymentTransaction);
-                await _unitOfWork.CommitAsync();
-
-                var currentUserInfo = new
-                {
-                    user.UserId,
-                    user.Name,
-                    user.PhoneNumber,
-                };
-
-                return new Response(0, "success", new
-                {
-                    paymentInfo = createPayment,
-                    userInfo = currentUserInfo
-                });
-            }
-            catch (Exception exception)
+                    _logger.LogError(exception, "Error processing online payment for order {OrderId}", orderId);
+                    return new Response(-1, $"{exception.Message}", null);
+                }
+            },
+            ex =>
             {
-                _logger.LogError(exception, "Error processing online payment for order {OrderId}", orderId);
-                return new Response(-1, $"{exception.Message}", null);
-            }
+                if (!(ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error creating ingredient");
+                }
+            });
         }
 
         public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId,
@@ -387,8 +404,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Finalize inventory deduction
                     await FinalizeInventoryDeduction(order);
 
-                    // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
+                    order.Status = OrderStatus.Pending;
                     order.SetUpdateDate();
                     await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
@@ -1029,6 +1045,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         /// </summary>
         private async Task FinalizeInventoryDeduction(Order order)
         {
+            var ingredientsToCheck = new HashSet<int>();
+            var utensilsToCheck = new HashSet<int>();
+
             // This method actually deducts inventory quantities after payment is confirmed
             if (order.SellOrder != null)
             {
@@ -1044,6 +1063,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 detail.Quantity,
                                 order.OrderId,
                                 detail.SellOrderDetailId);
+
+                            // Add to ingredients to check
+                            ingredientsToCheck.Add(detail.IngredientId.Value);
 
                             if (consumed < detail.Quantity)
                             {
@@ -1084,6 +1106,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                         order.OrderId,
                                         detail.SellOrderDetailId,
                                         detail.ComboId);
+
+                                    // Add to ingredients to check
+                                    ingredientsToCheck.Add(comboIngredient.IngredientId);
 
                                     if (consumed < quantityNeeded)
                                     {
@@ -1127,6 +1152,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                         null,
                                         detail.CustomizationId);
 
+                                    // Add to ingredients to check
+                                    ingredientsToCheck.Add(customizationIngredient.IngredientId);
+
                                     if (consumed < quantityNeeded)
                                     {
                                         _logger.LogWarning(
@@ -1155,6 +1183,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Deduct from inventory
                             utensil.Quantity -= detail.Quantity;
                             await _unitOfWork.Repository<Utensil>().Update(utensil, utensil.UtensilId);
+
+                            // Add to utensils to check
+                            utensilsToCheck.Add(detail.UtensilId.Value);
                         }
                     }
                 }
@@ -1191,6 +1222,97 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
                 }
+            }
+
+            await CheckAndNotifyLowStock(ingredientsToCheck, utensilsToCheck);
+        }
+
+        private async Task CheckAndNotifyLowStock(HashSet<int> ingredientIds, HashSet<int> utensilIds)
+        {
+            try
+            {
+
+
+
+                // Check ingredients
+                if (ingredientIds.Any())
+                {
+                    var ingredients = await _unitOfWork.Repository<Ingredient>()
+                        .FindAll(i => ingredientIds.Contains(i.IngredientId) && !i.IsDelete)
+                        .ToListAsync();
+
+                    foreach (var ingredient in ingredients)
+                    {
+                        if (ingredient.Quantity <= ingredient.MinStockLevel)
+                        {
+                            // Create notification data
+                            var notificationData = new Dictionary<string, object>
+                        {
+                            { "IngredientId", ingredient.IngredientId },
+                            { "IngredientName", ingredient.Name },
+                            { "CurrentStock", ingredient.Quantity },
+                            { "MinStockLevel", ingredient.MinStockLevel },
+                            { "Unit", ingredient.Unit }
+                        };
+
+                            // Send notification
+                            await _notificationService.NotifyRoleAsync(
+                                "Admin", // Target admin role
+                                "IngredientLowStock",
+                                $"Low Stock Alert: {ingredient.Name}",
+                                $"{ingredient.Name} is running low. Current stock: {ingredient.Quantity} {ingredient.Unit} (Minimum: {ingredient.MinStockLevel} {ingredient.Unit})",
+                                notificationData);
+
+                            _logger.LogInformation(
+                                "Sent low stock notification for {ingredient}. Current: {current} {unit}, Minimum: {min} {unit}",
+                                ingredient.Name,
+                                ingredient.Quantity,
+                                ingredient.Unit,
+                                ingredient.MinStockLevel,
+                                ingredient.Unit);
+                        }
+                    }
+                }
+
+                // Check utensils
+                if (utensilIds.Any())
+                {
+                    var utensils = await _unitOfWork.Repository<Utensil>()
+                        .FindAll(u => utensilIds.Contains(u.UtensilId) && !u.IsDelete)
+                        .ToListAsync();
+
+                    foreach (var utensil in utensils)
+                    {
+                        if (utensil.Quantity <= 30)
+                        {
+                            // Create notification data
+                            var notificationData = new Dictionary<string, object>
+                        {
+                            { "UtensilId", utensil.UtensilId },
+                            { "UtensilName", utensil.Name },
+                            { "CurrentStock", utensil.Quantity }
+                        };
+
+                            // Send notification
+                            await _notificationService.NotifyRoleAsync(
+                                "Admin", // Target admin role
+                                "UtensilLowStock",
+                                $"Low Stock Alert: {utensil.Name}",
+                                $"{utensil.Name} is running low. Current stock: {utensil.Quantity})",
+                                notificationData);
+
+                            _logger.LogInformation(
+                                "Sent low stock notification for utensil {utensil}. Current: {current}",
+                                utensil.Name,
+                                utensil.Quantity);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw - we don't want to fail the order processing
+                _logger.LogError(ex, "Error checking for low stock after inventory deduction");
             }
         }
 
@@ -1575,7 +1697,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     order.DeliveryTime = request.DeliveryTime.Value;
                 }
 
-                // Update rental dates if provided and order has rental items
+                // Update rental dates
                 if (order.RentOrder != null && request.ExpectedReturnDate.HasValue)
                 {
                     DateTime today = DateTime.UtcNow.AddHours(7);

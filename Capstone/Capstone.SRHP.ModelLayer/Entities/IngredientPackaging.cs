@@ -8,30 +8,27 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
-    public class IngredientPrice : BaseEntity
+    public class IngredientPackaging : BaseEntity
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int IngredientPriceId { get; set; } 
+        public int PackagingId { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
-        [Range(0, double.MaxValue)]
-        public decimal Price { get; set; }
+        [StringLength(100)]
+        public string Name { get; set; } // Small, Medium, Large, etc.
 
         [Required]
         [Column(TypeName = "int")]
         [Range(1, int.MaxValue)]
-        public int UnitSize { get; set; }
-
-        [Required]
-        [DataType(DataType.DateTime)]
-        public DateTime EffectiveDate { get; set; }
-
+        public int Quantity { get; set; } // Amount in base units
 
         [Required]
         [ForeignKey("Ingredient")]
         public int IngredientId { get; set; }
+
+        [Required]
+        public bool IsDefault { get; set; } // Whether this is the default packaging option
 
         public virtual Ingredient? Ingredient { get; set; }
     }
