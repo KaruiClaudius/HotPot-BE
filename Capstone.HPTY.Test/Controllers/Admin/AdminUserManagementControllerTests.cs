@@ -313,7 +313,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Email = request.Email,
                 PhoneNumber = request.PhoneNumber,
                 Role = role,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 
@@ -777,7 +777,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Email = request.Email,
                 PhoneNumber = request.PhoneNumber,
                 Role = role,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 

@@ -436,7 +436,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Price = request.Price,
                 BasePrice = request.BasePrice,
                 Quantity = 2, // Based on the number of series numbers
-                LastMaintainDate = DateTime.UtcNow,
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
                 CreatedAt = DateTime.UtcNow
             };
 

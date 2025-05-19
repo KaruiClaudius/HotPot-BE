@@ -331,7 +331,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 DiscountPercentage = createDto.DiscountPercentage,
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 

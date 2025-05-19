@@ -299,8 +299,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = request.UtensilTypeID,
                 UtensilType = utensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 
@@ -360,8 +360,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = 3, // New type ID
                 UtensilType = newUtensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 
@@ -430,8 +430,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = 2, // Existing type ID
                 UtensilType = existingTypes[1],
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 
@@ -1212,8 +1212,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = request.UtensilTypeID,
                 UtensilType = utensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = DateTime.UtcNow
             };
 

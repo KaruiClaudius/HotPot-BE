@@ -244,7 +244,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftName = createDto.ShiftName,
                 ShiftStartTime = createDto.ShiftStartTime,
                 ShiftEndTime = createDto.ShiftEndTime,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null,
                 Staff = new List<User>(),
                 Managers = new List<User>()
@@ -392,7 +392,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow.AddHours(7),
                 Staff = staffMembers
             };
 
@@ -1228,7 +1228,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow.AddHours(7),
                 Staff = new List<User>() // Empty staff list
             };
 
@@ -1311,7 +1311,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow.AddHours(7),
                 Staff = null // Null staff list
             };
 

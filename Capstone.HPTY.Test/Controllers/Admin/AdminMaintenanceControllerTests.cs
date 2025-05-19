@@ -346,9 +346,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Name = request.Name,
                 Description = request.Description,
                 Status = request.Status,
-                LoggedDate = DateTime.UtcNow,
+                LoggedDate = DateTime.UtcNow.AddHours(7),
                 HotPotInventoryId = request.HotPotInventoryId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null
             };
 

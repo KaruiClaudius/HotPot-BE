@@ -47,7 +47,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 PageSize = 10,
                 SearchTerm = "test",
                 FromDate = DateTime.UtcNow.AddDays(-30),
-                ToDate = DateTime.UtcNow,
+                ToDate = DateTime.UtcNow.AddHours(7),
                 ApprovalStatus = FeedbackApprovalStatus.Pending
             };
 
@@ -100,7 +100,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             {
                 PageNumber = 0, // Invalid, should be fixed to 1
                 PageSize = 0,   // Invalid, should be fixed to 10
-                FromDate = DateTime.UtcNow,
+                FromDate = DateTime.UtcNow.AddHours(7),
                 ToDate = DateTime.UtcNow.AddDays(-10) // Invalid order, should be swapped
             };
 
@@ -368,7 +368,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ApprovalStatus = FeedbackApprovalStatus.Rejected.ToString(), // Changed from Status to ApprovalStatus
                 ApprovedByUserId = request.AdminUserId,
                 ApprovedByUserName = "Admin User",
-                ApprovalDate = DateTime.UtcNow, // Changed from ApprovedAt to ApprovalDate
+                ApprovalDate = DateTime.UtcNow.AddHours(7), // Changed from ApprovedAt to ApprovalDate
                 RejectionReason = request.RejectionReason
             };
 
@@ -671,7 +671,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ApprovalStatus = FeedbackApprovalStatus.Rejected.ToString(),
                 ApprovedByUserId = request.AdminUserId,
                 ApprovedByUserName = "Admin User",
-                ApprovalDate = DateTime.UtcNow,
+                ApprovalDate = DateTime.UtcNow.AddHours(7),
                 RejectionReason = request.RejectionReason
             };
 

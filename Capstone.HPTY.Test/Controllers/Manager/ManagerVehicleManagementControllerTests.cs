@@ -252,7 +252,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Type = request.Type,
                 Status = request.Status,
                 Notes = request.Notes,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null
             };
 
@@ -983,7 +983,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Type = request.Type,
                 Status = request.Status,
                 Notes = null, // Null notes
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null
             };
 

@@ -74,11 +74,11 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                     Title = "Test Discount",
                     Description = "Test Description",
                     DiscountPercentage = 10,
-                    Date = DateTime.UtcNow,
+                    Date = DateTime.UtcNow.AddHours(7),
                     Duration = DateTime.UtcNow.AddDays(7),
                     PointCost = 100,
                     CreatedAt = DateTime.UtcNow.AddDays(-1),
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
                 }
             };
 
@@ -146,11 +146,11 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Title = "Test Discount",
                 Description = "Test Description",
                 DiscountPercentage = 10,
-                Date = DateTime.UtcNow,
+                Date = DateTime.UtcNow.AddHours(7),
                 Duration = DateTime.UtcNow.AddDays(7),
                 PointCost = 100,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockDiscountService.Setup(s => s.GetByIdAsync(id))
@@ -183,7 +183,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Title = "New Discount",
                 Description = "New Description",
                 DiscountPercentage = 15,
-                Date = DateTime.UtcNow,
+                Date = DateTime.UtcNow.AddHours(7),
                 Duration = DateTime.UtcNow.AddDays(10),
                 PointCost = 200
             };
@@ -197,7 +197,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Date = request.Date,
                 Duration = request.Duration,
                 PointCost = request.PointCost,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null
             };
 
@@ -225,12 +225,12 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Arrange
             var adminDiscountController = this.CreateAdminDiscountController();
             int id = 1;
-            var request = new DiscountRequest
+            var request = new DiscountUpdateRequest
             {
                 Title = "Updated Discount",
                 Description = "Updated Description",
                 DiscountPercentage = 20,
-                Date = DateTime.UtcNow,
+                Date = DateTime.UtcNow.AddHours(7),
                 Duration = DateTime.UtcNow.AddDays(15),
                 PointCost = 300
             };
