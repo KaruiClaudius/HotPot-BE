@@ -359,12 +359,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     string imageUrl = null;
                     int? itemId = null;
 
-                    if (detail.IngredientId.HasValue && detail.Ingredient != null)
+                    if (detail.PackagingId.HasValue && detail.Packaging != null)
                     {
                         itemType = "Ingredient";
-                        itemName = detail.Ingredient.Name;
-                        imageUrl = detail.Ingredient.ImageURL;
-                        itemId = detail.IngredientId;
+                        itemName = detail.Packaging.Ingredient.Name;
+                        imageUrl = detail.Packaging.Ingredient.ImageURL;
+                        itemId = detail.Packaging.IngredientId;
                     }
                     else if (detail.UtensilId.HasValue && detail.Utensil != null)
                     {

@@ -139,7 +139,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     decimal itemRevenue = detail.UnitPrice * detail.Quantity;
 
-                    if (detail.IngredientId.HasValue)
+                    if (detail.PackagingId.HasValue)
                     {
                         revenueByType.Ingredients += itemRevenue;
                     }
@@ -326,17 +326,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
                     // Process ingredients
-                    if (detail.IngredientId.HasValue && detail.Ingredient != null)
+                    if (detail.PackagingId.HasValue && detail.Packaging != null)
                     {
-                        int id = detail.IngredientId.Value;
+                        int id = detail.PackagingId.Value;
                         if (!ingredientSales.ContainsKey(id))
                         {
                             ingredientSales[id] = new TopSellingItemDto
                             {
                                 ItemId = id,
-                                ItemName = detail.Ingredient.Name,
+                                ItemName = detail.Packaging.Ingredient.Name,
                                 ItemType = "Ingredient",
-                                ImageUrl = detail.Ingredient.ImageURL,
+                                ImageUrl = detail.Packaging.Ingredient.ImageURL,
                                 QuantitySold = 0,
                                 Revenue = 0,
                                 AveragePrice = detail.UnitPrice
@@ -555,12 +555,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     string imageUrl = null;
                     int? itemId = null;
 
-                    if (detail.IngredientId.HasValue && detail.Ingredient != null)
+                    if (detail.PackagingId.HasValue && detail.Packaging != null)
                     {
                         itemType = "Ingredient";
-                        itemName = detail.Ingredient.Name;
-                        imageUrl = detail.Ingredient.ImageURL;
-                        itemId = detail.IngredientId;
+                        itemName = detail.Packaging.Ingredient.Name;
+                        imageUrl = detail.Packaging.Ingredient.ImageURL;
+                        itemId = detail.Packaging.IngredientId;
                     }
                     else if (detail.UtensilId.HasValue && detail.Utensil != null)
                     {

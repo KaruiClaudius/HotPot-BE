@@ -414,6 +414,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 };
 
                 _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
+
+                var packagingOptions = PackagingOptions.CreateStandardOptions(entity.IngredientId);
+                foreach (var option in packagingOptions)
+                {
+                    _unitOfWork.Repository<IngredientPackaging>().Insert(option);
+                }
+
                 await _unitOfWork.CommitAsync();
 
                 return entity;
@@ -471,6 +478,57 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 existingIngredient.IngredientTypeId = entity.IngredientTypeId;
                 existingIngredient.Unit = entity.Unit;
                 existingIngredient.SetUpdateDate();
+
+                var packagingOptions = await _unitOfWork.Repository<IngredientPackaging>()
+                   .FindAll(p => p.IngredientId == id && !p.IsDelete)
+                   .ToListAsync();
+
+                if (!packagingOptions.Any())
+                {
+                    // If no packaging options exist, create the standard ones
+                    var standardOptions = PackagingOptions.CreateStandardOptions(id);
+                    foreach (var option in standardOptions)
+                    {
+                        _unitOfWork.Repository<IngredientPackaging>().Insert(option);
+                    }
+                }
+                else if (packagingOptions.Count != 3)
+                {
+                    // If there are missing options, add the standard ones that are missing
+                    var existingNames = packagingOptions.Select(p => p.Name).ToHashSet();
+                    var standardNames = new[] { PackagingOptions.Small, PackagingOptions.Medium, PackagingOptions.Large };
+
+                    foreach (var name in standardNames)
+                    {
+                        if (!existingNames.Contains(name))
+                        {
+                            int quantity = name == PackagingOptions.Small ? PackagingOptions.SmallQuantity :
+                                          name == PackagingOptions.Medium ? PackagingOptions.MediumQuantity :
+                                          PackagingOptions.LargeQuantity;
+
+                            var newOption = new IngredientPackaging
+                            {
+                                Name = name,
+                                Quantity = quantity,
+                                IngredientId = id,
+                                IsDefault = name == PackagingOptions.Medium && !packagingOptions.Any(p => p.IsDefault)
+                            };
+
+                            _unitOfWork.Repository<IngredientPackaging>().Insert(newOption);
+                        }
+                    }
+                }
+
+                // Ensure one option is set as default
+                if (!packagingOptions.Any(p => p.IsDefault))
+                {
+                    var mediumOption = packagingOptions.FirstOrDefault(p => p.Name == PackagingOptions.Medium) ??
+                                      packagingOptions.OrderBy(p => p.Quantity).Skip(1).FirstOrDefault() ??
+                                      packagingOptions.First();
+
+                    mediumOption.IsDefault = true;
+                    await _unitOfWork.Repository<IngredientPackaging>().Update(mediumOption, mediumOption.PackagingId);
+                }
 
                 await _unitOfWork.CommitAsync();
             },
@@ -546,7 +604,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         {
             if (quantityChange > 0)
             {
-                var ingredient = await GetIngredientByIdAsync(id);
+                var package = await GetPackagingByIdAsync(id);
+                var ingredient = package.Ingredient;
 
                 await AddBatchAsync(
                     id,
@@ -630,6 +689,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     .OrderBy(p => p.Quantity)
                     .ToListAsync();
 
+                // If no packaging options exist, create the standard ones
+                if (!packagingOptions.Any())
+                {
+                    var standardOptions = PackagingOptions.CreateStandardOptions(ingredientId);
+                    foreach (var option in standardOptions)
+                    {
+                        _unitOfWork.Repository<IngredientPackaging>().Insert(option);
+                    }
+                    await _unitOfWork.CommitAsync();
+
+                    packagingOptions = standardOptions;
+                }
+
                 return packagingOptions;
             }
             catch (Exception ex)
@@ -637,6 +709,51 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 _logger.LogError(ex, "Error retrieving packaging options for ingredient {IngredientId}", ingredientId);
                 throw;
             }
+        }
+
+
+
+        // Get default packaging for an ingredient
+        public async Task SetDefaultPackagingSizeAsync(int ingredientId, int packagingId)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Check if ingredient exists
+                await GetIngredientByIdAsync(ingredientId);
+
+                // Get all packaging options for this ingredient
+                var packagingOptions = await _unitOfWork.Repository<IngredientPackaging>()
+                    .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete)
+                    .ToListAsync();
+
+                if (!packagingOptions.Any())
+                {
+                    throw new ValidationException($"Không tìm thấy quy cách đóng gói cho nguyên liệu với ID {ingredientId}");
+                }
+
+                // Check if the requested packaging exists
+                var newDefault = packagingOptions.FirstOrDefault(p => p.PackagingId == packagingId);
+                if (newDefault == null)
+                {
+                    throw new ValidationException($"Không tìm thấy quy cách đóng gói với ID {packagingId}");
+                }
+
+                // Update all packaging options
+                foreach (var option in packagingOptions)
+                {
+                    option.IsDefault = (option.PackagingId == packagingId);
+                    await _unitOfWork.Repository<IngredientPackaging>().Update(option, option.PackagingId);
+                }
+
+                await _unitOfWork.CommitAsync();
+            },
+            ex =>
+            {
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Error setting default packaging for ingredient {IngredientId}", ingredientId);
+                }
+            });
         }
 
         public async Task<IngredientPackaging> GetPackagingByIdAsync(int packagingId)
@@ -716,67 +833,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             });
         }
 
-
-        public async Task UpdatePackagingAsync(int packagingId, IngredientPackaging packaging)
-        {
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
-            {
-            var existingPackaging = await GetPackagingByIdAsync(packagingId);
-
-                // Validate
-                if (string.IsNullOrWhiteSpace(packaging.Name))
-                    throw new ValidationException("Tên quy cách đóng gói không được để trống");
-
-                if (packaging.Quantity <= 0)
-                    throw new ValidationException("Số lượng phải lớn hơn 0");
-
-                // Check for name uniqueness if name is changed (within the same ingredient)
-                if (packaging.Name != existingPackaging.Name)
-                {
-                    var nameExists = await _unitOfWork.Repository<IngredientPackaging>()
-                        .AnyAsync(p => p.Name == packaging.Name &&
-                                      p.PackagingId != packagingId &&
-                                      p.IngredientId == existingPackaging.IngredientId &&
-                                      !p.IsDelete);
-
-                    if (nameExists)
-                        throw new ValidationException($"Quy cách đóng gói với tên {packaging.Name} đã tồn tại cho nguyên liệu này");
-                }
-
-                // If this is being marked as default, unmark any existing defaults
-                if (packaging.IsDefault && !existingPackaging.IsDefault)
-                {
-                    var existingDefaults = await _unitOfWork.Repository<IngredientPackaging>()
-                        .FindAll(p => p.IngredientId == existingPackaging.IngredientId &&
-                                     p.IsDefault &&
-                                     p.PackagingId != packagingId &&
-                                     !p.IsDelete)
-                        .ToListAsync();
-
-                    foreach (var defaultPackaging in existingDefaults)
-                    {
-                        defaultPackaging.IsDefault = false;
-                        await _unitOfWork.Repository<IngredientPackaging>().Update(defaultPackaging, defaultPackaging.PackagingId);
-                    }
-                }
-
-                // Update properties
-                existingPackaging.Name = packaging.Name;
-                existingPackaging.Quantity = packaging.Quantity;
-                existingPackaging.IsDefault = packaging.IsDefault;
-                existingPackaging.SetUpdateDate();
-
-                await _unitOfWork.CommitAsync();
-            },
-            ex =>
-            {
-                if (!(ex is NotFoundException || ex is ValidationException))
-                {
-                    _logger.LogError(ex, "Error updating packaging with ID {PackagingId}", packagingId);
-                }
-            });
-        }
-
+        // Delete a packaging option
         public async Task DeletePackagingAsync(int packagingId)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -790,7 +847,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 if (isUsedInOrders)
                     throw new ValidationException("Không thể xóa quy cách đóng gói đang được sử dụng trong đơn hàng");
 
-                // If this is the default packaging, we need to set another one as default
+                // If this is the default packaging and it's being deleted, we need to set another one as default
                 if (packaging.IsDefault)
                 {
                     var otherPackagings = await _unitOfWork.Repository<IngredientPackaging>()
@@ -802,7 +859,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
                     if (otherPackagings.Any())
                     {
-                        var newDefault = otherPackagings.First();
+                        var newDefault = otherPackagings.FirstOrDefault(p => p.Name == PackagingOptions.Medium) ??
+                                        otherPackagings.First();
                         newDefault.IsDefault = true;
                         await _unitOfWork.Repository<IngredientPackaging>().Update(newDefault, newDefault.PackagingId);
                     }
@@ -820,42 +878,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             });
         }
 
-        public async Task<IngredientPackaging> GetDefaultPackagingAsync(int ingredientId)
-        {
-            try
-            {
-                // First check if the ingredient exists
-                await GetIngredientByIdAsync(ingredientId);
-
-                var defaultPackaging = await _unitOfWork.Repository<IngredientPackaging>()
-                    .FindAsync(p => p.IngredientId == ingredientId &&
-                                   p.IsDefault &&
-                                   !p.IsDelete);
-
-                if (defaultPackaging == null)
-                {
-                    // If no default is set, get the smallest packaging
-                    defaultPackaging = await _unitOfWork.Repository<IngredientPackaging>()
-                        .FindAll(p => p.IngredientId == ingredientId && !p.IsDelete)
-                        .OrderBy(p => p.Quantity)
-                        .FirstOrDefaultAsync();
-
-                    if (defaultPackaging == null)
-                        throw new NotFoundException($"Không tìm thấy quy cách đóng gói cho nguyên liệu với ID {ingredientId}");
-                }
-
-                return defaultPackaging;
-            }
-            catch (NotFoundException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving default packaging for ingredient {IngredientId}", ingredientId);
-                throw;
-            }
-        }
+        
         #endregion
 
         #region Ingredient Type Methods
@@ -1464,7 +1487,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 if (!otherBatchesWithQuantity && batch.RemainingQuantity > 0)
                 {
                     var isUsedInActiveOrders = await _unitOfWork.Repository<SellOrderDetail>()
-                        .AnyAsync(sod => sod.IngredientId == batch.IngredientId && !sod.IsDelete &&
+                                .AnyAsync(sod => batch.Ingredient.IngredientPackagings.Any(p => p.PackagingId == sod.PackagingId) && !sod.IsDelete &&
                                  sod.SellOrder != null && sod.SellOrder.Order.Status != OrderStatus.Completed && sod.SellOrder.Order.Status != OrderStatus.Cancelled);
 
                     if (isUsedInActiveOrders)

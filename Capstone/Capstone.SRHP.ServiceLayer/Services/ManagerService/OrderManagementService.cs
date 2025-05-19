@@ -456,7 +456,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     await _unitOfWork.Repository<SellOrderDetail>()
                         .AsQueryable()
                         .Where(d => d.OrderId == order.OrderId)
-                        .Include(d => d.Ingredient)
+                        .Include(d => d.Packaging)
+                        .ThenInclude(p => p.Ingredient)
                         .Include(d => d.Customization)
                         .Include(d => d.Combo)
                         .Include(d => d.Utensil)
@@ -551,11 +552,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         };
 
                         // Determine item type and set properties accordingly
-                        if (detail.Ingredient != null)
+                        if (detail.Packaging != null)
                         {
                             orderItem.ItemType = "Ingredient";
-                            orderItem.ItemName = detail.Ingredient.Name;
-                            orderItem.ItemId = detail.IngredientId;
+                            orderItem.ItemName = detail.Packaging.Ingredient.Name;
+                            orderItem.ItemId = detail.Packaging.IngredientId;
                         }
                         else if (detail.Customization != null)
                         {
