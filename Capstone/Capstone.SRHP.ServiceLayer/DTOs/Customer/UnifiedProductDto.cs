@@ -40,6 +40,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customer
         public double Quantity { get; set; }
         public string Unit { get; set; }
         public bool IsDefault { get; set; }
+        public decimal Price { get; set; }
+
     }
 
 

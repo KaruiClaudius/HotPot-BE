@@ -9,9 +9,9 @@ namespace Capstone.HPTY.RepositoryLayer.Utils
 {
     public static class PackagingOptions
     {
-        public static readonly string Small = "Small";
-        public static readonly string Medium = "Medium";
-        public static readonly string Large = "Large";
+        public static readonly string Small = "Nhỏ";
+        public static readonly string Medium = "Vừa";
+        public static readonly string Large = "Lớn";
 
         public static readonly int SmallQuantity = 100;
         public static readonly int MediumQuantity = 250;

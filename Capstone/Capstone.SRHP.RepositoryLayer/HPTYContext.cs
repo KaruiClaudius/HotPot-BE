@@ -382,6 +382,9 @@ namespace Capstone.HPTY.RepositoryLayer
                 .OnDelete(DeleteBehavior.Restrict);
 
 
+
+
+
             modelBuilder.Entity<DamageDevice>(entity =>
             {
                 entity.HasKey(e => e.DamageDeviceId);
@@ -435,7 +438,7 @@ namespace Capstone.HPTY.RepositoryLayer
             modelBuilder.Entity<IngredientUsage>(entity =>
             {
                 entity.HasOne(i => i.Ingredient)
-                    .WithMany()
+                    .WithMany(i => i.IngredientUsages)
                     .HasForeignKey(i => i.IngredientId)
                     .OnDelete(DeleteBehavior.NoAction);
                 entity.HasOne(i => i.IngredientBatch)

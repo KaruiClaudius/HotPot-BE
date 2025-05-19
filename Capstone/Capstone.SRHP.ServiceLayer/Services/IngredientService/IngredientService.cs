@@ -761,7 +761,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             try
             {
                 var packaging = await _unitOfWork.Repository<IngredientPackaging>()
+                    .IncludeNested(q => q
                     .Include(p => p.Ingredient)
+                    .ThenInclude(ib => ib.IngredientBatches)
+                    .Include(i => i.Ingredient)
+                    .ThenInclude(ip => ip.IngredientPrices))
                     .FirstOrDefaultAsync(p => p.PackagingId == packagingId && !p.IsDelete);
 
                 if (packaging == null)

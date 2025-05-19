@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Capstone.HPTY.RepositoryLayer.Migrations;
+
 using Capstone.HPTY.ServiceLayer.DTOs.Dashboard;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService

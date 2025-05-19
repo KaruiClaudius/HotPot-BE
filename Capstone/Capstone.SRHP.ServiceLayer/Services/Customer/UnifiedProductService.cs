@@ -397,69 +397,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     continue;
 
                 // Create packaging options
-                var packagingOptions = new List<PackagingOption>();
-                var defaultPackaging = new PackagingOption();
 
-                if (ingredient.IngredientPackagings != null && ingredient.IngredientPackagings.Any())
-                {
-                    // Create packaging options from the ingredient's packaging options
-                    foreach (var packaging in ingredient.IngredientPackagings.Where(p => !p.IsDelete))
-                    {
-                        var packagingOption = new PackagingOption
-                        {
-                            PackagingId = packaging.PackagingId,
-                            Name = packaging.Name,
-                            Quantity = packaging.Quantity,
-                            Unit = ingredient.Unit,
-                            IsDefault = packaging.IsDefault
-                        };
-
-                        packagingOptions.Add(packagingOption);
-
-                        // Set as default if it's marked as default
-                        if (packaging.IsDefault)
-                        {
-                            defaultPackaging = packagingOption;
-                        }
-                    }
-
-                    // If no default was found, use the first one
-                    if (defaultPackaging.PackagingId == 0 && packagingOptions.Any())
-                    {
-                        defaultPackaging = packagingOptions.First();
-                    }
-                }
-
-                if (!packagingOptions.Any())
-                {
-                    var standardOptions = PackagingOptions.CreateStandardOptions(ingredient.IngredientId);
-                    foreach (var standardOption in standardOptions)
-                    {
-                        var packagingOption = new PackagingOption
-                        {
-                            PackagingId = 0, // Temporary ID for standard options
-                            Name = standardOption.Name,
-                            Quantity = standardOption.Quantity,
-                            Unit = ingredient.Unit,
-                            IsDefault = standardOption.IsDefault
-                        };
-
-                        packagingOptions.Add(packagingOption);
-
-                        // Set as default if it's marked as default
-                        if (standardOption.IsDefault)
-                        {
-                            defaultPackaging = packagingOption;
-                        }
-                    }
-                }
+                var (packagingOptions, defaultPackaging) = GetPackagingOptions(ingredient);
 
                 ingredientDtos.Add(new UnifiedProductDto
                 {
                     Id = ingredient.IngredientId,
                     Name = ingredient.Name,
                     Description = ingredient.Description ?? string.Empty,
-                    Price = _ingredientService.GetCurrentPriceAsync(ingredient.IngredientId).Result,
+                    Price = defaultPackaging.Price, // Use the calculated price from default packaging
                     ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                     IsAvailable = ingredient.Quantity > 0,
                     ProductType = "Ingredient",
@@ -467,7 +413,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                     Quantity = ingredient.Quantity,
                     Unit = ingredient.Unit,
-                    MeasurementValue = defaultPackaging.Quantity, // Use the default packaging quantity
+                    MeasurementValue = defaultPackaging.Quantity,
                     FormattedQuantity = FormatQuantity(defaultPackaging.Quantity, ingredient.Unit),
                     PackagingOptions = packagingOptions,
                     DefaultPackaging = defaultPackaging
@@ -996,7 +942,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     Id = ingredient.IngredientId,
                     Name = ingredient.Name,
                     Description = ingredient.Description ?? string.Empty,
-                    Price = latestPrice, // Use the default packaging price
+                    Price = defaultPackaging.Price, 
                     ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                     IsAvailable = ingredient.Quantity > 0,
                     ProductType = "Ingredient",
@@ -1004,7 +950,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                     Quantity = ingredient.Quantity,
                     Unit = ingredient.Unit,
-                    MeasurementValue = defaultPackaging.Quantity, // Use the default packaging quantity
+                    MeasurementValue = defaultPackaging.Quantity,
                     FormattedQuantity = FormatQuantity(defaultPackaging.Quantity, ingredient.Unit),
                     PackagingOptions = packagingOptions,
                     DefaultPackaging = defaultPackaging
@@ -1040,10 +986,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                              p.EffectiveDate <= currentDate)
                 .LoadAsync();
 
-            var latestPrice = ingredient.IngredientPrices
-                .OrderByDescending(p => p.EffectiveDate)
-                .FirstOrDefault()?.Price ?? 0;
-
             var (packagingOptions, defaultPackaging) = GetPackagingOptions(ingredient);
 
             return new UnifiedProductDto
@@ -1051,7 +993,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 Id = ingredient.IngredientId,
                 Name = ingredient.Name,
                 Description = ingredient.Description ?? string.Empty,
-                Price = latestPrice,
+                Price = defaultPackaging.Price, // Use the calculated price from default packaging
                 ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                 IsAvailable = ingredient.Quantity > 0,
                 ProductType = "Ingredient",
@@ -1071,18 +1013,37 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             var packagingOptions = new List<PackagingOption>();
             var defaultPackaging = new PackagingOption();
 
+            // Get the latest price for the ingredient
+            var latestPrice = ingredient.IngredientPrices
+                .OrderByDescending(p => p.EffectiveDate)
+                .FirstOrDefault()?.Price ?? 0;
+
+            // Find the default packaging to calculate price per gram
+            var defaultSize = ingredient.IngredientPackagings?
+                .FirstOrDefault(p => !p.IsDelete && p.IsDefault);
+
+            // If no default is found, use the first one or a standard size (250g)
+            double defaultQuantity = defaultSize?.Quantity ?? 250;
+
+            // Calculate price per gram based on default package
+            decimal pricePerGram = latestPrice / (decimal)defaultQuantity;
+
             if (ingredient.IngredientPackagings != null && ingredient.IngredientPackagings.Any(p => !p.IsDelete))
             {
                 // Create packaging options from the ingredient's packaging options
                 foreach (var packaging in ingredient.IngredientPackagings.Where(p => !p.IsDelete))
                 {
+                    // Calculate the price for this specific package size
+                    decimal packagePrice = pricePerGram * packaging.Quantity;
+
                     var packagingOption = new PackagingOption
                     {
                         PackagingId = packaging.PackagingId,
                         Name = packaging.Name,
                         Quantity = packaging.Quantity,
                         Unit = ingredient.Unit,
-                        IsDefault = packaging.IsDefault
+                        IsDefault = packaging.IsDefault,
+                        Price = Math.Round(packagePrice, 2) // Round to 2 decimal places
                     };
 
                     packagingOptions.Add(packagingOption);
@@ -1106,13 +1067,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 var standardOptions = PackagingOptions.CreateStandardOptions(ingredient.IngredientId);
                 foreach (var standardOption in standardOptions)
                 {
+                    // Calculate the price for this specific package size
+                    decimal packagePrice = pricePerGram * (decimal)standardOption.Quantity;
+
+                    // Apply pricing adjustments based on package size
+                    if (standardOption.Quantity < defaultQuantity) // Smaller packages (premium pricing)
+                    {
+                        // 15% premium for small packages
+                        packagePrice = packagePrice * 1.15m;
+                    }
+                    else if (standardOption.Quantity > defaultQuantity) // Larger packages (bulk discount)
+                    {
+                        // 10% discount for large packages
+                        packagePrice = packagePrice * 0.9m;
+                    }
+
                     var packagingOption = new PackagingOption
                     {
                         PackagingId = 0, // Temporary ID for standard options
                         Name = standardOption.Name,
                         Quantity = standardOption.Quantity,
                         Unit = ingredient.Unit,
-                        IsDefault = standardOption.IsDefault
+                        IsDefault = standardOption.IsDefault,
+                        Price = Math.Round(packagePrice, 2) // Round to 2 decimal places
                     };
 
                     packagingOptions.Add(packagingOption);
