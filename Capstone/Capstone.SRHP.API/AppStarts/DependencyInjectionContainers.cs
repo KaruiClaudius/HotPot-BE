@@ -120,6 +120,15 @@ namespace Capstone.HPTY.API.AppStarts
             // Background Services
             services.AddHostedService<EquipmentStockMonitorService>();
 
+            services.Configure<IngredientMonitorOptions>(options => {
+                options.CheckIntervalMinutes = 60; // Check every hour
+                options.ExpirationWarningDays = 7; // Warn 7 days before expiration
+                options.AdminRole = "Admin"; // Target admin role for notifications
+            });
+
+            // background hosting service
+            services.AddHostedService<IngredientMonitorService>();
+
             // Shipping Services
             //services.AddScoped<IStaffShippingService, StaffShippingService>();
 
