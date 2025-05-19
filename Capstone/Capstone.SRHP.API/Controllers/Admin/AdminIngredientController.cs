@@ -46,8 +46,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
+                        Status = "Lỗi",
+                        Message = "Số trang và kích thước trang phải lớn hơn 0"
                     });
                 }
 
@@ -84,7 +84,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<PagedResult<IngredientDto>>
                 {
                     Success = true,
-                    Message = "Ingredients retrieved successfully",
+                    Message = "Đã lấy nguyên liệu thành công",
                     Data = result
                 });
             }
@@ -93,8 +93,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving ingredients");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredients"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách nguyên liệu"
                 });
             }
         }
@@ -114,8 +114,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {id} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy nguyên liệu với ID {id}"
                     });
                 }
 
@@ -132,7 +132,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IngredientDetailDto>
                 {
                     Success = true,
-                    Message = "Ingredient retrieved successfully",
+                    Message = "Đã lấy nguyên liệu thành công",
                     Data = ingredientDetailDto
                 });
             }
@@ -150,8 +150,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving ingredient with ID: {IngredientId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy thông tin nguyên liệu"
                 });
             }
         }
@@ -170,8 +170,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Ingredient name cannot be empty"
+                        Status = "Lỗi xác thực",
+                        Message = "Tên nguyên liệu không được để trống"
                     });
                 }
 
@@ -179,8 +179,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Minimum stock level cannot be negative"
+                        Status = "Lỗi xác thực",
+                        Message = "Mức tồn kho tối thiểu không thể là số âm"
                     });
                 }
 
@@ -188,8 +188,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Price cannot be negative"
+                        Status = "Lỗi xác thực",
+                        Message = "Giá không thể là số âm"
                     });
                 }
 
@@ -197,8 +197,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Unit cannot be empty"
+                        Status = "Lỗi xác thực",
+                        Message = "Đơn vị không được để trống"
                     });
                 }
 
@@ -206,8 +206,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Measurement value must be greater than 0"
+                        Status = "Lỗi xác thực",
+                        Message = "Giá trị đo lường phải lớn hơn 0"
                     });
                 }
 
@@ -238,7 +238,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientDto>
                     {
                         Success = true,
-                        Message = "Ingredient created successfully.",
+                        Message = "Đã tạo nguyên liệu thành công.",
                         Data = ingredientDto
                     });
             }
@@ -247,7 +247,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error creating ingredient: {IngredientName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -256,9 +256,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error creating ingredient: {IngredientName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create ingredient"
-                });
+                    Status = "Lỗi",
+                    Message = "Không thể tạo nguyên liệu"
+                })
             }
         }
 
@@ -278,8 +278,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {id} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy nguyên liệu với ID {id}"
                     });
                 }
 
@@ -288,8 +288,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Minimum stock level cannot be negative"
+                        Status = "Lỗi xác thực",
+                        Message = "Mức tồn kho tối thiểu không thể là số âm"
                     });
                 }
 
@@ -297,8 +297,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Price cannot be negative"
+                        Status = "Lỗi xác thực",
+                        Message = "Giá không thể là số âm"
                     });
                 }
 
@@ -306,8 +306,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Measurement value must be greater than 0"
+                        Status = "Lỗi xác thực",
+                        Message = "Giá trị đo lường phải lớn hơn 0"
                     });
                 }
 
@@ -378,7 +378,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IngredientDto>
                 {
                     Success = true,
-                    Message = "Ingredient updated successfully",
+                    Message = "Đã cập nhật nguyên liệu thành công",
                     Data = ingredientDto
                 });
             }
@@ -387,7 +387,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error updating ingredient with ID: {IngredientId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -405,8 +405,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error updating ingredient with ID: {IngredientId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to update ingredient"
+                    Status = "Lỗi",
+                    Message = "Không thể cập nhật nguyên liệu"
                 });
             }
         }
@@ -426,9 +426,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Ingredient deleted successfully",
-                    Data = $"Ingredient with ID {id} has been deleted"
+                    Message = "Đã xóa nguyên liệu thành công",
+                    Data = $"Nguyên liệu với ID {id} đã được xóa"
                 });
+
             }
             catch (ValidationException ex)
             {
@@ -453,8 +454,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error deleting ingredient with ID: {IngredientId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to delete ingredient"
+                    Status = "Lỗi",
+                    Message = "Không thể xóa nguyên liệu"
                 });
             }
         }
@@ -484,7 +485,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IEnumerable<IngredientDto>>
                 {
                     Success = true,
-                    Message = "Low stock ingredients retrieved successfully",
+                    Message = "Đã lấy danh sách nguyên liệu tồn kho thấp thành công",
                     Data = ingredientDtos
                 });
             }
@@ -493,8 +494,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving low stock ingredients");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve low stock ingredients"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách nguyên liệu tồn kho thấp"
                 });
             }
         }
