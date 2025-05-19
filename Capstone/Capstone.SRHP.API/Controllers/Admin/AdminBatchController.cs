@@ -58,30 +58,29 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 // Calculate total remaining quantity in physical units
                 double totalPhysicalQuantity = batchDtos.Sum(b => b.RemainingQuantity * ingredient.MeasurementValue);
-
                 return Ok(new ApiResponse<List<IngredientBatchDto>>
                 {
                     Success = true,
-                    Message = $"Retrieved {batchDtos.Count} batches for ingredient '{ingredient.Name}'. Total remaining: {totalPhysicalQuantity} {ingredient.Unit}",
+                    Message = $"Đã lấy {batchDtos.Count} lô hàng cho nguyên liệu '{ingredient.Name}'. Tổng còn lại: {totalPhysicalQuantity} {ingredient.Unit}",
                     Data = batchDtos
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", ingredientId);
+                _logger.LogWarning(ex, "Không tìm thấy nguyên liệu với ID: {IngredientId}", ingredientId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving batches for ingredient ID: {IngredientId}", ingredientId);
+                _logger.LogError(ex, "Lỗi khi lấy lô hàng cho nguyên liệu ID: {IngredientId}", ingredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient batches"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy lô hàng nguyên liệu"
                 });
             }
         }
@@ -119,26 +118,26 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IngredientBatchDto>
                 {
                     Success = true,
-                    Message = "Batch retrieved successfully",
+                    Message = "Lô hàng đã được lấy thành công",
                     Data = batchDto
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Batch not found with ID: {BatchId}", batchId);
+                _logger.LogWarning(ex, "Không tìm thấy lô hàng với ID: {BatchId}", batchId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving batch with ID: {BatchId}", batchId);
+                _logger.LogError(ex, "Lỗi khi lấy lô hàng với ID: {BatchId}", batchId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve batch"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy lô hàng"
                 });
             }
         }
@@ -157,11 +156,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Total amount must be greater than 0"
+                        Status = "Lỗi xác thực",
+                        Message = "Tổng số tiền phải lớn hơn 0"
                     });
                 }
-
                 // Get the ingredient to access its measurement value and type
                 var ingredient = await _ingredientService.GetIngredientByIdAsync(request.IngredientId);
 
@@ -170,7 +168,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
+                        Status = "Lỗi xác thực",
                         Message = IngredientTypeExpiryConfig.GetExpiryValidationMessage(ingredient.IngredientTypeId)
                     });
                 }
@@ -182,8 +180,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
+                        Status = "Lỗi xác thực",
+                        Message = "Số lượng tính toán phải lớn hơn 0. Kiểm tra tổng số tiền và giá trị đo lường của bạn."
                     });
                 }
 
@@ -215,35 +213,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientBatchDto>
                     {
                         Success = true,
-                        Message = $"Batch created successfully with {calculatedQuantity} units ({request.TotalAmount} {ingredient.Unit})",
+                        Message = $"Lô hàng đã được tạo thành công với {calculatedQuantity} đơn vị ({request.TotalAmount} {ingredient.Unit})",
                         Data = batchDto
                     });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error creating batch for ingredient ID: {IngredientId}", request.IngredientId);
+                _logger.LogWarning(ex, "Lỗi xác thực khi tạo lô hàng cho nguyên liệu ID: {IngredientId}", request.IngredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", request.IngredientId);
+                _logger.LogWarning(ex, "Không tìm thấy nguyên liệu với ID: {IngredientId}", request.IngredientId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating batch for ingredient ID: {IngredientId}", request.IngredientId);
+                _logger.LogError(ex, "Lỗi khi tạo lô hàng cho nguyên liệu ID: {IngredientId}", request.IngredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create batch"
+                    Status = "Lỗi",
+                    Message = "Không thể tạo lô hàng"
                 });
             }
         }
@@ -262,7 +260,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     return BadRequest(new ApiErrorResponse
                     {
                         Status = "Validation Error",
-                        Message = "No batches provided"
+                        Message = "Lô không được trống"
                     });
                 }
 
@@ -297,7 +295,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     // Validate total amount
                     if (item.TotalAmount <= 0)
                     {
-                        validationErrors.Add($"Total amount must be greater than 0 for ingredient '{ingredients[item.IngredientId].Name}' (ID: {item.IngredientId})");
+                        validationErrors.Add($"Tổng số tiền phải lớn hơn 0 cho nguyên liệu '{ingredients[item.IngredientId].Name}' (ID: {item.IngredientId})");
                         continue;
                     }
 
@@ -309,7 +307,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         int minDays = IngredientTypeExpiryConfig.GetMinExpiryDays(ingredient.IngredientTypeId);
                         int maxDays = IngredientTypeExpiryConfig.GetMaxExpiryDays(ingredient.IngredientTypeId);
 
-                        validationErrors.Add($"Best before date for '{ingredient.Name}' (ID: {item.IngredientId}) must be between {minDays} days and {maxDays} days from now");
+                        validationErrors.Add($"Ngày hết hạn cho '{ingredient.Name}' (ID: {item.IngredientId}) phải nằm trong khoảng từ {minDays} ngày đến {maxDays} ngày kể từ bây giờ");
                         continue;
                     }
 
@@ -318,7 +316,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                     if (calculatedQuantity <= 0)
                     {
-                        validationErrors.Add($"Calculated quantity must be greater than 0 for ingredient '{ingredient.Name}' (ID: {item.IngredientId}). Check your total amount and measurement value.");
+                        validationErrors.Add($"Số lượng tính toán phải lớn hơn 0 cho nguyên liệu '{ingredient.Name}' (ID: {item.IngredientId}). Kiểm tra tổng số tiền và giá trị đo lường của bạn.");
                         continue;
                     }
 
@@ -330,8 +328,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "One or more batches failed validation",
+                        Status = "Lỗi xác thực",
+                        Message = "Một hoặc nhiều lô hàng không đạt yêu cầu xác thực",
                         Errors = validationErrors
                     });
                 }
@@ -357,7 +355,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         BestBeforeDate = batch.BestBeforeDate,
                         BatchNumber = batch.BatchNumber ?? string.Empty,
                         ReceivedDate = batch.ReceivedDate,
-                       
+
                     };
 
                     batchDtos.Add(dto);
@@ -369,35 +367,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<List<IngredientBatchDto>>
                     {
                         Success = true,
-                        Message = $"Successfully added {createdBatches.Count} batches for {ingredientIds.Count} different ingredients",
+                        Message = $"Đã thêm thành công {createdBatches.Count} lô hàng cho {ingredientIds.Count} nguyên liệu khác nhau",
                         Data = batchDtos
                     });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error creating multiple batches");
+                _logger.LogWarning(ex, "Lỗi xác thực khi tạo nhiều lô hàng");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Ingredient not found");
+                _logger.LogWarning(ex, "Không tìm thấy nguyên liệu");
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating multiple batches");
+                _logger.LogError(ex, "Lỗi khi tạo nhiều lô hàng");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create batches"
+                    Status = "Lỗi",
+                    Message = "Không thể tạo lô hàng"
                 });
             }
         }
@@ -425,8 +423,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         return BadRequest(new ApiErrorResponse
                         {
-                            Status = "Validation Error",
-                            Message = "Total amount must be greater than 0"
+                            Status = "Lỗi xác thực",
+                            Message = "Tổng số tiền phải lớn hơn 0"
                         });
                     }
 
@@ -436,8 +434,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         return BadRequest(new ApiErrorResponse
                         {
-                            Status = "Validation Error",
-                            Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
+                            Status = "Lỗi xác thực",
+                            Message = "Số lượng tính toán phải lớn hơn 0. Kiểm tra tổng số tiền và giá trị đo lường của bạn."
                         });
                     }
                 }
@@ -448,8 +446,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         return BadRequest(new ApiErrorResponse
                         {
-                            Status = "Validation Error",
-                            Message = "Quantity cannot be negative"
+                            Status = "Lỗi xác thực",
+                            Message = "Số lượng không thể là số âm"
                         });
                     }
                     quantity = request.Quantity.Value;
@@ -463,8 +461,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         return BadRequest(new ApiErrorResponse
                         {
-                            Status = "Validation Error",
-                            Message = "Best before date must be in the future"
+                            Status = "Lỗi xác thực",
+                            Message = "Ngày hết hạn phải là ngày trong tương lai"
                         });
                     }
                     bestBeforeDate = request.BestBeforeDate.Value;
@@ -500,35 +498,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IngredientBatchDto>
                 {
                     Success = true,
-                    Message = $"Batch updated successfully. Current remaining: {updatedBatch.RemainingQuantity} units ({physicalQuantity} {ingredient.Unit})",
+                    Message = $"Lô hàng đã được cập nhật thành công. Số lượng còn lại hiện tại: {updatedBatch.RemainingQuantity} đơn vị ({physicalQuantity} {ingredient.Unit})",
                     Data = batchDto
                 });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error updating batch with ID: {BatchId}", batchId);
+                _logger.LogWarning(ex, "Lỗi xác thực khi cập nhật lô hàng với ID: {BatchId}", batchId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Batch not found with ID: {BatchId}", batchId);
+                _logger.LogWarning(ex, "Không tìm thấy lô hàng với ID: {BatchId}", batchId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating batch with ID: {BatchId}", batchId);
+                _logger.LogError(ex, "Lỗi khi cập nhật lô hàng với ID: {BatchId}", batchId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to update batch"
+                    Status = "Lỗi",
+                    Message = "Không thể cập nhật lô hàng"
                 });
             }
         }
@@ -547,35 +545,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Batch deleted successfully",
-                    Data = $"Batch with ID {batchId} has been deleted"
+                    Message = "Lô hàng đã được xóa thành công",
+                    Data = $"Lô hàng với ID {batchId} đã được xóa"
                 });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error deleting batch with ID: {BatchId}", batchId);
+                _logger.LogWarning(ex, "Lỗi xác thực khi xóa lô hàng với ID: {BatchId}", batchId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Batch not found with ID: {BatchId}", batchId);
+                _logger.LogWarning(ex, "Không tìm thấy lô hàng với ID: {BatchId}", batchId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting batch with ID: {BatchId}", batchId);
+                _logger.LogError(ex, "Lỗi khi xóa lô hàng với ID: {BatchId}", batchId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to delete batch"
+                    Status = "Lỗi",
+                    Message = "Không thể xóa lô hàng"
                 });
             }
         }
@@ -592,8 +590,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Validation Error",
-                        Message = "Days threshold must be greater than 0"
+                        Status = "Lỗi xác thực",
+                        Message = "Ngưỡng ngày phải lớn hơn 0"
                     });
                 }
 
@@ -639,17 +637,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<List<IngredientBatchDto>>
                 {
                     Success = true,
-                    Message = $"Retrieved {batchDtos.Count} batches expiring within {daysThreshold} days",
+                    Message = $"Đã lấy {batchDtos.Count} lô hàng hết hạn trong vòng {daysThreshold} ngày",
                     Data = batchDtos
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving expiring batches");
+                _logger.LogError(ex, "Lỗi khi lấy các lô hàng sắp hết hạn");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve expiring batches"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy các lô hàng sắp hết hạn"
                 });
             }
         }
@@ -704,17 +702,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<List<IngredientBatchDto>>
                 {
                     Success = true,
-                    Message = $"Retrieved {batchDtos.Count} expired batches",
+                    Message = $"Đã lấy {batchDtos.Count} lô hàng đã hết hạn",
                     Data = batchDtos
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving expired batches");
+                _logger.LogError(ex, "Lỗi khi lấy các lô hàng đã hết hạn");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve expired batches"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy các lô hàng đã hết hạn"
                 });
             }
         }

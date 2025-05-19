@@ -92,7 +92,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var combo = await _comboService.GetByIdAsync(id);
                 if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
                 var detailDto = await MapToComboDetailDto(combo);
                 return Ok(detailDto);
@@ -151,7 +151,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating combo");
-                return StatusCode(500, new { message = "An error occurred while creating the combo" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo combo" });
             }
         }
 
@@ -175,13 +175,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
                     if (!existingGroupCombos.Any())
                     {
-                        return BadRequest(new { message = $"No existing combo group found with identifier '{groupIdentifier}'" });
+                        return BadRequest(new { message = $"Không tìm thấy nhóm combo hiện có với định danh '{groupIdentifier}'" });
                     }
 
                     // Verify that no combo in this group has the same size
                     if (existingGroupCombos.Any(c => c.Size == request.Size))
                     {
-                        return BadRequest(new { message = $"A combo with size {request.Size} already exists in this group" });
+                        return BadRequest(new { message = $"Một combo với kích thước {request.Size} đã tồn tại trong nhóm này" });
                     }
                 }
 
@@ -234,7 +234,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var existingCombo = await _comboService.GetByIdAsync(id);
                 if (existingCombo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
 
                 // Only update properties that are explicitly provided in the request
@@ -313,7 +313,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var combos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
                 if (!combos.Any())
-                    return NotFound(new { message = $"No combos found with group identifier '{groupIdentifier}'" });
+                    return NotFound(new { message = $"Không tìm thấy combo nào với định danh nhóm '{groupIdentifier}'" });
 
                 var comboDtos = new List<CustomizableComboDto>();
                 foreach (var combo in combos)

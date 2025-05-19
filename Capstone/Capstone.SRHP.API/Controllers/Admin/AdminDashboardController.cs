@@ -83,7 +83,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving consolidated dashboard data");
-                return StatusCode(500, new { message = "An error occurred while retrieving dashboard data" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy dữ liệu bảng điều khiển" });
             }
         }
 
@@ -181,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error exporting dashboard data");
-                return StatusCode(500, new { message = "An error occurred while exporting dashboard data" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xuất dữ liệu bảng điều khiển" });
             }
         }
 
@@ -239,7 +239,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving orders");
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách đơn hàng" });
             }
         }
 
@@ -262,7 +262,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin đơn hàng" });
             }
         }
 
@@ -289,7 +289,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order status" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng" });
             }
         }
 

@@ -65,7 +65,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
                 if (!verificationResults.AllItemsAvailable)
                 {
-                    return new Response(-1, $"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}", null);
+                    return new Response(-1, $"Một số mặt hàng trong giỏ hàng của bạn hiện không còn: {string.Join(", ", verificationResults.UnavailableItems)}", null);
                 }
 
                 if (order.HasRentItems)
@@ -76,7 +76,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Check if provided date is valid (future compared to current time)
                     if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
                     {
-                        throw new ValidationException("Expected return date must be in the future");
+                        throw new ValidationException("Ngày trả dự kiến phải là một thời điểm trong tương lai");
                     }
                 }
                 // 3. Update the order details
@@ -102,7 +102,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
                 if (user == null)
                 {
-                    return new Response(-1, "User not found", null);
+                    return new Response(-1, "Không tìm thấy user", null);
                 }
 
                 // 5. Generate transaction code
@@ -184,20 +184,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate order is in Cart status
                 if (order.Status != OrderStatus.Cart)
                 {
-                    throw new ValidationException("Only orders in Cart status can be processed for payment");
+                    throw new ValidationException("Chỉ đơn hàng ở trạng thái Giỏ hàng mới có thể được xử lý thanh toán");
                 }
 
                 // 2. Verify inventory availability
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
                 if (!verificationResults.AllItemsAvailable)
                 {
-                    throw new ValidationException($"Some items in your cart are no longer available: {string.Join(", ", verificationResults.UnavailableItems)}");
+                    throw new ValidationException($"Một số mặt hàng trong giỏ hàng của bạn không còn sẵn có: {string.Join(", ", verificationResults.UnavailableItems)}");
                 }
 
                 // 3. Validate delivery time
                 if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.Now)
                 {
-                    throw new ValidationException("Delivery time must be set and be in the future");
+                    throw new ValidationException("Thời gian giao hàng phải được đặt và phải là thời gian trong tương lai");
                 }
 
                 // 4. Validate expected return date for rental orders
@@ -209,7 +209,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Check if provided date is valid (future compared to current time)
                     if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
                     {
-                        throw new ValidationException("Expected return date must be in the future");
+                        throw new ValidationException("Ngày trả dự kiến phải được đặt và nằm trong tương lai");
                     }
                 }
 
@@ -270,7 +270,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (transaction == null)
                 {
-                    return new Response(-1, "Transaction not found", null);
+                    return new Response(-1, "Không tìm thấy giao dịch", null);
                 }
 
                 // Fetch payment link information
@@ -301,7 +301,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (paymentTransaction == null)
                 {
-                    return new Response(-1, "Transaction not found", null);
+                    return new Response(-1, "Không tìm thấy giao dịch", null);
                 }
 
                 // Get the order
@@ -355,14 +355,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
                 if (user == null)
                 {
-                    return new Response(-1, "User not found", null);
+                    return new Response(-1, "Không tìm thấy người dùng", null);
                 }
 
                 // Get payment information from PayOS
                 PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
                 if (paymentLinkInformation == null)
                 {
-                    return new Response(-1, "Payment information not found", null);
+                    return new Response(-1, "thông tin thanh toán không thấy", null);
                 }
 
                 // Get payment transaction
@@ -370,7 +370,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .FindAsync(pt => pt.TransactionCode == request.OrderCode);
                 if (paymentTransaction == null)
                 {
-                    return new Response(-1, "Transaction not found", null);
+                    return new Response(-1, "Không tìm thấy giao dịch", null);
                 }
 
                 // Get the order
@@ -401,7 +401,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         user.PhoneNumber,
                     };
 
-                    return new Response(0, "Transaction Complete",
+                    return new Response(0, "Hoàn thành giao dịch",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
                 }
                 else if (paymentLinkInformation.status == "CANCELLED")
@@ -423,12 +423,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         user.PhoneNumber,
                     };
 
-                    return new Response(0, "Transaction Cancelled",
+                    return new Response(0, "Huỷ giao dịch",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
                 }
                 else
                 {
-                    return new Response(0, "Payment not completed yet",
+                    return new Response(0, "Giao dịch chưa hoàn thành",
                         new { paymentInfo = paymentLinkInformation });
                 }
             }
@@ -446,7 +446,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var payment = await _unitOfWork.Repository<Payment>().FindAsync(p => p.PaymentId == paymentId);
                 if (payment == null)
                 {
-                    throw new NotFoundException($"Payment with ID {paymentId} not found");
+                    throw new NotFoundException($"Không tìm thấy thanh toán với ID {paymentId}");
                 }
 
                 payment.Status = status;
@@ -479,7 +479,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate the fee type
                 if (feeType != PaymentPurpose.LateFee && feeType != PaymentPurpose.DamageFee)
                 {
-                    throw new ArgumentException("Fee type must be either LateFee or DamageFee");
+                    throw new ArgumentException("Loại phí phải là phí trễ hạn hoặc phí hư hỏng");
                 }
 
                 // Get the order
@@ -488,14 +488,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate order status - only allow additional fees for orders that are not in Cart status
                 if (order.Status == OrderStatus.Cart)
                 {
-                    throw new ValidationException("Cannot add additional fees to cart orders");
+                    throw new ValidationException("Không thể thêm phụ phí vào đơn hàng trong giỏ hàng");
                 }
 
                 // Validate that the order has a rent order
                 if (order.RentOrder == null)
                 {
-                    throw new ValidationException("Cannot add additional fees to orders without rental items");
+                    throw new ValidationException("Không thể thêm phụ phí vào đơn hàng không có sản phẩm thuê");
                 }
+
 
                 // Create payment record
                 var payment = new Payment
@@ -515,23 +516,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (feeType == PaymentPurpose.LateFee)
                 {
                     order.RentOrder.LateFee = (order.RentOrder.LateFee ?? 0) + amount;
-                    if (!string.IsNullOrEmpty(notes))
+                    if (!string.IsNullOrWhiteSpace(notes))
                     {
-                        order.RentOrder.RentalNotes = string.IsNullOrEmpty(order.RentOrder.RentalNotes)
-                            ? $"Late Fee: {notes}"
-                            : $"{order.RentOrder.RentalNotes}\nLate Fee: {notes}";
+                        order.RentOrder.RentalNotes = string.IsNullOrWhiteSpace(order.RentOrder.RentalNotes)
+                            ? $"Phí trễ hạn: {notes}"
+                            : $"{order.RentOrder.RentalNotes}\nPhí trễ hạn: {notes}";
                     }
                 }
                 else if (feeType == PaymentPurpose.DamageFee)
                 {
                     order.RentOrder.DamageFee = (order.RentOrder.DamageFee ?? 0) + amount;
-                    if (!string.IsNullOrEmpty(notes))
+                    if (!string.IsNullOrWhiteSpace(notes))
                     {
-                        order.RentOrder.ReturnCondition = string.IsNullOrEmpty(order.RentOrder.ReturnCondition)
-                            ? $"Damage Fee: {notes}"
-                            : $"{order.RentOrder.ReturnCondition}\nDamage Fee: {notes}";
+                        order.RentOrder.ReturnCondition = string.IsNullOrWhiteSpace(order.RentOrder.ReturnCondition)
+                            ? $"Phí hư hỏng: {notes}"
+                            : $"{order.RentOrder.ReturnCondition}\nPhí hư hỏng: {notes}";
                     }
                 }
+
 
                 // Update the order
                 order.SetUpdateDate();
@@ -575,14 +577,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate that the order has a rent order with hotpot
                 if (order.RentOrder == null)
                 {
-                    throw new ValidationException("Order does not have rental items");
+                    throw new ValidationException("Đơn hàng không có sản phẩm thuê");
                 }
 
-                // Check if any hotpot items exist in the order
                 bool hasHotpot = order.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId.HasValue);
                 if (!hasHotpot)
                 {
-                    throw new ValidationException("Order does not have any hotpot items");
+                    throw new ValidationException("Đơn hàng không có sản phẩm lẩu");
                 }
 
                 // Track which hotpot types need quantity updates
@@ -628,7 +629,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     order.RentOrder.LateFee = lateFee;
 
                     totalFee += lateFee;
-                    feeDescription += $"Late return fee for {daysLate} days: ${lateFee}";
+                    feeDescription += $"Phí trả trễ {daysLate} ngày: ${lateFee}";
                 }
 
                 // Add damage fee if provided
@@ -637,7 +638,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     order.RentOrder.DamageFee = damageFee.Value;
 
                     totalFee += damageFee.Value;
-                    feeDescription += (feeDescription.Length > 0 ? "\n" : "") + $"Damage fee: ${damageFee.Value} - {returnCondition}";
+                    feeDescription += (feeDescription.Length > 0 ? "\n" : "") + $"Phí hư hỏng: ${damageFee.Value} - {returnCondition}";
                 }
 
                 // Create a single payment record for all fees if there are any
@@ -755,11 +756,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
                 if (!verificationResults.AllItemsAvailable)
                 {
-                    return new Response(-1, "Some items in your cart are no longer available",
+                    return new Response(-1, "Một số mặt hàng trong giỏ hàng không còn khả dụng",
                         new { UnavailableItems = verificationResults.UnavailableItems });
                 }
 
-                return new Response(0, "Cart is valid for payment", null);
+                return new Response(0, "Giỏ hàng hợp lệ để thanh toán", null);
             }
             catch (Exception ex)
             {
@@ -777,13 +778,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var payment = await _unitOfWork.Repository<Payment>().FindAsync(p => p.PaymentId == paymentId);
                 if (payment == null)
                 {
-                    return new Response(-1, "Payment not found", null);
+                    return new Response(-1, "Thanh toán không được tìm thấy", null);
                 }
 
                 // Validate refund amount
                 if (refundAmount <= 0 || refundAmount > payment.Price)
                 {
-                    return new Response(-1, "Invalid refund amount", null);
+                    return new Response(-1, "Số tiền hoàn trả không hợp lệ", null);
                 }
 
                 // Create refund record
@@ -866,7 +867,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // await _payOS.processRefund(payment.TransactionCode, refundAmount, reason);
                 }
 
-                return new Response(0, "Refund processed successfully", refund);
+                return new Response(0, "Hoàn tiền thành công", refund);
             }
             catch (Exception ex)
             {
@@ -931,14 +932,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         if (ingredient == null)
                         {
                             result.AllItemsAvailable = false;
-                            result.UnavailableItems.Add($"Ingredient ID {detail.IngredientId.Value} not found");
+                            result.UnavailableItems.Add($"Nguyên liệu ID {detail.IngredientId.Value} không được tìm thấy");
                             continue;
                         }
 
                         if (ingredient.Quantity < detail.Quantity)
                         {
                             result.AllItemsAvailable = false;
-                            result.UnavailableItems.Add($"{ingredient.Name} (only {ingredient.Quantity} available)");
+                            result.UnavailableItems.Add($"{ingredient.Name} (chỉ còn {ingredient.Quantity} sẵn có)");
                         }
                     }
                     else if (detail.UtensilId.HasValue)
@@ -947,14 +948,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         if (utensil == null)
                         {
                             result.AllItemsAvailable = false;
-                            result.UnavailableItems.Add($"Utensil ID {detail.UtensilId.Value} not found");
+                            result.UnavailableItems.Add($"Dụng cụ ID {detail.UtensilId.Value} không được tìm thấy");
                             continue;
                         }
 
                         if (utensil.Quantity < detail.Quantity)
                         {
                             result.AllItemsAvailable = false;
-                            result.UnavailableItems.Add($"{utensil.Name} (only {utensil.Quantity} available)");
+                            result.UnavailableItems.Add($"{utensil.Name} (chỉ còn {utensil.Quantity} sẵn có)");
                         }
                     }
                 }
@@ -1005,7 +1006,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (hotpot == null)
                     {
                         result.AllItemsAvailable = false;
-                        result.UnavailableItems.Add($"Hotpot ID {hotpotId} is no longer available");
+                        result.UnavailableItems.Add($"Nồi lẩu ID {hotpotId} không còn khả dụng");
                         continue;
                     }
 
@@ -1016,7 +1017,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (availableCount < requiredCount)
                     {
                         result.AllItemsAvailable = false;
-                        result.UnavailableItems.Add($"{hotpot.Name} (only {availableCount} available)");
+                        result.UnavailableItems.Add($"{hotpot.Name} (chỉ còn {availableCount} sẵn có)");
                     }
                 }
             }
@@ -1267,13 +1268,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate order has rental items
                 if (order.RentOrder == null)
                 {
-                    return new Response(-1, "Order does not have rental items", null);
+                    return new Response(-1, "Đơn hàng không có sản phẩm cho thuê", null);
                 }
 
                 // Validate order status
                 if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Returning)
                 {
-                    return new Response(-1, "Cannot process deposit refund for orders that are not completed or returned", null);
+                    return new Response(-1, "Không thể xử lý hoàn tiền cọc cho đơn hàng không phải đã hoàn thành hoặc đang trả hàng", null);
                 }
 
                 // Calculate the deposit amount (70% of rental price)
@@ -1283,14 +1284,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate refund amount
                 if (refundAmount <= 0 || refundAmount > depositAmount)
                 {
-                    return new Response(-1, $"Invalid refund amount. Maximum refundable deposit is ${depositAmount}", null);
+                    return new Response(-1, $"Số tiền hoàn trả không hợp lệ. Số tiền cọc tối đa có thể hoàn là ${depositAmount}", null);
                 }
 
                 // Get the main payment
                 var mainPayment = await GetMainPaymentForOrderAsync(orderId);
                 if (mainPayment == null)
                 {
-                    return new Response(-1, "Main payment not found", null);
+                    return new Response(-1, "Không tìm thấy thanh toán chính", null);
                 }
 
                 // Create refund record
@@ -1315,12 +1316,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // await _payOS.processRefund(mainPayment.TransactionCode, refundAmount, notes);
                 }
 
-                return new Response(0, "Deposit refund processed successfully", refund);
+                return new Response(0, "Hoàn tiền cọc đã được xử lý thành công", refund);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing deposit refund for order {OrderId}", orderId);
-                return new Response(-1, "Error processing deposit refund", null);
+                _logger.LogError(ex, "Lỗi khi xử lý hoàn tiền cọc cho đơn hàng {OrderId}", orderId);
+                return new Response(-1, "Lỗi khi xử lý hoàn tiền cọc", null);
             }
         }
 
@@ -1373,12 +1374,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     Payments = payments.ToList()
                 };
 
-                return new Response(0, "Payment summary retrieved successfully", summary);
+                return new Response(0, "Tổng kết thanh toán đã được lấy thành công", summary);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting payment summary for order {OrderId}", orderId);
-                return new Response(-1, "Error getting payment summary", null);
+                _logger.LogError(ex, "Lỗi khi lấy tổng kết thanh toán cho đơn hàng {OrderId}", orderId);
+                return new Response(-1, "Lỗi khi lấy tổng kết thanh toán", null);
             }
         }
 
@@ -1391,7 +1392,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Validate status transition
                 if (!IsValidStatusTransition(order.Status, newStatus))
                 {
-                    return new Response(-1, $"Invalid status transition from {order.Status} to {newStatus}", null);
+                    return new Response(-1, $"Chuyển đổi trạng thái không hợp lệ từ {order.Status} sang {newStatus}", null);
                 }
 
                 // Track which hotpot types need quantity updates
@@ -1506,12 +1507,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 await _unitOfWork.CommitAsync();
 
-                return new Response(0, "Order status updated successfully", order);
+                return new Response(0, "Trạng thái đơn hàng đã được cập nhật thành công", order);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating order status for order {OrderId}", orderId);
-                return new Response(-1, "Error updating order status", null);
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng cho đơn hàng {OrderId}", orderId);
+                return new Response(-1, "Lỗi khi cập nhật trạng thái đơn hàng", null);
             }
         }
 
@@ -1554,7 +1555,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Only allow updates for cart or pending orders
                 if (order.Status != OrderStatus.Cart && order.Status != OrderStatus.Pending)
-                    throw new ValidationException("Only cart or pending orders can be updated");
+                    throw new ValidationException("Chỉ có thể cập nhật đơn hàng trong giỏ hàng hoặc đang chờ xử lý");
 
                 // Update order properties
                 if (!string.IsNullOrWhiteSpace(request.Address))
@@ -1569,7 +1570,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Validate delivery time is in the future
                     if (request.DeliveryTime.Value <= DateTime.Now)
                     {
-                        throw new ValidationException("Delivery time must be in the future");
+                        throw new ValidationException("Thời gian giao hàng phải là thời gian trong tương lai");
                     }
 
                     order.DeliveryTime = request.DeliveryTime.Value;
@@ -1585,13 +1586,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Validate expected return date is after rental start date
                     if (expectedReturnDate <= today)
                     {
-                        throw new ValidationException("Expected return date must be in the future");
+                        throw new ValidationException("Ngày trả dự kiến phải là ngày trong tương lai");
                     }
 
                     if (request.ExpectedReturnDate.HasValue &&
                         request.ExpectedReturnDate.Value <= order.RentOrder.RentalStartDate)
                     {
-                        throw new ValidationException("Expected return date must be at least one day after rental start date");
+                        throw new ValidationException("Ngày trả dự kiến phải là ít nhất một ngày sau ngày bắt đầu cho thuê");
                     }
                     order.RentOrder.ExpectedReturnDate = request.ExpectedReturnDate.Value;
                     await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
@@ -1602,11 +1603,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     var discount = await _discountService.GetByIdAsync(request.DiscountId.Value);
                     if (discount == null)
-                        throw new ValidationException($"Discount with ID {request.DiscountId} not found");
+                        throw new ValidationException($"Không tìm thấy khuyến mãi với ID {request.DiscountId}");
 
                     // Validate discount is still valid
                     if (!await _discountService.IsDiscountValidAsync(request.DiscountId.Value))
-                        throw new ValidationException("The selected discount is not valid or has expired");
+                        throw new ValidationException("Khuyến mãi đã chọn không hợp lệ hoặc đã hết hạn");
 
                     // Calculate new total price with discount
                     decimal basePrice = order.TotalPrice;
@@ -1697,7 +1698,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .FirstOrDefaultAsync(o => o.OrderId == id && !o.IsDelete);
 
                 if (order == null)
-                    throw new NotFoundException($"Order with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy đơn hàng với ID {id}");
 
                 return order;
             }

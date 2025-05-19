@@ -56,7 +56,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var pagedResult = await _feedbackService.GetFilteredFeedbackAsync(request);
                 return Ok(ApiResponse<PagedResult<FeedbackListDto>>.SuccessResponse(
-                    pagedResult, "Feedback retrieved successfully"));
+                    pagedResult, "Đã lấy phản hồi thành công"));
             }
             catch (Exception ex)
             {
@@ -76,11 +76,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var feedback = await _feedbackService.GetFeedbackDetailByIdAsync(id);
                 if (feedback == null)
                 {
-                    return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse($"Feedback with ID {id} not found"));
+                    return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse($"Không tìm thấy phản hồi với ID {id}"));
                 }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(
-                    feedback, "Feedback retrieved successfully"));
+                    feedback, "Đã lấy phản hồi thành công"));
             }
             catch (NotFoundException ex)
             {
@@ -107,7 +107,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 string statusName = status.ToString().ToLower();
                 return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
                     pagedResult,
-                    $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} feedback retrieved successfully"));
+                    $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} đã lấy phản hồi thành công"));
             }
             catch (Exception ex)
             {
@@ -132,8 +132,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "FeedbackApproved",
-                    "Feedback Approved",
-                    $"Feedback '{feedback.Title}' has been approved by {adminName}",
+                    "Phản hồi đã được phê duyệt",
+                    $"Phản hồi '{feedback.Title}' đã được phê duyệt bởi {adminName}",
                     new Dictionary<string, object>
                     {
                 { "FeedbackId", feedback.FeedbackId },
@@ -150,8 +150,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     await _notificationService.NotifyUserAsync(
                         feedback.UserId,
                         "FeedbackResponse",
-                        "Feedback Approved",
-                        "Your feedback has been approved and will be shared with our management team.",
+                        "Phản hồi đã được phê duyệt",
+                        "Phản hồi của bạn đã được phê duyệt và sẽ được chia sẻ với đội ngũ quản lý của chúng tôi.",     
                         new Dictionary<string, object>
                         {
                     { "FeedbackId", feedback.FeedbackId },
@@ -162,7 +162,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         });
                 }
 
-                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback approved successfully"));
+                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Phản hồi đã được phê duyệt thành công"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -193,8 +193,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     await _notificationService.NotifyUserAsync(
                         feedback.UserId,
                         "FeedbackResponse",
-                        "Feedback Not Approved",
-                        $"Your feedback was not approved. Reason: {request.RejectionReason}",
+                        "Phản hổi không được phê duyệt",
+                        $"Phản hổi của bạn đã không được phê duyệt. lí do: {request.RejectionReason}",
                         new Dictionary<string, object>
                         {
                     { "FeedbackId", feedback.FeedbackId },
@@ -206,7 +206,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         });
                 }
 
-                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback rejected successfully"));
+                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Từ chối phản hồi thành công"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -223,7 +223,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
             var stats = await _feedbackService.GetFeedbackStatsAsync();
-            return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
+            return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Thống kê phản hồi đã được lấy thành công."));
         }
     }
 }
