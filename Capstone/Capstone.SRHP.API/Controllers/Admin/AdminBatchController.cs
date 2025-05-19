@@ -3,7 +3,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using Capstone.HPTY.ServiceLayer.Extensions;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,13 +50,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     InitialQuantity = b.InitialQuantity,
                     RemainingQuantity = b.RemainingQuantity,
                     Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
                     BestBeforeDate = b.BestBeforeDate,
                     BatchNumber = b.BatchNumber ?? string.Empty,
                     ReceivedDate = b.ReceivedDate
                 }).ToList();
 
                 // Calculate total remaining quantity in physical units
-                double totalPhysicalQuantity = batchDtos.Sum(b => b.RemainingQuantity);
+                double totalPhysicalQuantity = batchDtos.Sum(b => b.RemainingQuantity * ingredient.MeasurementValue);
 
                 return Ok(new ApiResponse<List<IngredientBatchDto>>
                 {
@@ -109,6 +110,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     InitialQuantity = batch.InitialQuantity,
                     RemainingQuantity = batch.RemainingQuantity,
                     Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
                     BestBeforeDate = batch.BestBeforeDate,
                     BatchNumber = batch.BatchNumber ?? string.Empty,
                     ReceivedDate = batch.ReceivedDate
@@ -173,12 +175,22 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
+                // Calculate quantity based on total amount and measurement value
+                int calculatedQuantity = (int)Math.Floor(request.TotalAmount / ingredient.MeasurementValue);
 
+                if (calculatedQuantity <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Validation Error",
+                        Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
+                    });
+                }
 
                 // Add batch with calculated quantity (not an initial batch)
                 var batch = await _ingredientService.AddBatchAsync(
                     request.IngredientId,
-                    request.TotalAmount,
+                    calculatedQuantity,
                     request.BestBeforeDate,
                     false); // Not an initial batch
 
@@ -191,6 +203,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     InitialQuantity = batch.InitialQuantity,
                     RemainingQuantity = batch.RemainingQuantity,
                     Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
                     BestBeforeDate = batch.BestBeforeDate,
                     BatchNumber = batch.BatchNumber ?? string.Empty,
                     ReceivedDate = batch.ReceivedDate
@@ -202,7 +215,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientBatchDto>
                     {
                         Success = true,
-                        Message = $"Batch created successfully with  ({request.TotalAmount} {ingredient.Unit})",
+                        Message = $"Batch created successfully with {calculatedQuantity} units ({request.TotalAmount} {ingredient.Unit})",
                         Data = batchDto
                     });
             }
@@ -300,9 +313,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         continue;
                     }
 
+                    // Calculate quantity based on total amount and measurement value
+                    int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
 
+                    if (calculatedQuantity <= 0)
+                    {
+                        validationErrors.Add($"Calculated quantity must be greater than 0 for ingredient '{ingredient.Name}' (ID: {item.IngredientId}). Check your total amount and measurement value.");
+                        continue;
+                    }
 
-                    batchItems.Add((item.IngredientId, item.TotalAmount, item.BestBeforeDate));
+                    batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate));
                 }
 
                 // If there are validation errors, return them
@@ -333,10 +353,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         InitialQuantity = batch.InitialQuantity,
                         RemainingQuantity = batch.RemainingQuantity,
                         Unit = ingredient.Unit,
+                        MeasurementValue = ingredient.MeasurementValue,
                         BestBeforeDate = batch.BestBeforeDate,
                         BatchNumber = batch.BatchNumber ?? string.Empty,
                         ReceivedDate = batch.ReceivedDate,
-
+                       
                     };
 
                     batchDtos.Add(dto);
@@ -396,17 +417,43 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Get the ingredient to access its measurement value
                 var ingredient = await _ingredientService.GetIngredientByIdAsync(existingBatch.IngredientId);
 
-
-                if (request.TotalAmount <= 0)
+                // Calculate quantity if total amount is provided
+                int quantity = existingBatch.InitialQuantity;
+                if (request.TotalAmount.HasValue)
                 {
-                    return BadRequest(new ApiErrorResponse
+                    if (request.TotalAmount.Value <= 0)
                     {
-                        Status = "Validation Error",
-                        Message = "Nhập hàng phải lớn hơn 0"
-                    });
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = "Total amount must be greater than 0"
+                        });
+                    }
+
+                    quantity = (int)Math.Ceiling(request.TotalAmount.Value / ingredient.MeasurementValue);
+
+                    if (quantity <= 0)
+                    {
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = "Calculated quantity must be greater than 0. Check your total amount and measurement value."
+                        });
+                    }
                 }
-
-
+                else if (request.Quantity.HasValue)
+                {
+                    // If direct quantity is provided instead of total amount
+                    if (request.Quantity.Value < 0)
+                    {
+                        return BadRequest(new ApiErrorResponse
+                        {
+                            Status = "Validation Error",
+                            Message = "Quantity cannot be negative"
+                        });
+                    }
+                    quantity = request.Quantity.Value;
+                }
 
                 // Validate best before date
                 DateTime bestBeforeDate = existingBatch.BestBeforeDate;
@@ -417,7 +464,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         return BadRequest(new ApiErrorResponse
                         {
                             Status = "Validation Error",
-                            Message = "Hạn sử dụng phải trong tương lai"
+                            Message = "Best before date must be in the future"
                         });
                     }
                     bestBeforeDate = request.BestBeforeDate.Value;
@@ -426,7 +473,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Update batch
                 await _ingredientService.UpdateBatchAsync(
                     batchId,
-                    (int)request.TotalAmount,
+                    quantity,
                     bestBeforeDate,
                     existingBatch.BatchNumber);
 
@@ -434,7 +481,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var updatedBatch = await _ingredientService.GetBatchByIdAsync(batchId);
 
                 // Calculate physical quantity
-                double physicalQuantity = updatedBatch.RemainingQuantity;
+                double physicalQuantity = updatedBatch.RemainingQuantity * ingredient.MeasurementValue;
 
                 var batchDto = new IngredientBatchDto
                 {
@@ -444,6 +491,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     InitialQuantity = updatedBatch.InitialQuantity,
                     RemainingQuantity = updatedBatch.RemainingQuantity,
                     Unit = ingredient.Unit,
+                    MeasurementValue = ingredient.MeasurementValue,
                     BestBeforeDate = updatedBatch.BestBeforeDate,
                     BatchNumber = updatedBatch.BatchNumber ?? string.Empty,
                     ReceivedDate = updatedBatch.ReceivedDate
@@ -581,6 +629,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         InitialQuantity = b.InitialQuantity,
                         RemainingQuantity = b.RemainingQuantity,
                         Unit = ingredient?.Unit ?? "unit",
+                        MeasurementValue = ingredient?.MeasurementValue ?? 1.0,
                         BestBeforeDate = b.BestBeforeDate,
                         BatchNumber = b.BatchNumber ?? string.Empty,
                         ReceivedDate = b.ReceivedDate
@@ -645,6 +694,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         InitialQuantity = b.InitialQuantity,
                         RemainingQuantity = b.RemainingQuantity,
                         Unit = ingredient?.Unit ?? "unit",
+                        MeasurementValue = ingredient?.MeasurementValue ?? 1.0,
                         BestBeforeDate = b.BestBeforeDate,
                         BatchNumber = b.BatchNumber ?? string.Empty,
                         ReceivedDate = b.ReceivedDate

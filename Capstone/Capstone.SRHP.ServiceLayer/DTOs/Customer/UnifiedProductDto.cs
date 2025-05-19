@@ -29,17 +29,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customer
         public string Unit { get; set; }
         public double MeasurementValue { get; set; }
         public string FormattedQuantity { get; set; }
-        public List<PackagingOption> PackagingOptions { get; set; }
-        public PackagingOption DefaultPackaging { get; set; }
-    }
-
-    public class PackagingOption
-    {
-        public int PackagingId { get; set; }
-        public string Name { get; set; }
-        public double Quantity { get; set; }
-        public string Unit { get; set; }
-        public bool IsDefault { get; set; }
     }
 
 

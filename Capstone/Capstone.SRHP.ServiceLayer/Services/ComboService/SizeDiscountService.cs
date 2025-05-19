@@ -2,7 +2,7 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 {
     public class SizeDiscountService : ISizeDiscountService
     {
@@ -87,8 +87,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     {
                         // Inactive discounts: current date is outside the range
                         query = query.Where(sd =>
-                            sd.StartDate != null && sd.StartDate > now ||
-                            sd.EndDate != null && sd.EndDate < now);
+                            (sd.StartDate != null && sd.StartDate > now) ||
+                            (sd.EndDate != null && sd.EndDate < now));
                     }
                 }
 

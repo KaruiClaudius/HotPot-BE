@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ServiceLayer.DTOs.IngredientReport;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
     public interface IIngredientReportService
     {

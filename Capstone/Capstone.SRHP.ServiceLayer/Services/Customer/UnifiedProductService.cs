@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Customer;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
@@ -18,16 +18,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
     public class UnifiedProductService : IUnifiedProductService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IIngredientService _ingredientService;
         private readonly ILogger<UnifiedProductService> _logger;
 
         public UnifiedProductService(
             IUnitOfWork unitOfWork,
-            IIngredientService ingredientService,
             ILogger<UnifiedProductService> logger)
         {
             _unitOfWork = unitOfWork;
-            _ingredientService = ingredientService;
             _logger = logger;
         }
 
@@ -191,10 +188,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         }
 
 
-        // Fix for CS0103: The name 'latestPrice' does not exist in the current context
-        // The issue occurs because the variable `latestPrice` is being referenced in the `GetAllProductTypesAsync` method
-        // without being declared or initialized in the context of the hotpot, utensil, or ingredient processing logic.
-
         private async Task<PagedUnifiedProductResult> GetAllProductTypesAsync(
             string searchTerm,
             int? typeId,
@@ -252,7 +245,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     i.Description != null && EF.Functions.Collate(i.Description.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                     i.Material != null && EF.Functions.Collate(i.Material.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm) ||
                     i.Size != null && EF.Functions.Collate(i.Size.ToLower(), "Latin1_General_CI_AI").Contains(searchTerm)
-                );
+                    );
             }
 
             if (!string.IsNullOrWhiteSpace(material))
@@ -348,7 +341,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 .AsQueryable()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate > currentDate))
-                .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                 .Where(i => !i.IsDelete);
 
             // Apply search filter 
@@ -395,54 +387,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 if (minQuantity.HasValue && ingredient.Quantity < minQuantity.Value)
                     continue;
 
-                // Create packaging options
-                var packagingOptions = new List<PackagingOption>();
-                var defaultPackaging = new PackagingOption();
+                var latestPrice = ingredient.IngredientPrices != null && ingredient.IngredientPrices.Any()
+                    ? ingredient.IngredientPrices
+                        .OrderByDescending(p => p.EffectiveDate)
+                        .FirstOrDefault()?.Price ?? 0
+                    : 0;
 
-                if (ingredient.IngredientPackagings != null && ingredient.IngredientPackagings.Any())
-                {
-                    // Create packaging options from the ingredient's packaging options
-                    foreach (var packaging in ingredient.IngredientPackagings.Where(p => !p.IsDelete))
-                    {
-                        var packagingOption = new PackagingOption
-                        {
-                            PackagingId = packaging.PackagingId,
-                            Name = packaging.Name,
-                            Quantity = packaging.Quantity,
-                            Unit = ingredient.Unit,
-                            IsDefault = packaging.IsDefault
-                        };
+                // Skip if below minimum price
+                if (minPrice.HasValue && latestPrice < minPrice.Value)
+                    continue;
 
-                        packagingOptions.Add(packagingOption);
-
-                        // Set as default if it's marked as default or if it's the first one
-                        if (packaging.IsDefault || defaultPackaging.PackagingId == 0)
-                        {
-                            defaultPackaging = packagingOption;
-                        }
-                    }
-                }
-                else
-                {
-
-                    defaultPackaging = new PackagingOption
-                    {
-                        PackagingId = 0,
-                        Name = "Standard",
-                        Quantity = 1,
-                        Unit = ingredient.Unit,
-                        IsDefault = true
-                    };
-
-                    packagingOptions.Add(defaultPackaging);
-                }
+                // Skip if above maximum price
+                if (maxPrice.HasValue && latestPrice > maxPrice.Value)
+                    continue;
 
                 ingredientDtos.Add(new UnifiedProductDto
                 {
                     Id = ingredient.IngredientId,
                     Name = ingredient.Name,
                     Description = ingredient.Description ?? string.Empty,
-                    Price = _ingredientService.GetCurrentPriceAsync(ingredient.IngredientId).Result, 
+                    Price = latestPrice,
                     ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                     IsAvailable = ingredient.Quantity > 0,
                     ProductType = "Ingredient",
@@ -450,10 +414,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                     TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                     Quantity = ingredient.Quantity,
                     Unit = ingredient.Unit,
-                    MeasurementValue = defaultPackaging.Quantity, // Use the default packaging quantity
-                    FormattedQuantity = FormatQuantity(defaultPackaging.Quantity, ingredient.Unit),
-                    PackagingOptions = packagingOptions,
-                    DefaultPackaging = defaultPackaging
+                    MeasurementValue = ingredient.MeasurementValue,
+                    FormattedQuantity = FormatQuantity(ingredient.MeasurementValue, ingredient.Unit)
                 });
             }
 
@@ -850,25 +812,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
         }
 
         private async Task<PagedUnifiedProductResult> GetIngredientsAsync(
-     string searchTerm,
-     int? typeId,
-     decimal? minPrice,
-     decimal? maxPrice,
-     bool onlyAvailable,
-     int? minQuantity,
-     int pageNumber,
-     int pageSize,
-     string sortBy,
-     bool ascending)
+            string searchTerm,
+            int? typeId,
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool onlyAvailable,
+            int? minQuantity,
+            int pageNumber,
+            int pageSize,
+            string sortBy,
+            bool ascending)
         {
             var currentDate = DateTime.UtcNow.AddHours(7);
 
-            // Start with base query that includes the latest price, batches, and packaging options
+            // Start with base query that includes the latest price and batches
             var query = _unitOfWork.Repository<Ingredient>()
                 .AsQueryable()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate > currentDate))
-                .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                 .Where(i => !i.IsDelete);
 
             // Apply search filter
@@ -968,71 +929,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 .ToList();
 
             // Map to DTOs
-            var dtos = new List<UnifiedProductDto>();
-
-            foreach (var (ingredient, latestPrice) in pagedIngredients)
+            var dtos = pagedIngredients.Select(i => new UnifiedProductDto
             {
-                // Create packaging options
-                var packagingOptions = new List<PackagingOption>();
-                var defaultPackaging = new PackagingOption();
-
-                if (ingredient.IngredientPackagings != null && ingredient.IngredientPackagings.Any())
-                {
-                    // Create packaging options from the ingredient's packaging options
-                    foreach (var packaging in ingredient.IngredientPackagings.Where(p => !p.IsDelete))
-                    {
-                        var packagingOption = new PackagingOption
-                        {
-                            PackagingId = packaging.PackagingId,
-                            Name = packaging.Name,
-                            Quantity = packaging.Quantity,
-                            Unit = ingredient.Unit,
-                            IsDefault = packaging.IsDefault
-                        };
-
-                        packagingOptions.Add(packagingOption);
-
-                        // Set as default if it's marked as default or if it's the first one
-                        if (packaging.IsDefault || defaultPackaging.PackagingId == 0)
-                        {
-                            defaultPackaging = packagingOption;
-                        }
-                    }
-                }
-                else
-                {
-                    // If no packaging options, create a default one based on the ingredient's price
-                    defaultPackaging = new PackagingOption
-                    {
-                        PackagingId = 0,
-                        Name = "Standard",
-                        Quantity = 1,
-                        Unit = ingredient.Unit,
-                        IsDefault = true
-                    };
-
-                    packagingOptions.Add(defaultPackaging);
-                }
-
-                dtos.Add(new UnifiedProductDto
-                {
-                    Id = ingredient.IngredientId,
-                    Name = ingredient.Name,
-                    Description = ingredient.Description ?? string.Empty,
-                    Price = latestPrice, // Use the default packaging price
-                    ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
-                    IsAvailable = ingredient.Quantity > 0,
-                    ProductType = "Ingredient",
-                    TypeId = ingredient.IngredientTypeId,
-                    TypeName = ingredient.IngredientType?.Name ?? "Unknown",
-                    Quantity = ingredient.Quantity,
-                    Unit = ingredient.Unit,
-                    MeasurementValue = defaultPackaging.Quantity, // Use the default packaging quantity
-                    FormattedQuantity = FormatQuantity(defaultPackaging.Quantity, ingredient.Unit),
-                    PackagingOptions = packagingOptions,
-                    DefaultPackaging = defaultPackaging
-                });
-            }
+                Id = i.Ingredient.IngredientId,
+                Name = i.Ingredient.Name,
+                Description = i.Ingredient.Description ?? string.Empty,
+                Price = i.LatestPrice,
+                ImageURLs = !string.IsNullOrEmpty(i.Ingredient.ImageURL) ? new[] { i.Ingredient.ImageURL } : Array.Empty<string>(),
+                IsAvailable = i.Ingredient.Quantity > 0,
+                ProductType = "Ingredient",
+                TypeId = i.Ingredient.IngredientTypeId,
+                TypeName = i.Ingredient.IngredientType?.Name ?? "Unknown",
+                Quantity = i.Ingredient.Quantity,
+                Unit = i.Ingredient.Unit,
+                MeasurementValue = i.Ingredient.MeasurementValue,
+                FormattedQuantity = FormatQuantity(i.Ingredient.MeasurementValue, i.Ingredient.Unit)
+            }).ToList();
 
             return new PagedUnifiedProductResult
             {
@@ -1050,7 +962,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             var ingredient = await _unitOfWork.Repository<Ingredient>()
                 .Include(i => i.IngredientType)
                 .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
-                .Include(i => i.IngredientPackagings.Where(p => !p.IsDelete))
                 .FirstOrDefaultAsync(i => i.IngredientId == id && !i.IsDelete);
 
             if (ingredient == null)
@@ -1067,54 +978,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefault()?.Price ?? 0;
 
-            // Create packaging options
-            var packagingOptions = new List<PackagingOption>();
-            var defaultPackaging = new PackagingOption();
-
-            if (ingredient.IngredientPackagings != null && ingredient.IngredientPackagings.Any())
-            {
-                // Create packaging options from the ingredient's packaging options
-                foreach (var packaging in ingredient.IngredientPackagings.Where(p => !p.IsDelete))
-                {
-                    var packagingOption = new PackagingOption
-                    {
-                        PackagingId = packaging.PackagingId,
-                        Name = packaging.Name,
-                        Quantity = packaging.Quantity,
-                        Unit = ingredient.Unit,
-                        IsDefault = packaging.IsDefault
-                    };
-
-                    packagingOptions.Add(packagingOption);
-
-                    // Set as default if it's marked as default or if it's the first one
-                    if (packaging.IsDefault || defaultPackaging.PackagingId == 0)
-                    {
-                        defaultPackaging = packagingOption;
-                    }
-                }
-            }
-            else
-            {
-                // If no packaging options, create a default one based on the ingredient's price
-                defaultPackaging = new PackagingOption
-                {
-                    PackagingId = 0,
-                    Name = "Standard",
-                    Quantity = 1,
-                    Unit = ingredient.Unit,
-                    IsDefault = true
-                };
-
-                packagingOptions.Add(defaultPackaging);
-            }
-
             return new UnifiedProductDto
             {
                 Id = ingredient.IngredientId,
                 Name = ingredient.Name,
                 Description = ingredient.Description ?? string.Empty,
-                Price = latestPrice, // Use the default packaging price
+                Price = latestPrice,
                 ImageURLs = !string.IsNullOrEmpty(ingredient.ImageURL) ? new[] { ingredient.ImageURL } : Array.Empty<string>(),
                 IsAvailable = ingredient.Quantity > 0,
                 ProductType = "Ingredient",
@@ -1122,10 +991,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 TypeName = ingredient.IngredientType?.Name ?? "Unknown",
                 Quantity = ingredient.Quantity,
                 Unit = ingredient.Unit,
-                MeasurementValue = defaultPackaging.Quantity, // Use the default packaging quantity
-                FormattedQuantity = FormatQuantity(defaultPackaging.Quantity, ingredient.Unit),
-                PackagingOptions = packagingOptions,
-                DefaultPackaging = defaultPackaging
+                MeasurementValue = ingredient.MeasurementValue,
+                FormattedQuantity = FormatQuantity(ingredient.MeasurementValue, ingredient.Unit)
             };
         }
 

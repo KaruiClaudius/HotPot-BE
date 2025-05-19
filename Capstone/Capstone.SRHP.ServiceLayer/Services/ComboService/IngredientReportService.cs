@@ -7,11 +7,11 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.IngredientReport;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 {
     public class IngredientReportService : IIngredientReportService
     {
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                         RemainingQuantity = batch.RemainingQuantity,
                         OrderCount = orderCount,
                         UsagePercentage = batch.InitialQuantity > 0
-                            ? totalUsed / batch.InitialQuantity * 100
+                            ? (totalUsed / batch.InitialQuantity) * 100
                             : 0,
                         CostPerUnit = costPerUnit,
                         TotalCost = costPerUnit * totalUsed

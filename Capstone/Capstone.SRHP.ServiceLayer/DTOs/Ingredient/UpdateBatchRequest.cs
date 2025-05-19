@@ -9,7 +9,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
 {
     public class UpdateBatchRequest
     {
-        public int? TotalAmount { get; set; }
+        public int? Quantity { get; set; }
+        public double? TotalAmount { get; set; }
         public DateTime? BestBeforeDate { get; set; }
     }
 

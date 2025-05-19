@@ -4,10 +4,10 @@ using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
@@ -18,10 +18,10 @@ using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
+using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
 using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
-using Capstone.HPTY.ServiceLayer.Services.IngredientService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
@@ -119,17 +119,6 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Background Services
             services.AddHostedService<EquipmentStockMonitorService>();
-
-
-            // Add IngredientMonitorService configuration
-            services.Configure<IngredientMonitorOptions>(options => {
-                options.CheckIntervalMinutes = 60; // Check every hour
-                options.ExpirationWarningDays = 7; // Warn 7 days before expiration
-                options.AdminRole = "Admin"; // Target admin role for notifications
-            });
-
-            // background hosting service
-            services.AddHostedService<IngredientMonitorService>();
 
             // Shipping Services
             //services.AddScoped<IStaffShippingService, StaffShippingService>();

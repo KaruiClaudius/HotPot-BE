@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
     public interface IIngredientService
     {
@@ -40,6 +40,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
         Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId);
         Task<IngredientPrice> AddPriceAsync(int ingredientId, decimal price, DateTime effectiveDate);
 
+        // Specialized methods
+        Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync();
 
         // batch logic
         Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId);

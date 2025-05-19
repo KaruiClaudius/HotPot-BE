@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
+namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
 {
     public interface ICustomizationService 
     {

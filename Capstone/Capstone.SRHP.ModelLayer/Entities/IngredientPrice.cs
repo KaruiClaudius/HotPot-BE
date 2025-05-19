@@ -20,11 +20,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public decimal Price { get; set; }
 
         [Required]
-        [Column(TypeName = "int")]
-        [Range(1, int.MaxValue)]
-        public int UnitSize { get; set; }
-
-        [Required]
         [DataType(DataType.DateTime)]
         public DateTime EffectiveDate { get; set; }
 

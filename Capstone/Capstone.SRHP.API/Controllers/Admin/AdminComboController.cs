@@ -4,7 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Video;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -445,7 +445,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 ImageURLs = combo.ImageURLs ?? Array.Empty<string>(),
-                CreateDate = combo.CreatedAt,
                 Ingredients = combo.ComboIngredients?
                     .Where(ci => !ci.IsDelete)
                     .Select(ci => new ComboIngredientDto
@@ -472,7 +471,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 ImageURLs = combo.ImageURLs ?? Array.Empty<string>(),
-                CreateDate = combo.CreatedAt,
                 AllowedIngredientTypes = combo.AllowedIngredientTypes?
                     .Where(ait => !ait.IsDelete)
                     .Select(ait => new ComboAllowedIngredientTypeDto
@@ -491,6 +489,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var groupCombos = await _comboService.GetCombosByGroupIdentifierAsync(combo.Description);
 
                 dto.IsPartOfGroup = groupCombos.Count() > 1;
+
+                if (dto.IsPartOfGroup)
+                {
+                    dto.GroupVariants = groupCombos
+                        .Where(c => c.ComboId != combo.ComboId) // Exclude the current combo
+                        .Select(c => new CustomizableComboVariantDto
+                        {
+                            ComboId = c.ComboId,
+                            Name = c.Name,
+                            Size = c.Size,
+                        })
+                        .ToList();
+                }
             }
 
             return dto;

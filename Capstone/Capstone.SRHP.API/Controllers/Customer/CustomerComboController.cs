@@ -2,7 +2,7 @@
 using Capstone.HPTY.ServiceLayer.DTOs.Combo.customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -272,7 +272,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
                         Quantity = ci.Quantity,
                         Price = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result,
-                        FormattedQuantity = FormatQuantity(ci.Ingredient.Quantity, ci.Ingredient.Unit)
+                        FormattedQuantity = FormatQuantity(ci.Ingredient.MeasurementValue, ci.Ingredient.Unit)
                     })
                     .ToList();
             }
@@ -294,7 +294,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             return detailDto;
         }
 
-        private string FormatQuantity(int quantity, string unit)
+        private string FormatQuantity(double quantity, string unit)
         {
             if (string.IsNullOrEmpty(unit))
                 return quantity.ToString("0.##");

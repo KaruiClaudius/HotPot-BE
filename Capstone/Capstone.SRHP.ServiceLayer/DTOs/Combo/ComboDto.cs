@@ -16,7 +16,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
         public string[] ImageURLs { get; set; }
-        public DateTime CreateDate { get; set; }
     }
     public class RegularComboDto : ComboDto
     {
@@ -31,6 +30,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 
         // Group information
         public bool IsPartOfGroup { get; set; }
+        public List<CustomizableComboVariantDto> GroupVariants { get; set; }
     }
     public class CustomizableComboVariantDto
     {

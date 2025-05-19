@@ -10,6 +10,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
     public class MultipleBatchRequest
     {
         [Required]
-        public List<CreateBatchRequest> Batches { get; set; }
+        public List<BatchItemRequest> Batches { get; set; }
     }
 }

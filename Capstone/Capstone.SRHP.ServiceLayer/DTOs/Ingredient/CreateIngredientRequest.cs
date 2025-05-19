@@ -22,6 +22,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public string Unit { get; set; }
 
         [Required]
+        [Range(0.0001, double.MaxValue, ErrorMessage = "Measurement value must be greater than 0")]
+        public double MeasurementValue { get; set; }
+
+        [Required]
         [Range(0, int.MaxValue)]
         public int MinStockLevel { get; set; }
 

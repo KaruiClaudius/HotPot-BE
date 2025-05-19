@@ -17,8 +17,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public DateTime BestBeforeDate { get; set; }
         public string BatchNumber { get; set; }
         public DateTime ReceivedDate { get; set; }
+        public double MeasurementValue { get; set; }
 
-        public string FormattedQuantity => $"{RemainingQuantity} {Unit}";
+        public double PhysicalQuantity => RemainingQuantity * MeasurementValue;
+        public string FormattedQuantity => $"{PhysicalQuantity} {Unit}";
 
         public int DaysUntilExpiration => (BestBeforeDate - DateTime.UtcNow).Days;
         public bool IsExpired => BestBeforeDate < DateTime.UtcNow;
