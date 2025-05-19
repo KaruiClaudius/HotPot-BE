@@ -165,12 +165,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 switch (newStatus)
                 {
                     case OrderStatus.Processed:
-                        // Preparation complete - find and complete the preparation assignment
-                        var preparationAssignment = staffAssignments.FirstOrDefault(a => a.TaskType == StaffTaskType.Preparation);
-                        if (preparationAssignment != null)
+                        // Get ALL preparation assignments for this order (not just for the current staff)
+                        var allPreparationAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                            .GetAll(a => a.OrderId == orderId &&
+                                        a.TaskType == StaffTaskType.Preparation &&
+                                        a.CompletedDate == null &&
+                                        !a.IsDelete)
+                            .ToListAsync();
+
+                        _logger.LogInformation("Found {Count} active preparation assignments for order {OrderId}",
+                            allPreparationAssignments.Count, orderId);
+
+                        // Mark all preparation assignments as completed
+                        foreach (var assignment in allPreparationAssignments)
                         {
-                            preparationAssignment.CompletedDate = DateTime.UtcNow;
-                            preparationAssignment.SetUpdateDate();
+                            assignment.CompletedDate = DateTime.UtcNow;
+                            assignment.SetUpdateDate();
+                            _logger.LogInformation("Marked preparation assignment {AssignmentId} for staff {StaffId} as completed",
+                                assignment.StaffAssignmentId, assignment.StaffId);
                         }
                         break;
 
