@@ -27,10 +27,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public DateTime Date { get; set; }
 
-        [Required]
         public DateTime Duration { get; set; }
 
-        [Required]
         public double PointCost { get; set; }
 
 
