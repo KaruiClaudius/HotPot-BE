@@ -884,284 +884,275 @@ namespace Capstone.HPTY.RepositoryLayer
         private static void SeedIngredientBatches(ModelBuilder modelBuilder)
         {
             var currentDate = DateTime.UtcNow.AddHours(7);
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-            string batchNumber = $"BATCH-{timestamp}";
-
 
             modelBuilder.Entity<IngredientBatch>().HasData(
-                // Meat batches - converting from packages to direct weight
+                // Meat batches
                 new IngredientBatch
                 {
                     IngredientBatchId = 1,
                     IngredientId = 1, // Beef
-                    InitialQuantity = 12500, // 50 packs * 250g = 12500g
-                    RemainingQuantity = 12500,
+                    InitialQuantity = 50, // 50 packs
+                    RemainingQuantity = 50,
                     BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "BEEF-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-3),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 2,
-                    IngredientId = 2, // Lamb
-                    InitialQuantity = 10000, // 40 packs * 250g = 10000g
-                    RemainingQuantity = 10000,
-                    BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = batchNumber,
-                    ReceivedDate = currentDate.AddDays(-3),
+                    IngredientId = 1, // Beef
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
+                    BestBeforeDate = currentDate.AddDays(21),
+                    BatchNumber = "BEEF-2025-04-15",
+                    ReceivedDate = currentDate.AddDays(-1),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 3,
+                    IngredientId = 2, // Lamb
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
+                    BestBeforeDate = currentDate.AddDays(14),
+                    BatchNumber = "LAMB-2025-04-01",
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 4,
                     IngredientId = 3, // Pork Belly
-                    InitialQuantity = 11250, // 45 packs * 250g = 11250g
-                    RemainingQuantity = 11250,
+                    InitialQuantity = 45, // 45 packs
+                    RemainingQuantity = 45,
                     BestBeforeDate = currentDate.AddDays(10),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "PORK-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-3),
                 },
 
                 // Seafood batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 4,
+                    IngredientBatchId = 5,
                     IngredientId = 4, // Shrimp
-                    InitialQuantity = 7000, // 35 packs * 200g = 7000g
-                    RemainingQuantity = 7000,
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "SHRIMP-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
                 {
-                    IngredientBatchId = 5,
+                    IngredientBatchId = 6,
                     IngredientId = 5, // Fish Balls
-                    InitialQuantity = 18000, // 60 packs * 300g = 18000g
-                    RemainingQuantity = 18000,
+                    InitialQuantity = 60, // 60 packs
+                    RemainingQuantity = 60,
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "FISHBALL-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-3),
                 },
                 new IngredientBatch
                 {
-                    IngredientBatchId = 6,
+                    IngredientBatchId = 7,
                     IngredientId = 6, // Squid
-                    InitialQuantity = 6000, // 30 packs * 200g = 6000g
-                    RemainingQuantity = 6000,
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "SQUID-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
                 // Vegetable batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 7,
-                    IngredientId = 7, // Napa Cabbage
-                    InitialQuantity = 16000, // 40 packs * 400g = 16000g
-                    RemainingQuantity = 16000,
-                    BestBeforeDate = currentDate.AddDays(5),
-                    BatchNumber = batchNumber,
-                    ReceivedDate = currentDate.AddDays(-1),
-                },
-                new IngredientBatch
-                {
                     IngredientBatchId = 8,
-                    IngredientId = 8, // Spinach
-                    InitialQuantity = 10500, // 35 packs * 300g = 10500g
-                    RemainingQuantity = 10500,
-                    BestBeforeDate = currentDate.AddDays(4),
-                    BatchNumber = batchNumber,
+                    IngredientId = 7, // Napa Cabbage
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
+                    BestBeforeDate = currentDate.AddDays(5),
+                    BatchNumber = "CABBAGE-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-1),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 9,
+                    IngredientId = 8, // Spinach
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
+                    BestBeforeDate = currentDate.AddDays(4),
+                    BatchNumber = "SPINACH-2025-04-01",
+                    ReceivedDate = currentDate.AddDays(-1),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 10,
                     IngredientId = 9, // Corn
-                    InitialQuantity = 7500, // 30 packs * 250g = 7500g
-                    RemainingQuantity = 7500,
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "CORN-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
                 // Noodle batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 10,
-                    IngredientId = 10, // Udon
-                    InitialQuantity = 15000, // 50 packs * 300g = 15000g
-                    RemainingQuantity = 15000,
-                    BestBeforeDate = currentDate.AddDays(60),
-                    BatchNumber = batchNumber,
-                    ReceivedDate = currentDate.AddDays(-5),
-                },
-                new IngredientBatch
-                {
                     IngredientBatchId = 11,
-                    IngredientId = 11, // Glass Noodles
-                    InitialQuantity = 9000, // 45 packs * 200g = 9000g
-                    RemainingQuantity = 9000,
-                    BestBeforeDate = currentDate.AddDays(90),
-                    BatchNumber = batchNumber,
+                    IngredientId = 10, // Udon
+                    InitialQuantity = 50, // 50 packs
+                    RemainingQuantity = 50,
+                    BestBeforeDate = currentDate.AddDays(60),
+                    BatchNumber = "UDON-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 12,
+                    IngredientId = 11, // Glass Noodles
+                    InitialQuantity = 45, // 45 packs
+                    RemainingQuantity = 45,
+                    BestBeforeDate = currentDate.AddDays(90),
+                    BatchNumber = "GLASS-2025-04-01",
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 13,
                     IngredientId = 12, // Ramen
-                    InitialQuantity = 13750, // 55 packs * 250g = 13750g
-                    RemainingQuantity = 13750,
+                    InitialQuantity = 55, // 55 packs
+                    RemainingQuantity = 55,
                     BestBeforeDate = currentDate.AddDays(60),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "RAMEN-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-5),
                 },
 
                 // Tofu batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 13,
+                    IngredientBatchId = 14,
                     IngredientId = 13, // Firm Tofu
-                    InitialQuantity = 12000, // 40 packs * 300g = 12000g
-                    RemainingQuantity = 12000,
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "TOFU-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
                 {
-                    IngredientBatchId = 14,
+                    IngredientBatchId = 15,
                     IngredientId = 14, // Fried Tofu
-                    InitialQuantity = 8750, // 35 packs * 250g = 8750g
-                    RemainingQuantity = 8750,
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
                     BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "FRIEDTOFU-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-3),
                 },
 
                 // Mushroom batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 15,
+                    IngredientBatchId = 16,
                     IngredientId = 15, // Shiitake
-                    InitialQuantity = 6000, // 30 packs * 200g = 6000g
-                    RemainingQuantity = 6000,
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
                     BestBeforeDate = currentDate.AddDays(10),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "SHIITAKE-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
                 {
-                    IngredientBatchId = 16,
+                    IngredientBatchId = 17,
                     IngredientId = 16, // Enoki
-                    InitialQuantity = 5250, // 35 packs * 150g = 5250g
-                    RemainingQuantity = 5250,
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "ENOKI-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
                 // Broth batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 17,
-                    IngredientId = 17, // Sichuan Broth
-                    InitialQuantity = 12500, // 25 containers * 500ml = 12500ml
-                    RemainingQuantity = 12500,
-                    BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = batchNumber,
-                    ReceivedDate = currentDate.AddDays(-5),
-                },
-                new IngredientBatch
-                {
                     IngredientBatchId = 18,
-                    IngredientId = 18, // Tomato Broth
-                    InitialQuantity = 12500, // 25 containers * 500ml = 12500ml
-                    RemainingQuantity = 12500,
+                    IngredientId = 17, // Sichuan Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "SICHUAN-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 19,
-                    IngredientId = 19, // Mushroom Broth
-                    InitialQuantity = 12500, // 25 containers * 500ml = 12500ml
-                    RemainingQuantity = 12500,
+                    IngredientId = 18, // Tomato Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "TOMATO-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 20,
-                    IngredientId = 20, // Bone Broth
-                    InitialQuantity = 12500, // 25 containers * 500ml = 12500ml
-                    RemainingQuantity = 12500,
+                    IngredientId = 19, // Mushroom Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "MUSHBROTH-2025-04-01",
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 21,
+                    IngredientId = 20, // Bone Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = "BONE-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-5),
                 },
 
                 // Sauce batches
                 new IngredientBatch
                 {
-                    IngredientBatchId = 21,
-                    IngredientId = 21, // Sesame Sauce
-                    InitialQuantity = 6000, // 30 bottles * 200ml = 6000ml
-                    RemainingQuantity = 6000,
-                    BestBeforeDate = currentDate.AddDays(90),
-                    BatchNumber = batchNumber,
-                    ReceivedDate = currentDate.AddDays(-10),
-                },
-                new IngredientBatch
-                {
                     IngredientBatchId = 22,
-                    IngredientId = 22, // Garlic Soy Sauce
-                    InitialQuantity = 7500, // 30 bottles * 250ml = 7500ml
-                    RemainingQuantity = 7500,
-                    BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = batchNumber,
+                    IngredientId = 21, // Sesame Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    BestBeforeDate = currentDate.AddDays(90),
+                    BatchNumber = "SESAME-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-10),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 23,
-                    IngredientId = 23, // Chili Oil
-                    InitialQuantity = 4500, // 30 bottles * 150ml = 4500ml
-                    RemainingQuantity = 4500,
+                    IngredientId = 22, // Garlic Soy Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
                     BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "GARLICSOY-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-10),
                 },
                 new IngredientBatch
                 {
                     IngredientBatchId = 24,
-                    IngredientId = 24, // Shacha Sauce
-                    InitialQuantity = 6000, // 30 bottles * 200ml = 6000ml
-                    RemainingQuantity = 6000,
+                    IngredientId = 23, // Chili Oil
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
                     BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = batchNumber,
+                    BatchNumber = "CHILI-2025-04-01",
                     ReceivedDate = currentDate.AddDays(-10),
                 },
-
-                // Adding a second batch for Beef (as requested)
                 new IngredientBatch
                 {
                     IngredientBatchId = 25,
-                    IngredientId = 1, // Beef (second batch)
-                    InitialQuantity = 7500, // 30 packs * 250g = 7500g
-                    RemainingQuantity = 7500,
-                    BestBeforeDate = currentDate.AddDays(21),
-                    BatchNumber = "BATCH-20250519114148", // Slightly different batch number
-                    ReceivedDate = currentDate.AddDays(-1),
+                    IngredientId = 24, // Shacha Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    BestBeforeDate = currentDate.AddDays(180),
+                    BatchNumber = "SHACHA-2025-04-01",
+                    ReceivedDate = currentDate.AddDays(-10),
                 }
             );
         }
-
-
-
-
         private static void SeedDamageDevices(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<DamageDevice>().HasData(

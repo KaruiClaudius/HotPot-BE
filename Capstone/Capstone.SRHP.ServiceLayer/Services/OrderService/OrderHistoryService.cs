@@ -68,8 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
                     .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Packaging)
-                            .ThenInclude(p => p.Ingredient)
+                        .ThenInclude(od => od.Ingredient)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
@@ -124,8 +123,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.ShippingOrder)
                     .Include(o => o.Feedback)
                     .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Packaging)
-                            .ThenInclude(p => p.Ingredient)
+                        .ThenInclude(od => od.Ingredient)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
@@ -226,9 +224,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     string itemType = "Unknown";
                     decimal price = 0;
 
-                    if (detail.Packaging != null)
+                    if (detail.Ingredient != null)
                     {
-                        itemName = detail.Packaging.Ingredient.Name;
+                        itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
                         price = detail.UnitPrice; // Use the UnitPrice from the order detail
                     }

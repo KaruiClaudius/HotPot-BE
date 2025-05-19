@@ -68,8 +68,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         .Include(o => o.User)
                         .Include(o => o.SellOrder)
                             .ThenInclude(so => so.SellOrderDetails)
-                                .ThenInclude(od => od.Packaging)
-                                    .ThenInclude(p => p.Ingredient)
+                                .ThenInclude(od => od.Ingredient)
                         .Include(o => o.SellOrder)
                             .ThenInclude(so => so.SellOrderDetails)
                                 .ThenInclude(od => od.Customization)
@@ -99,8 +98,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                             .ThenInclude(so => so.Vehicle)
                         .Include(o => o.SellOrder)
                             .ThenInclude(so => so.SellOrderDetails)
-                                .ThenInclude(od => od.Packaging)
-                                    .ThenInclude(p => p.Ingredient)
+                                .ThenInclude(od => od.Ingredient)
                         .Include(o => o.SellOrder)
                             .ThenInclude(so => so.SellOrderDetails)
                                 .ThenInclude(od => od.Customization)
@@ -355,8 +353,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so != null ? so.Vehicle : null)
                     .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Packaging)
-                                .ThenInclude(p => p.Ingredient)
+                        .ThenInclude(od => od.Ingredient)
                     .Include(o => o.SellOrder.SellOrderDetails)
                         .ThenInclude(od => od.Customization)
                     .Include(o => o.SellOrder.SellOrderDetails)
@@ -516,11 +513,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             string itemType = "Unknown";
             int? itemId = null;
 
-            if (detail.Packaging != null)
+            if (detail.Ingredient != null)
             {
-                itemName = detail.Packaging.Ingredient.Name;
+                itemName = detail.Ingredient.Name;
                 itemType = "Ingredient";
-                itemId = detail.Packaging.IngredientId;
+                itemId = detail.IngredientId;
             }
             else if (detail.Customization != null)
             {
@@ -601,11 +598,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     string itemType = "Unknown";
                     int itemId = 0;
 
-                    if (detail.Packaging != null)
+                    if (detail.Ingredient != null)
                     {
-                        itemName = detail.Packaging.Ingredient.Name;
+                        itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
-                        itemId = detail.Packaging.IngredientId; 
+                        itemId = detail.IngredientId ?? 0; // Handle nullable
                     }
                     else if (detail.Customization != null)
                     {
@@ -697,11 +694,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     string itemType = "Unknown";
                     int itemId = 0;
 
-                    if (detail.Packaging != null)
+                    if (detail.Ingredient != null)
                     {
-                        itemName = detail.Packaging.Ingredient.Name;
+                        itemName = detail.Ingredient.Name;
                         itemType = "Ingredient";
-                        itemId = detail.Packaging.IngredientId;
+                        itemId = detail.IngredientId ?? 0;
                     }
                     else if (detail.Customization != null)
                     {

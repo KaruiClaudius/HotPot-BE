@@ -838,10 +838,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                                 {
-                                    if (detail.PackagingId.HasValue)
+                                    if (detail.IngredientId.HasValue)
                                     {
                                         await _ingredientService.UpdateIngredientQuantityAsync(
-                                            detail.PackagingId.Value, detail.Quantity);
+                                            detail.IngredientId.Value, detail.Quantity);
                                     }
                                     else if (detail.UtensilId.HasValue)
                                     {
@@ -941,14 +941,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
-                    if (detail.PackagingId.HasValue)
+                    if (detail.IngredientId.HasValue)
                     {
-                        var package = await _ingredientService.GetPackagingByIdAsync(detail.PackagingId.Value);
-                        var ingredient = package.Ingredient;
+                        var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
                         if (ingredient == null)
                         {
                             result.AllItemsAvailable = false;
-                            result.UnavailableItems.Add($"Ingredient ID {ingredient.IngredientId} not found");
+                            result.UnavailableItems.Add($"Ingredient ID {detail.IngredientId.Value} not found");
                             continue;
                         }
 
@@ -1054,28 +1053,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
-                    if (detail.PackagingId.HasValue)
+                    if (detail.IngredientId.HasValue)
                     {
                         try
                         {
-                            var package = await _ingredientService.GetPackagingByIdAsync(detail.PackagingId.Value);
-                            var ingredient = package.Ingredient;
                             // Use the updated ConsumeIngredientAsync method
                             int consumed = await _ingredientService.ConsumeIngredientAsync(
-                                ingredient.IngredientId,
+                                detail.IngredientId.Value,
                                 detail.Quantity,
                                 order.OrderId,
                                 detail.SellOrderDetailId);
 
                             // Add to ingredients to check
-                            ingredientsToCheck.Add(detail.PackagingId.Value);
+                            ingredientsToCheck.Add(detail.IngredientId.Value);
 
                             if (consumed < detail.Quantity)
                             {
                                 // Log a warning if we couldn't consume the full amount
                                 _logger.LogWarning(
                                     "Could not consume full quantity for ingredient ID {IngredientId}. Requested: {Requested}, Consumed: {Consumed}",
-                                    ingredient.IngredientId,
+                                    detail.IngredientId.Value,
                                     detail.Quantity,
                                     consumed);
                             }
@@ -1084,8 +1081,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             // Log the error but continue processing other items
                             _logger.LogError(ex,
-                                "Error consuming ingredient ID {PackagingId} with quantity {Quantity}",
-                                detail.PackagingId.Value,
+                                "Error consuming ingredient ID {IngredientId} with quantity {Quantity}",
+                                detail.IngredientId.Value,
                                 detail.Quantity);
                         }
                     }
@@ -1805,8 +1802,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
-                            .ThenInclude(od => od.Packaging)
-                                .ThenInclude(p => p.Ingredient)
+                            .ThenInclude(od => od.Ingredient)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Customization)

@@ -1,6 +1,4 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
-using Capstone.HPTY.ModelLayer.Exceptions;
-using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using System;
 using System.Collections.Generic;
@@ -42,6 +40,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
         Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId);
         Task<IngredientPrice> AddPriceAsync(int ingredientId, decimal price, DateTime effectiveDate);
 
+
         // batch logic
         Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId);
         Task<IngredientBatch> GetBatchByIdAsync(int batchId);
@@ -52,12 +51,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.IngredientService
         Task<int> ConsumeIngredientAsync(int ingredientId, int quantity, int orderId, int? orderDetailId = null, int? comboId = null, int? customizationId = null);
         Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7);
         Task<IEnumerable<IngredientBatch>> GetExpiredBatchesAsync();
-
-        // packaging logic
-        Task<IEnumerable<IngredientPackaging>> GetPackagingOptionsAsync(int ingredientId);
-        Task SetDefaultPackagingSizeAsync(int ingredientId, int packagingId);
-        Task<IngredientPackaging> GetPackagingByIdAsync(int packagingId);
-        Task<IngredientPackaging> AddPackagingAsync(IngredientPackaging packaging);
-        Task DeletePackagingAsync(int packagingId);
     }
 }

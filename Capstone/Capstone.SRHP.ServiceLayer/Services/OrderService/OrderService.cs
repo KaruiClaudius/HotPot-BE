@@ -3,7 +3,6 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
-using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
@@ -78,8 +77,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     .Include(o => o.Payments)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
-                            .ThenInclude(od => od.Packaging)
-                                .ThenInclude(p => p.Ingredient)
+                            .ThenInclude(od => od.Ingredient)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                             .ThenInclude(od => od.Customization)
@@ -218,8 +216,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             .Include(o => o.Payments)
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
-                                    .ThenInclude(sod => sod.Packaging)
-                                        .ThenInclude(p => p.Ingredient)
+                                    .ThenInclude(sod => sod.Ingredient)
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
                                     .ThenInclude(sod => sod.Customization)
@@ -279,8 +276,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Load SellOrderDetails with a single query
                             var sellOrderDetails = await _unitOfWork.Repository<SellOrderDetail>()
                                 .AsQueryable()
-                                .Include(d => d.Packaging)
-                                .ThenInclude(p => p.Ingredient)
+                                .Include(d => d.Ingredient)
                                 .Include(d => d.Utensil)
                                 .Include(d => d.Customization)
                                 .Include(d => d.Combo)
@@ -337,7 +333,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     await ProcessHotpotItem(existingOrder, item);
                 }
-                else if (item.PackagingId.HasValue && item.PackagingId > 0)
+                else if (item.IngredientID.HasValue && item.IngredientID > 0)
                 {
                     await ProcessIngredientItem(existingOrder, item);
                 }
@@ -401,7 +397,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     await ProcessHotpotItem(order, item);
                 }
-                else if (item.PackagingId.HasValue && item.PackagingId > 0)
+                else if (item.IngredientID.HasValue && item.IngredientID > 0)
                 {
                     await ProcessIngredientItem(order, item);
                 }
@@ -523,34 +519,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         private async Task ProcessIngredientItem(Order order, OrderItemRequest item)
         {
-            var package = await _ingredientService.GetPackagingByIdAsync(item.PackagingId.Value);
-            if (package == null)
-                throw new ValidationException($"Không tìm thấy nguyên liệu với ID {item.PackagingId}");
+            var ingredient = await _ingredientService.GetIngredientByIdAsync(item.IngredientID.Value);
+            if (ingredient == null)
+                throw new ValidationException($"Không tìm thấy nguyên liệu với ID {item.IngredientID}");
 
             // Kiểm tra số lượng yêu cầu có sẵn hay không
-            if (package.Ingredient.Quantity < item.Quantity)
-                throw new ValidationException($"Chỉ còn {package.Quantity} {package.Name} có sẵn");
-
-            // Get the packaging option if specified
-            IngredientPackaging packaging = null;
-
-            if (item.PackagingId.HasValue && item.PackagingId.Value > 0)
-            {
-                packaging = await _unitOfWork.Repository<IngredientPackaging>()
-                    .FindAsync(p => p.PackagingId == item.PackagingId.Value && !p.IsDelete);
-
-                if (packaging == null)
-                    throw new ValidationException($"Không tìm thấy quy cách đóng gói với ID {item.PackagingId}");
-            }
-
+            if (ingredient.Quantity < item.Quantity)
+                throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
 
             // Get the latest price
-            var latestPrice = package.Ingredient.IngredientPrices
+            var latestPrice = ingredient.IngredientPrices
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefault()?.Price ?? 0;
-
-            // Calculate the price based on packaging quantity
-            decimal packagePrice = latestPrice * packaging.Quantity;
 
             // Ensure SellOrder exists
             if (order.SellOrder == null)
@@ -565,15 +545,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await _unitOfWork.CommitAsync();
             }
 
-            // Check if this ingredient with the same packaging is already in the order
+            // Check if this ingredient is already in the order
             var existingDetail = order.SellOrder.SellOrderDetails
-                .FirstOrDefault(d => d.PackagingId == packaging.PackagingId && !d.IsDelete);
+                .FirstOrDefault(d => d.IngredientId == item.IngredientID && !d.IsDelete);
 
             if (existingDetail != null)
             {
                 // Update existing detail
                 existingDetail.Quantity += (int)item.Quantity;
-                existingDetail.UnitPrice = packagePrice; // Update price if packaging changes
 
                 // Fix: Use the correct primary key (SellOrderDetailId)
                 await _unitOfWork.Repository<SellOrderDetail>().Update(existingDetail, existingDetail.SellOrderDetailId);
@@ -585,8 +564,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     OrderId = order.OrderId,
                     Quantity = (int)item.Quantity,
-                    UnitPrice = packagePrice,
-                    PackagingId = packaging.PackagingId
+                    UnitPrice = latestPrice,
+                    IngredientId = item.IngredientID
                 };
 
                 await _unitOfWork.Repository<SellOrderDetail>().InsertAsync(orderDetail);
@@ -603,9 +582,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             await _unitOfWork.CommitAsync();
 
             // Reserve the ingredient instead of deducting it
-            // Calculate the total quantity to reserve based on packaging
-            int totalQuantityToReserve = (int)(item.Quantity * packaging.Quantity);
-            await ReserveInventoryItem(item.PackagingId.Value, totalQuantityToReserve, ItemType.Ingredient);
+            await ReserveInventoryItem(item.IngredientID.Value, (int)item.Quantity, ItemType.Ingredient);
         }
 
         private async Task ProcessUtensilItem(Order order, OrderItemRequest item)
@@ -903,10 +880,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
 
                             // Check inventory if it's an ingredient
-                            if (detail.PackagingId.HasValue)
+                            if (detail.IngredientId.HasValue)
                             {
-                                var packaging = await _ingredientService.GetPackagingByIdAsync(detail.PackagingId.Value);
-                                var ingredient = packaging.Ingredient;
+                                var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
 
                                 // Calculate how many more we need
                                 int quantityDifference = update.NewQuantity - detail.Quantity;
@@ -1196,15 +1172,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Check if we need to update reservations
                 int quantityDifference = update.NewQuantity - detail.Quantity;
 
-                if (quantityDifference != 0)
+                if (quantityDifference > 0)
                 {
-                    // Get the packaging to find the ingredient and quantity
-                    var packaging = await _unitOfWork.Repository<IngredientPackaging>()
-                        .FindAsync(p => p.PackagingId == detail.PackagingId && !p.IsDelete);
-
-                    if (detail.PackagingId.HasValue)
+                    // Need to reserve more items
+                    if (detail.IngredientId.HasValue)
                     {
-                        await ReserveInventoryItem(detail.PackagingId.Value, quantityDifference, ItemType.Ingredient);
+                        await ReserveInventoryItem(detail.IngredientId.Value, quantityDifference, ItemType.Ingredient);
                     }
                     else if (detail.UtensilId.HasValue)
                     {
@@ -1215,6 +1188,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update quantity
                 detail.Quantity = update.NewQuantity;
             }
+
             // Update the detail in the database
             await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
         }
@@ -1368,6 +1342,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         await _paymentService.UpdatePaymentStatusAsync(payment.PaymentId, PaymentStatus.Cancelled);
                     }
                 }
+                // If order is moving from Pending to Processing (payment confirmed)
+                else if (order.Status == OrderStatus.Processing)
+                {
+                    // Finalize inventory deduction
+                    await FinalizeInventoryDeduction(order);
+                }
                 // If order is completed, update hotpot inventory status
                 else if (status == OrderStatus.Completed)
                 {
@@ -1496,45 +1476,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        //public async Task<Order> ConfirmPaymentAsync(int orderId)
-        //{
-        //    try
-        //    {
-        //        var order = await GetByIdAsync(orderId);
+        public async Task<Order> ConfirmPaymentAsync(int orderId)
+        {
+            try
+            {
+                var order = await GetByIdAsync(orderId);
 
-        //        // Only allow confirmation for pending orders
-        //        if (order.Status != OrderStatus.Cart)
-        //            throw new ValidationException("Chỉ các đơn hàng chờ xử lý mới có thể được xác nhận thanh toán");
+                // Only allow confirmation for pending orders
+                if (order.Status != OrderStatus.Cart)
+                    throw new ValidationException("Chỉ các đơn hàng chờ xử lý mới có thể được xác nhận thanh toán");
 
-        //        // Execute in transaction to ensure consistency
-        //        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-        //        {
-        //            // Finalize inventory deduction
-        //            await FinalizeInventoryDeduction(order);
+                // Execute in transaction to ensure consistency
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    // Finalize inventory deduction
+                    await FinalizeInventoryDeduction(order);
 
-        //            // Update order status to Processing
-        //            order.Status = OrderStatus.Processing;
-        //            order.SetUpdateDate();
-        //            await _unitOfWork.Repository<Order>().Update(order, orderId);
-        //            await _unitOfWork.CommitAsync();
+                    // Update order status to Processing
+                    order.Status = OrderStatus.Processing;
+                    order.SetUpdateDate();
+                    await _unitOfWork.Repository<Order>().Update(order, orderId);
+                    await _unitOfWork.CommitAsync();
 
-        //            return await GetByIdAsync(orderId);
-        //        });
-        //    }
-        //    catch (NotFoundException)
-        //    {
-        //        throw;
-        //    }
-        //    catch (ValidationException)
-        //    {
-        //        throw;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error confirming payment for order {OrderId}", orderId);
-        //        throw;
-        //    }
-        //}
+                    return await GetByIdAsync(orderId);
+                });
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error confirming payment for order {OrderId}", orderId);
+                throw;
+            }
+        }
 
         //public async Task CleanupAbandonedCartsAsync(TimeSpan abandonThreshold)
         //{
@@ -1614,8 +1594,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 case ItemType.Ingredient:
                     // Kiểm tra tính sẵn có mà không cập nhật số lượng
-                    var package = await _ingredientService.GetPackagingByIdAsync(itemId);
-                    var ingredient = package.Ingredient;
+                    var ingredient = await _ingredientService.GetIngredientByIdAsync(itemId);
                     if (ingredient.Quantity < quantity)
                         throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
                     break;
@@ -1658,6 +1637,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // For ingredients and utensils, we don't need to do anything since we didn't deduct them yet
         }
 
+        private async Task FinalizeInventoryDeduction(Order order)
+        {
+            // This method actually deducts inventory quantities after payment is confirmed
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.IngredientId.HasValue)
+                    {
+                        await _ingredientService.UpdateIngredientQuantityAsync(
+                            detail.IngredientId.Value, -detail.Quantity);
+                    }
+                    else if (detail.UtensilId.HasValue)
+                    {
+                        await _utensilService.UpdateUtensilQuantityAsync(
+                            detail.UtensilId.Value, -detail.Quantity);
+                    }
+                }
+            }
+
+            // For hotpots, we just need to update their status to Rented
+            if (order.RentOrder != null)
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventoryId.HasValue)
+                    {
+                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .GetById(detail.HotpotInventoryId.Value);
+
+                        if (hotpotInventory != null)
+                        {
+                            hotpotInventory.Status = HotpotStatus.Rented;
+                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+            }
+        }
 
         // Add an enum for item types
         private enum ItemType

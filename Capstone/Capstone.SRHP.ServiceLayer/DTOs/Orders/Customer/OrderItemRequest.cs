@@ -12,7 +12,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         [Range(1, int.MaxValue)]
         public int? Quantity { get; set; }
         public int? UtensilID { get; set; }
-        public int? PackagingId { get; set; }
+        public int? IngredientID { get; set; }
         public int? HotpotID { get; set; }
         public int? CustomizationID { get; set; }
         public int? ComboID { get; set; }
