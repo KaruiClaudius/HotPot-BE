@@ -54,7 +54,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 // Start with base query
                 var query = _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
-                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7)))
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
                     .Where(i => !i.IsDelete);
 
                 // Apply search filter
@@ -390,7 +390,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                             IngredientId = existingIngredient.IngredientId,
                             Price = initialPrice,
                             UnitSize = 1, // Default unit size
-                            EffectiveDate = DateTime.UtcNow.AddHours(7) 
+                            EffectiveDate = DateTime.UtcNow
                         };
 
                         _unitOfWork.Repository<IngredientPrice>().Insert(price);
