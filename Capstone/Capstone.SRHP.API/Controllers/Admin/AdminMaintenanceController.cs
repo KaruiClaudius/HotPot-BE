@@ -153,7 +153,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Name = request.Name,
                     Description = request.Description,
                     Status = request.Status,
-                    LoggedDate = DateTime.UtcNow,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
                     HotPotInventoryId = request.HotPotInventoryId
                 };
 

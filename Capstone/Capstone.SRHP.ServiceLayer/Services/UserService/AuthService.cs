@@ -101,8 +101,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                         PhoneNumber = normalizedPhoneNumber,
                         RoleId = customerRole.RoleId, // Always set to Customer role
                         LoyatyPoint = 0, // Initialize loyalty points for new customers
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
+                        UpdatedAt = DateTime.UtcNow.AddHours(7)
                     };
 
                     _unitOfWork.Repository<User>().Insert(newUser);
@@ -162,7 +162,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken && !u.IsDelete);
 
-            if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
+            if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow.AddHours(7))
                 throw new UnauthorizedException("Token bị lỗi");
 
             return await GenerateAuthResponseAsync(user);
@@ -246,8 +246,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
                             Password = BCrypt.Net.BCrypt.HashPassword(randomPassword),
                             RoleId = customerRole.RoleId,
                             LoyatyPoint = 0, // Initialize loyalty points for new customers
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            CreatedAt = DateTime.UtcNow.AddHours(7),
+                            UpdatedAt = DateTime.UtcNow.AddHours(7)
                         };
 
                         _unitOfWork.Repository<User>().Insert(user);

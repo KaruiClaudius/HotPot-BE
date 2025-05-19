@@ -59,7 +59,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     // Set default date range if not provided (current year)
                     if (!toDate.HasValue)
-                        toDate = DateTime.UtcNow;
+                        toDate = DateTime.UtcNow.AddHours(7);
 
                     if (!fromDate.HasValue)
                     {
@@ -103,7 +103,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Set default date range if not provided (current year)
                 if (!toDate.HasValue)
-                    toDate = DateTime.UtcNow;
+                    toDate = DateTime.UtcNow.AddHours(7);
 
                 if (!fromDate.HasValue)
                 {

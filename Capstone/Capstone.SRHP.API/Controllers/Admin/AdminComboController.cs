@@ -363,7 +363,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 TutorialVideoName = combo.TurtorialVideo?.Name,
                 TutorialVideoUrl = combo.TurtorialVideo?.VideoURL,
                 CreatedAt = combo.CreatedAt,
-                UpdatedAt = combo.UpdatedAt ?? DateTime.UtcNow,
+                UpdatedAt = combo.UpdatedAt ?? DateTime.UtcNow.AddHours(7),
                 IsCustomizable = combo.IsCustomizable,
                 TutorialVideo = combo.TurtorialVideo != null ? new TutorialVideoDto
                 {

@@ -156,7 +156,12 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasDefaultValue(0);
 
                 entity.Property(d => d.PointCost)
-                    .HasDefaultValue(0);
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
+
+                entity.Property(d => d.Duration)
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
 
                 entity.HasOne(d => d.Order)
                     .WithOne(o => o.Discount)

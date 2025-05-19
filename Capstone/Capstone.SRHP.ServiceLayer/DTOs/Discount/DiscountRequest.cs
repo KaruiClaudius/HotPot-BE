@@ -24,11 +24,19 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Discount
         [Required]
         public DateTime Date { get; set; }
 
-        [Required]
-        public DateTime Duration { get; set; }
+        public DateTime? Duration { get; set; }
+        public double? PointCost { get; set; }
+    }
 
-        [Required]
-        [Range(0, double.MaxValue)]
-        public double PointCost { get; set; }
+    public class DiscountUpdateRequest
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public decimal? DiscountPercentage { get; set; }
+        public DateTime? Date { get; set; }
+        public DateTime? Duration { get; set; }
+        public bool UpdateDuration { get; set; }
+        public double? PointCost { get; set; }
+        public bool UpdatePointCost { get; set; }
     }
 }

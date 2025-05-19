@@ -160,7 +160,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ImageURLs = request.ImageURLs,
                     Price = request.Price,
                     BasePrice = request.BasePrice,
-                    LastMaintainDate = DateTime.UtcNow
+                    LastMaintainDate = DateTime.UtcNow.AddHours(7)
                 };
 
                 var createdHotpot = await _hotpotService.CreateAsync(hotpot, request.SeriesNumbers);

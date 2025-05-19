@@ -140,7 +140,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 { "Title", feedback.Title },
                 { "AdminName", adminName },
                 { "AdminId", request.AdminUserId },
-                { "ApprovalDate", DateTime.UtcNow },
+                { "ApprovalDate", DateTime.UtcNow.AddHours(7) },
                 { "CustomerName", feedback.UserName ?? "Anonymous" }
                     });
 
@@ -158,7 +158,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     { "Title", feedback.Title },
                     { "ResponseMessage", "Your feedback has been approved and will be shared with our management team." },
                     { "ResponderName", adminName },
-                    { "ResponseDate", DateTime.UtcNow }
+                    { "ResponseDate", DateTime.UtcNow.AddHours(7) }
                         });
                 }
 
@@ -201,7 +201,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     { "Title", feedback.Title },
                     { "ResponseMessage", $"Your feedback was not approved. Reason: {request.RejectionReason}" },
                     { "ResponderName", adminName },
-                    { "ResponseDate", DateTime.UtcNow },
+                    { "ResponseDate", DateTime.UtcNow.AddHours(7) },
                     { "RejectionReason", request.RejectionReason }
                         });
                 }

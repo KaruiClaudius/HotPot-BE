@@ -31,7 +31,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Default to last 30 days if dates not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-                var end = endDate ?? DateTime.UtcNow;
+                var end = endDate ?? DateTime.UtcNow.AddHours(7);
 
                 var report = await _reportService.GetIngredientUsageReportAsync(start, end, ingredientId);
 
@@ -54,7 +54,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Default to last 30 days if dates not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-                var end = endDate ?? DateTime.UtcNow;
+                var end = endDate ?? DateTime.UtcNow.AddHours(7);
 
                 var report = await _reportService.GetBatchUsageReportAsync(ingredientId, start, end);
 
@@ -93,7 +93,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Default to last 30 days if dates not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-                var end = endDate ?? DateTime.UtcNow;
+                var end = endDate ?? DateTime.UtcNow.AddHours(7);
 
                 var report = await _reportService.GetIngredientUsageByComboAsync(start, end, comboId);
 
@@ -116,7 +116,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Default to last 30 days if dates not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-                var end = endDate ?? DateTime.UtcNow;
+                var end = endDate ?? DateTime.UtcNow.AddHours(7);
 
                 var report = await _reportService.GetIngredientUsageByCustomizationAsync(start, end, customizationId);
 
@@ -139,7 +139,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Default to last 7 days if dates not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-7);
-                var end = endDate ?? DateTime.UtcNow;
+                var end = endDate ?? DateTime.UtcNow.AddHours(7);
 
                 var report = await _reportService.GetDailyIngredientUsageAsync(start, end, ingredientId);
 

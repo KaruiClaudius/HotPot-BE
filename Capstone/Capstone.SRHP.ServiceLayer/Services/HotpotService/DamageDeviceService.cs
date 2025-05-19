@@ -185,7 +185,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 // Set logged date if not set
                 if (entity.LoggedDate == default)
-                    entity.LoggedDate = DateTime.UtcNow;
+                    entity.LoggedDate = DateTime.UtcNow.AddHours(7);
 
                 // Update the hotpot inventory status to Damaged
                 hotpot.Status = HotpotStatus.Damaged;

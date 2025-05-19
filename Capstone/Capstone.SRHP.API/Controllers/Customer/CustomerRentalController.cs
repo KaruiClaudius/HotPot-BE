@@ -185,7 +185,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 { "NewReturnDate", request.NewExpectedReturnDate },
                 { "ExtensionDays", (request.NewExpectedReturnDate - originalReturnDate).Days },
                 { "EquipmentSummary", equipmentSummary },
-                { "ExtensionDate", DateTime.UtcNow }
+                { "ExtensionDate", DateTime.UtcNow.AddHours(7) }
                     });
 
                 return Ok(ApiResponse<bool>.SuccessResponse(true, "Rental period extended successfully"));

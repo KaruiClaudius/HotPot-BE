@@ -344,13 +344,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         var currentPrice = await _ingredientService.GetCurrentPriceAsync(id);
                         if (currentPrice != request.Price.Value)
                         {
-                            await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow);
+                            await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow.AddHours(7));
                         }
                     }
                     catch (NotFoundException)
                     {
                         // No current price found, add the new price
-                        await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow);
+                        await _ingredientService.AddPriceAsync(id, request.Price.Value, DateTime.UtcNow.AddHours(7));
                     }
                 }
 

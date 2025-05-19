@@ -459,7 +459,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 DateTime bestBeforeDate = existingBatch.BestBeforeDate;
                 if (request.BestBeforeDate.HasValue)
                 {
-                    if (request.BestBeforeDate.Value <= DateTime.UtcNow)
+                    if (request.BestBeforeDate.Value <= DateTime.UtcNow.AddHours(7))
                     {
                         return BadRequest(new ApiErrorResponse
                         {
