@@ -129,7 +129,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw;
             }
         }
-
         public async Task<StaffOrderDto> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, int staffId)
         {
             try
