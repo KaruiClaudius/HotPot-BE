@@ -9,7 +9,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.IngredientService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using Microsoft.AspNetCore.Server.IISIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -530,7 +529,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             // Kiểm tra số lượng yêu cầu có sẵn hay không
             if (package.Ingredient.Quantity < item.Quantity)
-                throw new ValidationException($"Chỉ còn {package.Ingredient.Quantity} {package.Ingredient.Name} có sẵn");
+                throw new ValidationException($"Chỉ còn {package.Quantity} {package.Name} có sẵn");
 
             // Get the packaging option if specified
             IngredientPackaging packaging = null;
@@ -550,12 +549,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefault()?.Price ?? 0;
 
-            var defaultSize = await _unitOfWork.Repository<IngredientPackaging>()
-                .FindAsync(p => p.PackagingId == item.PackagingId.Value && !p.IsDelete && p.IsDefault == true);
-
             // Calculate the price based on packaging quantity
-            decimal pricePerGram = latestPrice / defaultSize.Quantity;
-
             decimal packagePrice = latestPrice * packaging.Quantity;
 
             // Ensure SellOrder exists

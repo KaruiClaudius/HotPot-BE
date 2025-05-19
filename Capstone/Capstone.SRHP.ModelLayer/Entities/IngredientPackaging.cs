@@ -21,7 +21,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         [Column(TypeName = "int")]
         [Range(1, int.MaxValue)]
-        public int Quantity { get; set; } 
+        public int Quantity { get; set; } // Amount in base units
 
         [Required]
         [ForeignKey("Ingredient")]
