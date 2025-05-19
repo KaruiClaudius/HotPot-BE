@@ -258,7 +258,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Status = "Lỗi",
                     Message = "Không thể tạo nguyên liệu"
-                })
+                });
             }
         }
 
