@@ -91,38 +91,38 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 await _notificationService.NotifyRoleAsync(
                     "Staff",
                     "ReplacementReviewed",
-                    $"Replacement Request {statusText.ToUpper()}",
-                    $"Replacement request for {equipmentName} has been {statusText}",
+                    $"Yêu Cầu Thay Thế Đã Được {statusText.ToUpper()}",
+                    $"Yêu cầu thay thế cho {equipmentName} đã được {statusText}",
                     new Dictionary<string, object>
                     {
-                { "RequestId", id },
-                { "EquipmentName", equipmentName },
-                //{ "EquipmentType", dto.EquipmentType },
-                { "IsApproved", reviewDto.IsApproved },
-                { "Status", dto.Status },
-                { "ReviewNotes", reviewDto.ReviewNotes },
-                { "ReviewDate", DateTime.UtcNow },
+                        { "RequestId", id },
+                        { "EquipmentName", equipmentName },
+                        //{ "EquipmentType", dto.EquipmentType },
+                        { "IsApproved", reviewDto.IsApproved },
+                        { "Status", dto.Status },
+                        { "ReviewNotes", reviewDto.ReviewNotes },
+                        { "ReviewDate", DateTime.UtcNow },
                     });
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
                     await _notificationService.NotifyUserAsync(
-                        dto.CustomerId.Value,
-                        "ReplacementReviewed",
-                        $"Your Replacement Request was {statusText}",
-                        $"Your request to replace {equipmentName} has been {statusText}",
-                        new Dictionary<string, object>
-                        {
-                    { "RequestId", id },
-                    { "EquipmentName", equipmentName },
-                    { "IsApproved", reviewDto.IsApproved },
-                    { "Status", dto.Status },
-                    { "ReviewNotes", reviewDto.ReviewNotes },
-                    { "NextSteps", reviewDto.IsApproved ?
-                        "A staff member will be assigned to handle your replacement soon." :
-                        "Please contact customer service if you have any questions." }
-                        });
+                         dto.CustomerId.Value,
+                         "ReplacementReviewed",
+                         $"Yêu Cầu Thay Thế Của Bạn Đã Được {statusText}",
+                         $"Yêu cầu thay thế {equipmentName} của bạn đã được {statusText}",
+                         new Dictionary<string, object>
+                         {
+                            { "RequestId", id },
+                            { "EquipmentName", equipmentName },
+                            { "IsApproved", reviewDto.IsApproved },
+                            { "Status", dto.Status },
+                            { "ReviewNotes", reviewDto.ReviewNotes },
+                            { "NextSteps", reviewDto.IsApproved ?
+                                "Một nhân viên sẽ sớm được phân công xử lý việc thay thế cho bạn." :
+                                "Vui lòng liên hệ dịch vụ khách hàng nếu bạn có bất kỳ câu hỏi nào." }
+                         });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
@@ -167,19 +167,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     await _notificationService.NotifyUserAsync(
                         request.AssignedStaffId.Value,
                         "ReplacementAssignment",
-                        "New Replacement Assignment",
-                        $"You've been assigned to handle a replacement for {equipmentName}",
+                        "Nhiệm Vụ Thay Thế Mới",
+                        $"Bạn đã được phân công xử lý việc thay thế cho {equipmentName}",
                         new Dictionary<string, object>
                         {
-                    { "RequestId", id },
-                    { "EquipmentName", equipmentName },
-                    //{ "EquipmentType", dto.EquipmentType },
-                    { "RequestReason", dto.RequestReason },
-                    { "CustomerName", dto.CustomerName },
-                    { "CustomerId", dto.CustomerId },
-                    { "Status", dto.Status },
-                    { "AssignmentDate", DateTime.UtcNow },
-                    { "Instructions", "Please inspect the equipment and confirm if replacement is needed." }
+                            { "RequestId", id },
+                            { "EquipmentName", equipmentName },
+                            //{ "EquipmentType", dto.EquipmentType },
+                            { "RequestReason", dto.RequestReason },
+                            { "CustomerName", dto.CustomerName },
+                            { "CustomerId", dto.CustomerId },
+                            { "Status", dto.Status },
+                            { "AssignmentDate", DateTime.UtcNow },
+                            { "Instructions", "Vui lòng kiểm tra thiết bị và xác nhận nếu cần thay thế." }
                         });
                 }
 
@@ -187,19 +187,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
                     await _notificationService.NotifyUserAsync(
-                        dto.CustomerId.Value,
-                        "ReplacementInProgress",
-                        "Your Replacement Request is in Progress",
-                        $"A staff member has been assigned to handle your replacement for {equipmentName}",
-                        new Dictionary<string, object>
-                        {
-                    { "RequestId", id },
-                    { "EquipmentName", equipmentName },
-                    { "StaffName", dto.AssignedStaffName },
-                    { "Status", dto.Status },
-                    { "AssignmentDate", DateTime.UtcNow },
-                    { "NextSteps", "The staff member will contact you to arrange the replacement." }
-                        });
+                         dto.CustomerId.Value,
+                         "ReplacementInProgress",
+                         "Yêu Cầu Thay Thế Của Bạn Đang Được Xử Lý",
+                         $"Một nhân viên đã được phân công xử lý việc thay thế {equipmentName} cho bạn",
+                         new Dictionary<string, object>
+                         {
+                            { "RequestId", id },
+                            { "EquipmentName", equipmentName },
+                            { "StaffName", dto.AssignedStaffName },
+                            { "Status", dto.Status },
+                            { "AssignmentDate", DateTime.UtcNow },
+                            { "NextSteps", "Nhân viên sẽ liên hệ với bạn để sắp xếp việc thay thế." }
+                         });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(

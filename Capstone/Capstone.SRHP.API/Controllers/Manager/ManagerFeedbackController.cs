@@ -107,39 +107,38 @@ int id, [FromBody] RespondToFeedbackRequest request)
                 // Get manager name for notification
                 string managerName = feedback.Manager?.Name ?? "Manager";
 
-                // Notify the customer about the response via the simplified notification service
                 await _notificationService.NotifyUserAsync(
-                    feedback.User.UserId,
-                    "FeedbackResponse",
-                    "Response to Your Feedback",
-                    $"A manager has responded to your feedback: {feedback.Title}",
-                    new Dictionary<string, object>
-                    {
-                { "FeedbackId", feedback.FeedbackId },
-                { "Title", feedback.Title },
-                { "Response", feedback.Response },
-                { "ResponderName", managerName },
-                { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
-                    });
+                     feedback.User.UserId,
+                     "FeedbackResponse",
+                     "Phản Hồi Cho Góp Ý Của Bạn",
+                     $"Một quản lý đã phản hồi góp ý của bạn: {feedback.Title}",
+                     new Dictionary<string, object>
+                     {
+                        { "FeedbackId", feedback.FeedbackId },
+                        { "Title", feedback.Title },
+                        { "Response", feedback.Response },
+                        { "ResponderName", managerName },
+                        { "ResponderId", request.ManagerId },
+                        { "ResponseDate", DateTime.UtcNow },
+                     });
 
                 // Also notify other managers about the response for transparency
                 await _notificationService.NotifyRoleAsync(
-                    "Managers",
-                    "FeedbackResponseAdded",
-                    "Feedback Response Added",
-                    $"{managerName} responded to feedback: {feedback.Title}",
-                    new Dictionary<string, object>
-                    {
-                { "FeedbackId", feedback.FeedbackId },
-                { "Title", feedback.Title },
-                { "Response", feedback.Response },
-                { "ResponderName", managerName },
-                { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
-                { "CustomerName", feedback.User?.Name ?? "Customer" },
-                { "CustomerId", feedback.User?.UserId ?? 0 },
-                    });
+                     "Managers",
+                     "FeedbackResponseAdded",
+                     "Đã Thêm Phản Hồi Cho Góp Ý",
+                     $"{managerName} đã phản hồi góp ý: {feedback.Title}",
+                     new Dictionary<string, object>
+                     {
+                        { "FeedbackId", feedback.FeedbackId },
+                        { "Title", feedback.Title },
+                        { "Response", feedback.Response },
+                        { "ResponderName", managerName },
+                        { "ResponderId", request.ManagerId },
+                        { "ResponseDate", DateTime.UtcNow },
+                        { "CustomerName", feedback.User?.Name ?? "Khách hàng" },
+                        { "CustomerId", feedback.User?.UserId ?? 0 },
+                     });
 
                 return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(
                     feedback, "Response added successfully"));

@@ -93,16 +93,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 await _notificationService.NotifyUserAsync(
                     request.StaffId,
                     "NewAssignment",
-                    "New Pickup Assignment",
-                    $"You have been assigned to pick up equipment from {orderDetail.CustomerName}",
+                    "Nhiệm Vụ Thu Hồi Mới",
+                    $"Bạn đã được phân công thu hồi thiết bị từ {orderDetail.CustomerName}",
                     new Dictionary<string, object>
                     {
-                { "AssignmentId", assignmentDto.AssignmentId },
-                { "OrderId", orderDetail.OrderId },
-                { "CustomerName", orderDetail.CustomerName },
-                { "PickupAddress", orderDetail.CustomerAddress },
-                { "Notes", request.Notes ?? "No additional notes" },
-                { "AssignmentType", "Pickup" },
+                        { "AssignmentId", assignmentDto.AssignmentId },
+                        { "OrderId", orderDetail.OrderId },
+                        { "CustomerName", orderDetail.CustomerName },
+                        { "PickupAddress", orderDetail.CustomerAddress },
+                        { "Notes", request.Notes ?? "Không có ghi chú bổ sung" },
+                        { "AssignmentType", "Pickup" },
                     });
 
 
@@ -198,37 +198,37 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     await _notificationService.NotifyUserAsync(
                         rentOrder.Order.UserId,
                         "RentalDateAdjusted",
-                        "Rental Return Date Adjusted",
-                        $"Your rental return date has been {extensionType} to {parsedDate.ToShortDateString()}",
+                        "Ngày Trả Thuê Đã Được Điều Chỉnh",
+                        $"Ngày trả thuê của bạn đã được {extensionType} đến {parsedDate.ToShortDateString()}",
                         new Dictionary<string, object>
                         {
-                    { "RentalId", id },
-                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                    { "NewReturnDate", parsedDate },
-                    { "ExtensionDays", extensionDays },
-                    { "EquipmentSummary", equipmentSummary },
-                    { "AdjustmentDate", DateTime.UtcNow },
-                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
-                    { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
+                            { "RentalId", id },
+                            { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                            { "NewReturnDate", parsedDate },
+                            { "ExtensionDays", extensionDays },
+                            { "EquipmentSummary", equipmentSummary },
+                            { "AdjustmentDate", DateTime.UtcNow },
+                            { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
+                            { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
                         });
 
                     // Also notify staff about the adjustment
                     await _notificationService.NotifyRoleAsync(
-                        "Staff",
-                        "RentalDateAdjusted",
-                        "Rental Return Date Adjusted",
-                        $"Rental #{id} return date has been {extensionType} to {parsedDate.ToShortDateString()}",
-                        new Dictionary<string, object>
-                        {
-                    { "RentalId", id },
-                    { "CustomerId", rentOrder.Order.UserId },
-                    { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
-                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                    { "NewReturnDate", parsedDate },
-                    { "ExtensionDays", extensionDays },
-                    { "AdjustmentDate", DateTime.UtcNow },
-                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
-                        });
+                         "Staff",
+                         "RentalDateAdjusted",
+                         "Ngày Trả Thuê Đã Được Điều Chỉnh",
+                         $"Ngày trả của đơn thuê #{id} đã được {extensionType} đến {parsedDate.ToShortDateString()}",
+                         new Dictionary<string, object>
+                         {
+                            { "RentalId", id },
+                            { "CustomerId", rentOrder.Order.UserId },
+                            { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
+                            { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                            { "NewReturnDate", parsedDate },
+                            { "ExtensionDays", extensionDays },
+                            { "AdjustmentDate", DateTime.UtcNow },
+                            { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
+                         });
                 }
 
                 return Ok(ApiResponse<bool>.SuccessResponse(result, "Rental detail updated successfully"));
