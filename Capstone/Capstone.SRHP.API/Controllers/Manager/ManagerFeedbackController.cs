@@ -120,7 +120,7 @@ int id, [FromBody] RespondToFeedbackRequest request)
                 { "Response", feedback.Response },
                 { "ResponderName", managerName },
                 { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
+                { "ResponseDate", DateTime.UtcNow.AddHours(7) },
                     });
 
                 // Also notify other managers about the response for transparency
@@ -136,7 +136,7 @@ int id, [FromBody] RespondToFeedbackRequest request)
                 { "Response", feedback.Response },
                 { "ResponderName", managerName },
                 { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
+                { "ResponseDate", DateTime.UtcNow.AddHours(7) },
                 { "CustomerName", feedback.User?.Name ?? "Customer" },
                 { "CustomerId", feedback.User?.UserId ?? 0 },
                     });

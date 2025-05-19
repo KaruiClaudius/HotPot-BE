@@ -100,7 +100,7 @@ namespace Capstone.HPTY.API.SideServices
                         Type = type,
                         Title = title,
                         Message = message,
-                        Timestamp = DateTime.UtcNow,
+                        Timestamp = DateTime.UtcNow.AddHours(7),
                         Data = data ?? new Dictionary<string, object>()
                     };
 
@@ -141,7 +141,7 @@ namespace Capstone.HPTY.API.SideServices
                     Type = type,
                     Title = title,
                     Message = message,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = DateTime.UtcNow.AddHours(7),
                     Data = data ?? new Dictionary<string, object>()
                 };
 
@@ -187,7 +187,7 @@ namespace Capstone.HPTY.API.SideServices
                     Type = type,
                     Title = title,
                     Message = message,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = DateTime.UtcNow.AddHours(7),
                     Data = data ?? new Dictionary<string, object>()
                 };
 

@@ -85,7 +85,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 { "EquipmentName", equipmentName },
                 { "NewStatus", result.Status },
                 { "Reason", request.Reason ?? "No reason provided" },
-                { "UpdateTime", DateTime.UtcNow },
+                { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                     });
 
                 return Ok(ApiResponse<HotPotInventoryDetailDto>.SuccessResponse(result, "HotPot inventory status updated successfully"));
@@ -159,7 +159,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "Threshold", DEFAULT_LOW_STOCK_THRESHOLD },
                     { "UtensilTypeId", result.UtensilTypeId },
                     { "UtensilTypeName", result.UtensilTypeName },
-                    { "UpdateTime", DateTime.UtcNow },
+                    { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                         });
                 }
 
@@ -178,7 +178,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "EquipmentName", result.Name },
                     { "UtensilTypeId", result.UtensilTypeId },
                     { "UtensilTypeName", result.UtensilTypeName },
-                    { "UpdateTime", DateTime.UtcNow },
+                    { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                     { "Priority", "High" }
                         });
 
@@ -226,7 +226,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 { "PreviousStatus", !result.Status ? "Available" : "Unavailable" }, // Invert current status to get previous
                 { "NewStatus", statusText },
                 { "Reason", request.Reason ?? "No reason provided" },
-                { "UpdateTime", DateTime.UtcNow },
+                { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                 { "UtensilTypeId", result.UtensilTypeId },
                 { "UtensilTypeName", result.UtensilTypeName }
                     });

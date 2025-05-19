@@ -34,7 +34,7 @@ public class NotificationHub : Hub<INotificationClient>
                     Type = "Error",
                     Title = "Connection Error",
                     Message = "User ID not found or invalid",
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.UtcNow.AddHours(7)
                 });
                 return;
             }
@@ -69,7 +69,7 @@ public class NotificationHub : Hub<INotificationClient>
                 Type = "ConnectionRegistered",
                 Title = "Connection Established",
                 Message = $"Connected as {role}",
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow.AddHours(7)
             });
         }
         catch (Exception ex)
@@ -79,7 +79,7 @@ public class NotificationHub : Hub<INotificationClient>
                 Type = "Error",
                 Title = "Connection Error",
                 Message = $"Registration error: {ex.Message}",
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow.AddHours(7)
             });
             throw;
         }

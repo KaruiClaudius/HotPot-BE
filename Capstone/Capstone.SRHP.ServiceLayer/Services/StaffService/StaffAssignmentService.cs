@@ -110,7 +110,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     StaffId = staffId,
                     ManagerId = managerId,
                     TaskType = taskType,
-                    AssignedDate = DateTime.UtcNow,
+                    AssignedDate = DateTime.UtcNow.AddHours(7),
                 };
 
                 await _unitOfWork.Repository<StaffAssignment>().InsertAsync(newAssignment);
@@ -122,7 +122,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     OrderCode = order.OrderCode,
                     StaffId = staffId,
                     StaffName = staff.Name,
-                    AssignedAt = DateTime.UtcNow,
+                    AssignedAt = DateTime.UtcNow.AddHours(7),
                     TaskType = taskType,
                     AssignmentId = newAssignment.StaffAssignmentId
                 };
@@ -201,7 +201,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                             VehicleId = vehicleId,
                             OrderSize = orderSize,
                             IsDelivered = false,
-                            CreatedAt = DateTime.UtcNow
+                            CreatedAt = DateTime.UtcNow.AddHours(7)
                         };
 
                         if (vehicleId.HasValue)
@@ -290,7 +290,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 }
 
                 // Mark the assignment as completed
-                assignment.CompletedDate = DateTime.UtcNow;
+                assignment.CompletedDate = DateTime.UtcNow.AddHours(7);
                 assignment.SetUpdateDate();
 
                 // Handle task-specific completion logic

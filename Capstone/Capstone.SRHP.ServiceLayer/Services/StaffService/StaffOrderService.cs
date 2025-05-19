@@ -169,7 +169,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         var preparationAssignment = staffAssignments.FirstOrDefault(a => a.TaskType == StaffTaskType.Preparation);
                         if (preparationAssignment != null)
                         {
-                            preparationAssignment.CompletedDate = DateTime.UtcNow;
+                            preparationAssignment.CompletedDate = DateTime.UtcNow.AddHours(7);
                             preparationAssignment.SetUpdateDate();
                         }
                         break;
@@ -188,7 +188,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         var shippingCompleteAssignment = staffAssignments.FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping);
                         if (shippingCompleteAssignment != null)
                         {
-                            shippingCompleteAssignment.CompletedDate = DateTime.UtcNow;
+                            shippingCompleteAssignment.CompletedDate = DateTime.UtcNow.AddHours(7);
                             shippingCompleteAssignment.SetUpdateDate();
 
                             // Update shipping order
@@ -249,7 +249,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                 foreach (var assignment in activeAssignments)
                 {
-                    assignment.CompletedDate = DateTime.UtcNow;
+                    assignment.CompletedDate = DateTime.UtcNow.AddHours(7);
 
                     assignment.SetUpdateDate();
                 }

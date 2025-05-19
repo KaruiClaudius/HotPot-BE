@@ -53,7 +53,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 }
 
                 // Keep payment status as Pending but update the timestamp
-                payment.UpdatedAt = DateTime.UtcNow;
+                payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 // Update order status to show payment is being processed
                 var order = payment.Order;
@@ -136,7 +136,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                 // Update payment status
                 payment.Status = request.NewStatus;
-                payment.UpdatedAt = DateTime.UtcNow;
+                payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 // Update order status based on payment status
                 var order = payment.Order;
@@ -297,8 +297,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         PaymentId = payment.PaymentId,
                         OrderId = payment.OrderId ?? 0,
                         Amount = payment.Price,
-                        GeneratedAt = DateTime.UtcNow,
-                        ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMdd}-{payment.TransactionCode}",
+                        GeneratedAt = DateTime.UtcNow.AddHours(7),
+                        ReceiptNumber = $"REC-{DateTime.UtcNow.AddHours(7):yyyyMMdd}-{payment.TransactionCode}",
                     };
 
                     await _unitOfWork.Repository<PaymentReceipt>().InsertAsync(receipt);

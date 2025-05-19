@@ -309,7 +309,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Update payment status
                 paymentTransaction.Status = PaymentStatus.Cancelled;
-                paymentTransaction.UpdatedAt = DateTime.UtcNow;
+                paymentTransaction.UpdatedAt = DateTime.UtcNow.AddHours(7);
                 await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
 
                 // Release inventory reservations
@@ -381,7 +381,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Success;
-                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
+                    paymentTransaction.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
 
                     // Finalize inventory deduction
@@ -408,7 +408,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Cancelled;
-                    paymentTransaction.UpdatedAt = DateTime.UtcNow;
+                    paymentTransaction.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     await _unitOfWork.Repository<Payment>().Update(paymentTransaction, paymentTransaction.PaymentId);
 
                     // Release inventory reservations
@@ -450,7 +450,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 payment.Status = status;
-                payment.UpdatedAt = DateTime.UtcNow;
+                payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 await _unitOfWork.Repository<Payment>().Update(payment, paymentId);
                 await _unitOfWork.CommitAsync();
@@ -604,7 +604,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // Set the actual return date
-                order.RentOrder.ActualReturnDate = DateTime.UtcNow;
+                order.RentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
 
                 // Set the return condition
                 if (!string.IsNullOrEmpty(returnCondition))
@@ -616,10 +616,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 string feeDescription = "";
 
                 // Calculate late fee if returned after expected date
-                if (order.RentOrder.ExpectedReturnDate < DateTime.UtcNow)
+                if (order.RentOrder.ExpectedReturnDate < DateTime.UtcNow.AddHours(7))
                 {
                     // Calculate days late
-                    int daysLate = (int)Math.Ceiling((DateTime.UtcNow - order.RentOrder.ExpectedReturnDate).TotalDays);
+                    int daysLate = (int)Math.Ceiling((DateTime.UtcNow.AddHours(7) - order.RentOrder.ExpectedReturnDate).TotalDays);
 
                     // Calculate late fee (example: $5 per day late)
                     decimal lateFee = daysLate * 5.0m; // You might want to make this configurable
@@ -1481,7 +1481,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         foreach (var payment in pendingPayments)
                         {
                             payment.Status = PaymentStatus.Cancelled;
-                            payment.UpdatedAt = DateTime.UtcNow;
+                            payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
                             await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
 
                             // If it's an online payment, cancel in PayOS

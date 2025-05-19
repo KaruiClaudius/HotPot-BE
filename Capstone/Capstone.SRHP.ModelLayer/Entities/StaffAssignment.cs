@@ -24,7 +24,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public StaffTaskType TaskType { get; set; }
 
         [Required]
-        public DateTime AssignedDate { get; set; } = DateTime.UtcNow;
+        public DateTime AssignedDate { get; set; } = DateTime.UtcNow.AddHours(7);
 
         public DateTime? CompletedDate { get; set; }
 

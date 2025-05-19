@@ -75,7 +75,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                 if (isActive.HasValue)
                 {
-                    var now = DateTime.UtcNow;
+                    var now = DateTime.UtcNow.AddHours(7);
                     if (isActive.Value)
                     {
                         // Active discounts: either no dates specified or current date is within range
@@ -330,7 +330,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     throw new ValidationException("Kích thước phải lớn hơn 0");
 
                 // Get the highest applicable discount tier for this size
-                var now = DateTime.UtcNow;
+                var now = DateTime.UtcNow.AddHours(7);
 
                 // Use a try-catch block specifically for the database query
                 try

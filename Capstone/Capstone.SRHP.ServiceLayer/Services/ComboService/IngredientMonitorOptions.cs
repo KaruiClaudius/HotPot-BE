@@ -125,7 +125,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                     foreach (var item in groupedByIngredient)
                     {
-                        var daysUntilExpiry = (item.EarliestExpiryDate - DateTime.UtcNow).Days;
+                        var daysUntilExpiry = (item.EarliestExpiryDate - DateTime.UtcNow.AddHours(7)).Days;
                         var totalExpiringQuantity = item.ExpiringBatches.Sum(b => b.RemainingQuantity);
 
                         // Check if we've recently sent a notification about this
@@ -213,7 +213,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         if (_lastNotificationSent.TryGetValue(notificationKey, out DateTime lastSent))
                         {
                             // If the cooldown period hasn't elapsed, skip this notification
-                            if (DateTime.UtcNow < lastSent.AddHours(_options.NotificationCooldownHours))
+                            if (DateTime.UtcNow.AddHours(7) < lastSent.AddHours(_options.NotificationCooldownHours))
                             {
                                 _logger.LogInformation(
                                     "Skipping low stock notification for {ingredient} - cooldown period not elapsed",
@@ -241,7 +241,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             notificationData);
 
                         // Update the last notification time
-                        _lastNotificationSent[notificationKey] = DateTime.UtcNow;
+                        _lastNotificationSent[notificationKey] = DateTime.UtcNow.AddHours(7);
 
                         _logger.LogInformation(
                             "Sent low stock notification for {ingredient}. Current: {current} {unit}, Minimum: {min} {unit}",

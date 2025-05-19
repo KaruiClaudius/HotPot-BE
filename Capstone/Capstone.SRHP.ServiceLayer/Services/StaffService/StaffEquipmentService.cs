@@ -124,14 +124,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     Name = request.ConditionName,
                     Description = request.ConditionDescription,
                     Status = request.Status,
-                    LoggedDate = DateTime.UtcNow,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
                     HotPotInventoryId = request.EquipmentId
                 };
 
                 // Set finish date if status is Completed or Cancelled
                 if (request.Status == MaintenanceStatus.Completed || request.Status == MaintenanceStatus.Cancelled)
                 {
-                    conditionLog.FinishDate = DateTime.UtcNow;
+                    conditionLog.FinishDate = DateTime.UtcNow.AddHours(7);
                 }
 
                 // Update availability status if requested
