@@ -437,7 +437,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 BasePrice = request.BasePrice,
                 Quantity = 2, // Based on the number of series numbers
                 LastMaintainDate = DateTime.UtcNow.AddHours(7),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockHotpotService.Setup(s => s.CreateAsync(
@@ -577,7 +577,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Price = 75,
                 BasePrice = 50,
                 Quantity = 2,
-                LastMaintainDate = DateTime.UtcNow.AddDays(-30),
+                LastMaintainDate = DateTime.UtcNow.AddHours(7).AddHours(7).AddHours(7).AddDays(-30),
                 CreatedAt = DateTime.UtcNow.AddDays(-60),
                 UpdatedAt = null
             };

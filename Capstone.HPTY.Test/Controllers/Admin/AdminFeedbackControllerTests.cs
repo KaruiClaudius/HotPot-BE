@@ -282,7 +282,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ApprovalStatus = FeedbackApprovalStatus.Approved.ToString(), // Changed from Status to ApprovalStatus
                 ApprovedByUserId = request.AdminUserId,
                 ApprovedByUserName = "Admin User",
-                ApprovalDate = DateTime.UtcNow // Changed from ApprovedAt to ApprovalDate
+                ApprovalDate = DateTime.UtcNow.AddHours(7) // Changed from ApprovedAt to ApprovalDate
             };
 
             mockFeedbackService.Setup(s => s.ApproveFeedbackAsync(id, request.AdminUserId))
@@ -364,7 +364,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Comment = "This is a test feedback", // Changed from Content to Comment
                 UserName = "Test User",
                 UserId = 123,
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                CreatedAt = DateTime.UtcNow.AddHours(7).AddDays(-5),
                 ApprovalStatus = FeedbackApprovalStatus.Rejected.ToString(), // Changed from Status to ApprovalStatus
                 ApprovedByUserId = request.AdminUserId,
                 ApprovedByUserName = "Admin User",
@@ -612,7 +612,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ApprovalStatus = FeedbackApprovalStatus.Approved.ToString(),
                 ApprovedByUserId = request.AdminUserId,
                 ApprovedByUserName = "Admin User",
-                ApprovalDate = DateTime.UtcNow
+                ApprovalDate = DateTime.UtcNow.AddHours(7)
             };
 
             mockFeedbackService.Setup(s => s.ApproveFeedbackAsync(id, request.AdminUserId))

@@ -371,7 +371,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Status = request.Status,
                 Notes = request.Notes,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             this.mockVehicleManagementService
@@ -623,7 +623,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Status = VehicleStatus.InUse, // Updated status
                 Notes = "Test notes",
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             this.mockVehicleManagementService
@@ -1033,7 +1033,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Status = request.Status,
                 Notes = null, // Null notes
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             this.mockVehicleManagementService

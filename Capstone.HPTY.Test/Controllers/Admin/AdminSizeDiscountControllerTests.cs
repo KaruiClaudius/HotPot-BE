@@ -54,7 +54,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             int? maxSize = 10;
             decimal? minDiscount = 10;
             decimal? maxDiscount = 20;
-            DateTime? activeDate = DateTime.UtcNow;
+            DateTime? activeDate = DateTime.UtcNow.AddHours(7);
             bool? isActive = true;
             int pageNumber = 1;
             int pageSize = 10;
@@ -68,7 +68,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                     SizeDiscountId = 1,
                     MinSize = 5,
                     DiscountPercentage = 15,
-                    StartDate = DateTime.UtcNow.AddDays(-10),
+                    StartDate = DateTime.UtcNow.AddHours(7).AddDays(-10),
                     EndDate = DateTime.UtcNow.AddDays(10),
                     CreatedAt = DateTime.UtcNow.AddDays(-20),
                     UpdatedAt = DateTime.UtcNow.AddDays(-5)
@@ -332,7 +332,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
                 CreatedAt = DateTime.UtcNow.AddHours(7),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockSizeDiscountService.Setup(s => s.CreateAsync(

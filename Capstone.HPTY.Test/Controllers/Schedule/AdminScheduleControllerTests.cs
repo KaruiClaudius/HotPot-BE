@@ -376,7 +376,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             var staffMembers = new List<User>
@@ -1218,7 +1218,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             var shiftWithEmptyStaff = new WorkShift
@@ -1301,7 +1301,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 ShiftStartTime = updateDto.ShiftStartTime,
                 ShiftEndTime = updateDto.ShiftEndTime,
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             var shiftWithNullStaff = new WorkShift

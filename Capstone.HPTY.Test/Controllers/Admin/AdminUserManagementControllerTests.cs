@@ -49,7 +49,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             string rolename = "Admin";
             bool isActive = true;
             DateTime createdAfter = DateTime.UtcNow.AddDays(-30);
-            DateTime createdBefore = DateTime.UtcNow;
+            DateTime createdBefore = DateTime.UtcNow.AddHours(7);
             int pageNumber = 1;
             int pageSize = 10;
             string sortBy = "Name";
@@ -314,7 +314,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 PhoneNumber = request.PhoneNumber,
                 Role = role,
                 CreatedAt = DateTime.UtcNow.AddHours(7),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUserService.Setup(s => s.GetByRoleNameAsync(request.RoleName))
@@ -450,7 +450,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Role = role,
                 ImageURL = request.ImageURL,
                 CreatedAt = DateTime.UtcNow.AddDays(-15),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUserService.Setup(s => s.GetByIdAsync(id))
@@ -778,7 +778,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 PhoneNumber = request.PhoneNumber,
                 Role = role,
                 CreatedAt = DateTime.UtcNow.AddHours(7),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUserService.Setup(s => s.GetByRoleNameAsync(request.RoleName))
@@ -844,7 +844,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Role = role,
                 ImageURL = request.ImageURL,
                 CreatedAt = DateTime.UtcNow.AddDays(-15),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUserService.Setup(s => s.GetByIdAsync(id))
