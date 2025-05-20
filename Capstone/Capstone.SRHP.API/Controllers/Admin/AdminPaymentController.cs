@@ -181,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving payments");
-                return StatusCode(500, new { message = "An error occurred while retrieving payments" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách thanh toán" });
             }
         }
 
@@ -210,7 +210,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving payment {PaymentId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payment" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin thanh toán" });
             }
         }
 
@@ -231,7 +231,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 if (payments == null || !payments.Any())
                 {
-                    return NotFound(new { message = $"No payments found for order ID {orderId}" });
+                    return NotFound(new { message = $"Không tìm thấy thanh toán nào cho đơn hàng có ID {orderId}" });
                 }
 
                 var paymentResponses = payments.Select(MapPaymentToResponse).ToList();
@@ -240,7 +240,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving payments for order {OrderId}", orderId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payments" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách thanh toán" });
             }
         }
 
@@ -261,7 +261,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 if (payments == null || !payments.Any())
                 {
-                    return NotFound(new { message = $"No payments found for user ID {userId}" });
+                    return NotFound(new { message = $"Không tìm thấy thanh toán nào cho người dùng có ID {userId}" });
                 }
 
                 var paymentResponses = payments.Select(MapPaymentToResponse).ToList();
@@ -270,7 +270,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving payments for user {UserId}", userId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the payments" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách thanh toán" });
             }
         }
 

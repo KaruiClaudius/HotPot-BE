@@ -37,8 +37,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {ingredientId} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy nguyên liệu với ID {ingredientId}"
                     });
                 }
 
@@ -55,7 +55,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IEnumerable<IngredientPriceDto>>
                 {
                     Success = true,
-                    Message = "Ingredient price history retrieved successfully",
+                    Message = "Lấy lịch sử giá nguyên liệu thành công",
                     Data = priceDtos
                 });
             }
@@ -64,8 +64,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving price history for ingredient with ID: {IngredientId}", ingredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient price history"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy lịch sử giá nguyên liệu"
                 });
             }
         }
@@ -86,8 +86,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Ingredient with ID {ingredientId} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy nguyên liệu với ID {ingredientId}"
                     });
                 }
 
@@ -106,21 +106,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 };
 
                 return CreatedAtAction(
-                    nameof(GetIngredientPriceHistory),
-                    new { ingredientId = ingredientId },
-                    new ApiResponse<IngredientPriceDto>
-                    {
-                        Success = true,
-                        Message = "Ingredient price added successfully",
-                        Data = priceDto
-                    });
+                nameof(GetIngredientPriceHistory),
+                new { ingredientId = ingredientId },
+                new ApiResponse<IngredientPriceDto>
+                {
+                    Success = true,
+                    Message = "Thêm giá nguyên liệu thành công",
+                    Data = priceDto
+                });
             }
             catch (ValidationException ex)
             {
                 _logger.LogWarning(ex, "Validation error adding price for ingredient with ID: {IngredientId}", ingredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -129,7 +129,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Ingredient not found with ID: {IngredientId}", ingredientId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -138,8 +138,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error adding price for ingredient with ID: {IngredientId}", ingredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to add ingredient price"
+                    Status = "Lỗi",
+                    Message = "Không thể thêm giá nguyên liệu"
                 });
             }
         }
@@ -158,7 +158,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<decimal>
                 {
                     Success = true,
-                    Message = "Current price retrieved successfully",
+                    Message = "Lấy giá hiện tại thành công",
                     Data = currentPrice
                 });
             }
@@ -167,7 +167,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "No price found for ingredient with ID: {IngredientId}", ingredientId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -176,8 +176,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving current price for ingredient with ID: {IngredientId}", ingredientId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve current price"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy giá hiện tại"
                 });
             }
         }

@@ -28,6 +28,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Range(0, int.MaxValue)]
         public int RemainingQuantity { get; set; }
 
+        [StringLength(100)]
+        public string? ProvideCompany { get; set; }
+
         [Required]
         [DataType(DataType.Date)]
         public DateTime BestBeforeDate { get; set; }
