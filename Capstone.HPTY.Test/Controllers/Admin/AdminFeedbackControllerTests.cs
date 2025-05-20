@@ -81,7 +81,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<PagedResult<FeedbackListDto>>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback retrieved successfully", apiResponse.Message);
+            Assert.Equal("Đã lấy phản hồi thành công", apiResponse.Message);
             Assert.Equal(1, apiResponse.Data.TotalCount);
 
             var items = apiResponse.Data.Items.ToList();
@@ -158,7 +158,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback retrieved successfully", apiResponse.Message);
+            Assert.Equal("Đã lấy phản hồi thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.FeedbackId);
 
             this.mockRepository.VerifyAll();
@@ -181,7 +181,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(notFoundResult.Value);
             Assert.False(apiResponse.Success);
-            Assert.Equal($"Feedback with ID {id} not found", apiResponse.Message);
+            Assert.Equal($"Không tìm thấy phản hồi với ID {id}", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -249,7 +249,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<PagedResult<ManagerFeedbackListDto>>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Approved feedback retrieved successfully", apiResponse.Message);
+            Assert.Equal("đã lấy phản hồi thành công", apiResponse.Message);
             Assert.Equal(1, apiResponse.Data.TotalCount);
 
             var items = apiResponse.Data.Items.ToList();
@@ -291,7 +291,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockNotificationService.Setup(s => s.NotifyRoleAsync(
                 "Managers",
                 "FeedbackApproved",
-                "Feedback Approved",
+                "Phản hồi đã được phê duyệt",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -299,7 +299,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockNotificationService.Setup(s => s.NotifyUserAsync(
                 feedbackDetail.UserId,
                 "FeedbackResponse",
-                "Feedback Approved",
+                "Phản hồi đã được phê duyệt",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -311,7 +311,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback approved successfully", apiResponse.Message);
+            Assert.Equal("Phản hồi đã được phê duyệt thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.FeedbackId);
             Assert.Equal(FeedbackApprovalStatus.Approved.ToString(), apiResponse.Data.ApprovalStatus);
             Assert.Equal(request.AdminUserId, apiResponse.Data.ApprovedByUserId);
@@ -378,7 +378,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockNotificationService.Setup(s => s.NotifyUserAsync(
                 feedbackDetail.UserId,
                 "FeedbackResponse",
-                "Feedback Not Approved",
+                "Phản hổi không được phê duyệt",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -390,7 +390,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback rejected successfully", apiResponse.Message);
+            Assert.Equal("Từ chối phản hồi thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.FeedbackId);
             Assert.Equal(FeedbackApprovalStatus.Rejected.ToString(), apiResponse.Data.ApprovalStatus);
             Assert.Equal(request.AdminUserId, apiResponse.Data.ApprovedByUserId);
@@ -480,7 +480,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackStats>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback statistics retrieved successfully", apiResponse.Message);
+            Assert.Equal("Thống kê phản hồi đã được lấy thành công.", apiResponse.Message);
             Assert.Equal(100, apiResponse.Data.TotalFeedbackCount);
             Assert.Equal(20, apiResponse.Data.PendingFeedbackCount);
             Assert.Equal(70, apiResponse.Data.ApprovedFeedbackCount);
@@ -621,7 +621,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             mockNotificationService.Setup(s => s.NotifyRoleAsync(
                 "Managers",
                 "FeedbackApproved",
-                "Feedback Approved",
+                "Phản hồi đã được phê duyệt",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -635,7 +635,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback approved successfully", apiResponse.Message);
+            Assert.Equal("Phản hồi đã được phê duyệt thành công", apiResponse.Message);
 
             // Verify that NotifyUser was not called
             mockNotificationService.Verify(s => s.NotifyUserAsync(
@@ -687,7 +687,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<FeedbackDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Feedback rejected successfully", apiResponse.Message);
+            Assert.Equal("Từ chối phản hồi thành công", apiResponse.Message);
 
             // Verify that NotifyUser was not called
             mockNotificationService.Verify(s => s.NotifyUserAsync(

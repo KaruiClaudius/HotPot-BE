@@ -280,7 +280,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
 
             // Access the property using reflection
             var message = GetMessageFromResponse(notFoundResult.Value);
-            Assert.Equal($"Size discount with ID {id} not found", message);
+            Assert.Equal($"Không tìm thấy giảm giá theo kích thước với ID {id}", message);
 
             // Verify service calls
             mockSizeDiscountService.Verify();
@@ -491,7 +491,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
 
             // Access the property using reflection
             var message = GetMessageFromResponse(notFoundResult.Value);
-            Assert.Equal($"Size discount with ID {id} not found", message);
+            Assert.Equal($"Không tìm thấy giảm giá theo kích thước với ID {id}", message);
 
             // Verify service calls
             mockSizeDiscountService.Verify();
@@ -788,7 +788,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var messageProperty = resultValue.GetType().GetProperty("message");
             var discountPercentageProperty = resultValue.GetType().GetProperty("discountPercentage");
 
-            Assert.Equal("No applicable discount found for this size", messageProperty.GetValue(resultValue));
+            Assert.Equal("Không tìm thấy giảm giá áp dụng cho kích thước này", messageProperty.GetValue(resultValue));
             Assert.Equal(0, discountPercentageProperty.GetValue(resultValue));
 
             // Verify service calls

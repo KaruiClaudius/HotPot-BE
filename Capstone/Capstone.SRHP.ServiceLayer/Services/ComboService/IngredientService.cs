@@ -54,6 +54,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Start with base query
                 var query = _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate >= DateTime.UtcNow.AddHours(7)))
                     .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7)))
                     .Where(i => !i.IsDelete);
 
