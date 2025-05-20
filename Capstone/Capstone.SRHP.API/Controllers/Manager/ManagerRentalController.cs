@@ -207,7 +207,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                             { "NewReturnDate", parsedDate },
                             { "ExtensionDays", extensionDays },
                             { "EquipmentSummary", equipmentSummary },
-                            { "AdjustmentDate", DateTime.UtcNow },
+                            { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
                             { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
                             { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
                         });
@@ -226,7 +226,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
                     { "NewReturnDate", parsedDate },
                     { "ExtensionDays", extensionDays },
-                    { "AdjustmentDate", DateTime.UtcNow },
+                    { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
                     { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
                         });
                 }

@@ -55,7 +55,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         { "IssueName", request.Name },
                         { "Description", request.Description },
                         { "Status", request.Status.ToString() },
-                        { "ReportTime", DateTime.UtcNow },
+                        { "ReportTime", DateTime.UtcNow.AddHours(7) },
                       });
 
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         { "IssueName", result.Name },
                         { "Description", result.Description },
                         { "NewStatus", request.Status.ToString() },
-                        { "UpdateTime", DateTime.UtcNow }
+                        { "UpdateTime", DateTime.UtcNow.AddHours(7) }
                      });
 
                 return Ok(ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Condition status updated successfully"));

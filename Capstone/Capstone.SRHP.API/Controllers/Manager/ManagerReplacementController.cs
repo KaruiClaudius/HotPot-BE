@@ -101,7 +101,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                         { "IsApproved", reviewDto.IsApproved },
                         { "Status", dto.Status },
                         { "ReviewNotes", reviewDto.ReviewNotes },
-                        { "ReviewDate", DateTime.UtcNow },
+                        { "ReviewDate", DateTime.UtcNow.AddHours(7) },
                     });
 
                 // Notify the customer if applicable
@@ -178,7 +178,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                             { "CustomerName", dto.CustomerName },
                             { "CustomerId", dto.CustomerId },
                             { "Status", dto.Status },
-                            { "AssignmentDate", DateTime.UtcNow },
+                            { "AssignmentDate", DateTime.UtcNow.AddHours(7) },
                             { "Instructions", "Vui lòng kiểm tra thiết bị và xác nhận nếu cần thay thế." }
                         });
                 }
