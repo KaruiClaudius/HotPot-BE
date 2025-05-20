@@ -30,7 +30,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [HttpGet("assigned")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>>> GetAssignedOrders(
-    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation) // Default to Preparation if not specified
+    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation)
         {
             var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
