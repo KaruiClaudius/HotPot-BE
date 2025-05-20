@@ -200,8 +200,8 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             _mockNotificationService.Verify(s => s.NotifyRoleAsync(
                 "Administrators",
                 "ConditionIssue",
-                "New HotPot Condition Issue", // Changed from "New Equipment Condition Issue"
-                $"New issue reported for Premium HotPot: {request.Name}",
+                "Vấn Đề Mới Về Tình Trạng Nồi Lẩu",
+                $"Vấn đề mới được báo cáo cho {hotpot.Name}: {request.Name}", // Fix this line
                 It.Is<Dictionary<string, object>>(d =>
                     d.ContainsKey("ConditionLogId") && (int)d["ConditionLogId"] == expectedResult.DamageDeviceId &&
                     d.ContainsKey("HotPotName") && (string)d["HotPotName"] == "Premium HotPot" &&
