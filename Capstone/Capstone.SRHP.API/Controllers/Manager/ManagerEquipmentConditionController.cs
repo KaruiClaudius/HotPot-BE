@@ -44,19 +44,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify administrators about the new condition log
                 await _notificationService.NotifyRoleAsync(
-                    "Administrators",
-                    "ConditionIssue",
-                    "New HotPot Condition Issue",
-                    $"New issue reported for {equipmentName}: {request.Name}",
-                    new Dictionary<string, object>
-                    {
-                { "ConditionLogId", result.DamageDeviceId },
-                { "HotPotName", equipmentName },
-                { "IssueName", request.Name },
-                { "Description", request.Description },
-                { "Status", request.Status.ToString() },
-                { "ReportTime", DateTime.UtcNow.AddHours(7) },
-                    });
+                      "Administrators",
+                      "ConditionIssue",
+                      "Vấn Đề Mới Về Tình Trạng Nồi Lẩu",
+                      $"Vấn đề mới được báo cáo cho {equipmentName}: {request.Name}",
+                      new Dictionary<string, object>
+                      {
+                        { "ConditionLogId", result.DamageDeviceId },
+                        { "HotPotName", equipmentName },
+                        { "IssueName", request.Name },
+                        { "Description", request.Description },
+                        { "Status", request.Status.ToString() },
+                        { "ReportTime", DateTime.UtcNow.AddHours(7) },
+                      });
 
                 return CreatedAtAction(nameof(GetConditionLogById), new { id = result.DamageDeviceId },
                     ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "HotPot condition logged successfully"));
@@ -132,20 +132,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify administrators about the status update using the simplified notification service
                 await _notificationService.NotifyRoleAsync(
-                    "Administrators",
-                    "EquipmentStatusUpdate",
-                    "Equipment Status Updated",
-                    $"Status updated to {request.Status} for {result.EquipmentName}: {result.Name}",
-                    new Dictionary<string, object>
-                    {
-                { "ConditionLogId", id },
-                { "EquipmentName", result.EquipmentName },
-                { "IssueName", result.Name },
-                { "Description", result.Description },
-                { "NewStatus", request.Status.ToString() },
-
-                { "UpdateTime", DateTime.UtcNow.AddHours(7) }
-                    });
+                     "Administrators",
+                     "EquipmentStatusUpdate",
+                     "Đã Cập Nhật Trạng Thái Thiết Bị",
+                     $"Trạng thái đã được cập nhật thành {request.Status} cho {result.EquipmentName}: {result.Name}",
+                     new Dictionary<string, object>
+                     {
+                        { "ConditionLogId", id },
+                        { "EquipmentName", result.EquipmentName },
+                        { "IssueName", result.Name },
+                        { "Description", result.Description },
+                        { "NewStatus", request.Status.ToString() },
+                        { "UpdateTime", DateTime.UtcNow.AddHours(7) }
+                     });
 
                 return Ok(ApiResponse<EquipmentConditionDetailDto>.SuccessResponse(result, "Condition status updated successfully"));
             }

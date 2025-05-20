@@ -369,7 +369,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Success = true,
                     Message = hasSufficientPoints ?
                         "Người dùng có đủ điểm để áp dụng mã giảm giá này" :
-                        "Người dùng không đủ điểm để áp dụng mã giảm giá này",
+                        "Người dùng k`hông đủ điểm để áp dụng mã giảm giá này",
                     Data = hasSufficientPoints
                 });
             }

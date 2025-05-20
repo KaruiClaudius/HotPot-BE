@@ -93,16 +93,16 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 await _notificationService.NotifyUserAsync(
                     request.StaffId,
                     "NewAssignment",
-                    "New Pickup Assignment",
-                    $"You have been assigned to pick up equipment from {orderDetail.CustomerName}",
+                    "Nhiệm Vụ Thu Hồi Mới",
+                    $"Bạn đã được phân công thu hồi thiết bị từ {orderDetail.CustomerName}",
                     new Dictionary<string, object>
                     {
-                { "AssignmentId", assignmentDto.AssignmentId },
-                { "OrderId", orderDetail.OrderId },
-                { "CustomerName", orderDetail.CustomerName },
-                { "PickupAddress", orderDetail.CustomerAddress },
-                { "Notes", request.Notes ?? "No additional notes" },
-                { "AssignmentType", "Pickup" },
+                        { "AssignmentId", assignmentDto.AssignmentId },
+                        { "OrderId", orderDetail.OrderId },
+                        { "CustomerName", orderDetail.CustomerName },
+                        { "PickupAddress", orderDetail.CustomerAddress },
+                        { "Notes", request.Notes ?? "Không có ghi chú bổ sung" },
+                        { "AssignmentType", "Pickup" },
                     });
 
 
@@ -198,18 +198,18 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     await _notificationService.NotifyUserAsync(
                         rentOrder.Order.UserId,
                         "RentalDateAdjusted",
-                        "Rental Return Date Adjusted",
-                        $"Your rental return date has been {extensionType} to {parsedDate.ToShortDateString()}",
+                        "Ngày Trả Thuê Đã Được Điều Chỉnh",
+                        $"Ngày trả thuê của bạn đã được {extensionType} đến {parsedDate.ToShortDateString()}",
                         new Dictionary<string, object>
                         {
-                    { "RentalId", id },
-                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                    { "NewReturnDate", parsedDate },
-                    { "ExtensionDays", extensionDays },
-                    { "EquipmentSummary", equipmentSummary },
-                    { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
-                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
-                    { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
+                            { "RentalId", id },
+                            { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                            { "NewReturnDate", parsedDate },
+                            { "ExtensionDays", extensionDays },
+                            { "EquipmentSummary", equipmentSummary },
+                            { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
+                            { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
+                            { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
                         });
 
                     // Also notify staff about the adjustment

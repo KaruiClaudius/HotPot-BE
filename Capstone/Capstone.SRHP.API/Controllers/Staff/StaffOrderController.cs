@@ -30,7 +30,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [HttpGet("assigned")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>>> GetAssignedOrders(
-    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation) // Default to Preparation if not specified
+    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation)
         {
             var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
@@ -60,40 +60,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 });
             }
         }
-
-
-        //[HttpGet("by-status/{status}")]
-        //[ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffOrderDto>>), StatusCodes.Status200OK)]
-        //public async Task<ActionResult<ApiResponse<IEnumerable<StaffOrderDto>>>> GetOrdersByStatus(OrderStatus status)
-        //{
-        //    try
-        //    {
-        //        var userIdClaim = User.FindFirstValue("id");
-        //        if (userIdClaim == null || !int.TryParse(userIdClaim, out int staffId))
-        //        {
-        //            return Unauthorized(new { message = "User ID not found in token" });
-        //        }
-
-        //        _logger.LogInformation("Staff {StaffId} retrieving orders with status: {Status}", staffId, status);
-        //        var orders = await _staffOrderService.GetOrdersByStatusAsync(status, staffId);
-
-        //        return Ok(new ApiResponse<IEnumerable<StaffOrderDto>>
-        //        {
-        //            Success = true,
-        //            Message = $"Orders with status {status} retrieved successfully",
-        //            Data = orders
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
-        //        return BadRequest(new ApiErrorResponse
-        //        {
-        //            Status = "Error",
-        //            Message = $"Failed to retrieve orders with status {status}"
-        //        });
-        //    }
-        //}
 
 
         [HttpGet("{id}")]

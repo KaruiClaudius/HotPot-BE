@@ -123,7 +123,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<PagedResult<DiscountDto>>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Discounts retrieved successfully", apiResponse.Message);
+            Assert.Equal("Lấy danh sách mã giảm giá thành công", apiResponse.Message);
 
             var items = apiResponse.Data.Items.ToList();
             Assert.Single(items);
@@ -166,7 +166,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<DiscountDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Discount retrieved successfully", apiResponse.Message);
+            Assert.Equal("Lấy mã giảm giá thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.DiscountId);
             Assert.Equal(3, apiResponse.Data.OrderCount);
 
@@ -211,7 +211,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<DiscountDto>>(createdAtActionResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Discount created successfully", apiResponse.Message);
+            Assert.Equal("Tạo mã giảm giá thành công", apiResponse.Message);
             Assert.Equal(1, apiResponse.Data.DiscountId);
             Assert.Equal(request.Title, apiResponse.Data.Title);
             Assert.Equal(0, apiResponse.Data.OrderCount);
@@ -264,7 +264,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<DiscountDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Discount updated successfully", apiResponse.Message);
+            Assert.Equal("Cập nhật mã giảm giá thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.DiscountId);
             Assert.Equal(request.Title, apiResponse.Data.Title);
             Assert.Equal(2, apiResponse.Data.OrderCount);
@@ -289,8 +289,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<string>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Discount deleted successfully", apiResponse.Message);
-            Assert.Equal($"Discount with ID {id} has been deleted", apiResponse.Data);
+            Assert.Equal("Xóa mã giảm giá thành công", apiResponse.Message);
+            Assert.Equal($"Mã giảm giá với ID {id} đã được xóa", apiResponse.Data);
 
             this.mockRepository.VerifyAll();
         }
@@ -313,7 +313,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<bool>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("User has sufficient points for this discount", apiResponse.Message);
+            Assert.Equal("Người dùng có đủ điểm để áp dụng mã giảm giá này", apiResponse.Message);
             Assert.True(apiResponse.Data);
 
             this.mockRepository.VerifyAll();
