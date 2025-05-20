@@ -67,7 +67,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                     Quantity = 10,
                     UtensilTypeId = 1,
                     UtensilType = utensilType,
-                    LastMaintainDate = DateTime.UtcNow.AddDays(-30),
+                    LastMaintainDate = DateTime.UtcNow.AddHours(7).AddHours(7).AddDays(-30),
                     CreatedAt = DateTime.UtcNow.AddDays(-60),
                     UpdatedAt = DateTime.UtcNow.AddDays(-15)
                 }
@@ -299,9 +299,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = request.UtensilTypeID,
                 UtensilType = utensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.CreateUtensilAsync(It.IsAny<Utensil>()))
@@ -360,9 +360,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = 3, // New type ID
                 UtensilType = newUtensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.CreateUtensilTypeAsync("New Type"))
@@ -430,9 +430,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = 2, // Existing type ID
                 UtensilType = existingTypes[1],
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.CreateUtensilTypeAsync("Existing Type"))
@@ -590,7 +590,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 UtensilType = utensilType,
                 LastMaintainDate = DateTime.UtcNow.AddDays(-30),
                 CreatedAt = DateTime.UtcNow.AddDays(-60),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.GetUtensilByIdAsync(id))
@@ -671,7 +671,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 UtensilType = newUtensilType,
                 LastMaintainDate = existingUtensil.LastMaintainDate,
                 CreatedAt = existingUtensil.CreatedAt,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.GetUtensilByIdAsync(id))
@@ -1212,9 +1212,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Quantity = request.Quantity,
                 UtensilTypeId = request.UtensilTypeID,
                 UtensilType = utensilType,
-                LastMaintainDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                LastMaintainDate = DateTime.UtcNow.AddHours(7),
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.CreateUtensilAsync(It.Is<Utensil>(u =>
@@ -1282,7 +1282,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 UtensilType = utensilType,
                 LastMaintainDate = existingUtensil.LastMaintainDate,
                 CreatedAt = existingUtensil.CreatedAt,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockUtensilService.Setup(s => s.GetUtensilByIdAsync(id))

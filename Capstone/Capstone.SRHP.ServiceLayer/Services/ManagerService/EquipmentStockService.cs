@@ -104,7 +104,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw new KeyNotFoundException($"HotPot inventory with ID {inventoryId} not found");
 
             inventory.Status = isAvailable;
-            inventory.UpdatedAt = DateTime.UtcNow;
+            inventory.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             // If there's a reason for the status change, log it as a condition
             if (!string.IsNullOrEmpty(reason))
@@ -114,7 +114,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Name = isAvailable == HotpotStatus.Available ? "Available" : "Unavailable",
                     Description = reason,
                     Status = isAvailable == HotpotStatus.Available ? ModelLayer.Enum.MaintenanceStatus.Completed : ModelLayer.Enum.MaintenanceStatus.Pending,
-                    LoggedDate = DateTime.UtcNow,
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
                     HotPotInventoryId = inventoryId
                 };
 
@@ -228,7 +228,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw new KeyNotFoundException($"Utensil with ID {utensilId} not found");
 
             utensil.Quantity = quantity;
-            utensil.UpdatedAt = DateTime.UtcNow;
+            utensil.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             // If quantity is 0, also update status to unavailable
             if (quantity == 0)
@@ -273,7 +273,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 throw new KeyNotFoundException($"Utensil with ID {utensilId} not found");
 
             utensil.Status = isAvailable;
-            utensil.UpdatedAt = DateTime.UtcNow;
+            utensil.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
 
@@ -318,7 +318,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 utensil.Status = true;
             }
 
-            utensil.UpdatedAt = DateTime.UtcNow;
+            utensil.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
 

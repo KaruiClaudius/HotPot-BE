@@ -32,7 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 ReceiverUserId = receiverId,
                 Message = message,
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             _unitOfWork.Repository<ChatMessage>().Insert(chatMessage);
@@ -73,7 +73,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 CustomerId = customerId,
                 Topic = topic,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             _unitOfWork.Repository<ChatSession>().Insert(chatSession);

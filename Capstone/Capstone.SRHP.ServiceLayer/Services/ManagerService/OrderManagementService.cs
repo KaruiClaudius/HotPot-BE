@@ -397,7 +397,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     OrderCode = order.OrderCode,
                     OrderId = order.OrderId,
                     Status = order.Status,
-                    UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow
+                    UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -661,7 +661,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     IsDelivered = shippingOrder.IsDelivered,
                     DeliveryTime = shippingOrder.Order?.DeliveryTime,
                     DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
-                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
+                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -704,8 +704,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     ShippingOrderId = shippingOrder.ShippingOrderId,
                     OrderId = shippingOrder.OrderId,
                     OrderCode = orderCode,
-                    DeliveryTime = shippingOrder.Order?.DeliveryTime ?? DateTime.UtcNow,
-                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
+                    DeliveryTime = shippingOrder.Order?.DeliveryTime ?? DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -1038,7 +1038,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 StaffId = staffId,
                 ManagerId = managerId,
                 TaskType = StaffTaskType.Shipping,
-                AssignedDate = DateTime.UtcNow,
+                AssignedDate = DateTime.UtcNow.AddHours(7),
             };
 
             await _unitOfWork.Repository<StaffAssignment>().InsertAsync(newAssignment);
@@ -1096,7 +1096,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     VehicleId = vehicleId,
                     OrderSize = orderSize,
                     IsDelivered = false,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
                 };
 
                 if (vehicleId.HasValue)
@@ -1129,7 +1129,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 OrderCode = order.OrderCode,
                 StaffId = staffId,
                 StaffName = staff.Name,
-                AssignedAt = DateTime.UtcNow,
+                AssignedAt = DateTime.UtcNow.AddHours(7),
                 TaskType = StaffTaskType.Shipping,
                 AssignmentId = newAssignment.StaffAssignmentId,
                 Status = order.Status,
@@ -1219,7 +1219,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 StaffId = staffId,
                 ManagerId = managerId,
                 TaskType = taskType,
-                AssignedDate = DateTime.UtcNow,
+                AssignedDate = DateTime.UtcNow.AddHours(7),
             };
 
             await _unitOfWork.Repository<StaffAssignment>().InsertAsync(newAssignment);
@@ -1231,7 +1231,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 OrderCode = order.OrderCode,
                 StaffId = staffId,
                 StaffName = staff.Name,
-                AssignedAt = DateTime.UtcNow,
+                AssignedAt = DateTime.UtcNow.AddHours(7),
                 TaskType = taskType,
                 AssignmentId = newAssignment.StaffAssignmentId
             };

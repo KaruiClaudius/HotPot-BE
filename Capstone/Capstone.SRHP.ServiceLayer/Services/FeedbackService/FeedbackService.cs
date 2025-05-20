@@ -108,7 +108,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 ImageURLs = request.ImageURLs,
                 OrderId = request.OrderId,
                 UserId = request.UserId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 ApprovalStatus = FeedbackApprovalStatus.Pending // Default to pending
             };
 
@@ -250,7 +250,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
                 // Update the feedback with the response
                 feedback.Response = response;
-                feedback.ResponseDate = DateTime.UtcNow;
+                feedback.ResponseDate = DateTime.UtcNow.AddHours(7);
                 feedback.ManagerId = managerId;
                 feedback.SetUpdateDate();
 
@@ -397,9 +397,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
             // Update the feedback approval status
             feedback.ApprovalStatus = FeedbackApprovalStatus.Approved;
-            feedback.ApprovalDate = DateTime.UtcNow;
+            feedback.ApprovalDate = DateTime.UtcNow.AddHours(7);
             feedback.ApprovedByUserId = adminUserId;
-            feedback.UpdatedAt = DateTime.UtcNow;
+            feedback.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
 
@@ -433,10 +433,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
 
             // Update the feedback approval status
             feedback.ApprovalStatus = FeedbackApprovalStatus.Rejected;
-            feedback.ApprovalDate = DateTime.UtcNow;
+            feedback.ApprovalDate = DateTime.UtcNow.AddHours(7);
             feedback.ApprovedByUserId = adminUserId;
             feedback.RejectionReason = rejectionReason;
-            feedback.UpdatedAt = DateTime.UtcNow;
+            feedback.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
 

@@ -13,11 +13,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Discount
         public string Description { get; set; }
         public decimal DiscountPercentage { get; set; }
         public DateTime Date { get; set; }
-        public DateTime Duration { get; set; }
-        public double PointCost { get; set; }
+        public DateTime? Duration { get; set; } 
+        public double? PointCost { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsActive { get; set; }
+        public bool IsNeverExpiring { get; set; } 
+        public bool IsFreeForAll { get; set; }
         public int OrderCount { get; set; }
     }
 }

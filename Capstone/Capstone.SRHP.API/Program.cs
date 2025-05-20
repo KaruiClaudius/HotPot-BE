@@ -170,7 +170,7 @@ app.MapGet("/api/socket-health", (HttpContext context) =>
     {
         IsConnected = socketService._isConnected,
         ServerUrl = socketService.GetServerUrl(),
-        Timestamp = DateTime.UtcNow
+        Timestamp = DateTime.UtcNow.AddHours(7)
     });
 });
 app.Run();

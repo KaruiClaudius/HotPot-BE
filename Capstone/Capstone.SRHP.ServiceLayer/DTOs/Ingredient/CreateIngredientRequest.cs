@@ -26,10 +26,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public double MeasurementValue { get; set; }
 
         [Required]
-        [Range(0, double.MaxValue)]
-        public double TotalAmount { get; set; }
-
-        [Required]
         [Range(0, int.MaxValue)]
         public int MinStockLevel { get; set; }
 
@@ -40,9 +36,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         [Required]
         [Range(1, int.MaxValue)]
         public int IngredientTypeID { get; set; }
-
-        [Required]
-        public DateTime BestBeforeDate { get; set; }
     }
 
 }

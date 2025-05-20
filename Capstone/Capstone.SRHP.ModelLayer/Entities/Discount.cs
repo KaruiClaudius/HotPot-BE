@@ -27,11 +27,9 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Required]
         public DateTime Date { get; set; }
 
-        [Required]
-        public DateTime Duration { get; set; }
+        public DateTime? Duration { get; set; }
 
-        [Required]
-        public double PointCost { get; set; }
+        public double? PointCost { get; set; }
 
 
         public virtual Order? Order { get; set; }

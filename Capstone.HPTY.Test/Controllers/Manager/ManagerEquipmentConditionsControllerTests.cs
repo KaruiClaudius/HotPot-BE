@@ -145,7 +145,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Name = request.Name,
                 Description = request.Description,
                 Status = request.Status,
-                LoggedDate = DateTime.UtcNow,
+                LoggedDate = DateTime.UtcNow.AddHours(7),
             };
 
             // Create a Hotpot with a Name

@@ -187,19 +187,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
                     await _notificationService.NotifyUserAsync(
-                         dto.CustomerId.Value,
-                         "ReplacementInProgress",
-                         "Yêu Cầu Thay Thế Của Bạn Đang Được Xử Lý",
-                         $"Một nhân viên đã được phân công xử lý việc thay thế {equipmentName} cho bạn",
-                         new Dictionary<string, object>
-                         {
-                            { "RequestId", id },
-                            { "EquipmentName", equipmentName },
-                            { "StaffName", dto.AssignedStaffName },
-                            { "Status", dto.Status },
-                            { "AssignmentDate", DateTime.UtcNow },
-                            { "NextSteps", "Nhân viên sẽ liên hệ với bạn để sắp xếp việc thay thế." }
-                         });
+                        dto.CustomerId.Value,
+                        "ReplacementInProgress",
+                        "Your Replacement Request is in Progress",
+                        $"A staff member has been assigned to handle your replacement for {equipmentName}",
+                        new Dictionary<string, object>
+                        {
+                    { "RequestId", id },
+                    { "EquipmentName", equipmentName },
+                    { "StaffName", dto.AssignedStaffName },
+                    { "Status", dto.Status },
+                    { "AssignmentDate", DateTime.UtcNow },
+                    { "NextSteps", "The staff member will contact you to arrange the replacement." }
+                        });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(

@@ -24,7 +24,6 @@ using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
-using Capstone.HPTY.ServiceLayer.Services.Notification;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.Services.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Services.ScheduleService;
@@ -120,6 +119,15 @@ namespace Capstone.HPTY.API.AppStarts
 
             // Background Services
             services.AddHostedService<EquipmentStockMonitorService>();
+
+            services.Configure<IngredientMonitorOptions>(options => {
+                options.CheckIntervalMinutes = 60; // Check every hour
+                options.ExpirationWarningDays = 7; // Warn 7 days before expiration
+                options.AdminRole = "Admin"; // Target admin role for notifications
+            });
+
+            // background hosting service
+            services.AddHostedService<IngredientMonitorService>();
 
             // Shipping Services
             //services.AddScoped<IStaffShippingService, StaffShippingService>();

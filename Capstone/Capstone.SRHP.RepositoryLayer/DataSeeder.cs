@@ -8,7 +8,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Microsoft.EntityFrameworkCore;
 
-namespace Capstone.HPTY.ModelLayer
+namespace Capstone.HPTY.RepositoryLayer
 {
     public class DataSeeder
     {

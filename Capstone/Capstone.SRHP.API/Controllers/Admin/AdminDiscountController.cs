@@ -27,22 +27,22 @@ namespace Capstone.HPTY.API.Controllers.Admin
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<PagedResult<DiscountDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PagedResult<DiscountDto>>>> GetDiscounts(
-            [FromQuery] string searchTerm = null,
-            [FromQuery] decimal? minDiscountPercentage = null,
-            [FromQuery] decimal? maxDiscountPercentage = null,
-            [FromQuery] double? minPointCost = null,
-            [FromQuery] double? maxPointCost = null,
-            [FromQuery] DateTime? startDateFrom = null,
-            [FromQuery] DateTime? startDateTo = null,
-            [FromQuery] DateTime? endDateFrom = null,
-            [FromQuery] DateTime? endDateTo = null,
-            [FromQuery] bool? isActive = null,
-            [FromQuery] bool? isUpcoming = null,
-            [FromQuery] bool? isExpired = null,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string sortBy = "CreatedAt",
-            [FromQuery] bool ascending = false)
+        [FromQuery] string searchTerm = null,
+        [FromQuery] decimal? minDiscountPercentage = null,
+        [FromQuery] decimal? maxDiscountPercentage = null,
+        [FromQuery] double? minPointCost = null,
+        [FromQuery] double? maxPointCost = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] DateTime? endDateFrom = null,
+        [FromQuery] DateTime? endDateTo = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] bool? isUpcoming = null,
+        [FromQuery] bool? isExpired = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string sortBy = "CreatedAt",
+        [FromQuery] bool ascending = false)
         {
             try
             {
@@ -50,8 +50,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
+                        Status = "Lỗi",
+                        Message = "Số trang và kích thước trang phải lớn hơn 0"
                     });
                 }
 
@@ -89,17 +89,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<PagedResult<DiscountDto>>
                 {
                     Success = true,
-                    Message = "Discounts retrieved successfully",
+                    Message = "Lấy danh sách mã giảm giá thành công",
                     Data = result
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving discounts");
+                _logger.LogError(ex, "Lỗi khi lấy danh sách mã giảm giá");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve discounts"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách mã giảm giá"
                 });
             }
         }
@@ -119,8 +119,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Discount with ID {id} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy mã giảm giá với ID {id}"
                     });
                 }
 
@@ -131,20 +131,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<DiscountDto>
                 {
                     Success = true,
-                    Message = "Discount retrieved successfully",
+                    Message = "Lấy mã giảm giá thành công",
                     Data = discountDto
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving discount with ID: {DiscountId}", id);
+                _logger.LogError(ex, "Lỗi khi lấy mã giảm giá với ID: {DiscountId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve discount"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy mã giảm giá"
                 });
             }
         }
+
 
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status201Created)]
@@ -161,8 +162,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     Description = request.Description,
                     DiscountPercentage = request.DiscountPercentage,
                     Date = request.Date,
-                    Duration = request.Duration,
-                    PointCost = request.PointCost
+                    Duration = request.Duration, // Now nullable
+                    PointCost = request.PointCost // Now nullable
                 };
 
                 var createdDiscount = await _discountService.CreateAsync(discount);
@@ -175,34 +176,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<DiscountDto>
                     {
                         Success = true,
-                        Message = "Discount created successfully",
+                        Message = "Tạo mã giảm giá thành công",
                         Data = discountDto
                     });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error creating discount: {DiscountTitle}", request.Title);
+                _logger.LogWarning(ex, "Lỗi xác thực khi tạo mã giảm giá: {DiscountTitle}", request.Title);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating discount: {DiscountTitle}", request.Title);
+                _logger.LogError(ex, "Lỗi khi tạo mã giảm giá: {DiscountTitle}", request.Title);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create discount"
+                    Status = "Lỗi",
+                    Message = "Không thể tạo mã giảm giá"
                 });
+
             }
         }
 
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<DiscountDto>>> UpdateDiscount(int id, [FromBody] DiscountRequest request)
+        public async Task<ActionResult<ApiResponse<DiscountDto>>> UpdateDiscount(int id, [FromBody] DiscountUpdateRequest request)
         {
             try
             {
@@ -213,17 +215,41 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Discount with ID {id} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy mã giảm giá với ID {id}"
                     });
                 }
 
-                existingDiscount.Title = request.Title;
-                existingDiscount.Description = request.Description;
-                existingDiscount.DiscountPercentage = request.DiscountPercentage;
-                existingDiscount.Date = request.Date;
-                existingDiscount.Duration = request.Duration;
-                existingDiscount.PointCost = request.PointCost;
+                // Only update fields that are not null in the request
+                if (request.Title != null)
+                {
+                    existingDiscount.Title = request.Title;
+                }
+
+                if (request.Description != null)
+                {
+                    existingDiscount.Description = request.Description;
+                }
+
+                if (request.DiscountPercentage.HasValue)
+                {
+                    existingDiscount.DiscountPercentage = request.DiscountPercentage.Value;
+                }
+
+                if (request.Date.HasValue)
+                {
+                    existingDiscount.Date = request.Date.Value;
+                }
+
+                if (request.UpdateDuration)
+                {
+                    existingDiscount.Duration = request.Duration;
+                }
+
+                if (request.UpdatePointCost)
+                {
+                    existingDiscount.PointCost = request.PointCost;
+                }
 
                 await _discountService.UpdateAsync(id, existingDiscount);
 
@@ -234,35 +260,35 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<DiscountDto>
                 {
                     Success = true,
-                    Message = "Discount updated successfully",
+                    Message = "Cập nhật mã giảm giá thành công",
                     Data = discountDto
                 });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error updating discount with ID: {DiscountId}", id);
+                _logger.LogWarning(ex, "Lỗi xác thực khi cập nhật mã giảm giá với ID: {DiscountId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", id);
+                _logger.LogWarning(ex, "Không tìm thấy mã giảm giá với ID: {DiscountId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating discount with ID: {DiscountId}", id);
+                _logger.LogError(ex, "Lỗi khi cập nhật mã giảm giá với ID: {DiscountId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to update discount"
+                    Status = "Lỗi",
+                    Message = "Không thể cập nhật mã giảm giá"
                 });
             }
         }
@@ -275,166 +301,64 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                _logger.LogInformation("Admin deleting discount with ID: {DiscountId}", id);
+                _logger.LogInformation("Quản trị viên xóa mã giảm giá với ID: {DiscountId}", id);
 
                 await _discountService.DeleteAsync(id);
 
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Discount deleted successfully",
-                    Data = $"Discount with ID {id} has been deleted"
+                    Message = "Xóa mã giảm giá thành công",
+                    Data = $"Mã giảm giá với ID {id} đã được xóa"
                 });
             }
             catch (ValidationException ex)
             {
-                _logger.LogWarning(ex, "Validation error deleting discount with ID: {DiscountId}", id);
+                _logger.LogWarning(ex, "Lỗi xác thực khi xóa mã giảm giá với ID: {DiscountId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", id);
+                _logger.LogWarning(ex, "Không tìm thấy mã giảm giá với ID: {DiscountId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting discount with ID: {DiscountId}", id);
+                _logger.LogError(ex, "Lỗi khi xóa mã giảm giá với ID: {DiscountId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to delete discount"
+                    Status = "Lỗi",
+                    Message = "Không thể xóa mã giảm giá"
                 });
             }
         }
-
-
-
-        //[HttpGet("validate/{id}")]
-        //[ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
-        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        //public async Task<ActionResult<ApiResponse<bool>>> ValidateDiscount(int id)
-        //{
-        //    try
-        //    {
-        //        _logger.LogInformation("Admin validating discount with ID: {DiscountId}", id);
-
-        //        var discount = await _discountService.GetByIdAsync(id);
-        //        if (discount == null)
-        //        {
-        //            return NotFound(new ApiErrorResponse
-        //            {
-        //                Status = "Error",
-        //                Message = $"Discount with ID {id} not found"
-        //            });
-        //        }
-
-        //        var isValid = await _discountService.IsDiscountValidAsync(id);
-
-        //        return Ok(new ApiResponse<bool>
-        //        {
-        //            Success = true,
-        //            Message = isValid ?
-        //                "Discount is valid and can be used" :
-        //                "Discount is not valid (expired, not started yet, or already in use)",
-        //            Data = isValid
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error validating discount with ID: {DiscountId}", id);
-        //        return BadRequest(new ApiErrorResponse
-        //        {
-        //            Status = "Error",
-        //            Message = "Failed to validate discount"
-        //        });
-        //    }
-        //}
-
-        //[HttpGet("calculate")]
-        //[ProducesResponseType(typeof(ApiResponse<decimal>), StatusCodes.Status200OK)]
-        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<decimal>>> CalculateDiscountAmount(
-        // [FromQuery] int discountId,
-        // [FromQuery] decimal originalPrice)
-        //{
-        //    try
-        //    {
-        //        _logger.LogInformation("Admin calculating discount amount for discount ID: {DiscountId} and price: {Price}",
-        //            discountId, originalPrice);
-
-        //        if (originalPrice < 0)
-        //        {
-        //            return BadRequest(new ApiErrorResponse
-        //            {
-        //                Status = "Error",
-        //                Message = "Original price cannot be negative"
-        //            });
-        //        }
-
-        //        var discountAmount = await _discountService.CalculateDiscountAmountAsync(discountId, originalPrice);
-
-        //        return Ok(new ApiResponse<decimal>
-        //        {
-        //            Success = true,
-        //            Message = "Discount amount calculated successfully",
-        //            Data = discountAmount
-        //        });
-        //    }
-        //    catch (NotFoundException ex)
-        //    {
-        //        _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", discountId);
-        //        return NotFound(new ApiErrorResponse
-        //        {
-        //            Status = "Error",
-        //            Message = ex.Message
-        //        });
-        //    }
-        //    catch (ValidationException ex)
-        //    {
-        //        _logger.LogWarning(ex, "Validation error calculating discount amount for discount ID: {DiscountId}", discountId);
-        //        return BadRequest(new ApiErrorResponse
-        //        {
-        //            Status = "Validation Error",
-        //            Message = ex.Message
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error calculating discount amount for discount ID: {DiscountId}", discountId);
-        //        return BadRequest(new ApiErrorResponse
-        //        {
-        //            Status = "Error",
-        //            Message = "Failed to calculate discount amount"
-        //        });
-        //    }
-        //}
 
         [HttpGet("check-points")]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<bool>>> CheckSufficientPoints(
-        [FromQuery] int discountId,
-        [FromQuery] double userPoints)
+     [FromQuery] int discountId,
+     [FromQuery] double userPoints)
         {
             try
             {
-                _logger.LogInformation("Admin checking if user has sufficient points for discount ID: {DiscountId}, Points: {Points}",
+                _logger.LogInformation("Quản trị viên kiểm tra điểm của người dùng cho mã giảm giá ID: {DiscountId}, Điểm: {Points}",
                     discountId, userPoints);
 
                 if (userPoints < 0)
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = "User points cannot be negative"
+                        Status = "Lỗi",
+                        Message = "Điểm của người dùng không được âm"
                     });
                 }
 
@@ -444,38 +368,43 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     Success = true,
                     Message = hasSufficientPoints ?
-                        "User has sufficient points for this discount" :
-                        "User does not have sufficient points for this discount",
+                        "Người dùng có đủ điểm để áp dụng mã giảm giá này" :
+                        "Người dùng không đủ điểm để áp dụng mã giảm giá này",
                     Data = hasSufficientPoints
                 });
             }
             catch (NotFoundException ex)
             {
-                _logger.LogWarning(ex, "Discount not found with ID: {DiscountId}", discountId);
+                _logger.LogWarning(ex, "Không tìm thấy mã giảm giá với ID: {DiscountId}", discountId);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking points for discount ID: {DiscountId}", discountId);
+                _logger.LogError(ex, "Lỗi khi kiểm tra điểm cho mã giảm giá ID: {DiscountId}", discountId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to check if user has sufficient points"
+                    Status = "Lỗi",
+                    Message = "Không thể kiểm tra điểm của người dùng"
                 });
             }
+
         }
-
-
-
         private static DiscountDto MapToDiscountDto(Discount discount)
         {
             if (discount == null) return null;
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
+
+            // Calculate if the discount is active based on the new rules:
+            // 1. Start date has passed
+            // 2. Either Duration is null (never expires) OR Duration is in the future
+            bool isActive = discount.Date <= now &&
+                            (!discount.Duration.HasValue || discount.Duration.Value >= now);
+
             return new DiscountDto
             {
                 DiscountId = discount.DiscountId,
@@ -483,11 +412,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Description = discount.Description,
                 DiscountPercentage = discount.DiscountPercentage,
                 Date = discount.Date,
-                Duration = discount.Duration,
-                PointCost = discount.PointCost,
+                Duration = discount.Duration, // Now nullable
+                PointCost = discount.PointCost, // Now nullable
                 CreatedAt = discount.CreatedAt,
                 UpdatedAt = discount.UpdatedAt,
-                IsActive = discount.Date <= now && discount.Duration >= now,
+                IsActive = isActive,
+                // Add properties to indicate special cases
+                IsNeverExpiring = !discount.Duration.HasValue,
+                IsFreeForAll = !discount.PointCost.HasValue || discount.PointCost.Value == 0,
                 OrderCount = discount.Order != null ? 1 : 0
             };
         }

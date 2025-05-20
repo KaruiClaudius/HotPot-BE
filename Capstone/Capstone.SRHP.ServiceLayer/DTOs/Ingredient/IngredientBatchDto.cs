@@ -22,7 +22,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public double PhysicalQuantity => RemainingQuantity * MeasurementValue;
         public string FormattedQuantity => $"{PhysicalQuantity} {Unit}";
 
-        public int DaysUntilExpiration => (BestBeforeDate - DateTime.UtcNow).Days;
-        public bool IsExpired => BestBeforeDate < DateTime.UtcNow;
+        public int DaysUntilExpiration => (BestBeforeDate - DateTime.UtcNow.AddHours(7)).Days;
+        public bool IsExpired => BestBeforeDate < DateTime.UtcNow.AddHours(7);
     }
 }

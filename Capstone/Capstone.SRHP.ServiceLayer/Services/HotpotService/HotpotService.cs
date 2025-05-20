@@ -225,7 +225,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         existingHotpot.ImageURL = entity.ImageURL;
                         existingHotpot.Price = entity.Price;
                         existingHotpot.BasePrice = entity.BasePrice;
-                        existingHotpot.LastMaintainDate = DateTime.UtcNow;
+                        existingHotpot.LastMaintainDate = DateTime.UtcNow.AddHours(7);
                         existingHotpot.SetUpdateDate();
 
                         await _unitOfWork.CommitAsync();
@@ -245,7 +245,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     }
                 }
 
-                entity.LastMaintainDate = DateTime.UtcNow;
+                entity.LastMaintainDate = DateTime.UtcNow.AddHours(7);
 
                 // Set quantity based on series numbers
                 if (seriesNumbers != null && seriesNumbers.Length > 0)

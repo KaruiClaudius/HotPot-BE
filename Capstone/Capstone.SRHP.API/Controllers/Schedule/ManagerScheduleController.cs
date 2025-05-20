@@ -258,7 +258,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "StaffId", staff.UserId },
                 { "WorkDays", staff.WorkDays },
                 { "WorkDaysText", workDaysText },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "WorkDaysAssigned" }
                     });
 
@@ -274,7 +274,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "StaffName", staff.Name },
                 { "WorkDays", staff.WorkDays },
                 { "WorkDaysText", workDaysText },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "StaffWorkDaysAssigned" }
                     });
 

@@ -1,5 +1,4 @@
-﻿using Capstone.HPTY.ModelLayer;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -157,7 +156,12 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasDefaultValue(0);
 
                 entity.Property(d => d.PointCost)
-                    .HasDefaultValue(0);
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
+
+                entity.Property(d => d.Duration)
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
 
                 entity.HasOne(d => d.Order)
                     .WithOne(o => o.Discount)

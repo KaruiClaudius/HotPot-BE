@@ -83,8 +83,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Hotpot with ID {id} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy nồi lẩu với ID {id}"
                     });
                 }
 
@@ -93,7 +93,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<HotpotDetailDto>
                 {
                     Success = true,
-                    Message = "Hotpot retrieved successfully",
+                    Message = "Đã lấy thông tin nồi lẩu thành công",
                     Data = hotpotDto
                 });
             }
@@ -102,8 +102,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving hotpot with ID {HotpotId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve hotpot"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy thông tin nồi lẩu"
                 });
             }
         }
@@ -121,8 +121,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return NotFound(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = $"Inventory item with ID {inventoryId} not found"
+                        Status = "Lỗi",
+                        Message = $"Không tìm thấy mục tồn kho với ID {inventoryId}"
                     });
                 }
 
@@ -131,7 +131,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<InventoryItemDetailDto>
                 {
                     Success = true,
-                    Message = "Maintenance logs retrieved successfully",
+                    Message = "Đã lấy nhật ký bảo trì thành công",
                     Data = inventoryDetailDto
                 });
             }
@@ -140,8 +140,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving maintenance logs for inventory item with ID {InventoryId}", inventoryId);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve maintenance logs"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy nhật ký bảo trì"
                 });
             }
         }
@@ -160,7 +160,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     ImageURLs = request.ImageURLs,
                     Price = request.Price,
                     BasePrice = request.BasePrice,
-                    LastMaintainDate = DateTime.UtcNow
+                    LastMaintainDate = DateTime.UtcNow.AddHours(7)
                 };
 
                 var createdHotpot = await _hotpotService.CreateAsync(hotpot, request.SeriesNumbers);
@@ -187,7 +187,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var existingHotpot = await _hotpotService.GetByIdAsync(id);
                 if (existingHotpot == null)
-                    return NotFound(new { message = $"Hotpot with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy nồi lẩu với ID {id}" });
 
                 // Only update properties that are provided in the request
                 if (!string.IsNullOrEmpty(request.Name))
@@ -260,7 +260,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             try
             {
                 if (quantity <= 0)
-                    return BadRequest(new { message = "Quantity must be greater than 0" });
+                    return BadRequest(new { message = "Số lượng phải lớn hơn 0" });
 
                 var deposit = await _hotpotService.CalculateDepositAsync(id, quantity);
 

@@ -214,21 +214,21 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                     // Also notify staff about the adjustment
                     await _notificationService.NotifyRoleAsync(
-                         "Staff",
-                         "RentalDateAdjusted",
-                         "Ngày Trả Thuê Đã Được Điều Chỉnh",
-                         $"Ngày trả của đơn thuê #{id} đã được {extensionType} đến {parsedDate.ToShortDateString()}",
-                         new Dictionary<string, object>
-                         {
-                            { "RentalId", id },
-                            { "CustomerId", rentOrder.Order.UserId },
-                            { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
-                            { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                            { "NewReturnDate", parsedDate },
-                            { "ExtensionDays", extensionDays },
-                            { "AdjustmentDate", DateTime.UtcNow },
-                            { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
-                         });
+                        "Staff",
+                        "RentalDateAdjusted",
+                        "Rental Return Date Adjusted",
+                        $"Rental #{id} return date has been {extensionType} to {parsedDate.ToShortDateString()}",
+                        new Dictionary<string, object>
+                        {
+                    { "RentalId", id },
+                    { "CustomerId", rentOrder.Order.UserId },
+                    { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
+                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
+                    { "NewReturnDate", parsedDate },
+                    { "ExtensionDays", extensionDays },
+                    { "AdjustmentDate", DateTime.UtcNow },
+                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
+                        });
                 }
 
                 return Ok(ApiResponse<bool>.SuccessResponse(result, "Rental detail updated successfully"));

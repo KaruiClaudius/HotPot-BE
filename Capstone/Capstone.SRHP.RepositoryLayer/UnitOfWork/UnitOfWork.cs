@@ -91,11 +91,11 @@ namespace Capstone.HPTY.RepositoryLayer.UnitOfWork
                 var entity = (BaseEntity)entry.Entity;
                 if (entry.State == EntityState.Added)
                 {
-                    entity.CreatedAt = DateTime.UtcNow;
+                    entity.CreatedAt = DateTime.UtcNow.AddHours(7);
                 }
                 else
                 {
-                    entity.UpdatedAt = DateTime.UtcNow;
+                    entity.UpdatedAt = DateTime.UtcNow.AddHours(7);
                 }
             }
         }

@@ -94,7 +94,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     Type = request.Type,
                     Status = request.Status,
                     Notes = request.Notes,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
                 };
 
                 _unitOfWork.Repository<Vehicle>().Insert(vehicle);

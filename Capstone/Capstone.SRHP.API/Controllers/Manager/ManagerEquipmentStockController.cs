@@ -178,7 +178,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     { "EquipmentName", result.Name },
                     { "UtensilTypeId", result.UtensilTypeId },
                     { "UtensilTypeName", result.UtensilTypeName },
-                    { "UpdateTime", DateTime.UtcNow },
+                    { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                     { "Priority", "High" }
                   });
 
@@ -214,22 +214,22 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify administrators about the status change
                 await _notificationService.NotifyRoleAsync(
-                     "Administrators",
-                     "EquipmentStatusChange",
-                     "Trạng Thái Dụng Cụ Đã Thay Đổi",
-                     $"Trạng thái của {result.Name} đã thay đổi thành {statusText}",
-                     new Dictionary<string, object>
-                     {
-                        { "EquipmentId", id },
-                        { "EquipmentType", "Utensil" },
-                        { "EquipmentName", result.Name },
-                        { "PreviousStatus", !result.Status ? "Khả dụng" : "Không khả dụng" }, // Đảo ngược trạng thái hiện tại để lấy trạng thái trước đó
-                        { "NewStatus", statusText },
-                        { "Reason", request.Reason ?? "Không có lý do được cung cấp" },
-                        { "UpdateTime", DateTime.UtcNow },
-                        { "UtensilTypeId", result.UtensilTypeId },
-                        { "UtensilTypeName", result.UtensilTypeName }
-                     });
+                    "Administrators",
+                    "EquipmentStatusChange",
+                    "Utensil Status Changed",
+                    $"{result.Name} status changed to {statusText}",
+                    new Dictionary<string, object>
+                    {
+                { "EquipmentId", id },
+                { "EquipmentType", "Utensil" },
+                { "EquipmentName", result.Name },
+                { "PreviousStatus", !result.Status ? "Available" : "Unavailable" }, // Invert current status to get previous
+                { "NewStatus", statusText },
+                { "Reason", request.Reason ?? "No reason provided" },
+                { "UpdateTime", DateTime.UtcNow },
+                { "UtensilTypeId", result.UtensilTypeId },
+                { "UtensilTypeName", result.UtensilTypeName }
+                    });
 
                 return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil status updated successfully"));
             }

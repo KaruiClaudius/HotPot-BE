@@ -62,7 +62,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             MaintenanceStatus? status = MaintenanceStatus.Pending;
             int? hotPotInventoryId = 1;
             DateTime? fromDate = DateTime.UtcNow.AddDays(-30);
-            DateTime? toDate = DateTime.UtcNow;
+            DateTime? toDate = DateTime.UtcNow.AddHours(7);
             string sortBy = "LoggedDate";
             bool ascending = false;
             int pageNumber = 1;
@@ -346,9 +346,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Name = request.Name,
                 Description = request.Description,
                 Status = request.Status,
-                LoggedDate = DateTime.UtcNow,
+                LoggedDate = DateTime.UtcNow.AddHours(7),
                 HotPotInventoryId = request.HotPotInventoryId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow.AddHours(7),
                 UpdatedAt = null
             };
 
@@ -467,7 +467,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 LoggedDate = DateTime.UtcNow.AddDays(-5),
                 HotPotInventoryId = 1,
                 CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
             mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))

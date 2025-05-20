@@ -77,7 +77,8 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
             int minDays = GetMinExpiryDays(ingredientTypeId);
             int maxDays = GetMaxExpiryDays(ingredientTypeId);
 
-            return $"Best before date must be between {minDays} days and {maxDays} days from now for this ingredient type";
+            return $"Ngày hết hạn phải nằm trong khoảng từ {minDays} đến {maxDays} ngày kể từ hôm nay đối với loại nguyên liệu này";
+
         }
     }
 }

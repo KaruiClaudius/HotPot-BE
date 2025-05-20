@@ -15,6 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         public string ItemType { get; set; }
         public string ItemName { get; set; }
         public string ImageUrl { get; set; }
+        public string FormattedQuantity { get; set; }
         public int? ItemId { get; set; }
         public bool IsSellable { get; set; }
 

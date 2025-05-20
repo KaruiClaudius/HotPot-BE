@@ -177,7 +177,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 { "VerificationNotes", verifyDto.VerificationNotes },
                 { "VerifiedBy", staff.UserId },
                 { "VerifierName", staff.Name },
-                { "VerificationDate", DateTime.UtcNow },
+                { "VerificationDate", DateTime.UtcNow.AddHours(7) },
                 { "Status", dto.Status },
                 { "NextSteps", verifyDto.IsFaulty ?
                     "The replacement process will continue." :
@@ -199,7 +199,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     { "IsFaulty", verifyDto.IsFaulty },
                     { "VerificationNotes", verifyDto.VerificationNotes },
                     { "VerifierName", staff.Name },
-                    { "VerificationDate", DateTime.UtcNow },
+                    { "VerificationDate", DateTime.UtcNow.AddHours(7) },
                     { "Status", dto.Status },
                     { "NextSteps", verifyDto.IsFaulty ?
                         "We will proceed with the replacement process." :
@@ -275,7 +275,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 { "CompletionNotes", completeDto.CompletionNotes },
                 { "CompletedBy", staff.UserId },
                 { "CompleterName", staff.Name },
-                { "CompletionDate", DateTime.UtcNow },
+                { "CompletionDate", DateTime.UtcNow.AddHours(7) },
                 { "Status", dto.Status },
                 { "RequestReason", dto.RequestReason }
                     });
@@ -294,7 +294,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     { "EquipmentName", equipmentName },
                     { "CompletionNotes", completeDto.CompletionNotes },
                     { "CompleterName", staff.Name },
-                    { "CompletionDate", DateTime.UtcNow },
+                    { "CompletionDate", DateTime.UtcNow.AddHours(7) },
                     { "Status", dto.Status },
                     { "FeedbackPrompt", "Please let us know if you're satisfied with the replacement." }
                         });

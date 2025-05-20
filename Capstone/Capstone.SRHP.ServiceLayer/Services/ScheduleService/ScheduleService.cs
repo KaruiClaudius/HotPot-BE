@@ -94,7 +94,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
 
         public async Task<WorkShift> CreateWorkShiftAsync(WorkShift workShift)
         {
-            workShift.CreatedAt = DateTime.UtcNow;
+            workShift.CreatedAt = DateTime.UtcNow.AddHours(7);
             _unitOfWork.Repository<WorkShift>().Insert(workShift);
             await _unitOfWork.CommitAsync();
             return workShift;
@@ -111,7 +111,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             workShift.ShiftStartTime = startTime;
             workShift.ShiftEndTime = endTime;
             workShift.ShiftName = shiftName;
-            workShift.UpdatedAt = DateTime.UtcNow;
+            workShift.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
             return workShift;
@@ -139,7 +139,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
                 throw new KeyNotFoundException($"Staff with ID {staffId} not found");
 
             staff.WorkDays = workDays;
-            staff.UpdatedAt = DateTime.UtcNow;
+            staff.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _unitOfWork.CommitAsync();
             return staff;
@@ -178,7 +178,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             }
 
             manager.WorkDays = workDays;
-            manager.UpdatedAt = DateTime.UtcNow;
+            manager.UpdatedAt = DateTime.UtcNow.AddHours(7);
             await _unitOfWork.CommitAsync();
             return manager;
         }

@@ -120,7 +120,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     throw new ValidationException("Chỉ có thể xem xét các yêu cầu đang chờ xử lý");
 
                 request.Status = isApproved ? ReplacementRequestStatus.Approved : ReplacementRequestStatus.Rejected;
-                request.ReviewDate = DateTime.UtcNow;
+                request.ReviewDate = DateTime.UtcNow.AddHours(7);
                 request.ReviewNotes = reviewNotes;
                 request.SetUpdateDate();
 
@@ -298,7 +298,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     throw new ValidationException("Chỉ có thể đánh dấu hoàn thành cho yêu cầu đang xử lý");
 
                 request.Status = ReplacementRequestStatus.Completed;
-                request.CompletionDate = DateTime.UtcNow;
+                request.CompletionDate = DateTime.UtcNow.AddHours(7);
                 request.AdditionalNotes = (request.AdditionalNotes ?? "") + "\nGhi chú hoàn thành: " + completionNotes;
                 request.SetUpdateDate();
 
@@ -308,8 +308,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     Name = request.HotPotInventory.Hotpot.Name,
                     Description = $"Nồi đã được thay thế. Lí Do: {request.RequestReason}. Notes: {completionNotes}",
                     Status = MaintenanceStatus.Completed,
-                    LoggedDate = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
                 };
 
                 // Set the HotPotInventoryId if provided
@@ -458,7 +458,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
                 if (status == ReplacementRequestStatus.Completed)
                 {
-                    request.CompletionDate = DateTime.UtcNow;
+                    request.CompletionDate = DateTime.UtcNow.AddHours(7);
                 }
 
                 await _unitOfWork.CommitAsync();
@@ -496,14 +496,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     // If faulty, mark as in progress (ready for physical replacement)
                     request.Status = ReplacementRequestStatus.InProgress;
                     request.AdditionalNotes = (request.AdditionalNotes ?? "") +
-                        $"\n\nXác minh ({DateTime.UtcNow:dd/MM/yyyy HH:mm}): Thiết bị lỗi. {verificationNotes}";
+                        $"\n\nXác minh ({DateTime.UtcNow.AddHours(7):dd/MM/yyyy HH:mm}): Thiết bị lỗi. {verificationNotes}";
                 }
                 else
                 {
                     // If not faulty, mark as rejected
                     request.Status = ReplacementRequestStatus.Rejected;
                     request.AdditionalNotes = (request.AdditionalNotes ?? "") +
-                        $"\n\nXác minh ({DateTime.UtcNow:dd/MM/yyyy HH:mm}): Thiết bị không lỗi. {verificationNotes}";
+                        $"\n\nXác minh ({DateTime.UtcNow.AddHours(7):dd/MM/yyyy HH:mm}): Thiết bị không lỗi. {verificationNotes}";
                 }
 
                 request.SetUpdateDate();
@@ -626,7 +626,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 {
                     // Reactivate and update the soft-deleted request
                     softDeletedRequest.IsDelete = false;
-                    softDeletedRequest.RequestDate = DateTime.UtcNow;
+                    softDeletedRequest.RequestDate = DateTime.UtcNow.AddHours(7);
                     softDeletedRequest.Status = ReplacementRequestStatus.Pending;
                     softDeletedRequest.AssignedStaffId = null;
                     softDeletedRequest.CompletionDate = null;
@@ -662,8 +662,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
                 // Set default values
                 request.Status = ReplacementRequestStatus.Pending;
-                request.RequestDate = DateTime.UtcNow;
-                request.CreatedAt = DateTime.UtcNow;
+                request.RequestDate = DateTime.UtcNow.AddHours(7);
+                request.CreatedAt = DateTime.UtcNow.AddHours(7);
 
                 _unitOfWork.Repository<ReplacementRequest>().Insert(request);
                 await _unitOfWork.CommitAsync();
@@ -786,7 +786,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 { "EquipmentName", equipmentName },
                 { "CustomerName", customer.Name },
                 { "CustomerId", customer.UserId },
-                { "CancellationDate", DateTime.UtcNow }
+                { "CancellationDate", DateTime.UtcNow.AddHours(7) }
                     });
 
                 return request;

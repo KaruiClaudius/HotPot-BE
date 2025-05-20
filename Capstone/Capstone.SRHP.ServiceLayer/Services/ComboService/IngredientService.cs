@@ -54,7 +54,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Start with base query
                 var query = _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
-                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7)))
                     .Where(i => !i.IsDelete);
 
                 // Apply search filter
@@ -142,7 +142,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (minPrice.HasValue || maxPrice.HasValue)
                 {
                     // Get current date for price comparison
-                    var currentDate = DateTime.UtcNow;
+                    var currentDate = DateTime.UtcNow.AddHours(7);
 
                     // Create a subquery to get the latest price for each ingredient
                     var latestPrices = _unitOfWork.Repository<IngredientPrice>()
@@ -217,7 +217,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             {
                                 Ingredient = i,
                                 LatestPrice = i.IngredientPrices
-                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))
                                     .OrderByDescending(p => p.EffectiveDate)
                                     .Select(p => p.Price)
                                     .FirstOrDefault()
@@ -245,7 +245,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                             {
                                 Ingredient = i,
                                 LatestPrice = i.IngredientPrices
-                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow)
+                                    .Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))
                                     .OrderByDescending(p => p.EffectiveDate)
                                     .Select(p => p.Price)
                                     .FirstOrDefault()
@@ -392,7 +392,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         {
                             IngredientId = existingIngredient.IngredientId,
                             Price = initialPrice,
-                            EffectiveDate = DateTime.UtcNow
+                            EffectiveDate = DateTime.UtcNow.AddHours(7)
                         };
 
                         _unitOfWork.Repository<IngredientPrice>().Insert(price);
@@ -411,7 +411,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 {
                     IngredientId = entity.IngredientId,
                     Price = initialPrice,
-                    EffectiveDate = DateTime.UtcNow
+                    EffectiveDate = DateTime.UtcNow.AddHours(7)
                 };
 
                 _unitOfWork.Repository<IngredientPrice>().Insert(initialPriceEntity);
@@ -532,7 +532,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Sum the remaining quantities of all non-expired, non-deleted batches
                 var totalQuantity = await _unitOfWork.Repository<IngredientBatch>()
                     .FindAll(b => b.IngredientId == ingredientId &&
-                                 b.BestBeforeDate > DateTime.UtcNow &&
+                                 b.BestBeforeDate > DateTime.UtcNow.AddHours(7) &&
                                  !b.IsDelete)
                     .SumAsync(b => b.RemainingQuantity);
 
@@ -555,7 +555,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await AddBatchAsync(
                     id,
                     quantityChange,
-                    ingredient.IngredientBatches?.OrderBy(b => b.BestBeforeDate).FirstOrDefault()?.BestBeforeDate ?? DateTime.UtcNow
+                    ingredient.IngredientBatches?.OrderBy(b => b.BestBeforeDate).FirstOrDefault()?.BestBeforeDate ?? DateTime.UtcNow.AddHours(7)
                 );
             }
             else if (quantityChange < 0)
@@ -594,7 +594,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             {
                 var ingredients = await _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
-                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow))
+                    .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7))) 
                     .Include(i => i.IngredientBatches.Where(b => !b.IsDelete))
                     .Where(i => !i.IsDelete && i.IngredientTypeId == typeId)
                     .OrderBy(i => i.Name)
@@ -834,7 +834,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             try
             {
                 var idList = ingredientIds.ToList();
-                var now = DateTime.UtcNow;
+                var now = DateTime.UtcNow.AddHours(7);  
 
                 // Get all prices for the specified ingredients
                 var allPrices = await _unitOfWork.Repository<IngredientPrice>()
@@ -1032,7 +1032,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 var batches = await _unitOfWork.Repository<IngredientBatch>()
                     .FindAll(b => b.IngredientId == ingredientId &&
                                  b.RemainingQuantity > 0 &&
-                                 b.BestBeforeDate > DateTime.UtcNow &&
+                                 b.BestBeforeDate > DateTime.UtcNow.AddHours(7) &&
                                  !b.IsDelete)
                     .OrderBy(b => b.BestBeforeDate) // FIFO - use oldest batches first
                     .ToListAsync();
@@ -1101,7 +1101,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (quantity <= 0)
                     throw new ValidationException("Số lượng phải lớn hơn 0");
 
-                if (bestBeforeDate <= DateTime.UtcNow)
+                if (bestBeforeDate <= DateTime.UtcNow.AddHours(7))
                     throw new ValidationException("Ngày hết hạn phải sau ngày hiện tại");
 
                 // Check if ingredient exists
@@ -1117,7 +1117,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     RemainingQuantity = quantity,
                     BestBeforeDate = bestBeforeDate,
                     BatchNumber = batchNumber,
-                    ReceivedDate = DateTime.UtcNow
+                    ReceivedDate = DateTime.UtcNow.AddHours(7)
                 };
 
                 _unitOfWork.Repository<IngredientBatch>().Insert(batch);
@@ -1175,7 +1175,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     if (quantity <= 0)
                         throw new ValidationException($"Số lượng phải lớn hơn 0 cho nguyên liệu ID {ingredientId}");
 
-                    if (bestBeforeDate <= DateTime.UtcNow)
+                    if (bestBeforeDate <= DateTime.UtcNow.AddHours(7))
                         throw new ValidationException($"Ngày hết hạn phải sau ngày hiện tại cho nguyên liệu ID {ingredientId}");
 
                     var ingredient = ingredients.First(i => i.IngredientId == ingredientId);
@@ -1187,7 +1187,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         RemainingQuantity = quantity,
                         BestBeforeDate = bestBeforeDate,
                         BatchNumber = batchNumber, // Use the same batch number for all batches in this operation
-                        ReceivedDate = DateTime.UtcNow
+                        ReceivedDate = DateTime.UtcNow.AddHours(7)
                     };
 
                     _unitOfWork.Repository<IngredientBatch>().Insert(batch);
@@ -1332,7 +1332,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         OrderDetailId = orderDetailId,
                         ComboId = comboId,
                         CustomizationId = customizationId,
-                        UsageDate = DateTime.UtcNow
+                        UsageDate = DateTime.UtcNow.AddHours(7)
                     };
 
                     await _unitOfWork.Repository<IngredientUsage>().InsertAsync(usage);
@@ -1365,7 +1365,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .Include(b => b.Ingredient)
                     .Where(b => !b.IsDelete &&
                                b.RemainingQuantity > 0 &&
-                               b.BestBeforeDate > DateTime.UtcNow &&
+                               b.BestBeforeDate > DateTime.UtcNow.AddHours(7) &&
                                b.BestBeforeDate <= expirationThreshold)
                     .OrderBy(b => b.BestBeforeDate)
                     .ToListAsync();

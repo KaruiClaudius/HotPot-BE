@@ -412,6 +412,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     string itemName = "Unknown";
                     string imageUrl = null;
                     int? itemId = null;
+                    string formattedQuantity = "";
 
                     if (detail.IngredientId.HasValue && detail.Ingredient != null)
                     {
@@ -419,6 +420,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
+                        formattedQuantity = FormatQuantity(detail.Ingredient.MeasurementValue, detail.Ingredient.Unit);
                     }
                     else if (detail.UtensilId.HasValue && detail.Utensil != null)
                     {
@@ -450,6 +452,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         ItemType = itemType,
                         ItemName = itemName,
                         ImageUrl = imageUrl,
+                        FormattedQuantity = formattedQuantity,
                         ItemId = itemId,
                         IsSellable = true
                     });
@@ -629,6 +632,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
         private decimal CalculateDiscountAmount(decimal totalPrice, decimal discountPercent)
         {
             return totalPrice * (discountPercent / 100);
+        }
+
+        private string FormatQuantity(double quantity, string unit)
+        {
+            if (string.IsNullOrEmpty(unit))
+                return quantity.ToString("0.##");
+
+            return $"{quantity.ToString("0.##")} {unit}";
         }
     }
 }

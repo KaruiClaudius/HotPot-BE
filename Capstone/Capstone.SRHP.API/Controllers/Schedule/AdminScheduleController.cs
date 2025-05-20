@@ -112,7 +112,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "ShiftName", createdShift.ShiftName },
                 { "StartTime", createdShift.ShiftStartTime },
                 { "EndTime", createdShift.ShiftEndTime },
-                { "CreatedAt", DateTime.UtcNow },
+                { "CreatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "Created" }
                     });
 
@@ -174,7 +174,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                         { "ShiftName", updatedShift.ShiftName },
                         { "NewStartTime", updatedShift.ShiftStartTime },
                         { "NewEndTime", updatedShift.ShiftEndTime },
-                        { "UpdatedAt", DateTime.UtcNow },
+                        { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                         { "Action", "Updated" }
                             });
                     }
@@ -193,7 +193,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "NewStartTime", updatedShift.ShiftStartTime },
                 { "NewEndTime", updatedShift.ShiftEndTime },
                 { "StaffCount", shiftWithStaff.Staff?.Count ?? 0 },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "Updated" }
                     });
 
@@ -250,7 +250,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                         { "ShiftName", shift.ShiftName },
                         { "StartTime", shift.ShiftStartTime },
                         { "EndTime", shift.ShiftEndTime },
-                        { "DeletedAt", DateTime.UtcNow },
+                        { "DeletedAt", DateTime.UtcNow.AddHours(7) },
                         { "Action", "Deleted" }
                             });
                     }
@@ -269,7 +269,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "StartTime", shift.ShiftStartTime },
                 { "EndTime", shift.ShiftEndTime },
                 { "AffectedStaffCount", staffMembers?.Count ?? 0 },
-                { "DeletedAt", DateTime.UtcNow },
+                { "DeletedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "Deleted" }
                     });
 
@@ -333,7 +333,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "WorkDaysText", workDaysText },
                 { "ShiftIds", assignDto.WorkShiftIds },
                 { "ShiftNames", shiftNames },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "ManagerAssigned" }
                     });
 
@@ -351,7 +351,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "WorkDaysText", workDaysText },
                 { "ShiftIds", assignDto.WorkShiftIds },
                 { "ShiftNames", shiftNames },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "ManagerAssigned" }
                     });
 
