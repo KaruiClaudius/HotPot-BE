@@ -148,11 +148,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     result = await _equipmentReturnService.CompletePickupAssignmentAsync(
                         request.AssignmentId.Value);
                 }
-                else if (request.RentOrderId.HasValue)
-                {
-                    // Process direct order return (new primary method)
-                    result = await _equipmentReturnService.ProcessEquipmentReturnAsync(equipmentReturnRequest);
-                }
                 else
                 {
                     return BadRequest(ApiResponse<bool>.ErrorResponse("Either AssignmentId, OrderId, or RentOrderDetailId must be provided"));

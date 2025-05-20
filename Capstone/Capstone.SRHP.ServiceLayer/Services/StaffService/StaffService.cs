@@ -329,7 +329,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -371,7 +370,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -417,7 +415,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -505,22 +502,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new UnauthorizedException("Failed to authenticate manager");
             }
         }
-
-        private bool IsStaffInWorkShift(User staff, TimeSpan currentTime)
-        {
-            if (staff.StaffWorkShifts == null || !staff.StaffWorkShifts.Any())
-                return false;
-
-            return staff.StaffWorkShifts.Any(ws =>
-                !ws.IsDelete);
-        }
         private bool IsStaffAvailableForMoreAssignments(StaffType staffType, List<StaffTaskType> currentTaskTypes, int assignmentCount)
         {
             // Define limits for different staff types and task combinations
-            const int MAX_PREPARATION_TASKS = 3;
-            const int MAX_SHIPPING_TASKS = 1;
-            const int MAX_PICKUP_TASKS = 2;
-            const int MAX_TOTAL_TASKS = 4;
+            const int MAX_PREPARATION_TASKS = 50;
+            const int MAX_SHIPPING_TASKS = 50;
+            const int MAX_PICKUP_TASKS = 50;
+            const int MAX_TOTAL_TASKS = 100;
 
             // Check total assignment limit
             if (assignmentCount >= MAX_TOTAL_TASKS)

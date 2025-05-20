@@ -338,9 +338,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                     if (rentOrder != null)
                     {
-                        // Update rental status or create a return record as needed
-                        // This depends on your specific business logic
+                        rentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
+                        rentOrder.SetUpdateDate();
                     }
+                    assignment.Order.Status = OrderStatus.Completed;
+                    assignment.Order.SetUpdateDate();
                 }
 
                 await _unitOfWork.CommitAsync();
