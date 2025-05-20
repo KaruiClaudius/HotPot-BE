@@ -84,7 +84,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var combo = await _comboService.GetByIdAsync(id);
                 if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
                 var comboDto = await MapToCustomerComboDetailDtoAsync(combo);
 
@@ -104,7 +104,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var combos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
                 if (!combos.Any())
-                    return NotFound(new { message = $"No combos found with group identifier '{groupIdentifier}'" });
+                    return NotFound(new { message = $"Không tìm thấy combo nào với mã nhóm '{groupIdentifier}'" });
 
                 var comboDtos = new List<CustomerComboDto>();
                 foreach (var combo in combos)
@@ -128,10 +128,10 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var combo = await _comboService.GetByIdAsync(comboId);
                 if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {comboId} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {comboId}" });
 
                 if (size <= 0 && !combo.IsCustomizable)
-                    return BadRequest(new { message = "Size must be greater than 0" });
+                    return BadRequest(new { message = "Kích thước phải lớn hơn 0" });
 
                 // Calculate price for the specified size
                 decimal basePrice = 0;

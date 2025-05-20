@@ -96,12 +96,12 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
                 {
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 var customization = await _customizationService.GetByIdAsync(id);
                 if (customization == null)
-                    return NotFound(new { message = $"Customization with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy tùy chỉnh với ID {id}" });
 
                 // Ensure the customization belongs to the current user
                 if (customization.UserId != userId)
@@ -157,7 +157,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
                 {
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 string[] imageURLs = null;
@@ -168,7 +168,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 {
                     var combo = await _comboService.GetByIdAsync(request.ComboId.Value);
                     if (combo == null)
-                        return NotFound(new { message = $"Combo with ID {request.ComboId} not found" });
+                        return NotFound(new { message = $"Không tìm thấy combo với ID {request.ComboId}" });
                     if (combo.Size != 0)
                         size = combo.Size;
 
@@ -212,13 +212,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
                 {
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 // Check if customization exists and belongs to the user
                 var existingCustomization = await _customizationService.GetByIdAsync(id);
                 if (existingCustomization == null)
-                    return NotFound(new { message = $"Customization with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy tùy chỉnh với ID {id}" });
 
                 if (existingCustomization.UserId != userId)
                     return Forbid();
@@ -296,13 +296,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
                 {
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 // Check if customization exists and belongs to the user
                 var existingCustomization = await _customizationService.GetByIdAsync(id);
                 if (existingCustomization == null)
-                    return NotFound(new { message = $"Customization with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy tùy chỉnh với ID {id}" });
 
                 if (existingCustomization.UserId != userId)
                     return Forbid();

@@ -52,8 +52,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 {
                     return BadRequest(new ApiErrorResponse
                     {
-                        Status = "Error",
-                        Message = "Page number and page size must be greater than 0"
+                        Status = "Lỗi",
+                        Message = "Số trang và kích thước trang phải lớn hơn 0"
                     });
                 }
 
@@ -86,7 +86,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<PagedResult<DamageHotpotDto>>
                 {
                     Success = true,
-                    Message = "Hotpot damage logs retrieved successfully",
+                    Message = "Lấy danh sách thiết bị hư hỏng thành công",
                     Data = result
                 });
             }
@@ -95,8 +95,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving hotpot damage logs");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve hotpot damage logs"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách thiết bị hư hỏng"
                 });
             }
         }
@@ -115,7 +115,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<DamageDeviceDetailDto>
                 {
                     Success = true,
-                    Message = "Damage device retrieved successfully",
+                    Message = "Lấy thông tin thiết bị hư hỏng thành công",
                     Data = deviceDto
                 });
             }
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Damage device not found with ID: {DeviceId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -133,8 +133,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving damage device with ID: {DeviceId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve damage device"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy thông tin thiết bị hư hỏng"
                 });
             }
         }
@@ -161,21 +161,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var deviceDto = MapToDamageDeviceDto(createdDevice);
 
                 return CreatedAtAction(
-                    nameof(GetDeviceById),
-                    new { id = createdDevice.DamageDeviceId },
-                    new ApiResponse<DamageDeviceDto>
-                    {
-                        Success = true,
-                        Message = "Damage device created successfully",
-                        Data = deviceDto
-                    });
+                nameof(GetDeviceById),
+                new { id = createdDevice.DamageDeviceId },
+                new ApiResponse<DamageDeviceDto>
+                {
+                    Success = true,
+                    Message = "Tạo thiết bị hư hỏng thành công",
+                    Data = deviceDto
+                });
             }
             catch (ValidationException ex)
             {
                 _logger.LogWarning(ex, "Validation error creating damage device: {DeviceName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -184,8 +184,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error creating damage device: {DeviceName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create damage device"
+                    Status = "Lỗi",
+                    Message = "Không thể tạo thiết bị hư hỏng"
                 });
             }
         }
@@ -214,7 +214,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<DamageDeviceDto>
                 {
                     Success = true,
-                    Message = "Damage device updated successfully",
+                    Message = "Cập nhật thiết bị hư hỏng thành công",
                     Data = deviceDto
                 });
             }
@@ -223,7 +223,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error updating damage device with ID: {DeviceId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -232,7 +232,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Damage device not found with ID: {DeviceId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -241,8 +241,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error updating damage device with ID: {DeviceId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to update damage device"
+                    Status = "Lỗi",
+                    Message = "Không thể cập nhật thiết bị hư hỏng"
                 });
             }
         }
@@ -260,8 +260,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Damage device deleted successfully",
-                    Data = $"Damage device with ID {id} has been deleted"
+                    Message = "Xóa thiết bị hư hỏng thành công",
+                    Data = $"Thiết bị hư hỏng với ID {id} đã được xóa"
                 });
             }
             catch (ValidationException ex)
@@ -269,7 +269,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error deleting damage device with ID: {DeviceId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -278,7 +278,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Damage device not found with ID: {DeviceId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -287,8 +287,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error deleting damage device with ID: {DeviceId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to delete damage device"
+                    Status = "Lỗi",
+                    Message = "Không thể xóa thiết bị hư hỏng"
                 });
             }
         }

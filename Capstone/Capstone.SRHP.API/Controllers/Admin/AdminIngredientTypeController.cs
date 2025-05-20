@@ -38,7 +38,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<IEnumerable<IngredientTypeDto>>
                 {
                     Success = true,
-                    Message = "Ingredient types retrieved successfully",
+                    Message = "Lấy danh sách loại nguyên liệu thành công",
                     Data = typeDtos
                 });
             }
@@ -47,8 +47,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error retrieving ingredient types");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient types"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách loại nguyên liệu"
                 });
             }
         }
@@ -70,7 +70,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     new ApiResponse<IngredientTypeDto>
                     {
                         Success = true,
-                        Message = "Ingredient type created successfully",
+                        Message = "Tạo loại nguyên liệu thành công",
                         Data = typeDto
                     });
             }
@@ -79,7 +79,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error creating ingredient type: {TypeName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -88,8 +88,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error creating ingredient type: {TypeName}", request.Name);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to create ingredient type"
+                    Status = "Lỗi",
+                    Message = "Không thể tạo loại nguyên liệu"
                 });
             }
         }
@@ -108,8 +108,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return Ok(new ApiResponse<string>
                 {
                     Success = true,
-                    Message = "Ingredient type deleted successfully",
-                    Data = $"Ingredient type with ID {id} has been deleted"
+                    Message = "Xóa loại nguyên liệu thành công",
+                    Data = $"Loại nguyên liệu với ID {id} đã được xóa"
                 });
             }
             catch (ValidationException ex)
@@ -117,7 +117,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Validation error deleting ingredient type with ID: {TypeId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Validation Error",
+                    Status = "Lỗi xác thực",
                     Message = ex.Message
                 });
             }
@@ -126,7 +126,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogWarning(ex, "Ingredient type not found with ID: {TypeId}", id);
                 return NotFound(new ApiErrorResponse
                 {
-                    Status = "Error",
+                    Status = "Lỗi",
                     Message = ex.Message
                 });
             }
@@ -135,8 +135,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 _logger.LogError(ex, "Error deleting ingredient type with ID: {TypeId}", id);
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to delete ingredient type"
+                    Status = "Lỗi",
+                    Message = "Không thể xóa loại nguyên liệu"
                 });
             }
         }

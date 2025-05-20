@@ -58,7 +58,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Start with base query using the adjusted date for fetching orders
                 var query = _unitOfWork.Repository<Order>()
-                    .FindAll(o => !o.IsDelete && o.CreatedAt >= adjustedFromDate && o.CreatedAt <= toDate);
+                    .FindAll(o => !o.IsDelete && o.CreatedAt >= adjustedFromDate && o.CreatedAt <= toDate && o.Status != OrderStatus.Cart);
 
                 // Apply filters (existing code remains unchanged)
                 // ...
@@ -105,7 +105,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private DashboardSummaryMetrics CalculateOverallMetrics(List<Order> orders)
         {
             // Filter out pending orders for revenue calculations
-            var completedOrders = orders.Where(o => o.Status != OrderStatus.Pending).ToList();
+            var completedOrders = orders.Where(o => o.Status != OrderStatus.Pending && o.Status != OrderStatus.Cart).ToList();
 
             // Calculate total revenue from completed orders only
             decimal totalRevenue = completedOrders.Sum(o => o.TotalPrice);
@@ -225,7 +225,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (groupedOrders.ContainsKey(monthData.Month))
                 {
                     var monthOrders = groupedOrders[monthData.Month];
-                    var completedMonthOrders = monthOrders.Where(o => o.Status != OrderStatus.Pending).ToList();
+                    var completedMonthOrders = monthOrders.Where(o => o.Status != OrderStatus.Pending && o.Status != OrderStatus.Cart).ToList();
 
                     // Revenue only from completed orders
                     monthData.Revenue = completedMonthOrders.Sum(o => o.TotalPrice);
@@ -269,7 +269,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     g => new OrderStatusDetail
                     {
                         Count = g.Count(),
-                        Revenue = g.Key != OrderStatus.Pending ? g.Sum(o => o.TotalPrice) : 0, // Zero revenue for pending
+                        Revenue = g.Key != OrderStatus.Pending && g.Key != OrderStatus.Cart ? g.Sum(o => o.TotalPrice) : 0, // Zero revenue for pending
                         Percentage = orders.Count > 0 ? (decimal)g.Count() / orders.Count * 100 : 0
                     }
                 );

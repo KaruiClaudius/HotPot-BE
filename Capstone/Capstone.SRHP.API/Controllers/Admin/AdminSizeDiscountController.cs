@@ -72,7 +72,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var discount = await _sizeDiscountService.GetByIdAsync(id);
                 if (discount == null)
-                    return NotFound(new { message = $"Size discount with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy giảm giá theo kích thước với ID {id}" });
 
                 var discountDto = MapToSizeDiscountDto(discount);
 
@@ -120,7 +120,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var existingDiscount = await _sizeDiscountService.GetByIdAsync(id);
                 if (existingDiscount == null)
-                    return NotFound(new { message = $"Size discount with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy giảm giá theo kích thước với ID {id}" });
 
                 existingDiscount.MinSize = discountDto.MinSize;
                 existingDiscount.DiscountPercentage = discountDto.DiscountPercentage;
@@ -141,7 +141,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating size discount with ID {SizeDiscountId}", id);
+                _logger.LogError(ex, "Error deleting size discount with ID {SizeDiscountId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -176,7 +176,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var discount = await _sizeDiscountService.GetApplicableDiscountAsync(size);
                 if (discount == null)
-                    return Ok(new { message = "No applicable discount found for this size", discountPercentage = 0 });
+                    return Ok(new { message = "Không tìm thấy giảm giá áp dụng cho kích thước này", discountPercentage = 0 });
 
                 var discountDto = MapToSizeDiscountDto(discount);
 

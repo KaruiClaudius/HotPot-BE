@@ -46,8 +46,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         // batch logic
         Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId);
         Task<IngredientBatch> GetBatchByIdAsync(int batchId);
-        Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, bool isInitial = false);
-        Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate)> batches);
+        Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany, bool isInitial = false);
+        Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany)> batches);
         Task UpdateBatchAsync(int batchId, int quantity, DateTime bestBeforeDate, string batchNumber = null);
         Task DeleteBatchAsync(int batchId);
         Task<int> ConsumeIngredientAsync(int ingredientId, int quantity, int orderId, int? orderDetailId = null, int? comboId = null, int? customizationId = null);
