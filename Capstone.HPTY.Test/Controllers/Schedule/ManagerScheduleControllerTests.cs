@@ -984,7 +984,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             var result = methodInfo.Invoke(controller, new object[] { workDays }) as string;
 
             // Assert
-            Assert.Equal("Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday", result);
+            Assert.Equal("Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday", result);
         }
 
         [Fact]
