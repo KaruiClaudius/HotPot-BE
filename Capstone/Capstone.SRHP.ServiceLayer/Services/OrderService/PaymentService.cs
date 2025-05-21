@@ -243,7 +243,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await FinalizeInventoryDeduction(order);
 
                 // 8. Update order status to Processing
-                order.Status = OrderStatus.Processing;
+                order.Status = OrderStatus.Pending;
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
 
@@ -388,7 +388,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     await FinalizeInventoryDeduction(order);
 
                     // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
+                    order.Status = OrderStatus.Pending;
                     order.SetUpdateDate();
                     await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
@@ -816,7 +816,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         order.SetUpdateDate();
                         await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
-                        if (order.Status == OrderStatus.Processing)
+                        if (order.Status == OrderStatus.Pending)
                         {
                             // Return inventory for sell items
                             if (order.SellOrder != null)

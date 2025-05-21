@@ -8,14 +8,13 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
 {
-    public class CreateComboRequest
+    public class CreateRequest
     {
         [Required]
         [StringLength(100)]
         public string Name { get; set; }
 
-        [StringLength(1000)]
-        public string? Description { get; set; }
+
 
         [Required]
         [Range(1, int.MaxValue)]
@@ -26,7 +25,28 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         [Required]
         public TutorialVideoRequest TutorialVideo { get; set; }
 
+
+    }    
+    
+    public class CreateComboRequest : CreateRequest
+    {
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
+
+
         [Required]
         public List<ComboIngredientRequest> Ingredients { get; set; }
+    }
+
+    
+
+    public class CreateCustomizableComboRequest : CreateRequest
+    {
+        [StringLength(1000)]
+        public string? GroupIdentifier { get; set; }
+
+        [Required]
+        public List<ComboAllowedIngredientTypeRequest> AllowedIngredientTypes { get; set; }
     }
 }

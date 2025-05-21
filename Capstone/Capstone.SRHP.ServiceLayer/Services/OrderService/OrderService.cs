@@ -1342,8 +1342,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         await _paymentService.UpdatePaymentStatusAsync(payment.PaymentId, PaymentStatus.Cancelled);
                     }
                 }
-                // If order is moving from Pending to Processing (payment confirmed)
-                else if (order.Status == OrderStatus.Processing)
+                else if (order.Status == OrderStatus.Pending)
                 {
                     // Finalize inventory deduction
                     await FinalizeInventoryDeduction(order);
@@ -1493,7 +1492,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     await FinalizeInventoryDeduction(order);
 
                     // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
+                    order.Status = OrderStatus.Pending;
                     order.SetUpdateDate();
                     await _unitOfWork.Repository<Order>().Update(order, orderId);
                     await _unitOfWork.CommitAsync();
