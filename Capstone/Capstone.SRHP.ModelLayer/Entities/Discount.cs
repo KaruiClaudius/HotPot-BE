@@ -32,6 +32,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public double? PointCost { get; set; }
 
 
-        public virtual Order? Order { get; set; }
+        public virtual ICollection<Order>? Orders { get; set; }
     }
 }
