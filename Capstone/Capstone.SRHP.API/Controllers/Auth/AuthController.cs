@@ -205,25 +205,26 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 // Only update fields that are provided in the request
                 bool hasChanges = false;
 
-                if (request.Name != null)
+                if (request.Name != null && !string.IsNullOrWhiteSpace(request.Name))
                 {
                     userToUpdate.Name = request.Name;
                     hasChanges = true;
                 }
 
-                if (request.Email != null)
+                if (request.Email != null && !string.IsNullOrWhiteSpace(request.Email))
                 {
                     userToUpdate.Email = request.Email;
                     hasChanges = true;
                 }
 
-                if (request.Address != null)
+
+                if (request.Address != null && !string.IsNullOrWhiteSpace(request.Address))
                 {
                     userToUpdate.Address = request.Address;
                     hasChanges = true;
                 }
 
-                if (request.ImageURL != null)
+                if (request.ImageURL != null && !string.IsNullOrWhiteSpace(request.ImageURL))
                 {
                     userToUpdate.ImageURL = request.ImageURL;
                     hasChanges = true;
