@@ -175,7 +175,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Get the current user to preserve existing data
+                // Get the current user
                 var currentUser = await _userService.GetByIdAsync(userId);
                 if (currentUser == null)
                 {
@@ -186,16 +186,15 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     });
                 }
 
-                // Create a User entity with updated fields
+                // Create a User entity starting with current values
                 var userToUpdate = new User
                 {
                     UserId = userId,
-                    Name = request.Name ?? currentUser.Name,
-                    Address = request.Address ?? currentUser.Address,
-                    ImageURL = request.ImageURL ?? currentUser.ImageURL,
-                    Email = request.Email ?? currentUser.Email,
-
-                    // Preserve existing data
+                    // Start with all current values
+                    Name = currentUser.Name,
+                    Email = currentUser.Email,
+                    Address = currentUser.Address,
+                    ImageURL = currentUser.ImageURL,
                     PhoneNumber = currentUser.PhoneNumber,
                     RoleId = currentUser.RoleId,
                     LoyatyPoint = currentUser.LoyatyPoint,
@@ -203,8 +202,39 @@ namespace Capstone.HPTY.API.Controllers.Auth
                     Note = currentUser.Note
                 };
 
-                // Update the user
-                await _userService.UpdateAsync(userId, userToUpdate);
+                // Only update fields that are provided in the request
+                bool hasChanges = false;
+
+                if (request.Name != null)
+                {
+                    userToUpdate.Name = request.Name;
+                    hasChanges = true;
+                }
+
+                if (request.Email != null)
+                {
+                    userToUpdate.Email = request.Email;
+                    hasChanges = true;
+                }
+
+                if (request.Address != null)
+                {
+                    userToUpdate.Address = request.Address;
+                    hasChanges = true;
+                }
+
+                if (request.ImageURL != null)
+                {
+                    userToUpdate.ImageURL = request.ImageURL;
+                    hasChanges = true;
+                }
+
+                // Only update if there are changes
+                if (hasChanges)
+                {
+                    // Update the user
+                    await _userService.UpdateAsync(userId, userToUpdate);
+                }
 
                 // Get the updated user
                 var updatedUser = await _userService.GetByIdAsync(userId);
@@ -225,7 +255,7 @@ namespace Capstone.HPTY.API.Controllers.Auth
                 return Ok(new ApiResponse<UserDto>
                 {
                     Success = true,
-                    Message = "Cập nhật thông tin người dùng thành công",
+                    Message = hasChanges ? "Cập nhật thông tin người dùng thành công" : "Không có thông tin nào được cập nhật",
                     Data = userDto
                 });
             }
