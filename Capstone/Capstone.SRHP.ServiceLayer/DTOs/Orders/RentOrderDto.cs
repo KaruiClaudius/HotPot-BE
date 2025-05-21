@@ -73,4 +73,16 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         public string EquipmentName { get; set; }
         public int Quantity { get; set; }
     }
+
+    public class RentalHistoryItem
+    {
+        public int Id { get; set; }
+        public int OrderId { get; set; }
+        public string CustomerName { get; set; }
+        public string EquipmentName { get; set; }
+        public string RentalStartDate { get; set; }
+        public string ExpectedReturnDate { get; set; }
+        public string ActualReturnDate { get; set; }
+        public string Status { get; set; }
+    }
 }
