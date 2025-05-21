@@ -22,7 +22,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
 
 
         // Pickup Interface
-        Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null);
+        Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, int? vehicleId = null, string notes = null);
         Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId);
         Task<PagedResult<StaffPickupAssignmentDto>> GetStaffAssignmentsPaginatedAsync(int staffId, bool pendingOnly, int pageNumber, int pageSize);
         Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10);

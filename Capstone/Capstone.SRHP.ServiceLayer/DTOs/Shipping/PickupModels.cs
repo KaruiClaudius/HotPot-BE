@@ -22,12 +22,18 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public DateTime? RentalStartDate { get; set; }
         public DateTime? ExpectedReturnDate { get; set; }
         public string EquipmentSummary { get; set; }
+
+        // Vehicle information
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public string VehicleType { get; set; }
     }
 
     public class PickupAssignmentRequestDto
     {
         public int StaffId { get; set; }
         public int RentOrderDetailId { get; set; }
+        public int? VehicleId { get; set; }
         public string Notes { get; set; }
     }
 

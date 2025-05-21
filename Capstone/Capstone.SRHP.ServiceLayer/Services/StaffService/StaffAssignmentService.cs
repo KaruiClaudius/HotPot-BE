@@ -7,8 +7,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 {

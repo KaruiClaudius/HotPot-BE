@@ -48,6 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+
         [HttpPost("allocate-pickup")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -63,6 +64,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _staffService.AssignStaffToPickupAsync(
                     request.StaffId,
                     request.RentOrderDetailId,
+                    request.VehicleId,
                     request.Notes);
 
                 // Get the created assignment
@@ -114,6 +116,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<StaffPickupAssignmentDto>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("current-assignments")]
         public async Task<ActionResult<ApiResponse<PagedResult<StaffPickupAssignmentDto>>>> GetCurrentAssignments([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
