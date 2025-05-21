@@ -884,11 +884,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
 
-                                // Calculate how many more we need
-                                int quantityDifference = update.NewQuantity - detail.Quantity;
+                                // Get items of this type in other active carts
+                                var itemsInOtherCarts = await _unitOfWork.Repository<SellOrderDetail>()
+                                    .FindAll(d => d.IngredientId == detail.IngredientId &&
+                                                 d.SellOrder.Order.Status == OrderStatus.Cart &&
+                                                 d.SellOrder.Order.OrderId != pendingOrder.OrderId &&
+                                                 !d.IsDelete)
+                                    .SumAsync(d => d.Quantity);
 
-                                if (quantityDifference > 0 && ingredient.Quantity < quantityDifference)
-                                    throw new ValidationException($"Chỉ còn {ingredient.Quantity} {ingredient.Name} có sẵn");
+                                // Calculate available inventory
+                                var availableForThisCart = ingredient.Quantity - itemsInOtherCarts;
+
+                                // Check if requested quantity exceeds available inventory
+                                if (update.NewQuantity > availableForThisCart)
+                                    throw new ValidationException($"Chỉ còn {availableForThisCart} {ingredient.Name} có sẵn");
                             }
                             // Add check for utensil inventory
                             else if (detail.UtensilId.HasValue)

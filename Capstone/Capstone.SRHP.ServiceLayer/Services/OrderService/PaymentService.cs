@@ -87,6 +87,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy user", null);
                 }
 
+                if (discountId != null)
+                {
+                    var isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
+
+                    if (!isEnoughPoints)
+                    {
+                        return new Response(-1, "Không đủ điểm để sử dụng mã giảm giá", null);
+                    }
+                    else
+                    {
+                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
+                        user.LoyatyPoint = newPoint;
+                    }
+
+                }
+
                 // 4. Generate transaction code
                 int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
 
