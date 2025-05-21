@@ -308,13 +308,29 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
             var days = new List<string>();
 
-            if (workDays.HasFlag(WorkDays.Monday)) days.Add("Monday");
-            if (workDays.HasFlag(WorkDays.Tuesday)) days.Add("Tuesday");
-            if (workDays.HasFlag(WorkDays.Wednesday)) days.Add("Wednesday");
-            if (workDays.HasFlag(WorkDays.Thursday)) days.Add("Thursday");
-            if (workDays.HasFlag(WorkDays.Friday)) days.Add("Friday");
-            if (workDays.HasFlag(WorkDays.Saturday)) days.Add("Saturday");
-            if (workDays.HasFlag(WorkDays.Sunday)) days.Add("Sunday");
+            // Using a switch expression to check each flag
+            foreach (WorkDays day in Enum.GetValues(typeof(WorkDays)))
+            {
+                if (day == WorkDays.None) continue;
+
+                if (workDays.HasFlag(day))
+                {
+                    string dayName = day switch
+                    {
+                        WorkDays.Monday => "Monday",
+                        WorkDays.Tuesday => "Tuesday",
+                        WorkDays.Wednesday => "Wednesday",
+                        WorkDays.Thursday => "Thursday",
+                        WorkDays.Friday => "Friday",
+                        WorkDays.Saturday => "Saturday",
+                        WorkDays.Sunday => "Sunday",
+                        _ => string.Empty
+                    };
+
+                    if (!string.IsNullOrEmpty(dayName))
+                        days.Add(dayName);
+                }
+            }
 
             return string.Join(", ", days);
         }
