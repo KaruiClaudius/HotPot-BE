@@ -48,7 +48,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             };
         }
 
-        private async Task ConnectAsync()
+        public async Task ConnectAsync()
         {
             try
             {
