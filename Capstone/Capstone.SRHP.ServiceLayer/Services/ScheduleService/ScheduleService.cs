@@ -144,7 +144,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ScheduleService
             await _unitOfWork.CommitAsync();
             return staff;
         }
-      
+
 
         public async Task<User> AssignManagerToWorkShiftsAsync(int managerId, WorkDays workDays, IEnumerable<int> workShiftIds)
         {
