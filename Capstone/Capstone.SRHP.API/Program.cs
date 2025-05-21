@@ -45,13 +45,6 @@ builder.Services.AddSignalR(options =>
     options.PayloadSerializerOptions.PropertyNamingPolicy = null;
 });
 
-// Add logging
-//builder.Logging.AddConsole();
-//builder.Logging.AddDebug();
-//builder.Logging.SetMinimumLevel(LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
-
 // Add Email
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
@@ -71,7 +64,7 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:5000",  // Your local frontend
                 "http://localhost:3000",   // React default port
-                "https://yourdomain.com"   // Your production domain
+                "https://hotpot-web-app-production.up.railway.app"   // Your production domain
             )
     );
 });
@@ -79,47 +72,8 @@ builder.Services.AddCors(options =>
 // Build the app
 var app = builder.Build();
 
-app.Lifetime.ApplicationStarted.Register(async () =>
-{
-    try
-    {
-        using var scope = app.Services.CreateScope();
-        var socketService = scope.ServiceProvider.GetRequiredService<SocketIOClientService>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-        logger.LogInformation($"Attempting to connect to Socket.IO server at {socketService.GetServerUrl()}");
-        var connected = await socketService.ConnectAsync();
-
-        if (connected)
-        {
-            logger.LogInformation("Successfully connected to Socket.IO server at startup");
-        }
-        else
-        {
-            logger.LogWarning("Could not connect to Socket.IO server at startup. Chat functionality may be limited.");
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Failed to connect to Socket.IO server at startup");
-    }
-});
-
 // Get logger from service provider
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-
-// Connect to Socket.IO server at startup
-try
-{
-    var socketService = app.Services.GetRequiredService<SocketIOClientService>();
-    await socketService.ConnectAsync();
-    logger.LogInformation("Successfully connected to Socket.IO server at startup");
-}
-catch (Exception ex)
-{
-    logger.LogError(ex, "Failed to connect to Socket.IO server at startup");
-}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -163,29 +117,19 @@ app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
-app.MapGet("/api/socket-health", async (HttpContext context) =>
+
+// Simplified socket health check that doesn't rely on methods that don't exist
+app.MapGet("/api/socket-health", (HttpContext context) =>
 {
     var socketService = context.RequestServices.GetRequiredService<SocketIOClientService>();
-    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    var config = context.RequestServices.GetRequiredService<IConfiguration>();
 
-    try
+    return Results.Ok(new
     {
-        // Try to ping the Socket.IO server
-        bool pingSuccess = await socketService.PingServerAsync();
-
-        return Results.Ok(new
-        {
-            IsConnected = socketService.IsConnected,
-            ServerUrl = socketService.GetServerUrl(),
-            PingSuccess = pingSuccess,
-            Timestamp = DateTime.UtcNow.AddHours(7),
-            TimeZone = "UTC+7"
-        });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error in socket health check");
-        return Results.StatusCode(500);
-    }
+        ServerUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/",
+        Timestamp = DateTime.UtcNow.AddHours(7),
+        TimeZone = "UTC+7"
+    });
 });
+
 app.Run();

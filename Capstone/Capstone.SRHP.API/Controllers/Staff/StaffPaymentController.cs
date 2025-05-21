@@ -14,7 +14,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 {
     [Route("api/staff/payments")]
     [ApiController]
-    //[Authorize(Roles = "Staff,Admin")]
+    [Authorize(Roles = "Staff,Admin")]
     public class StaffPaymentController : ControllerBase
     {
         private readonly IStaffPaymentService _staffPaymentService;
@@ -49,43 +49,21 @@ namespace Capstone.HPTY.API.Controllers.Staff
             }
         }
 
-        [HttpPost("confirm-deposit")]
-        public async Task<ActionResult<PaymentDetailDto>> ConfirmDeposit([FromBody] ConfirmDepositRequest request)
-        {
-            try
-            {
-                var payment = await _staffPaymentService.ConfirmDepositAsync(request);
-                return Ok(payment);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error confirming deposit for payment {PaymentId}", request.PaymentId);
-                return StatusCode(500, $"An error occurred while confirming deposit: {ex.Message}");
-            }
-        }
-
-        [HttpPost("process")]
-        public async Task<ActionResult<PaymentReceiptDto>> ProcessPayment([FromBody] ProcessPaymentRequest request)
-        {
-            try
-            {
-                var receipt = await _staffPaymentService.ProcessPaymentAsync(request);
-                return Ok(receipt);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing payment {PaymentId}", request.PaymentId);
-                return StatusCode(500, $"An error occurred while processing payment: {ex.Message}");
-            }
-        }
-
         [HttpGet("receipt/{paymentId}")]
         public async Task<ActionResult<PaymentReceiptDto>> GenerateReceipt(int paymentId)
         {
             try
             {
-                var receipt = await _staffPaymentService.GenerateReceiptAsync(paymentId);
+                var receipt = await _staffPaymentService.GenerateDetailedReceiptAsync(paymentId);
                 return Ok(receipt);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -124,31 +102,6 @@ namespace Capstone.HPTY.API.Controllers.Staff
             {
                 _logger.LogError(ex, "Error getting payments for order {OrderId}", orderId);
                 return StatusCode(500, new { message = "An error occurred while retrieving the order payments" });
-            }
-        }
-
-        [HttpPut("payments/{paymentId}/status")]
-        public async Task<IActionResult> UpdatePaymentStatus(int paymentId, [FromBody] UpdatePaymentStatusRequest request)
-        {
-            try
-            {
-                var paymentStatus = Enum.Parse<PaymentStatus>(request.Status, true);
-                var payment = await _paymentService.UpdatePaymentStatusAsync(paymentId, paymentStatus);
-                return Ok(new
-                {
-                    message = "Payment status updated successfully",
-                    paymentId = payment.PaymentId,
-                    status = payment.Status.ToString()
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating status for payment {PaymentId}", paymentId);
-                return StatusCode(500, new { message = "An error occurred while updating the payment status" });
             }
         }
     }
