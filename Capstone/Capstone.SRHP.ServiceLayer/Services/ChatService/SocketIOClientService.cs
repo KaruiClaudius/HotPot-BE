@@ -72,6 +72,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             {
                 _logger.LogError("Reconnection failed after all attempts");
             };
+
+            _client.OnError += (sender, e) =>
+            {
+                _logger.LogError($"Socket.IO Error: {e}");
+                // Add more detailed error information if available
+            };
         }
 
         public async Task<bool> ConnectAsync()
