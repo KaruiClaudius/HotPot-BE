@@ -6,10 +6,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+
 
 [Route("api/customer/chat")]
 [ApiController]

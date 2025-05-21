@@ -28,7 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
         public SocketIOClientService(IConfiguration configuration, ILogger<SocketIOClientService> logger)
         {
             _logger = logger;
-            _serverUrl = configuration["SocketIO:ServerUrl"] ?? "https://chat-server-lc4m.onrender.com";
+            _serverUrl = configuration["SocketIO:ServerUrl"] ?? "https://chat-server-4l1g.onrender.com";
 
             _logger.LogInformation($"Initializing Socket.IO client with URL: {_serverUrl}");
 
