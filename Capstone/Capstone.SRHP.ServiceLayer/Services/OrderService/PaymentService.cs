@@ -54,14 +54,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId,
-               DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
+    DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
         {
             try
             {
-                // 1. Get the order with all details
+                // 1. Get the order with all details (read operation, can be outside transaction)
                 var order = await GetOrderByIdAsync(orderId);
 
-                // 2. Verify inventory availability
+                // 2. Verify inventory availability (read operation, can be outside transaction)
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
                 if (!verificationResults.AllItemsAvailable)
                 {
@@ -79,36 +79,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         throw new ValidationException("Ngày trả dự kiến phải là một thời điểm trong tương lai");
                     }
                 }
-                // 3. Update the order details
-                var updateRequest = new UpdateOrderRequest
-                {
-                    Address = address,
-                    Notes = notes,
-                    DiscountId = discountId,
-                    ExpectedReturnDate = expectedReturnDate,
-                    DeliveryTime = deliveryTime
-                };
 
-                try
-                {
-                    await OrderUpdateAsync(orderId, updateRequest);
-                }
-                catch (ValidationException ex)
-                {
-                    return new Response(-1, ex.Message, null);
-                }
-
-                // 4. Get user information
+                // 3. Get user information (read operation, can be outside transaction)
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
                 if (user == null)
                 {
                     return new Response(-1, "Không tìm thấy user", null);
                 }
 
-                // 5. Generate transaction code
+                if (discountId != null)
+                {
+                    var isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
+
+                    if (!isEnoughPoints)
+                    {
+                        return new Response(-1, "Không đủ điểm để sử dụng mã giảm giá", null);
+                    }
+                    else
+                    {
+                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
+                        user.LoyatyPoint = newPoint;
+                    }
+
+                }
+
+                // 4. Generate transaction code
                 int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
 
-                // 6. Create payment data
+                // 5. Create payment data
                 ItemData item = new ItemData(paymentRequest.productName, 1, paymentRequest.price);
                 List<ItemData> items = new List<ItemData> { item };
 
@@ -135,39 +133,69 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     buyerPhone
                 );
 
-                // 7. Create payment link
+                // 6. Create payment link (external API call, can be outside transaction)
                 CreatePaymentResult createPayment = await _payOS.createPaymentLink(paymentData);
 
-                // 8. Create payment record
-                var paymentTransaction = new Payment
+                // 7. Execute all database operations in a transaction
+                return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
                 {
-                    TransactionCode = orderCode,
-                    UserId = userId,
-                    OrderId = orderId,
-                    Price = paymentRequest.price,
-                    Type = PaymentType.Online,
-                    Status = PaymentStatus.Pending,
-                    Purpose = PaymentPurpose.OrderPayment
-                };
+                    // Update the order details
+                    var updateRequest = new UpdateOrderRequest
+                    {
+                        Address = address,
+                        Notes = notes,
+                        DiscountId = discountId,
+                        ExpectedReturnDate = expectedReturnDate,
+                        DeliveryTime = deliveryTime
+                    };
 
-                await _unitOfWork.Repository<Payment>().InsertAsync(paymentTransaction);
-                await _unitOfWork.CommitAsync();
+                    // This will throw ValidationException if validation fails
+                    await OrderUpdateAsync(orderId, updateRequest);
 
-                var currentUserInfo = new
+                    // Create payment record
+                    var paymentTransaction = new Payment
+                    {
+                        TransactionCode = orderCode,
+                        UserId = userId,
+                        OrderId = orderId,
+                        Price = paymentRequest.price,
+                        Type = PaymentType.Online,
+                        Status = PaymentStatus.Pending,
+                        Purpose = PaymentPurpose.OrderPayment
+                    };
+
+                    await _unitOfWork.Repository<Payment>().InsertAsync(paymentTransaction);
+                    await _unitOfWork.CommitAsync();
+
+                    var currentUserInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    return new Response(0, "success", new
+                    {
+                        paymentInfo = createPayment,
+                        userInfo = currentUserInfo
+                    });
+                },
+                ex =>
                 {
-                    user.UserId,
-                    user.Name,
-                    user.PhoneNumber,
-                };
-
-                return new Response(0, "success", new
-                {
-                    paymentInfo = createPayment,
-                    userInfo = currentUserInfo
+                    if (!(ex is ValidationException))
+                    {
+                        _logger.LogError(ex, "Error processing online payment for order {OrderId}", orderId);
+                    }
                 });
+            }
+            catch (ValidationException ex)
+            {
+                // Handle validation exceptions
+                return new Response(-1, ex.Message, null);
             }
             catch (Exception exception)
             {
+                // Handle all other exceptions
                 _logger.LogError(exception, "Error processing online payment for order {OrderId}", orderId);
                 return new Response(-1, $"{exception.Message}", null);
             }
@@ -243,7 +271,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await FinalizeInventoryDeduction(order);
 
                 // 8. Update order status to Processing
-                order.Status = OrderStatus.Processing;
+                order.Status = OrderStatus.Pending;
                 order.SetUpdateDate();
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
 
@@ -388,7 +416,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     await FinalizeInventoryDeduction(order);
 
                     // Update order status to Processing
-                    order.Status = OrderStatus.Processing;
+                    order.Status = OrderStatus.Pending;
                     order.SetUpdateDate();
                     await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
@@ -816,7 +844,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         order.SetUpdateDate();
                         await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
 
-                        if (order.Status == OrderStatus.Processing)
+                        if (order.Status == OrderStatus.Pending)
                         {
                             // Return inventory for sell items
                             if (order.SellOrder != null)

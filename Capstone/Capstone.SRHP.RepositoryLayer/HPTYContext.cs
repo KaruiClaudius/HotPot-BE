@@ -163,9 +163,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired(false)
                     .HasDefaultValue(null);
 
-                entity.HasOne(d => d.Order)
+                entity.HasMany(d => d.Orders)
                     .WithOne(o => o.Discount)
-                    .HasForeignKey<Order>(o => o.DiscountId)
+                    .HasForeignKey(o => o.DiscountId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

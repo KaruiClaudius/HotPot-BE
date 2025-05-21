@@ -236,35 +236,32 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 if (existingCombo == null)
                     return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
+                // Verify this is not a customizable combo
+                if (existingCombo.IsCustomizable)
+                    return BadRequest(new { message = "Endpoint này chỉ dành cho các combo thông thường. Hãy sử dụng /customizable/{id} cho các combo tùy chỉnh." });
 
-                // Only update properties that are explicitly provided in the request
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    existingCombo.Name = request.Name;
-                }
+                // Update base properties
+                UpdateComboBaseProperties(existingCombo, request);
 
-                // For nullable properties, check if they're provided in the request
-                if (request.Description != null) // This allows explicitly setting to null or a new value
+                // Update description if provided
+                if (request.Description != null)
                 {
                     existingCombo.Description = request.Description;
                 }
 
-                if (request.Size > 0)
+                // Create ingredients list if provided in the request
+                List<ComboIngredient> ingredients = null;
+                if (request.Ingredients != null && request.Ingredients.Any())
                 {
-                    existingCombo.Size = request.Size.Value;
+                    ingredients = request.Ingredients.Select(i => new ComboIngredient
+                    {
+                        IngredientId = i.IngredientID,
+                        Quantity = i.Quantity
+                    }).ToList();
                 }
 
-                if (request.ImageURLs != null) // This allows explicitly setting to null or a new array
-                {
-                    existingCombo.ImageURLs = request.ImageURLs;
-                }
-
-                if (request.TurtorialVideoID.HasValue)
-                {
-                    existingCombo.TurtorialVideoId = request.TurtorialVideoID.Value;
-                }
-
-                await _comboService.UpdateAsync(id, existingCombo);
+                // Pass the ingredients to the service
+                await _comboService.UpdateAsync(id, existingCombo, null, ingredients, null);
 
                 return NoContent();
             }
@@ -278,10 +275,83 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating combo with ID {ComboId}", id);
+                _logger.LogError(ex, "Error updating regular combo with ID {ComboId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
+
+        [HttpPut("customizable/{id}")]
+        public async Task<ActionResult> UpdateCustomizable(int id, UpdateCustomizeComboRequest request)
+        {
+            try
+            {
+                var existingCombo = await _comboService.GetByIdAsync(id);
+                if (existingCombo == null)
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
+
+                // Verify this is a customizable combo
+                if (!existingCombo.IsCustomizable)
+                    return BadRequest(new { message = "Endpoint này chỉ dành cho các combo tùy chỉnh. Hãy sử dụng endpoint cập nhật thông thường cho các combo không tùy chỉnh." });
+
+                // Update base properties
+                UpdateComboBaseProperties(existingCombo, request);
+
+                // Update group identifier if provided
+                if (request.GroupIdentifier != null)
+                {
+                    // If changing group identifier, verify the new group exists
+                    if (!string.IsNullOrEmpty(request.GroupIdentifier) &&
+                        request.GroupIdentifier != existingCombo.Description)
+                    {
+                        var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(request.GroupIdentifier);
+                        if (!existingGroupCombos.Any())
+                        {
+                            return BadRequest(new { message = $"Không tìm thấy nhóm combo hiện có với định danh '{request.GroupIdentifier}'" });
+                        }
+
+                        // Verify that no combo in this group has the same size
+                        if (existingGroupCombos.Any(c => c.Size == (request.Size ?? existingCombo.Size) && c.ComboId != id))
+                        {
+                            return BadRequest(new { message = $"Một combo với kích thước {request.Size ?? existingCombo.Size} đã tồn tại trong nhóm này" });
+                        }
+                    }
+
+                    existingCombo.Description = request.GroupIdentifier;
+                }
+
+                // Create allowed ingredient types list if provided in the request
+                List<ComboAllowedIngredientType> allowedTypes = null;
+                if (request.AllowedIngredientTypes != null && request.AllowedIngredientTypes.Any())
+                {
+                    allowedTypes = request.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
+                    {
+                        IngredientTypeId = t.IngredientTypeId,
+                        MinQuantity = t.MinQuantity
+                    }).ToList();
+                }
+
+                // Pass the allowed types to the service
+                await _comboService.UpdateAsync(id, existingCombo, null, null, allowedTypes);
+
+                return NoContent();
+            }
+            catch (ModelLayer.Exceptions.ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating customizable combo with ID {ComboId}", id);
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
@@ -327,6 +397,29 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogError(ex, "Error getting combos by group identifier '{GroupIdentifier}'", groupIdentifier);
                 return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        private void UpdateComboBaseProperties(Combo combo, UpdateRequest request)
+        {
+            if (!string.IsNullOrEmpty(request.Name))
+            {
+                combo.Name = request.Name;
+            }
+
+            if (request.Size.HasValue && request.Size > 0)
+            {
+                combo.Size = request.Size.Value;
+            }
+
+            if (request.ImageURLs != null)
+            {
+                combo.ImageURLs = request.ImageURLs;
+            }
+
+            if (request.TurtorialVideoID.HasValue)
+            {
+                combo.TurtorialVideoId = request.TurtorialVideoID.Value;
             }
         }
 

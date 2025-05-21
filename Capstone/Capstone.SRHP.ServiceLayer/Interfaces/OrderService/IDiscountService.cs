@@ -32,7 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<IEnumerable<Discount>> GetExpiredDiscountsAsync();
         Task<bool> IsDiscountValidAsync(int discountId);
         Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice);
-        Task<bool> HasSufficientPointsAsync(int discountId, double userPoints);
+        Task<bool> HasSufficientPointsAsync(int discountId, double? userPoints);
         Task<int> GetOrderCountByDiscountAsync(int discountId);
         Task<Dictionary<int, int>> GetOrderCountsByDiscountsAsync(IEnumerable<int> discountIds);
     }

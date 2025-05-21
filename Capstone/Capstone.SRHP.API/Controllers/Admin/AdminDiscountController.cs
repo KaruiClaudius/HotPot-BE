@@ -420,7 +420,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Add properties to indicate special cases
                 IsNeverExpiring = !discount.Duration.HasValue,
                 IsFreeForAll = !discount.PointCost.HasValue || discount.PointCost.Value == 0,
-                OrderCount = discount.Order != null ? 1 : 0
+                OrderCount = discount.Orders != null ? 1 : 0
             };
         }
     }
