@@ -35,7 +35,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             // Get the current customer ID using your custom AuthenTools
             var userIdClaim = User.FindFirst("id");
             if (userIdClaim == null)
-                return Unauthorized("User ID not found in claims");
+                return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
             int customerId = int.Parse(userIdClaim.Value);
 
@@ -49,7 +49,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             var dtos = requests.Select(MapToSummaryDto).ToList();
 
             return Ok(ApiResponse<IEnumerable<ReplacementRequestSummaryDto>>.SuccessResponse(
-                dtos, "Your replacement requests retrieved successfully"));
+                dtos, "Lấy danh sách yêu cầu thay thế thành công"));
         }
 
         [HttpGet("{id}")]
@@ -61,19 +61,19 @@ namespace Capstone.HPTY.API.Controllers.Customer
             // Get the current customer ID using your custom AuthenTools
             var userIdClaim = User.FindFirst("id");
             if (userIdClaim == null)
-                return Unauthorized("User ID not found in claims");
+                return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
             int customerId = int.Parse(userIdClaim.Value);
 
             // Get user and verify they are a customer
             var user = await _userService.GetByIdAsync(customerId);
             if (user == null || user.Role.Name != "Customer")
-                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a customer"));
+                return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("Người dùng không phải là khách hàng"));
 
             var request = await _replacementService.GetReplacementRequestByIdAsync(id);
 
             if (request == null)
-                return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Replacement request with ID {id} not found"));
+                return NotFound(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse($"Không tìm thấy yêu cầu thay thế với ID {id}"));
 
             // Ensure the customer owns this request
             if (request.CustomerId != customerId)
@@ -82,7 +82,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             var dto = MapToDetailDto(request);
 
             return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
-                dto, "Replacement request retrieved successfully"));
+                dto, "Lấy thông tin yêu cầu thay thế thành công"));
         }
 
         [HttpPost]
@@ -96,18 +96,18 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Get the current customer ID using your custom AuthenTools
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int customerId = int.Parse(userIdClaim.Value);
 
                 // Get user and verify they are a customer
                 var user = await _userService.GetByIdAsync(customerId);
                 if (user == null || user.Role.Name != "Customer")
-                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("User is not a customer"));
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("Người dùng không phải là khách hàng"));
 
                 // Validate HotPotInventoryId is provided
                 if (!createDto.HotPotInventoryId.HasValue)
-                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("HotPot inventory ID is required"));
+                    return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse("Cần cung cấp ID của nồi lẩu"));
 
                 // Create the replacement request
                 var request = new ReplacementRequest
@@ -122,7 +122,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var dto = MapToDetailDto(createdRequest);
 
                 return CreatedAtAction(nameof(GetReplacementRequestById), new { id = createdRequest.ReplacementRequestId },
-                    ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(dto, "Replacement request created successfully"));
+                    ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(dto, "Tạo yêu cầu thay thế thành công"));
             }
             catch (ArgumentException ex)
             {
@@ -146,18 +146,18 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Get the current customer ID from the authenticated user
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int customerId = int.Parse(userIdClaim.Value);
 
                 // Get user and verify they are a customer
                 var user = await _userService.GetByIdAsync(customerId);
                 if (user == null || user.Role.Name != "Customer")
-                    return BadRequest(ApiResponse<bool>.ErrorResponse("User is not a customer"));
+                    return BadRequest(ApiResponse<bool>.ErrorResponse("Người dùng không phải là khách hàng"));
 
                 await _replacementService.CancelReplacementRequestAsync(id, customerId);
 
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "Replacement request cancelled successfully"));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Hủy yêu cầu thay thế thành công"));
             }
             catch (KeyNotFoundException ex)
             {

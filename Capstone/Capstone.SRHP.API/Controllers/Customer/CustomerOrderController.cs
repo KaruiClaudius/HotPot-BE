@@ -63,7 +63,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized(new { message = "Invalid user identification" });
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
                 }
 
                 // Determine if pagination is requested
@@ -118,7 +118,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving user orders");
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách đơn hàng" });
             }
         }
 
@@ -145,7 +145,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin đơn hàng" });
             }
         }
 
@@ -159,7 +159,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
                     _logger.LogError("User ID claim not found in token");
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 var userId = int.Parse(userIdClaim);
@@ -176,7 +176,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating order");
-                return StatusCode(500, new { message = "An error occurred while creating the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo đơn hàng" });
             }
         }
 
@@ -191,19 +191,19 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized(new { message = "Invalid user identification" });
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
                 }
 
                 if (request.Items == null || !request.Items.Any())
                 {
-                    return BadRequest(new { message = "No items to update" });
+                    return BadRequest(new { message = "Không có sản phẩm nào để cập nhật" });
                 }
 
                 var updatedCart = await _orderService.UpdateCartItemsQuantityAsync(userId, request.Items);
 
                 if (updatedCart == null)
                 {
-                    return Ok(new { message = "Cart is now empty" });
+                    return Ok(new { message = "Giỏ hàng hiện đang trống" });
                 }
 
                 var cartResponse = MapOrderToResponse(updatedCart);
@@ -220,7 +220,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating cart items");
-                return StatusCode(500, new { message = "An error occurred while updating the cart" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật giỏ hàng" });
             }
         }
 
@@ -253,7 +253,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật đơn hàng" });
             }
         }
 
@@ -278,7 +278,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order status" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng" });
             }
         }
 
@@ -308,7 +308,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa đơn hàng" });
             }
         }
 

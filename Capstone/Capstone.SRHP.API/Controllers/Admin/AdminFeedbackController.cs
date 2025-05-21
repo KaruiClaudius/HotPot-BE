@@ -104,10 +104,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var pagedResult = await _feedbackService.GetFeedbackByStatusAsync(status, pageNumber, pageSize);
 
-                string statusName = status.ToString().ToLower();
+                
                 return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
                     pagedResult,
-                    $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} đã lấy phản hồi thành công"));
+                    "đã lấy phản hồi thành công"));
             }
             catch (Exception ex)
             {

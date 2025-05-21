@@ -35,12 +35,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var report = await _reportService.GetIngredientUsageReportAsync(start, end, ingredientId);
 
-                return new Response(0, "Ingredient usage report retrieved successfully", report);
+                return new Response(0, "Lấy báo cáo sử dụng lô hàng thành công", report);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving ingredient usage report");
-                return new Response(-1, "Error retrieving ingredient usage report", null);
+                _logger.LogError(ex, "Error retrieving batch usage report for ingredient {IngredientId}", ingredientId);
+                return new Response(-1, "Lỗi khi lấy báo cáo sử dụng lô hàng", null);
             }
         }
 
@@ -58,12 +58,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var report = await _reportService.GetBatchUsageReportAsync(ingredientId, start, end);
 
-                return new Response(0, "Batch usage report retrieved successfully", report);
+                return new Response(0, "Lấy báo cáo sử dụng lô hàng thành công", report);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving batch usage report for ingredient {IngredientId}", ingredientId);
-                return new Response(-1, "Error retrieving batch usage report", null);
+                return new Response(-1, "Lỗi khi lấy báo cáo sử dụng lô hàng", null);
             }
         }
 
@@ -74,12 +74,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var report = await _reportService.GetOrderIngredientUsageAsync(orderId);
 
-                return new Response(0, "Order ingredient usage retrieved successfully", report);
+                return new Response(0, "Lấy thông tin sử dụng nguyên liệu của đơn hàng thành công", report);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving ingredient usage for order {OrderId}", orderId);
-                return new Response(-1, "Error retrieving order ingredient usage", null);
+                return new Response(-1, "Lỗi khi lấy thông tin sử dụng nguyên liệu của đơn hàng", null);
             }
         }
 
@@ -97,12 +97,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var report = await _reportService.GetIngredientUsageByComboAsync(start, end, comboId);
 
-                return new Response(0, "Ingredient usage by combo retrieved successfully", report);
+                return new Response(0, "Lấy thông tin sử dụng nguyên liệu theo combo thành công", report);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving ingredient usage by combo");
-                return new Response(-1, "Error retrieving ingredient usage by combo", null);
+                return new Response(-1, "Lỗi khi lấy thông tin sử dụng nguyên liệu theo combo", null);
             }
         }
 
@@ -120,12 +120,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var report = await _reportService.GetIngredientUsageByCustomizationAsync(start, end, customizationId);
 
-                return new Response(0, "Ingredient usage by customization retrieved successfully", report);
+                return new Response(0, "Lấy thông tin sử dụng nguyên liệu theo tùy chỉnh thành công", report);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving ingredient usage by customization");
-                return new Response(-1, "Error retrieving ingredient usage by customization", null);
+                return new Response(-1, "Lỗi khi lấy thông tin sử dụng nguyên liệu theo tùy chỉnh", null);
             }
         }
 
@@ -143,12 +143,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var report = await _reportService.GetDailyIngredientUsageAsync(start, end, ingredientId);
 
-                return new Response(0, "Daily ingredient usage retrieved successfully", report);
+                return new Response(0, "Lấy thông tin sử dụng nguyên liệu hàng ngày thành công", report);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving daily ingredient usage");
-                return new Response(-1, "Error retrieving daily ingredient usage", null);
+                return new Response(-1, "Lỗi khi lấy thông tin sử dụng nguyên liệu hàng ngày", null);
             }
         }
 
@@ -224,12 +224,12 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         .ToList()
                 };
 
-                return new Response(0, "Ingredient dashboard retrieved successfully", dashboard);
+                return new Response(0, "Lấy bảng điều khiển nguyên liệu thành công", dashboard);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving ingredient dashboard");
-                return new Response(-1, "Error retrieving ingredient dashboard", null);
+                return new Response(-1, "Lỗi khi lấy bảng điều khiển nguyên liệu", null);
             }
         }
     }

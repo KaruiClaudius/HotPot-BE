@@ -139,7 +139,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<PagedResult<DamageHotpotDto>>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Hotpot damage logs retrieved successfully", apiResponse.Message);
+            Assert.Equal("Lấy danh sách thiết bị hư hỏng thành công", apiResponse.Message);
             Assert.Equal(1, apiResponse.Data.TotalCount);
 
             var items = apiResponse.Data.Items.ToList();
@@ -192,8 +192,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Page number and page size must be greater than 0", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Số trang và kích thước trang phải lớn hơn 0", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -231,8 +231,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to retrieve hotpot damage logs", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể lấy danh sách thiết bị hư hỏng", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -273,7 +273,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<DamageDeviceDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Damage device retrieved successfully", apiResponse.Message);
+            Assert.Equal("Lấy thông tin thiết bị hư hỏng thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.DamageDeviceId);
             Assert.Equal("Damaged Hotpot", apiResponse.Data.Name);
             Assert.Equal("Pending", apiResponse.Data.StatusName);
@@ -299,7 +299,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
+            Assert.Equal("Lỗi", apiResponse.Status);
             Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -321,8 +321,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to retrieve damage device", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể lấy thông tin thiết bị hư hỏng", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -369,7 +369,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
 
             var apiResponse = Assert.IsType<ApiResponse<DamageDeviceDto>>(createdAtActionResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Damage device created successfully", apiResponse.Message);
+            Assert.Equal("Tạo thiết bị hư hỏng thành công", apiResponse.Message);
             Assert.Equal(1, apiResponse.Data.DamageDeviceId);
             Assert.Equal(request.Name, apiResponse.Data.Name);
             Assert.Equal(request.Status.ToString(), apiResponse.Data.StatusName);
@@ -399,7 +399,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Validation Error", apiResponse.Status);
+            Assert.Equal("Lỗi xác thực", apiResponse.Status);
             Assert.Equal("Invalid hotpot inventory ID", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -427,8 +427,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to create damage device", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể tạo thiết bị hư hỏng", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -489,7 +489,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<DamageDeviceDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Damage device updated successfully", apiResponse.Message);
+            Assert.Equal("Cập nhật thiết bị hư hỏng thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.DamageDeviceId);
             Assert.Equal(request.Name, apiResponse.Data.Name);
             Assert.Equal(request.Description, apiResponse.Data.Description);
@@ -520,7 +520,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
+            Assert.Equal("Lỗi", apiResponse.Status);
             Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -563,7 +563,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Validation Error", apiResponse.Status);
+            Assert.Equal("Lỗi xác thực", apiResponse.Status);
             Assert.Equal("Name must be at least 3 characters", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -606,8 +606,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to update damage device", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể cập nhật thiết bị hư hỏng", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }
@@ -629,8 +629,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<string>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Damage device deleted successfully", apiResponse.Message);
-            Assert.Equal($"Damage device with ID {id} has been deleted", apiResponse.Data);
+            Assert.Equal("Xóa thiết bị hư hỏng thành công", apiResponse.Message);
+            Assert.Equal($"Thiết bị hư hỏng với ID {id} đã được xóa", apiResponse.Data);
 
             this.mockRepository.VerifyAll();
         }
@@ -651,7 +651,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
+            Assert.Equal("Lỗi", apiResponse.Status);
             Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -673,7 +673,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Validation Error", apiResponse.Status);
+            Assert.Equal("Lỗi xác thực", apiResponse.Status);
             Assert.Equal("Cannot delete device that is in use", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
@@ -695,8 +695,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to delete damage device", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể xóa thiết bị hư hỏng", apiResponse.Message);
 
             this.mockRepository.VerifyAll();
         }

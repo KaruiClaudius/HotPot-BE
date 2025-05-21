@@ -190,6 +190,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     request.IngredientId,
                     calculatedQuantity,
                     request.BestBeforeDate,
+                    request.ProvideCompany,
                     false); // Not an initial batch
 
                 // Map to DTO
@@ -265,7 +266,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 // Prepare the batch data
-                var batchItems = new List<(int ingredientId, int quantity, DateTime bestBeforeDate)>();
+                var batchItems = new List<(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany)>();
                 var ingredientIds = request.Batches.Select(b => b.IngredientId).Distinct().ToList();
 
                 // Get all ingredients in a single query
@@ -320,7 +321,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         continue;
                     }
 
-                    batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate));
+                    batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate, item.ProvideCompany));
                 }
 
                 // If there are validation errors, return them

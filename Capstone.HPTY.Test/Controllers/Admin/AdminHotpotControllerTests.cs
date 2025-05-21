@@ -223,7 +223,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<HotpotDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Hotpot retrieved successfully", apiResponse.Message);
+            Assert.Equal("Đã lấy thông tin nồi lẩu thành công", apiResponse.Message);
             Assert.Equal(id, apiResponse.Data.HotpotId);
             Assert.Equal("Test Hotpot", apiResponse.Data.Name);
             Assert.Equal(2, apiResponse.Data.InventoryItems.Count);
@@ -248,8 +248,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal($"Hotpot with ID {id} not found", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal($"Không tìm thấy nồi lẩu với ID {id}", apiResponse.Message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -271,8 +271,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to retrieve hotpot", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể lấy thông tin nồi lẩu", apiResponse.Message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -319,7 +319,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiResponse<InventoryItemDetailDto>>(okResult.Value);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Maintenance logs retrieved successfully", apiResponse.Message);
+            Assert.Equal("Đã lấy nhật ký bảo trì thành công", apiResponse.Message);
             Assert.Equal(inventoryId, apiResponse.Data.HotPotInventoryId);
             Assert.Equal("HP-123456", apiResponse.Data.SeriesNumber);
             Assert.Single(apiResponse.Data.ConditionLogs);
@@ -346,8 +346,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal($"Inventory item with ID {inventoryId} not found", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal($"Không tìm thấy mục tồn kho với ID {inventoryId}", apiResponse.Message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -377,8 +377,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal($"Inventory item with ID {inventoryId} not found", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal($"Không tìm thấy mục tồn kho với ID {inventoryId}", apiResponse.Message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -400,8 +400,8 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Error", apiResponse.Status);
-            Assert.Equal("Failed to retrieve maintenance logs", apiResponse.Message);
+            Assert.Equal("Lỗi", apiResponse.Status);
+            Assert.Equal("Không thể lấy nhật ký bảo trì", apiResponse.Message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -631,7 +631,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var responseObj = notFoundResult.Value;
             var messageProperty = responseObj.GetType().GetProperty("message");
             var message = messageProperty.GetValue(responseObj).ToString();
-            Assert.Equal($"Hotpot with ID {id} not found", message);
+            Assert.Equal($"Không tìm thấy nồi lẩu với ID {id}", message);
 
             // Verify service calls
             mockHotpotService.Verify();
@@ -898,7 +898,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var responseObj = badRequestResult.Value;
             var messageProperty = responseObj.GetType().GetProperty("message");
             var message = messageProperty.GetValue(responseObj).ToString();
-            Assert.Equal("Quantity must be greater than 0", message);
+            Assert.Equal("Số lượng phải lớn hơn 0", message);
 
             // No service calls should be made
             mockHotpotService.Verify(s => s.CalculateDepositAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);

@@ -42,7 +42,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 if (userIdValue == null)
                 {
-                    return BadRequest(new { message = "User ID not found" });
+                    return BadRequest(new { message = "Không tìm thấy ID người dùng" });
                 }
                 var userId = int.Parse(userIdValue);
                 var isCustomer = User.IsInRole("Customer");
@@ -62,7 +62,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var order = await _orderService.GetByIdAsync(request.OrderId);
                 if (order == null)
                 {
-                    return NotFound(new { message = "Order not found" });
+                    return NotFound(new { message = "Không tìm thấy đơn hàng" });
                 }
 
                 int price = (int)order.TotalPrice;
@@ -108,7 +108,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing online payment");
-                return StatusCode(500, new { message = "An error occurred while processing the online payment" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xử lý thanh toán trực tuyến" });
             }
         }
 
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 return Ok(new
                 {
-                    message = "Cash payment created successfully",
+                    message = "Tạo thanh toán tiền mặt thành công",
                     paymentId = payment.PaymentId,
                     status = payment.Status.ToString()
                 });
@@ -156,7 +156,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing cash payment");
-                return StatusCode(500, new { message = "An error occurred while processing the cash payment" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xử lý thanh toán tiền mặt" });
             }
         }
 
@@ -217,7 +217,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling order {OrderCode}", orderCode);
-                return StatusCode(500, new { message = "An error occurred while cancelling the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi hủy đơn hàng" });
             }
         }
 
@@ -254,7 +254,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking order status");
-                return StatusCode(500, new { message = "An error occurred while checking the order status" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi kiểm tra trạng thái đơn hàng" });
             }
         }
     }

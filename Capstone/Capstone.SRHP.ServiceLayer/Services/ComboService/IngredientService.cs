@@ -54,6 +54,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 // Start with base query
                 var query = _unitOfWork.Repository<Ingredient>()
                     .Include(i => i.IngredientType)
+                    .Include(i => i.IngredientBatches.Where(b => !b.IsDelete && b.BestBeforeDate >= DateTime.UtcNow.AddHours(7)))
                     .Include(i => i.IngredientPrices.Where(p => !p.IsDelete && p.EffectiveDate <= DateTime.UtcNow.AddHours(7)))
                     .Where(i => !i.IsDelete);
 
@@ -555,7 +556,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 await AddBatchAsync(
                     id,
                     quantityChange,
-                    ingredient.IngredientBatches?.OrderBy(b => b.BestBeforeDate).FirstOrDefault()?.BestBeforeDate ?? DateTime.UtcNow.AddHours(7)
+                    ingredient.IngredientBatches?.OrderBy(b => b.BestBeforeDate).FirstOrDefault()?.BestBeforeDate ?? DateTime.UtcNow.AddHours(7),
+                    null
                 );
             }
             else if (quantityChange < 0)
@@ -1093,7 +1095,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             }
         }
 
-        public async Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, bool isInitial = false)
+        public async Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany, bool isInitial = false)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -1117,6 +1119,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     RemainingQuantity = quantity,
                     BestBeforeDate = bestBeforeDate,
                     BatchNumber = batchNumber,
+                    ProvideCompany = provideCompany,
                     ReceivedDate = DateTime.UtcNow.AddHours(7)
                 };
 
@@ -1145,7 +1148,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             });
         }
 
-        public async Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate)> batches)
+        public async Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany)> batches)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -1169,7 +1172,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 string batchNumber = GenerateBatchNumber(false);
 
                 // Process all batches
-                foreach (var (ingredientId, quantity, bestBeforeDate) in batches)
+                foreach (var (ingredientId, quantity, bestBeforeDate, provideCompany) in batches)
                 {
                     // Validate
                     if (quantity <= 0)
@@ -1187,6 +1190,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         RemainingQuantity = quantity,
                         BestBeforeDate = bestBeforeDate,
                         BatchNumber = batchNumber, // Use the same batch number for all batches in this operation
+                        ProvideCompany = provideCompany,
                         ReceivedDate = DateTime.UtcNow.AddHours(7)
                     };
 

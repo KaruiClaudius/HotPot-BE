@@ -40,7 +40,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 return Ok(new ApiResponse<IEnumerable<IngredientTypeDto>>
                 {
                     Success = true,
-                    Message = "Ingredient types retrieved successfully",
+                    Message = "Lấy danh sách loại nguyên liệu thành công",
                     Data = typeDtos
                 });
             }
@@ -49,8 +49,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 _logger.LogError(ex, "Error retrieving ingredient types");
                 return BadRequest(new ApiErrorResponse
                 {
-                    Status = "Error",
-                    Message = "Failed to retrieve ingredient types"
+                    Status = "Lỗi",
+                    Message = "Không thể lấy danh sách loại nguyên liệu"
                 });
             }
         }
@@ -94,7 +94,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving products");
-                return StatusCode(500, new { message = "An error occurred while retrieving products" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách sản phẩm" });
             }
         }
 
@@ -120,7 +120,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving {ProductType} with ID {ProductId}", productType, id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the product" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin sản phẩm" });
             }
         }
 
@@ -143,7 +143,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving types for {ProductType}", productType);
-                return StatusCode(500, new { message = "An error occurred while retrieving product types" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách loại sản phẩm" });
             }
         }
 
