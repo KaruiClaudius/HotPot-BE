@@ -124,9 +124,9 @@ namespace Capstone.HPTY.API.SideServices
                 // Create notification in database
                 int notificationId = await CreateNotificationAsync(type, title, message, "Role", role, data);
 
-                // Get all users with this role
+                // Get all users with this role - FIXED QUERY
                 var usersWithRole = await _unitOfWork.Repository<User>()
-                    .GetWhere(u => u.Role.Name.Equals(role, StringComparison.OrdinalIgnoreCase) && !u.IsDelete);
+                    .GetWhere(u => u.Role.Name.ToLower() == role.ToLower() && !u.IsDelete);
 
                 foreach (var user in usersWithRole)
                 {
@@ -134,7 +134,7 @@ namespace Capstone.HPTY.API.SideServices
                     await CreateUserNotificationAsync(notificationId, user.UserId);
                 }
 
-                // Send real-time notification to all users in the role
+                // Rest of the method remains unchanged
                 var notificationDto = new NotificationDto
                 {
                     Id = notificationId,

@@ -18,14 +18,12 @@ public class CustomerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
     private readonly SocketIOClientService _socketService;
-    private readonly IHubContext<ChatHub> _hubContext;
 
 
-    public CustomerChatController(IChatService chatService, SocketIOClientService socketService, IHubContext<ChatHub> hubContext)
+    public CustomerChatController(IChatService chatService, SocketIOClientService socketService)
     {
         _chatService = chatService;
         _socketService = socketService;
-        _hubContext = hubContext;
     }
 
     // CUSTOMER-SPECIFIC ENDPOINTS
