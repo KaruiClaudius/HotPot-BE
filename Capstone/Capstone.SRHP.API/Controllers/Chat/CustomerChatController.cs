@@ -18,12 +18,15 @@ public class CustomerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
     private readonly SocketIOClientService _socketService;
+    private readonly ILogger<CustomerChatController> _logger;
 
 
-    public CustomerChatController(IChatService chatService, SocketIOClientService socketService)
+
+    public CustomerChatController(IChatService chatService, SocketIOClientService socketService, ILogger<CustomerChatController> logger)
     {
         _chatService = chatService;
         _socketService = socketService;
+        _logger = logger;
     }
 
     // CUSTOMER-SPECIFIC ENDPOINTS
@@ -86,6 +89,7 @@ public class CustomerChatController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating chat session: {Message}", ex.Message);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 ApiResponse<ChatSessionDto>.ErrorResponse("An error occurred while creating the chat session. Please try again later."));
         }

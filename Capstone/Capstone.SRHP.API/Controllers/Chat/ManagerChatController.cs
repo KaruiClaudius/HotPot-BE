@@ -18,13 +18,13 @@ public class ManagerChatController : ControllerBase
 {
     private readonly IChatService _chatService;
     private readonly SocketIOClientService _socketService;
-    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly ILogger<ManagerChatController> _logger;
 
-    public ManagerChatController(IChatService chatService, SocketIOClientService socketService, IHubContext<ChatHub> hubContext)
+    public ManagerChatController(IChatService chatService, SocketIOClientService socketService, ILogger<ManagerChatController> logger)
     {
         _chatService = chatService;
         _socketService = socketService;
-        _hubContext = hubContext;
+        _logger = logger;
     }
 
     // MANAGER-SPECIFIC ENDPOINTS
@@ -162,21 +162,27 @@ public class ManagerChatController : ControllerBase
     }
 
     [HttpPost("messages")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<ChatMessageDto>>> SendMessage([FromBody] SendMessageRequest request)
     {
         try
         {
             var message = await _chatService.SaveMessageAsync(request.SenderId, request.ReceiverId, request.Message);
 
-            // Send the message to the receiver via Socket.IO
-            await _socketService.SendMessageAsync(
-                message.ChatMessageId,
-                message.SenderUserId,
-                message.ReceiverUserId,
-                message.Message,
-                message.CreatedAt);
+            try
+            {
+                // Try to send via Socket.IO but don't fail the request if it doesn't work
+                await _socketService.SendMessageAsync(
+                    message.ChatMessageId,
+                    message.SenderUserId,
+                    message.ReceiverUserId,
+                    message.Message,
+                    message.CreatedAt);
+            }
+            catch (Exception socketEx)
+            {
+                // Log the error but don't fail the request
+                _logger.LogError(socketEx, "Failed to send message via Socket.IO");
+            }
 
             return Ok(ApiResponse<ChatMessageDto>.SuccessResponse(message, "Message sent successfully"));
         }
