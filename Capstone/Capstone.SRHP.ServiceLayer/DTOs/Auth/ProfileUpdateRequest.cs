@@ -9,10 +9,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Auth
 {
     public class ProfileUpdateRequest
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         [EmailAddress]
-        public string Email { get; set; }
-        public string Address { get; set; }
-        public string ImageURL { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public string? ImageURL { get; set; }
     }
 }
