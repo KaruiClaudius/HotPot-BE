@@ -9,10 +9,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
 {
     public class CreateChatSessionRequest
     {
-        [Required]
         public int CustomerId { get; set; }
 
-        [Required]
         [StringLength(500)]
         public string Topic { get; set; }
     }
@@ -24,21 +22,9 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
     }
     public class SendMessageRequest
     {
-        [Required]
         public int SenderId { get; set; }
-
-        [Required]
         public int ReceiverId { get; set; }
-
-        [Required]
-        [StringLength(2000)]
         public string Message { get; set; }
-    }
-
-    public class MarkAsReadRequest
-    {
-        [Required]
-        public int UserId { get; set; }
     }
 
     // Basic DTO for chat session list view
@@ -53,21 +39,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         public bool IsActive { get; set; }
         public string Topic { get; set; }
         public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
     }
 
     // Detailed DTO for chat session with messages
-    public class ChatSessionDetailDto
+    public class ChatSessionDetailDto : ChatSessionDto
     {
-        public int ChatSessionId { get; set; }
-        public int CustomerId { get; set; }
-        public string CustomerName { get; set; }
-        public int? ManagerId { get; set; }
-        public string ManagerName { get; set; }
-        public bool IsActive { get; set; }
-        public string Topic { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
         public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
     }
 
@@ -80,13 +56,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         public int ReceiverUserId { get; set; }
         public string ReceiverName { get; set; }
         public string Message { get; set; }
-        public bool IsRead { get; set; }
         public DateTime CreatedAt { get; set; }
-    }
-
-    // DTO for unread message count
-    public class UnreadMessageCountDto
-    {
-        public int Count { get; set; }
     }
 }
