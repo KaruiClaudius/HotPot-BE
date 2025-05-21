@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -11,7 +6,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
-using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.EntityFrameworkCore;
@@ -270,12 +264,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         // Pickup Service Methods
 
-        public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
+        public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, int? vehicleId = null, string notes = null)
         {
             try
             {
-                _logger.LogInformation("Assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId}",
-                    staffId, rentOrderDetailId);
+                _logger.LogInformation("Assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId} with vehicle {VehicleId}",
+                    staffId, rentOrderDetailId, vehicleId);
 
                 // Verify the staff member exists
                 var staff = await _unitOfWork.Repository<User>()
@@ -294,6 +288,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 // Get the OrderId from the RentOrderDetail
                 int orderId = rentOrderDetail.OrderId;
 
+                // Verify the vehicle exists and is available if provided
+                if (vehicleId.HasValue)
+                {
+                    var vehicle = await _unitOfWork.Repository<Vehicle>()
+                        .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
+
+                    if (vehicle == null)
+                        throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+
+                    if (vehicle.Status != VehicleStatus.Available)
+                        throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
+                }
+
                 // Get the current manager ID
                 int managerId = await GetCurrentManagerIdAsync();
 
@@ -303,14 +310,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     staffId,
                     managerId,
                     StaffTaskType.Pickup,
-                    null);
+                    vehicleId);
+
+                // If notes are provided, update the rent order with the notes
+                if (!string.IsNullOrWhiteSpace(notes))
+                {
+                    var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                        .FindAsync(ro => ro.OrderId == orderId && !ro.IsDelete);
+
+                    if (rentOrder != null)
+                    {
+                        rentOrder.RentalNotes = notes;
+                        rentOrder.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+                    }
+                }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId}",
-                    staffId, rentOrderDetailId);
+                _logger.LogError(ex, "Error assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId} with vehicle {VehicleId}",
+                    staffId, rentOrderDetailId, vehicleId);
                 throw;
             }
         }
@@ -329,7 +350,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -371,7 +391,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -417,7 +436,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
-                    RentOrderDetailId = null, // This field is no longer relevant
                     StaffId = a.StaffId,
                     StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
@@ -428,7 +446,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     OrderCode = a.OrderCode,
                     RentalStartDate = a.RentalDetails?.RentalStartDate,
                     ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.Now,
-                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
+                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details",
+                    // Map vehicle information
+                    VehicleId = a.RentalDetails?.VehicleId,
+                    VehicleName = a.RentalDetails?.VehicleName,
+                    VehicleType = a.RentalDetails?.VehicleType
                 }).ToList();
 
                 return new PagedResult<StaffPickupAssignmentDto>
@@ -505,22 +527,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new UnauthorizedException("Failed to authenticate manager");
             }
         }
-
-        private bool IsStaffInWorkShift(User staff, TimeSpan currentTime)
-        {
-            if (staff.StaffWorkShifts == null || !staff.StaffWorkShifts.Any())
-                return false;
-
-            return staff.StaffWorkShifts.Any(ws =>
-                !ws.IsDelete);
-        }
         private bool IsStaffAvailableForMoreAssignments(StaffType staffType, List<StaffTaskType> currentTaskTypes, int assignmentCount)
         {
             // Define limits for different staff types and task combinations
-            const int MAX_PREPARATION_TASKS = 3;
-            const int MAX_SHIPPING_TASKS = 1;
-            const int MAX_PICKUP_TASKS = 2;
-            const int MAX_TOTAL_TASKS = 4;
+            const int MAX_PREPARATION_TASKS = 50;
+            const int MAX_SHIPPING_TASKS = 50;
+            const int MAX_PICKUP_TASKS = 50;
+            const int MAX_TOTAL_TASKS = 100;
 
             // Check total assignment limit
             if (assignmentCount >= MAX_TOTAL_TASKS)

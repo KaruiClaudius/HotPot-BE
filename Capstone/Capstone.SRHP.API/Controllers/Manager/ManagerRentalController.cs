@@ -8,11 +8,8 @@ using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
-using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 
 namespace Capstone.HPTY.API.Controllers.Manager
 {
@@ -24,22 +21,17 @@ namespace Capstone.HPTY.API.Controllers.Manager
     {
         private readonly IRentOrderService _rentOrderService;
         private readonly IStaffService _staffService;
-        private readonly IEquipmentReturnService _equipmentReturnService;
         private readonly INotificationService _notificationService;
-        private readonly IUserService _userService;
 
         public ManagerRentalController(
             IRentOrderService rentOrderService,
             IStaffService staffService,
-            IEquipmentReturnService equipmentReturnService,
-            INotificationService notificationService,
-            IUserService userService)
+            INotificationService notificationService
+           )
         {
             _rentOrderService = rentOrderService;
             _staffService = staffService;
-            _equipmentReturnService = equipmentReturnService;
             _notificationService = notificationService;
-            _userService = userService;
         }
 
         [HttpGet("unassigned-pickups")]
@@ -56,6 +48,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
+
         [HttpPost("allocate-pickup")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -71,6 +64,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 var result = await _staffService.AssignStaffToPickupAsync(
                     request.StaffId,
                     request.RentOrderDetailId,
+                    request.VehicleId,
                     request.Notes);
 
                 // Get the created assignment
@@ -124,148 +118,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
 
-        [HttpGet("all")]
-        public async Task<IActionResult> GetAllRentalHistory()
-        {
-            try
-            {
-                var rentalHistory = await _rentOrderService.GetRentalHistoryByUserAsync();
-                return Ok(rentalHistory);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("hotpot/{hotpotInventoryId}")]
-        public async Task<IActionResult> GetRentalHistoryByHotpot(int? hotpotInventoryId = null)
-        {
-            try
-            {
-                var rentalHistory = await _rentOrderService.GetRentalHistoryByEquipmentAsync(hotpotInventoryId: hotpotInventoryId);
-                return Ok(rentalHistory);
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetRentalHistoryByUser(int? userId = null)
-        {
-            try
-            {
-                var rentalHistory = await _rentOrderService.GetRentalHistoryByUserAsync(userId);
-                return Ok(rentalHistory);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
-        [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<bool>>> AdjustReturnDateForException(int id, [FromBody] UpdateRentOrderDetailRequest request)
-        {
-            try
-            {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
-                var result = await _rentOrderService.UpdateRentOrderDetailAsync(id, request);
-
-                // Notify the customer if the return date has changed
-                if (!string.IsNullOrEmpty(request.ExpectedReturnDate) &&
-                    DateTime.TryParse(request.ExpectedReturnDate, out DateTime parsedDate) &&
-                    rentOrder.ExpectedReturnDate != parsedDate &&
-                    rentOrder.Order?.UserId != null)
-                {
-                    // Get equipment summary for more detailed notification
-                    string equipmentSummary = await GetEquipmentSummaryForRental(rentOrder);
-
-                    // Calculate extension days
-                    int extensionDays = (parsedDate - rentOrder.ExpectedReturnDate).Days;
-                    string extensionType = extensionDays > 0 ? "extended" : "reduced";
-
-                    await _notificationService.NotifyUserAsync(
-                        rentOrder.Order.UserId,
-                        "RentalDateAdjusted",
-                        "Ngày Trả Thuê Đã Được Điều Chỉnh",
-                        $"Ngày trả thuê của bạn đã được {extensionType} đến {parsedDate.ToShortDateString()}",
-                        new Dictionary<string, object>
-                        {
-                            { "RentalId", id },
-                            { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                            { "NewReturnDate", parsedDate },
-                            { "ExtensionDays", extensionDays },
-                            { "EquipmentSummary", equipmentSummary },
-                            { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
-                            { "AdjustmentReason", request.Notes ?? "Điều chỉnh hành chính" },
-                            { "AdjustmentType", extensionDays > 0 ? "Extension" : "Reduction" }
-                        });
-
-                    // Also notify staff about the adjustment
-                    await _notificationService.NotifyRoleAsync(
-                        "Staff",
-                        "RentalDateAdjusted",
-                        "Rental Return Date Adjusted",
-                        $"Rental #{id} return date has been {extensionType} to {parsedDate.ToShortDateString()}",
-                        new Dictionary<string, object>
-                        {
-                    { "RentalId", id },
-                    { "CustomerId", rentOrder.Order.UserId },
-                    { "CustomerName", await GetCustomerNameAsync(rentOrder.Order.UserId) },
-                    { "OriginalReturnDate", rentOrder.ExpectedReturnDate },
-                    { "NewReturnDate", parsedDate },
-                    { "ExtensionDays", extensionDays },
-                    { "AdjustmentDate", DateTime.UtcNow.AddHours(7) },
-                    { "AdjustmentReason", request.Notes ?? "Administrative adjustment" },
-                        });
-                }
-
-                return Ok(ApiResponse<bool>.SuccessResponse(result, "Rental detail updated successfully"));
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
-            }
-        }
-
-
-        [HttpGet("{id}/calculate-late-fee")]
-        public async Task<IActionResult> CalculateLateFee(int id, [FromQuery] DateTime actualReturnDate)
-        {
-            try
-            {
-                var lateFee = await _rentOrderService.CalculateLateFeeAsync(id, actualReturnDate);
-                return Ok(new { lateFee });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-
         [HttpGet("current-assignments")]
         public async Task<ActionResult<ApiResponse<PagedResult<StaffPickupAssignmentDto>>>> GetCurrentAssignments([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -280,42 +132,5 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        private async Task<string> GetEquipmentSummaryForRental(RentOrder rentOrder)
-        {
-            try
-            {
-                // Build a summary of the equipment in the order
-                var equipmentItems = new List<string>();
-
-                if (rentOrder.RentOrderDetails != null && rentOrder.RentOrderDetails.Any())
-                {
-                    var hotpotCount = rentOrder.RentOrderDetails.Count;
-                    equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
-                }
-
-                return equipmentItems.Any()
-                    ? string.Join(", ", equipmentItems)
-                    : "equipment";
-            }
-            catch (Exception)
-            {
-                // If there's any error getting the equipment summary, return a generic message
-                return "equipment";
-            }
-        }
-
-        // Helper method to get customer name
-        private async Task<string> GetCustomerNameAsync(int userId)
-        {
-            try
-            {
-                var user = await _userService.GetByIdAsync(userId);
-                return user?.Name ?? "Unknown Customer";
-            }
-            catch
-            {
-                return "Unknown Customer";
-            }
-        }
     }
 }

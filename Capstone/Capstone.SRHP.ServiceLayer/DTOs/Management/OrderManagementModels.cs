@@ -160,6 +160,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public DateTime RentalStartDate { get; set; }
         public DateTime ExpectedReturnDate { get; set; }
         public string EquipmentSummary { get; set; }
+
+        // Vehicle information
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public string VehicleType { get; set; }
     }
     public class OrderStatusUpdateDTO
     {
