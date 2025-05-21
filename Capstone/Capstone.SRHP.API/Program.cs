@@ -163,14 +163,29 @@ app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
-app.MapGet("/api/socket-health", (HttpContext context) =>
+app.MapGet("/api/socket-health", async (HttpContext context) =>
 {
     var socketService = context.RequestServices.GetRequiredService<SocketIOClientService>();
-    return Results.Ok(new
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+
+    try
     {
-        IsConnected = socketService._isConnected,
-        ServerUrl = socketService.GetServerUrl(),
-        Timestamp = DateTime.UtcNow.AddHours(7)
-    });
+        // Try to ping the Socket.IO server
+        bool pingSuccess = await socketService.PingServerAsync();
+
+        return Results.Ok(new
+        {
+            IsConnected = socketService.IsConnected,
+            ServerUrl = socketService.GetServerUrl(),
+            PingSuccess = pingSuccess,
+            Timestamp = DateTime.UtcNow.AddHours(7),
+            TimeZone = "UTC+7"
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in socket health check");
+        return Results.StatusCode(500);
+    }
 });
 app.Run();
