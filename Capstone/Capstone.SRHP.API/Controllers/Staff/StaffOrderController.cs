@@ -27,10 +27,46 @@ namespace Capstone.HPTY.API.Controllers.Staff
             _logger = logger;
         }
 
+        //   [HttpGet("assigned")]
+        //   [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>), StatusCodes.Status200OK)]
+        //   public async Task<ActionResult<ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>>> GetAssignedOrders(
+        //[FromQuery] StaffTaskType taskType = StaffTaskType.Preparation,
+        //[FromQuery] OrderStatus? statusFilter = null)
+        //   {
+        //       var userIdClaim = User.FindFirstValue("id");
+        //       if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+        //       {
+        //           return Unauthorized(new { message = "User ID not found in token" });
+        //       }
+
+        //       try
+        //       {
+        //           _logger.LogInformation("Staff {StaffId} retrieving assigned orders for task type {TaskType} with status filter {StatusFilter}",
+        //               userId, taskType, statusFilter);
+        //           var orders = await _staffOrderService.GetAssignedOrdersAsync(userId, taskType, statusFilter);
+
+        //           return Ok(new ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>
+        //           {
+        //               Success = true,
+        //               Message = $"Assigned {taskType} orders retrieved successfully",
+        //               Data = orders
+        //           });
+        //       }
+        //       catch (Exception ex)
+        //       {
+        //           _logger.LogError(ex, "Error retrieving {TaskType} orders for staff ID: {StaffId}", taskType, userId);
+        //           return BadRequest(new ApiErrorResponse
+        //           {
+        //               Status = "Error",
+        //               Message = $"Failed to retrieve {taskType} orders"
+        //           });
+        //       }
+        //   }
+
         [HttpGet("assigned")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<StaffAssignedOrderBaseDto>>>> GetAssignedOrders(
-    [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation)
+  [FromQuery] StaffTaskType taskType = StaffTaskType.Preparation)
         {
             var userIdClaim = User.FindFirstValue("id");
             if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))

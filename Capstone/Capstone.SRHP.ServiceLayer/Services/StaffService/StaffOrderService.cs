@@ -32,6 +32,91 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             _logger = logger;
         }
 
+        //    public async Task<IEnumerable<StaffAssignedOrderBaseDto>> GetAssignedOrdersAsync(
+        //int staffId, StaffTaskType staffTaskType, OrderStatus? statusFilter = null)
+        //    {
+        //        try
+        //        {
+        //            _logger.LogInformation("Getting orders assigned to staff {StaffId} with task type {TaskType} and status filter {StatusFilter}",
+        //                staffId, staffTaskType, statusFilter);
+
+        //            // Get active assignments for this staff member with the specified task type
+        //            var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
+        //                .GetAll(a => a.StaffId == staffId &&
+        //                             a.TaskType == staffTaskType &&
+        //                             a.CompletedDate == null &&
+        //                             !a.IsDelete)
+        //                .ToListAsync();
+
+        //            if (!activeAssignments.Any())
+        //            {
+        //                return Enumerable.Empty<StaffAssignedOrderBaseDto>();
+        //            }
+
+        //            // Get the order IDs from assignments
+        //            var orderIds = activeAssignments.Select(a => a.OrderId).Distinct().ToList();
+
+        //            // For preparation staff, only show orders with Processing status
+        //            if (staffTaskType == StaffTaskType.Preparation)
+        //            {
+        //                var preparationOrders = await _unitOfWork.Repository<Order>()
+        //                    .GetAll(o => orderIds.Contains(o.OrderId) &&
+        //                                 o.Status == OrderStatus.Processing &&
+        //                                 !o.IsDelete)
+        //                    .Include(o => o.User)
+        //                    .Include(o => o.SellOrder)
+        //                        .ThenInclude(so => so.SellOrderDetails)
+        //                            .ThenInclude(od => od.Ingredient)
+        //                    // Other includes remain the same
+        //                    .AsSplitQuery() // Use split query to avoid cartesian explosion
+        //                    .ToListAsync();
+
+        //                return preparationOrders.Select(o => MapToPreparationStaffOrderDto(o,
+        //                    activeAssignments.FirstOrDefault(a => a.OrderId == o.OrderId))).ToList();
+        //            }
+        //            else if (staffTaskType == StaffTaskType.Shipping)
+        //            {
+        //                // For shipping staff - apply status filter if provided
+        //                IQueryable<Order> shippingOrdersQuery = _unitOfWork.Repository<Order>()
+        //                    .GetAll(o => orderIds.Contains(o.OrderId) && !o.IsDelete);
+
+        //                // Apply status filter if provided, otherwise use default behavior (Processed OR Shipping)
+        //                if (statusFilter.HasValue)
+        //                {
+        //                    shippingOrdersQuery = shippingOrdersQuery.Where(o => o.Status == statusFilter.Value);
+        //                }
+        //                else
+        //                {
+        //                    shippingOrdersQuery = shippingOrdersQuery.Where(o =>
+        //                        o.Status == OrderStatus.Processed || o.Status == OrderStatus.Shipping);
+        //                }
+
+        //                var shippingOrders = await shippingOrdersQuery
+        //                    .Include(o => o.User)
+        //                    .Include(o => o.ShippingOrder)
+        //                        .ThenInclude(so => so.Vehicle)
+        //                    .Include(o => o.SellOrder)
+        //                        .ThenInclude(so => so.SellOrderDetails)
+        //                            .ThenInclude(od => od.Ingredient)
+        //                    // Other includes remain the same
+        //                    .AsSplitQuery()
+        //                    .ToListAsync();
+
+        //                return shippingOrders.Select(o => MapToShippingStaffOrderDto(o,
+        //                    activeAssignments.FirstOrDefault(a => a.OrderId == o.OrderId))).ToList();
+        //            }
+
+        //            // Default case (shouldn't happen with the current implementation)
+        //            return Enumerable.Empty<StaffAssignedOrderBaseDto>();
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogError(ex, "Error getting orders assigned to staff {StaffId} with task type {TaskType} and status filter {StatusFilter}",
+        //                staffId, staffTaskType, statusFilter);
+        //            throw;
+        //        }
+        //    }
+
         public async Task<IEnumerable<StaffAssignedOrderBaseDto>> GetAssignedOrdersAsync(int staffId, StaffTaskType staffTaskType)
         {
             try
