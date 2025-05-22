@@ -49,7 +49,13 @@ public class ChatController : ControllerBase
     {
         try
         {
-            var session = await _chatService.CreateChatSessionAsync(request.CustomerId, request.Topic);
+            // Extract customer ID from the JWT token
+            var customerId = int.Parse(User.FindFirst("id")?.Value ?? "0");
+            if (customerId == 0)
+                return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse("User ID not found in token"));
+
+            // Create chat session using the authenticated user's ID
+            var session = await _chatService.CreateChatSessionAsync(customerId, request.Topic);
 
             // Notify managers about new chat
             await _socketService.NotifyEvent("newChat", new

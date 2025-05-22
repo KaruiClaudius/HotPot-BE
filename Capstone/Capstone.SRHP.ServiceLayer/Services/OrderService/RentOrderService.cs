@@ -119,7 +119,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var ordersWithUsers = await _unitOfWork.Repository<Order>()
                 .AsQueryable(o => !o.IsDelete)
                 .Include(o => o.User)
-                .Where(o => o.User != null && !string.IsNullOrEmpty(o.User.Name) && o.Status == OrderStatus.Delivered)
+                .Where(o => o.User != null && !string.IsNullOrEmpty(o.User.Name) && o.Status == OrderStatus.Returning)
                 .Select(o => new { o.OrderId, o.User })
                 .ToListAsync();
 
@@ -189,6 +189,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var response = new RentOrderDetailResponse
                 {
                     OrderId = rentOrder.OrderId,
+
                     RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                     ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
                     ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),

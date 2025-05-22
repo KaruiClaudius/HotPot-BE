@@ -9,17 +9,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
 {
     public class CreateChatSessionRequest
     {
-        public int CustomerId { get; set; }
 
         [StringLength(500)]
         public string Topic { get; set; }
     }
 
-    public class AssignManagerRequest
-    {
-        [Required]
-        public int ManagerId { get; set; }
-    }
     public class SendMessageRequest
     {
         public int SenderId { get; set; }

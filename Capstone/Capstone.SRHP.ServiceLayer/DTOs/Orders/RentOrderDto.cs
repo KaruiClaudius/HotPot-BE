@@ -29,6 +29,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     public class RentOrderDetailResponse
     {
         public int OrderId { get; set; }
+        //public int RentOrderDetailId { get; set; }
         public string RentalStartDate { get; set; }
         public string ExpectedReturnDate { get; set; }
         public string ActualReturnDate { get; set; }

@@ -14,12 +14,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Feedback
         public int PageSize { get; set; } = 10;
 
         // Filtering (all nullable)
-        public FeedbackApprovalStatus? ApprovalStatus { get; set; }
         public int? UserId { get; set; }
         public int? OrderId { get; set; }
         public DateTime? FromDate { get; set; }
         public DateTime? ToDate { get; set; }
-        public bool? HasResponse { get; set; }
 
         // Sorting (non-nullable with defaults)
         public string SortBy { get; set; } = "CreatedAt";
