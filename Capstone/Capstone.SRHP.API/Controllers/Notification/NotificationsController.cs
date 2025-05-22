@@ -28,7 +28,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
             // Get user ID from claims
             if (!int.TryParse(User.FindFirst("id")?.Value, out int userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized("Không tìm thấy ID người dùng trong token");
             }
 
             var notifications = await _notificationService.GetUserNotificationsAsync(
@@ -58,7 +58,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Unauthorized(new ApiResponse<NotificationCountResponse>
                 {
                     Success = false,
-                    Message = "User ID not found in token"
+                    Message = "Không tìm thấy ID người dùng trong token"
                 });
             }
 
@@ -82,7 +82,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return StatusCode(500, new ApiResponse<NotificationCountResponse>
                 {
                     Success = false,
-                    Message = $"Error retrieving notification count: {ex.Message}"
+                    Message = $"Lỗi khi lấy số lượng thông báo: {ex.Message}"
                 });
             }
         }
@@ -96,7 +96,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Unauthorized(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "User ID not found in token"
+                    Message = "Không tìm thấy ID người dùng trong token"
                 });
             }
 
@@ -107,7 +107,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Message = "Notification marked as read"
+                    Message = "Đã đánh dấu thông báo là đã đọc"
                 });
             }
             catch (Exception ex)
@@ -115,7 +115,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = $"Error marking notification as read: {ex.Message}"
+                    Message = $"Lỗi khi đánh dấu thông báo là đã đọc: {ex.Message}"
                 });
             }
         }
@@ -129,7 +129,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Unauthorized(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "User ID not found in token"
+                    Message = "Không tìm thấy ID người dùng trong token"
                 });
             }
 
@@ -140,7 +140,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Message = "All notifications marked as read"
+                    Message = "Đã đánh dấu tất cả thông báo là đã đọc"
                 });
             }
             catch (Exception ex)
@@ -148,7 +148,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = $"Error marking all notifications as read: {ex.Message}"
+                    Message = $"Lỗi khi đánh dấu tất cả thông báo là đã đọc: {ex.Message}"
                 });
             }
         }

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class SizeDiscountService : ISizeDiscountService
     {
@@ -87,8 +87,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     {
                         // Inactive discounts: current date is outside the range
                         query = query.Where(sd =>
-                            (sd.StartDate != null && sd.StartDate > now) ||
-                            (sd.EndDate != null && sd.EndDate < now));
+                            sd.StartDate != null && sd.StartDate > now ||
+                            sd.EndDate != null && sd.EndDate < now);
                     }
                 }
 

@@ -11,7 +11,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class IngredientReportService : IIngredientReportService
     {
@@ -124,7 +124,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         RemainingQuantity = batch.RemainingQuantity,
                         OrderCount = orderCount,
                         UsagePercentage = batch.InitialQuantity > 0
-                            ? (totalUsed / batch.InitialQuantity) * 100
+                            ? totalUsed / batch.InitialQuantity * 100
                             : 0,
                         CostPerUnit = costPerUnit,
                         TotalCost = costPerUnit * totalUsed

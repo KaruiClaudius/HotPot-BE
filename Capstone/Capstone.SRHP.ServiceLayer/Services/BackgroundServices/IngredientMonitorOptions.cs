@@ -12,12 +12,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
     public class IngredientMonitorOptions
     {
         public int CheckIntervalMinutes { get; set; } = 60; // Default: check every hour
-        public int ExpirationWarningDays { get; set; } = 7; // Default: warn 7 days before expiration
+        public int ExpirationWarningDays { get; set; } = 2; // Default: warn 7 days before expiration
         public string AdminRole { get; set; } = "Admin"; // Default admin role name
         public int NotificationCooldownHours { get; set; } = 24;
     }
@@ -117,7 +117,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                         .GroupBy(batch => batch.IngredientId)
                         .Select(group => new
                         {
-                            Ingredient = group.First().Ingredient,
+                            group.First().Ingredient,
                             ExpiringBatches = group.ToList(),
                             EarliestExpiryDate = group.Min(b => b.BestBeforeDate)
                         })
@@ -147,25 +147,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                         // Prepare notification data
                         var notificationData = new Dictionary<string, object>
-                {
-                    { "IngredientId", item.Ingredient.IngredientId },
-                    { "IngredientName", item.Ingredient.Name },
-                    { "ExpiryDate", item.EarliestExpiryDate },
-                    { "DaysUntilExpiry", daysUntilExpiry },
-                    { "ExpiringQuantity", totalExpiringQuantity },
-                    { "Unit", item.Ingredient.Unit }
-                };
+                        {
+                            { "IngredientId", item.Ingredient.IngredientId },
+                            { "IngredientName", item.Ingredient.Name },
+                            { "ExpiryDate", item.EarliestExpiryDate },
+                            { "DaysUntilExpiry", daysUntilExpiry },
+                            { "ExpiringQuantity", totalExpiringQuantity },
+                            { "Unit", item.Ingredient.Unit }
+                        };
 
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
                             "IngredientExpiringSoon",
-                            $"Ingredient Expiring Soon: {item.Ingredient.Name}",
-                            $"{totalExpiringQuantity} {item.Ingredient.Unit} of {item.Ingredient.Name} will expire in {daysUntilExpiry} days",
+                            $"Nguyên liệu sắp hết hạn: {item.Ingredient.Name}",
+                            $"{totalExpiringQuantity} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
 
                         _logger.LogInformation(
-                            "Sent expiration notification for {ingredient} ({quantity} {unit}), expiring in {days} days",
+                            "Đã gửi thông báo hết hạn cho {ingredient} ({quantity} {unit}), sẽ hết hạn trong {days} ngày",
                             item.Ingredient.Name,
                             totalExpiringQuantity,
                             item.Ingredient.Unit,
@@ -224,20 +224,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
 
                         // Prepare notification data
                         var notificationData = new Dictionary<string, object>
-                {
-                    { "IngredientId", ingredient.IngredientId },
-                    { "IngredientName", ingredient.Name },
-                    { "CurrentStock", ingredient.Quantity },
-                    { "MinStockLevel", ingredient.MinStockLevel },
-                    { "Unit", ingredient.Unit }
-                };
+                        {
+                            { "IngredientId", ingredient.IngredientId },
+                            { "IngredientName", ingredient.Name },
+                            { "CurrentStock", ingredient.Quantity },
+                            { "MinStockLevel", ingredient.MinStockLevel },
+                            { "Unit", ingredient.Unit }
+                        };
 
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
                             "IngredientLowStock",
-                            $"Low Stock Alert: {ingredient.Name}",
-                            $"{ingredient.Name} is running low. Current stock: {ingredient.Quantity} {ingredient.Unit} (Minimum: {ingredient.MinStockLevel} {ingredient.Unit})",
+                            $"Cảnh báo tồn kho thấp: {ingredient.Name}",
+                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại: {ingredient.Quantity} {ingredient.Unit} (Tối thiểu: {ingredient.MinStockLevel} {ingredient.Unit})",
                             notificationData);
 
                         // Update the last notification time

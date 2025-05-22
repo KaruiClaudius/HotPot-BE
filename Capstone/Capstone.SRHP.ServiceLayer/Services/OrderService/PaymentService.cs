@@ -18,7 +18,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -32,6 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IUtensilService _utensilService;
         private readonly IComboService _comboService;
         private readonly ICustomizationService _customizationService;
+        private readonly INotificationService  _notificationService;
 
         public PaymentService(
             PayOS payOS,
@@ -41,6 +42,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             IIngredientService ingredientService,
             IUtensilService utensilService,
             IComboService comboService,
+            INotificationService notificationService,
             ICustomizationService customizationService)
         {
             _payOS = payOS;
@@ -50,6 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _ingredientService = ingredientService;
             _utensilService = utensilService;
             _comboService = comboService;
+            _notificationService = notificationService;
             _customizationService = customizationService;
         }
 
@@ -87,20 +90,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy user", null);
                 }
 
+                bool isEnoughPoints = false;
+
                 if (discountId != null)
                 {
-                    var isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
+                    isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
 
                     if (!isEnoughPoints)
                     {
                         return new Response(-1, "Không đủ điểm để sử dụng mã giảm giá", null);
                     }
-                    else
-                    {
-                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
-                        user.LoyatyPoint = newPoint;
-                    }
-
                 }
 
                 // 4. Generate transaction code
@@ -139,6 +138,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // 7. Execute all database operations in a transaction
                 return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
                 {
+                    if (isEnoughPoints)
+                    {
+                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
+                        user.LoyatyPoint = newPoint;
+                    }
+
                     // Update the order details
                     var updateRequest = new UpdateOrderRequest
                     {
@@ -223,7 +228,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // 3. Validate delivery time
-                if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.Now)
+                if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.UtcNow.AddHours(7))
                 {
                     throw new ValidationException("Thời gian giao hàng phải được đặt và phải là thời gian trong tương lai");
                 }
@@ -428,6 +433,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         user.Name,
                         user.PhoneNumber,
                     };
+
+                    await _notificationService.NotifyUserAsync(
+                        user.UserId,
+                        "PaymentSuccess",
+                        "Thanh Toán Thành Công",
+                        $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
+                        new Dictionary<string, object>
+                        {
+                            { "OrderId", order.OrderId },
+                            { "Amount", paymentLinkInformation.amount },
+                            { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                            { "Status", "Đang xử lý" },
+                            { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
+                        });
+
+                    string orderType = order.HasRentItems && order.HasSellItems
+                       ? "Thuê và Mua"
+                       : (order.HasRentItems ? "Thuê" : "Mua");
+
+                    // Format the amount as currency
+                    var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
+
+                    // Send notification to managers
+                    await _notificationService.NotifyRoleAsync(
+                        "Manager",
+                        "PaymentSuccess",
+                        "Thanh Toán Thành Công",
+                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderId}",
+                        new Dictionary<string, object>
+                        {
+                    { "OrderId", order.OrderId },
+                    { "Amount", formattedAmount },
+                    { "CustomerName", user.Name },
+                    { "CustomerPhone", user.PhoneNumber },
+                    { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                    { "OrderType", orderType },
+                    { "TransactionId", paymentLinkInformation.id }
+                        });
+
 
                     return new Response(0, "Hoàn thành giao dịch",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
@@ -1480,7 +1524,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Update last maintain date on the hotpot itself
                             if (hotpotInventory.Hotpot != null)
                             {
-                                hotpotInventory.Hotpot.LastMaintainDate = DateTime.Now;
+                                hotpotInventory.Hotpot.LastMaintainDate = DateTime.UtcNow.AddHours(7);
                                 await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
                             }
 
@@ -1598,7 +1642,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (request.DeliveryTime.HasValue)
                 {
                     // Validate delivery time is in the future
-                    if (request.DeliveryTime.Value <= DateTime.Now)
+                    if (request.DeliveryTime.Value <= DateTime.UtcNow.AddHours(7))
                     {
                         throw new ValidationException("Thời gian giao hàng phải là thời gian trong tương lai");
                     }
