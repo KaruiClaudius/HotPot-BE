@@ -254,15 +254,6 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(s => s.CreateWorkShiftAsync(It.IsAny<WorkShift>()))
                 .ReturnsAsync(createdWorkShift);
 
-            this.mockNotificationService
-                .Setup(n => n.NotifyRoleAsync(
-                    "Managers",
-                    "ScheduleUpdate",
-                    "New Work Shift Created",
-                    It.IsAny<string>(),
-                    It.IsAny<Dictionary<string, object>>()))
-                .Returns(Task.CompletedTask);
-
             // Act
             var result = await adminScheduleController.CreateWorkShift(createDto);
 
@@ -282,12 +273,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             Assert.Equal(new TimeSpan(17, 0, 0), shiftDto.ShiftEndTime);
 
             this.mockScheduleService.Verify(s => s.CreateWorkShiftAsync(It.IsAny<WorkShift>()), Times.Once);
-            this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
-                "Managers",
-                "ScheduleUpdate",
-                "New Work Shift Created",
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>()), Times.Once);
+
         }
 
         [Fact]
@@ -415,7 +401,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                     .Setup(n => n.NotifyUserAsync(
                         staff.UserId,
                         "ScheduleUpdate",
-                        "Work Shift Updated",
+                        "Cập nhật ca làm việc",
                         It.IsAny<string>(),
                         It.IsAny<Dictionary<string, object>>()))
                     .Returns(Task.CompletedTask);
@@ -426,7 +412,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Updated",
+                    "Cập nhật ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -461,7 +447,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                     staff.UserId,
                     "ScheduleUpdate",
-                    "Work Shift Updated",
+                    "Cập nhật ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()), Times.Once);
             }
@@ -470,7 +456,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Work Shift Updated",
+                "Cập nhật ca làm việc",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -616,7 +602,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                     .Setup(n => n.NotifyUserAsync(
                         staff.UserId,
                         "ScheduleUpdate",
-                        "Work Shift Deleted",
+                        "Đã xóa ca làm việc",
                         It.IsAny<string>(),
                         It.IsAny<Dictionary<string, object>>()))
                     .Returns(Task.CompletedTask);
@@ -627,7 +613,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Deleted",
+                    "Đã xóa ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -647,7 +633,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                     staff.UserId,
                     "ScheduleUpdate",
-                    "Work Shift Deleted",
+                    "Đã xóa ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()), Times.Once);
             }
@@ -656,7 +642,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Work Shift Deleted",
+                "Đã xóa ca làm việc",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -804,7 +790,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.ManagerId,
                     "ScheduleUpdate",
-                    "Your Schedule Has Been Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -813,7 +799,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Manager Schedule Updated",
+                    "Lịch trình của Quản lý được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -855,14 +841,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.ManagerId,
                 "ScheduleUpdate",
-                "Your Schedule Has Been Updated",
+                "Lịch làm việc của bạn đã được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Manager Schedule Updated",
+                "Lịch trình của Quản lý được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -899,7 +885,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.ManagerId,
                     "ScheduleUpdate",
-                    "Your Schedule Has Been Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -908,7 +894,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Manager Schedule Updated",
+                    "Lịch trình của Quản lý được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -966,7 +952,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.ManagerId,
                     "ScheduleUpdate",
-                    "Your Schedule Has Been Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -975,7 +961,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Manager Schedule Updated",
+                    "Lịch trình của Quản lý được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1249,7 +1235,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Updated",
+                    "Cập nhật ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1276,7 +1262,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Work Shift Updated",
+                "Cập nhật ca làm việc",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -1332,7 +1318,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Updated",
+                    "Cập nhật ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1359,7 +1345,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Work Shift Updated",
+                "Cập nhật ca làm việc",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -1393,7 +1379,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Deleted",
+                    "Đã xóa ca làm việc",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1416,7 +1402,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Work Shift Deleted",
+                "Đã xóa ca làm việc",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
