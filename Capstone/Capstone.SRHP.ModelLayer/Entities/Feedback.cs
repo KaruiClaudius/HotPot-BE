@@ -11,10 +11,6 @@ public class Feedback : BaseEntity
     public int FeedbackId { get; set; }
 
     [Required]
-    [StringLength(200)]
-    public string Title { get; set; }
-
-    [Required]
     [StringLength(2000)]
     public string Comment { get; set; }
 
@@ -51,10 +47,6 @@ public class Feedback : BaseEntity
         set => ImageURL = value != null ? JsonSerializer.Serialize(value) : null;
     }
 
-    [StringLength(2000)]
-    public string? Response { get; set; }
-
-    public DateTime? ResponseDate { get; set; }
 
     [ForeignKey("Manager")]
     public int? ManagerId { get; set; }
@@ -67,19 +59,9 @@ public class Feedback : BaseEntity
     [ForeignKey("User")]
     public int UserId { get; set; }
 
-    // New properties for approval process
-    public FeedbackApprovalStatus ApprovalStatus { get; set; } = FeedbackApprovalStatus.Pending;
-    public DateTime? ApprovalDate { get; set; }
-
-    [ForeignKey("ApprovedByUser")]
-    public int? ApprovedByUserId { get; set; }
-
-    [StringLength(500)]
-    public string? RejectionReason { get; set; }
 
     public virtual User? User { get; set; }
     public virtual Order? Order { get; set; }
     public virtual User? Manager { get; set; }
-    public virtual User? ApprovedByUser { get; set; }
 }
 

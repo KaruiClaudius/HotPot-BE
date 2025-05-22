@@ -119,7 +119,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<INotificationService, NotificationService>();
 
             // Background Services
-            services.AddHostedService<EquipmentStockMonitorService>();
+            //services.AddHostedService<EquipmentStockMonitorService>();
 
             services.AddHostedService<CheckPaymentService>();
 

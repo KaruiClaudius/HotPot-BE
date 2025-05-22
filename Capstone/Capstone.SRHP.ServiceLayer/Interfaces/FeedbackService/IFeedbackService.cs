@@ -12,26 +12,22 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService
     {
         // Customer methods
         Task<ManagerFeedbackDetailDto> CreateFeedbackAsync(CreateFeedbackRequest request);
-        Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 10);
         Task<IEnumerable<ManagerFeedbackListDto>> GetFeedbackByOrderIdAsync(int orderId);
 
         // Manager methods
-        Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10);
-        Task<PagedResult<ManagerFeedbackListDto>> GetUnrespondedFeedbackAsync(int pageNumber = 1, int pageSize = 10);
-        Task<ManagerFeedbackDetailDto> RespondToFeedbackAsync(int feedbackId, int managerId, string response);
-        Task<ManagerFeedbackStats> GetManagerFeedbackStatsAsync();
+        //Task<PagedResult<ManagerFeedbackListDto>> GetFeedbackByStatusAsync(FeedbackApprovalStatus status, int pageNumber = 1, int pageSize = 10);
+        //Task<ManagerFeedbackStats> GetManagerFeedbackStatsAsync();
 
         // Admin methods
         Task<PagedResult<FeedbackListDto>> GetFilteredFeedbackAsync(FeedbackFilterRequest request);
         Task<FeedbackDetailDto> GetFeedbackDetailByIdAsync(int feedbackId);
-        Task<FeedbackDetailDto> ApproveFeedbackAsync(int feedbackId, int adminUserId);
-        Task<FeedbackDetailDto> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason);
+        //Task<FeedbackDetailDto> ApproveFeedbackAsync(int feedbackId, int adminUserId);
+        //Task<FeedbackDetailDto> RejectFeedbackAsync(int feedbackId, int adminUserId, string rejectionReason);
         Task<FeedbackStats> GetFeedbackStatsAsync();
 
         // Common methods
         Task<ManagerFeedbackDetailDto> GetFeedbackByIdAsync(int feedbackId);
-        Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status);
-        Task<int> GetUnrespondedFeedbackCountAsync();
+        //Task<int> GetFeedbackCountByStatusAsync(FeedbackApprovalStatus status);
         Task<int> GetTotalFeedbackCountAsync();
     }
 }

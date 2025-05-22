@@ -1,11 +1,13 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Capstone.HPTY.API.AppStarts;
+using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
+using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
-using System.Runtime.CompilerServices;
-using Capstone.HPTY.API.Hubs;
 [assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
 
 
@@ -119,17 +121,67 @@ app.MapHub<NotificationHub>("/notificationHub");
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
 
 // Simplified socket health check that doesn't rely on methods that don't exist
-app.MapGet("/api/socket-health", (HttpContext context) =>
+app.MapGet("/api/socket-health", async (HttpContext context) =>
 {
-    var socketService = context.RequestServices.GetRequiredService<SocketIOClientService>();
     var config = context.RequestServices.GetRequiredService<IConfiguration>();
+    var httpClientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
 
-    return Results.Ok(new
+    // Get the Socket.IO server URL from configuration
+    var serverUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/";
+
+    try
     {
-        ServerUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/",
-        Timestamp = DateTime.UtcNow.AddHours(7),
-        TimeZone = "UTC+7"
-    });
+        // Create HTTP client
+        var client = httpClientFactory.CreateClient();
+
+        // Call the Socket.IO server's health endpoint
+        var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health");
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Parse the health data from the Socket.IO server
+            var socketServerHealth = await response.Content.ReadFromJsonAsync<object>();
+
+            // Return combined health information
+            return Results.Ok(new
+            {
+                ServerUrl = serverUrl,
+                Timestamp = DateTime.UtcNow.AddHours(7),
+                TimeZone = "UTC+7",
+                SocketServerHealth = socketServerHealth
+            });
+        }
+        else
+        {
+            return Results.Ok(new
+            {
+                ServerUrl = serverUrl,
+                Timestamp = DateTime.UtcNow.AddHours(7),
+                TimeZone = "UTC+7",
+                SocketServerHealth = new
+                {
+                    status = "unavailable",
+                    error = $"Failed to connect to Socket.IO server: {response.StatusCode}"
+                }
+            });
+        }
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new
+        {
+            ServerUrl = serverUrl,
+            Timestamp = DateTime.UtcNow.AddHours(7),
+            TimeZone = "UTC+7",
+            SocketServerHealth = new
+            {
+                status = "error",
+                error = $"Exception when connecting to Socket.IO server: {ex.Message}"
+            }
+        });
+    }
 });
+
+
 
 app.Run();

@@ -26,12 +26,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Feedback
     public class FeedbackStats
     {
         public int TotalFeedbackCount { get; set; }
-        public int PendingFeedbackCount { get; set; }
-        public int ApprovedFeedbackCount { get; set; }
-        public int RejectedFeedbackCount { get; set; }
-        public int UnrespondedFeedbackCount { get; set; }
-        public int RespondedFeedbackCount { get; set; }
-        public double ResponseRate { get; set; }
+
     }
-    
+
 }

@@ -904,7 +904,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 }
             );
         }
-
         private static void SeedIngredientBatches(ModelBuilder modelBuilder)
         {
             var currentDate = DateTime.UtcNow.AddHours(7);
@@ -1401,6 +1400,127 @@ namespace Capstone.HPTY.RepositoryLayer
                     Type = VehicleType.Car,
                     Status = VehicleStatus.Available,
                     Notes = "Xe sedan 4 chỗ, tiết kiệm nhiên liệu, phù hợp cho giao hàng khoảng cách xa",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 11,
+                    Name = "Kia Morning",
+                    LicensePlate = "51A-56789",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe nhỏ gọn, di chuyển linh hoạt trong nội thành",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 12,
+                    Name = "SYM Elegant",
+                    LicensePlate = "59P5-12345",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe số tiết kiệm nhiên liệu, dễ bảo trì",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 13,
+                    Name = "Mazda CX-5",
+                    LicensePlate = "51H-67890",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe SUV 5 chỗ, phù hợp vận chuyển hàng hóa trong điều kiện thời tiết xấu",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 14,
+                    Name = "Yamaha Janus",
+                    LicensePlate = "59P6-23456",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tay ga tiết kiệm nhiên liệu, nhẹ và dễ lái",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 15,
+                    Name = "Honda Air Blade",
+                    LicensePlate = "59P6-34567",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tay ga mạnh mẽ, thích hợp giao hàng ngoài giờ cao điểm",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 16,
+                    Name = "VinFast Klara",
+                    LicensePlate = "59X1-45678",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe máy điện thân thiện môi trường, hoạt động tốt trong thành phố",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 17,
+                    Name = "Chevrolet Spark",
+                    LicensePlate = "51G-78901",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe nhỏ gọn 4 chỗ, phù hợp giao hàng trong khu dân cư đông đúc",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 18,
+                    Name = "Hyundai Grand i10",
+                    LicensePlate = "51A-89012",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe hatchback nhỏ gọn, dễ dàng đỗ xe và di chuyển",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 19,
+                    Name = "Suzuki Carry Truck",
+                    LicensePlate = "51C-34567",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tải nhẹ chuyên dùng giao hàng cồng kềnh trong thành phố",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 20,
+                    Name = "Yamaha Exciter",
+                    LicensePlate = "59P7-56789",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe số phân khối lớn, phù hợp cho giao hàng nhanh và xa",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 21,
+                    Name = "Ferrari La Ferrari",
+                    LicensePlate = "60F3-56874",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Siêu xe, lái cho vui :))",
                     CreatedAt = DateTime.UtcNow.AddHours(7),
                     UpdatedAt = DateTime.UtcNow.AddHours(7)
                 }

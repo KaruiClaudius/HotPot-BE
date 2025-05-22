@@ -15,7 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string RequestReason { get; set; }
 
         [StringLength(1000)]
-        public string AdditionalNotes { get; set; }
+        public string? AdditionalNotes { get; set; }
 
         [Required]
         public int? HotPotInventoryId { get; set; }
