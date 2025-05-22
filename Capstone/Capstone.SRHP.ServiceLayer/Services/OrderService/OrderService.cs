@@ -985,7 +985,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             if (detail == null)
                                 throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID  {update.OrderDetailId}");
 
-                            // Remove utensil handling since utensils are now only sold
+                           
                             if (detail.HotpotInventoryId.HasValue)
                             {
                                 // Process hotpot items with special handling
