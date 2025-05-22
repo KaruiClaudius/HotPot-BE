@@ -68,9 +68,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ICollection<Feedback>? Feedbacks { get; set; }
         public virtual ICollection<Order>? Orders { get; set; }
 
-        [InverseProperty("ApprovedByUser")]
-        public virtual ICollection<Feedback>? ApprovedFeedbacks { get; set; }
-
         //customer
         public virtual ICollection<ReplacementRequest>? CustomerReplacementRequests { get; set; }
 

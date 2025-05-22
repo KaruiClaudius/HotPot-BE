@@ -43,17 +43,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(feedback, "Feedback retrieved successfully"));
         }
 
-        [HttpGet("user/{userId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetUserFeedback(
-            int userId,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var pagedResult = await _customerFeedbackService.GetFeedbackByUserIdAsync(userId, pageNumber, pageSize);
-            return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(pagedResult, "User feedback retrieved successfully"));
-        }
-
         [HttpGet("order/{orderId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<IEnumerable<ManagerFeedbackListDto>>>> GetOrderFeedback(int orderId)
@@ -78,13 +67,12 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 await _notificationService.NotifyRoleAsync(
                     "Admins",
                     "NewFeedback",
-                    "New Feedback Received",
-                    $"New feedback from {customerName}: {feedback.Title}",
+                    "Nhận phản hồi mới",
+                    $"Phản hồi mới từ: {customerName}",
                     new Dictionary<string, object>
                     {
                 { "FeedbackId", feedback.FeedbackId },
                 { "CustomerName", customerName },
-                { "FeedbackTitle", feedback.Title },
                 { "SubmissionDate", feedback.CreatedAt },
                     });
 
@@ -103,27 +91,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
         }
 
-        [HttpGet("status")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<FeedbackStatusSummary>>> GetFeedbackStatusSummary(
-            [FromQuery] int userId)
-        {
-            var pagedResult = await _customerFeedbackService.GetFeedbackByUserIdAsync(userId);
-
-            // Extract the items from the paged result
-            var allFeedback = pagedResult.Items;
-
-            var summary = new FeedbackStatusSummary
-            {
-                TotalFeedback = pagedResult.TotalCount,
-                PendingApproval = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Pending),
-                Approved = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Approved),
-                Rejected = allFeedback.Count(f => f.ApprovalStatus == FeedbackApprovalStatus.Rejected),
-                Responded = allFeedback.Count(f => f.HasResponse)
-            };
-
-            return Ok(ApiResponse<ServiceLayer.DTOs.Management.FeedbackStatusSummary>.SuccessResponse(summary, "Feedback status summary retrieved successfully"));
-        }
     }
 
 }

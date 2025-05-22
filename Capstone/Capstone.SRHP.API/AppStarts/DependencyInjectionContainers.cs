@@ -118,9 +118,10 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<INotificationService, NotificationService>();
 
             // Background Services
-            services.AddHostedService<EquipmentStockMonitorService>();
+            //services.AddHostedService<EquipmentStockMonitorService>();
 
-            services.Configure<IngredientMonitorOptions>(options => {
+            services.Configure<IngredientMonitorOptions>(options =>
+            {
                 options.CheckIntervalMinutes = 60; // Check every hour
                 options.ExpirationWarningDays = 7; // Warn 7 days before expiration
                 options.AdminRole = "Admin"; // Target admin role for notifications
