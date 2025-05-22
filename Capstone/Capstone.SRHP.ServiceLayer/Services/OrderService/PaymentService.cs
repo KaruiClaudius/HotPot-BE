@@ -1272,6 +1272,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                             // Update the inventory status
                             hotpotInventory.Status = HotpotStatus.Available;
+
+
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                         }
                     }
@@ -1666,11 +1668,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     order.DiscountId = null;
                 }
 
-                // Update order status from Cart to Pending if it's currently in Cart status
-                if (order.Status == OrderStatus.Cart)
-                {
-                    order.Status = OrderStatus.Pending;
-                }
 
                 // Update order
                 order.SetUpdateDate();
