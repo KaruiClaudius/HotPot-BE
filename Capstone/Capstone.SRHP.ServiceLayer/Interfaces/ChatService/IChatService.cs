@@ -10,19 +10,13 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ChatService
 {
     public interface IChatService
     {
-        // Session management
         Task<ChatSessionDto> CreateChatSessionAsync(int customerId, string topic);
-        Task<ChatSessionDto> AssignManagerToChatSessionAsync(int sessionId, int managerId);
+        Task<ChatSessionDto> JoinChatSessionAsync(int sessionId, int managerId);
+        Task<ChatMessageDto> SaveMessageAsync(int senderId, int chatSessionId, string message);
         Task<ChatSessionDto> EndChatSessionAsync(int sessionId);
-        Task<ChatSessionDetailDto> GetChatSessionAsync(int sessionId);
-
-        // Message handling
-        Task<ChatMessageDto> SaveMessageAsync(int senderId, int receiverId, string message);
         Task<List<ChatMessageDto>> GetSessionMessagesAsync(int sessionId, int pageNumber = 1, int pageSize = 20);
-        Task<ChatMessageDto> GetMessageByIdAsync(int messageId);
-
-        // Session queries
-        Task<List<ChatSessionDto>> GetActiveChatSessionsAsync();
-        Task<List<ChatSessionDto>> GetManagerChatHistoryAsync(int managerId);
+        Task<ChatSessionDetailDto> GetChatSessionAsync(int sessionId);
+        Task<List<ChatSessionDto>> GetUserChatSessionsAsync(int userId, bool activeOnly = false);
+        Task<List<ChatSessionDto>> GetUnassignedChatSessionsAsync();
     }
 }

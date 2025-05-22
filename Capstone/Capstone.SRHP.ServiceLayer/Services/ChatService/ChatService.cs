@@ -24,38 +24,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ChatMessageDto> SaveMessageAsync(int senderId, int receiverId, string message)
-        {
-            var chatMessage = new ChatMessage
-            {
-                SenderUserId = senderId,
-                ReceiverUserId = receiverId,
-                Message = message,
-                CreatedAt = DateTime.UtcNow.AddHours(7)
-            };
-
-            _unitOfWork.Repository<ChatMessage>().Insert(chatMessage);
-            await _unitOfWork.CommitAsync();
-
-            // Load sender and receiver details for the DTO
-            chatMessage.SenderUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == senderId);
-            chatMessage.ReceiverUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == receiverId);
-
-            return chatMessage.ToDto();
-        }
-
-        public async Task<ChatMessageDto> GetMessageByIdAsync(int messageId)
-        {
-            var message = await _unitOfWork.Repository<ChatMessage>()
-                .AsQueryable()
-                .Where(m => m.ChatMessageId == messageId)
-                .Include(m => m.SenderUser)
-                .Include(m => m.ReceiverUser)
-                .FirstOrDefaultAsync();
-
-            return message?.ToDto();
-        }
-
         public async Task<ChatSessionDto> CreateChatSessionAsync(int customerId, string topic)
         {
             // Verify customer exists
@@ -79,10 +47,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             await _unitOfWork.CommitAsync();
 
             chatSession.Customer = customer;
+
             return chatSession.ToDto();
         }
 
-        public async Task<ChatSessionDto> AssignManagerToChatSessionAsync(int sessionId, int managerId)
+        public async Task<ChatSessionDto> JoinChatSessionAsync(int sessionId, int managerId)
         {
             // Verify manager exists
             var manager = await _unitOfWork.Repository<User>()
@@ -94,10 +63,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 throw new NotFoundException($"Manager not found");
 
             var chatSession = await _unitOfWork.Repository<ChatSession>()
-                .FindAsync(s => s.ChatSessionId == sessionId);
+                .AsQueryable()
+                .Where(s => s.ChatSessionId == sessionId && s.IsActive)
+                .FirstOrDefaultAsync();
 
             if (chatSession == null)
-                throw new NotFoundException($"Chat session not found");
+                throw new NotFoundException($"Active chat session not found");
+
+            if (chatSession.ManagerId.HasValue)
+                throw new InvalidOperationException("This chat session already has a manager assigned");
 
             chatSession.ManagerId = managerId;
             chatSession.SetUpdateDate();
@@ -110,17 +84,66 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             return chatSession.ToDto();
         }
 
+        public async Task<ChatMessageDto> SaveMessageAsync(int senderId, int chatSessionId, string message)
+        {
+            var session = await _unitOfWork.Repository<ChatSession>()
+                .AsQueryable()
+                .Where(s => s.ChatSessionId == chatSessionId && s.IsActive)
+                .Include(s => s.Customer)
+                .Include(s => s.Manager)
+                .FirstOrDefaultAsync();
+
+            if (session == null)
+                throw new NotFoundException("Active chat session not found");
+
+            // Determine receiver based on sender
+            int receiverId;
+            if (senderId == session.CustomerId)
+            {
+                if (!session.ManagerId.HasValue)
+                    throw new InvalidOperationException("No manager has joined this chat session yet");
+
+                receiverId = session.ManagerId.Value;
+            }
+            else if (senderId == session.ManagerId)
+            {
+                receiverId = session.CustomerId;
+            }
+            else
+            {
+                throw new InvalidOperationException("Sender is not part of this chat session");
+            }
+
+            var chatMessage = new ChatMessage
+            {
+                SenderUserId = senderId,
+                ReceiverUserId = receiverId,
+                ChatSessionId = chatSessionId,
+                Message = message,
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            };
+
+            _unitOfWork.Repository<ChatMessage>().Insert(chatMessage);
+            await _unitOfWork.CommitAsync();
+
+            // Load sender and receiver details for the DTO
+            chatMessage.SenderUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == senderId);
+            chatMessage.ReceiverUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == receiverId);
+
+            return chatMessage.ToDto();
+        }
+
         public async Task<ChatSessionDto> EndChatSessionAsync(int sessionId)
         {
             var chatSession = await _unitOfWork.Repository<ChatSession>()
                 .AsQueryable()
-                .Where(s => s.ChatSessionId == sessionId)
+                .Where(s => s.ChatSessionId == sessionId && s.IsActive)
                 .Include(s => s.Customer)
                 .Include(s => s.Manager)
                 .FirstOrDefaultAsync();
 
             if (chatSession == null)
-                throw new NotFoundException($"Chat session not found");
+                throw new NotFoundException($"Active chat session not found");
 
             chatSession.IsActive = false;
             chatSession.SetUpdateDate();
@@ -130,33 +153,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             return chatSession.ToDto();
         }
 
-        public async Task<List<ChatSessionDto>> GetActiveChatSessionsAsync()
+        public async Task<List<ChatMessageDto>> GetSessionMessagesAsync(int sessionId, int pageNumber = 1, int pageSize = 20)
         {
-            var sessions = await _unitOfWork.Repository<ChatSession>()
-                .GetAll(s => s.IsActive)
-                .Include(s => s.Customer)
-                .Include(s => s.Manager)
+            var session = await _unitOfWork.Repository<ChatSession>()
+                .FindAsync(s => s.ChatSessionId == sessionId);
+
+            if (session == null)
+                throw new NotFoundException($"Chat session not found");
+
+            var messages = await _unitOfWork.Repository<ChatMessage>()
+                .GetAll(m => m.ChatSessionId == sessionId)
+                .Include(m => m.SenderUser)
+                .Include(m => m.ReceiverUser)
+                .OrderBy(m => m.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return sessions.ToDtoList();
-        }
-
-        public async Task<List<ChatSessionDto>> GetManagerChatHistoryAsync(int managerId)
-        {
-            // Verify manager exists
-            var manager = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == managerId && u.RoleId == MANAGER_ROLE_ID && !u.IsDelete);
-
-            if (manager == null)
-                throw new NotFoundException($"Manager not found");
-
-            var sessions = await _unitOfWork.Repository<ChatSession>()
-                .GetAll(s => s.ManagerId == managerId)
-                .Include(s => s.Customer)
-                .OrderByDescending(s => s.CreatedAt)
-                .ToListAsync();
-
-            return sessions.ToDtoList();
+            return messages.ToDtoList();
         }
 
         public async Task<ChatSessionDetailDto> GetChatSessionAsync(int sessionId)
@@ -175,25 +189,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             return session?.ToDetailDto();
         }
 
-        public async Task<List<ChatMessageDto>> GetSessionMessagesAsync(int sessionId, int pageNumber = 1, int pageSize = 20)
+        public async Task<List<ChatSessionDto>> GetUserChatSessionsAsync(int userId, bool activeOnly = false)
         {
-            var session = await _unitOfWork.Repository<ChatSession>()
-                .FindAsync(s => s.ChatSessionId == sessionId);
-
-            if (session == null)
-                throw new NotFoundException($"Chat session not found");
-
-            var messages = await _unitOfWork.Repository<ChatMessage>()
-                .GetAll(m => (m.SenderUserId == session.CustomerId && m.ReceiverUserId == session.ManagerId) ||
-                             (m.SenderUserId == session.ManagerId && m.ReceiverUserId == session.CustomerId))
-                .Include(m => m.SenderUser)
-                .Include(m => m.ReceiverUser)
-                .OrderBy(m => m.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+            var sessions = await _unitOfWork.Repository<ChatSession>()
+                .AsQueryable()
+                .Where(s => (s.CustomerId == userId || s.ManagerId == userId) &&
+                            (!activeOnly || s.IsActive))
+                .Include(s => s.Customer)
+                .Include(s => s.Manager)
+                .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
 
-            return messages.ToDtoList();
+            return sessions.ToDtoList();
+        }
+
+        public async Task<List<ChatSessionDto>> GetUnassignedChatSessionsAsync()
+        {
+            var sessions = await _unitOfWork.Repository<ChatSession>()
+                .AsQueryable()
+                .Where(s => s.IsActive && !s.ManagerId.HasValue)
+                .Include(s => s.Customer)
+                .OrderBy(s => s.CreatedAt)
+                .ToListAsync();
+
+            return sessions.ToDtoList();
         }
     }
 }

@@ -1,7 +1,10 @@
-﻿using Capstone.HPTY.ModelLayer.Exceptions;
+﻿using System.Collections.Generic;
+using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Chat;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,12 +15,18 @@ using Microsoft.AspNetCore.Mvc;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
+    private readonly ICurrentUserService _currentUserService;
     private readonly SocketIOClientService _socketService;
     private readonly ILogger<ChatController> _logger;
 
-    public ChatController(IChatService chatService, SocketIOClientService socketService, ILogger<ChatController> logger)
+    public ChatController(
+        IChatService chatService,
+        ICurrentUserService currentUserService,
+        SocketIOClientService socketService,
+        ILogger<ChatController> logger)
     {
         _chatService = chatService;
+        _currentUserService = currentUserService;
         _socketService = socketService;
         _logger = logger;
     }
@@ -49,22 +58,15 @@ public class ChatController : ControllerBase
     {
         try
         {
-            // Extract customer ID from the JWT token
-            var customerId = int.Parse(User.FindFirst("id")?.Value ?? "0");
-            if (customerId == 0)
-                return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse("User ID not found in token"));
+            // Get current user ID
+            var customerId = _currentUserService.GetUserId();
 
-            // Create chat session using the authenticated user's ID
+            // Create chat session without assigning a manager
             var session = await _chatService.CreateChatSessionAsync(customerId, request.Topic);
 
-            // Notify managers about new chat
-            await _socketService.NotifyEvent("newChat", new
-            {
-                sessionId = session.ChatSessionId,
-                customerId = session.CustomerId,
-                customerName = session.CustomerName,
-                topic = session.Topic
-            });
+            // Notify managers about new unassigned chat
+            await _socketService.NotifyNewChat(session);
+
 
             return CreatedAtAction(nameof(GetChatSession), new { sessionId = session.ChatSessionId },
                 ApiResponse<ChatSessionDto>.SuccessResponse(session, "Chat session created"));
@@ -76,29 +78,22 @@ public class ChatController : ControllerBase
         }
     }
 
-    [HttpPost("sessions/manager/{sessionId}/join")]
+    [HttpPost("manager/sessions/{sessionId}/join")]
     [Authorize(Roles = "Manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<ChatSessionDto>>> JoinChatSession(int sessionId)
     {
         try
         {
-            // Get current manager ID from claims
-            var managerId = int.Parse(User.FindFirst("id")?.Value ?? "0");
-            if (managerId == 0)
-                return BadRequest(ApiResponse<ChatSessionDto>.ErrorResponse("User ID not found in token"));
+            // Get current manager ID
+            var managerId = _currentUserService.GetUserId();
 
-            var session = await _chatService.AssignManagerToChatSessionAsync(sessionId, managerId);
+            // Join the chat session
+            var session = await _chatService.JoinChatSessionAsync(sessionId, managerId);
 
-            // Notify customer that chat was accepted
-            await _socketService.NotifyEvent("chatAccepted", new
-            {
-                sessionId = session.ChatSessionId,
-                managerId = session.ManagerId,
-                managerName = session.ManagerName,
-                customerId = session.CustomerId
-            });
+            // Notify customer that a manager has joined
+            await _socketService.NotifyChatAccepted(session);
 
             return Ok(ApiResponse<ChatSessionDto>.SuccessResponse(session, "Joined chat session"));
         }
@@ -115,12 +110,16 @@ public class ChatController : ControllerBase
     {
         try
         {
-            var message = await _chatService.SaveMessageAsync(request.SenderId, request.ReceiverId, request.Message);
+            // Get current user ID
+            var senderId = _currentUserService.GetUserId();
+
+            var message = await _chatService.SaveMessageAsync(senderId, request.ChatSessionId, request.Message);
 
             // Notify receiver about new message
             await _socketService.NotifyEvent("newMessage", new
             {
                 messageId = message.ChatMessageId,
+                sessionId = request.ChatSessionId,
                 senderId = message.SenderUserId,
                 receiverId = message.ReceiverUserId,
                 content = message.Message,
@@ -177,29 +176,33 @@ public class ChatController : ControllerBase
         }
     }
 
-    [HttpGet("manager/sessions/active")]
-    [Authorize(Roles = "Manager")]
+    [HttpGet("sessions")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetActiveSessions()
-    {
-        var sessions = await _chatService.GetActiveChatSessionsAsync();
-        return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Active sessions retrieved"));
-    }
-
-    [HttpGet("manager/sessions/history")]
-    [Authorize(Roles = "Manager")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetChatHistory()
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetUserSessions([FromQuery] bool activeOnly = false)
     {
         try
         {
-            // Get current manager ID from claims
-            var managerId = int.Parse(User.FindFirst("id")?.Value ?? "0");
-            if (managerId == 0)
-                return BadRequest(ApiResponse<IEnumerable<ChatSessionDto>>.ErrorResponse("User ID not found in token"));
+            // Get current user ID
+            var userId = _currentUserService.GetUserId();
 
-            var sessions = await _chatService.GetManagerChatHistoryAsync(managerId);
-            return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Chat history retrieved"));
+            var sessions = await _chatService.GetUserChatSessionsAsync(userId, activeOnly);
+            return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Chat sessions retrieved"));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<IEnumerable<ChatSessionDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [HttpGet("manager/sessions/unassigned")]
+    [Authorize(Roles = "Manager")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<ChatSessionDto>>>> GetUnassignedSessions()
+    {
+        try
+        {
+            var sessions = await _chatService.GetUnassignedChatSessionsAsync();
+            return Ok(ApiResponse<IEnumerable<ChatSessionDto>>.SuccessResponse(sessions, "Unassigned chat sessions retrieved"));
         }
         catch (Exception ex)
         {

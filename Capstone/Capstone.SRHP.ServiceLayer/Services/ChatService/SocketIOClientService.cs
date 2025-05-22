@@ -1,13 +1,14 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using SocketIOClient;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Capstone.HPTY.ServiceLayer.DTOs.Chat;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using SocketIOClient;
 
 namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 {
-    public class SocketIOClientService : IDisposable
+    public class SocketIOClientService : IDisposable, IAsyncDisposable
     {
         private readonly SocketIOClient.SocketIO _client;
         private readonly ILogger<SocketIOClientService> _logger;
@@ -207,6 +208,102 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             }
         }
 
+        public async Task AuthenticateAsync(int userId, string role)
+        {
+            if (_isDisposed)
+            {
+                _logger.LogWarning("Attempted to authenticate with disposed Socket.IO client");
+                return;
+            }
+
+            if (!_client.Connected)
+            {
+                await ConnectAsync();
+            }
+
+            await NotifyEvent("authenticate", new
+            {
+                userId = userId.ToString(), // Server expects string
+                role = role
+            });
+
+            _logger.LogInformation($"Authenticated user {userId} with role {role}");
+
+            // Start heartbeat after authentication
+            StartHeartbeat();
+        }
+
+        // Add heartbeat mechanism
+        private Timer _heartbeatTimer;
+
+        private void StartHeartbeat()
+        {
+            // Stop existing timer if any
+            _heartbeatTimer?.Dispose();
+
+            // Send heartbeat every 20 seconds (slightly less than server's PING_INTERVAL)
+            _heartbeatTimer = new Timer(async _ =>
+            {
+                try
+                {
+                    if (_client.Connected && !_isDisposed)
+                    {
+                        await NotifyEvent("heartbeat", new { });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error sending heartbeat");
+                }
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(20));
+        }
+
+        // Update event names to match server
+        public async Task NotifyNewChat(ChatSessionDto session)
+        {
+            await NotifyEvent("newChat", new
+            {
+                sessionId = session.ChatSessionId,
+                customerId = session.CustomerId.ToString(), // Server expects string
+                customerName = session.CustomerName,
+                topic = session.Topic
+            });
+        }
+
+        public async Task NotifyChatAccepted(ChatSessionDto session)
+        {
+            await NotifyEvent("chatAccepted", new
+            {
+                sessionId = session.ChatSessionId,
+                managerId = session.ManagerId.ToString(), // Server expects string
+                managerName = session.ManagerName,
+                customerId = session.CustomerId.ToString() // Server expects string
+            });
+        }
+
+        public async Task NotifyNewMessage(ChatMessageDto message)
+        {
+            await NotifyEvent("newMessage", new
+            {
+                messageId = message.ChatMessageId,
+                senderId = message.SenderUserId.ToString(), // Server expects string
+                receiverId = message.ReceiverUserId.ToString(), // Server expects string
+                content = message.Message,
+                timestamp = message.CreatedAt
+            });
+        }
+
+        public async Task NotifyChatEnded(ChatSessionDto session)
+        {
+            await NotifyEvent("chatEnded", new
+            {
+                sessionId = session.ChatSessionId,
+                customerId = session.CustomerId.ToString(), // Server expects string
+                managerId = session.ManagerId.ToString() // Server expects string
+            });
+        }
+
+
         public void Dispose()
         {
             if (_isDisposed)
@@ -216,6 +313,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 
             try
             {
+                _heartbeatTimer?.Dispose();
                 _connectionLock.Dispose();
 
                 if (_client != null && _client.Connected)
@@ -235,6 +333,61 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
             {
                 _logger.LogError(ex, "Error during Socket.IO client disposal");
             }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
+
+            try
+            {
+                _heartbeatTimer?.Dispose();
+                _connectionLock.Dispose();
+
+                if (_client != null && _client.Connected)
+                {
+                    // Use a timeout to prevent hanging on disconnect
+                    var disconnectTask = _client.DisconnectAsync();
+                    var timeoutTask = Task.Delay(3000); // 3 second timeout
+
+                    await Task.WhenAny(disconnectTask, timeoutTask);
+                }
+
+                _client?.Dispose();
+
+                _logger.LogInformation("Socket.IO client successfully disposed asynchronously");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during Socket.IO client async disposal");
+            }
+        }
+
+        public void RegisterEventHandler<T>(string eventName, Action<T> handler)
+        {
+            if (_isDisposed)
+            {
+                _logger.LogWarning($"Attempted to register handler for '{eventName}' with disposed Socket.IO client");
+                return;
+            }
+
+            _client.On(eventName, response =>
+            {
+                try
+                {
+                    var data = response.GetValue<T>();
+                    handler(data);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error handling Socket.IO event '{eventName}'");
+                }
+            });
+
+            _logger.LogInformation($"Registered handler for event '{eventName}'");
         }
     }
 }
