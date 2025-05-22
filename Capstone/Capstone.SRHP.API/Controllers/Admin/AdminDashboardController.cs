@@ -524,6 +524,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = mainPayment.PaymentId,
+                            TransactionCode = mainPayment.TransactionCode,
                             Type = mainPayment.Type.ToString(),
                             Status = mainPayment.Status.ToString(),
                             Amount = mainPayment.Price,
@@ -541,6 +542,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = firstPayment.PaymentId,
+                            TransactionCode = firstPayment.TransactionCode,
                             Type = firstPayment.Type.ToString(),
                             Status = firstPayment.Status.ToString(),
                             Amount = firstPayment.Price,
@@ -560,6 +562,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     response.AdditionalPayments.Add(new PaymentInfo
                     {
                         PaymentId = payment.PaymentId,
+                        TransactionCode = payment.TransactionCode,
                         Type = payment.Type.ToString(),
                         Status = payment.Status.ToString(),
                         Amount = payment.Price,
