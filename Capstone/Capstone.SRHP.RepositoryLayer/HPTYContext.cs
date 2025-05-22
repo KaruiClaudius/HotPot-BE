@@ -492,25 +492,29 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 // Relationship with User as Sender
                 entity.HasOne(e => e.SenderUser)
-                    .WithMany() // Assuming User doesn't have a navigation property back to sent messages
+                    .WithMany()
                     .HasForeignKey(e => e.SenderUserId)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 // Relationship with User as Receiver
                 entity.HasOne(e => e.ReceiverUser)
-                    .WithMany() // Assuming User doesn't have a navigation property back to received messages
+                    .WithMany()
                     .HasForeignKey(e => e.ReceiverUserId)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relationship with ChatSession - THIS IS MISSING
+                entity.HasOne(e => e.ChatSession)
+                    .WithMany(s => s.Messages)
+                    .HasForeignKey(e => e.ChatSessionId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade); // Or Restrict, depending on your needs
 
                 // Configure properties
                 entity.Property(e => e.Message)
                     .IsRequired()
                     .HasMaxLength(2000);
-
-                entity.Property(e => e.IsRead)
-                    .IsRequired();
             });
 
             modelBuilder.Entity<StaffAssignment>(entity =>

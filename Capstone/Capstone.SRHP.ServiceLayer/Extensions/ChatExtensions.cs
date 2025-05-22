@@ -21,7 +21,8 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 ManagerName = entity.Manager?.Name ?? "Unassigned",
                 IsActive = entity.IsActive,
                 Topic = entity.Topic,
-                CreatedAt = entity.CreatedAt
+                CreatedAt = entity.CreatedAt,
+                UpdatedAt = entity.UpdatedAt
             };
         }
 
@@ -37,6 +38,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 IsActive = entity.IsActive,
                 Topic = entity.Topic,
                 CreatedAt = entity.CreatedAt,
+                UpdatedAt = entity.UpdatedAt,
                 Messages = entity.Messages?.Select(m => m.ToDto()).ToList() ?? new List<ChatMessageDto>()
             };
         }
@@ -50,6 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 SenderName = entity.SenderUser?.Name ?? "Unknown",
                 ReceiverUserId = entity.ReceiverUserId,
                 ReceiverName = entity.ReceiverUser?.Name ?? "Unknown",
+                ChatSessionId = entity.ChatSessionId,
                 Message = entity.Message,
                 CreatedAt = entity.CreatedAt
             };
@@ -64,6 +67,5 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
         {
             return entities.Select(e => e.ToDto()).ToList();
         }
-
     }
 }

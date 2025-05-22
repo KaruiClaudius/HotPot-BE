@@ -1,11 +1,13 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Capstone.HPTY.API.AppStarts;
+using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
+using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
-using System.Runtime.CompilerServices;
-using Capstone.HPTY.API.Hubs;
 [assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
 
 
@@ -179,5 +181,7 @@ app.MapGet("/api/socket-health", async (HttpContext context) =>
         });
     }
 });
+
+
 
 app.Run();

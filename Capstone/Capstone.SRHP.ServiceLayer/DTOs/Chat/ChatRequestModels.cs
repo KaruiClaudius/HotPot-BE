@@ -9,19 +9,20 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
 {
     public class CreateChatSessionRequest
     {
-
+        [Required]
         [StringLength(500)]
         public string Topic { get; set; }
     }
 
     public class SendMessageRequest
     {
-        public int SenderId { get; set; }
-        public int ReceiverId { get; set; }
+        [Required]
+        public int ChatSessionId { get; set; }
+
+        [Required]
+        [StringLength(2000)]
         public string Message { get; set; }
     }
-
-    // Basic DTO for chat session list view
 
     public class ChatSessionDto
     {
@@ -33,15 +34,14 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         public bool IsActive { get; set; }
         public string Topic { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 
-    // Detailed DTO for chat session with messages
     public class ChatSessionDetailDto : ChatSessionDto
     {
         public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
     }
 
-    // DTO for chat messages
     public class ChatMessageDto
     {
         public int ChatMessageId { get; set; }
@@ -49,6 +49,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         public string SenderName { get; set; }
         public int ReceiverUserId { get; set; }
         public string ReceiverName { get; set; }
+        public int ChatSessionId { get; set; }
         public string Message { get; set; }
         public DateTime CreatedAt { get; set; }
     }
