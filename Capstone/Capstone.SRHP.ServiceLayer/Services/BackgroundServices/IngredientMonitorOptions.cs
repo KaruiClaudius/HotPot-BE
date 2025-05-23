@@ -232,7 +232,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             _options.AdminRole,
                             "Ingredient", 
                             $"Sắp Hết Hạn: {item.Ingredient.Name}",
-                            $"{totalExpiringQuantity} x {item.Ingredient.MeasurementValue} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
+                            $"{totalExpiringQuantity} phần của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
 
                         _logger.LogInformation(
@@ -308,7 +308,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             _options.AdminRole,
                             "Ingredient", 
                             $"Cảnh báo tồn kho thấp: {ingredient.Name}",
-                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (Minimum: {ingredient.MinStockLevel} x {ingredient.MeasurementValue}{ingredient.Unit})",
+                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (Minimum: {ingredient.MinStockLevel} phần)",
                             notificationData);
 
                         _logger.LogInformation(
