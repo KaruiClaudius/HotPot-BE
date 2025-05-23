@@ -1535,7 +1535,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Notify managers about the returning order
                             await _notificationService.NotifyRoleAsync(
                                 "Manager",
-                                "OrderReturning",
+                                "Order",
                                 "Đơn Hàng Đang Được Trả",
                                 $"Khách hàng {user.Name} đang trả lại {hotpotCount} nồi lẩu từ đơn hàng #{order.OrderId}",
                                 new Dictionary<string, object>
@@ -1554,7 +1554,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Also notify the customer
                             await _notificationService.NotifyUserAsync(
                                 order.UserId,
-                                "OrderReturning",
+                                "Order",
                                 "Đơn Hàng Đang Được Trả",
                                 $"Cảm ơn bạn đã trả lại nồi lẩu. Chúng tôi đang xử lý việc trả hàng của bạn.",
                                 new Dictionary<string, object>

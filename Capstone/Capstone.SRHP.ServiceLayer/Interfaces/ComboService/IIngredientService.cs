@@ -35,6 +35,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task DeleteIngredientTypeAsync(int id);
 
         // Essential price-related methods
+        Task<IEnumerable<IngredientPrice>> GetAllPricesAsync(int ingredientId);
         Task<decimal> GetCurrentPriceAsync(int ingredientId);
         Task<Dictionary<int, decimal>> GetCurrentPricesAsync(IEnumerable<int> ingredientIds);
         Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId);
