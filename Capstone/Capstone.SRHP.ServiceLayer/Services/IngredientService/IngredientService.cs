@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -32,7 +33,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         private string GenerateBatchNumber(bool isInitial = false)
         {
             // Format: [INI-]BATCH-{timestamp}
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            string timestamp = DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss");
             return isInitial ? $"INI-BATCH-{timestamp}" : $"BATCH-{timestamp}";
         }
 
@@ -1050,6 +1051,96 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
         #endregion
 
         #region Ingredient Batch Methods
+        public async Task<List<BatchSummaryDto>> GetAllBatchesSummaryAsync()
+        {
+            try
+            {
+                // Get all non-deleted batches
+                var batches = await _unitOfWork.Repository<IngredientBatch>()
+                    .Include(b => b.Ingredient)
+                    .Where(b => !b.IsDelete && !string.IsNullOrEmpty(b.BatchNumber))
+                    .ToListAsync();
+
+                // Group batches by batch number
+                var groupedBatches = batches
+                    .GroupBy(b => b.BatchNumber)
+                    .Where(g => !string.IsNullOrEmpty(g.Key));
+
+                // Create summary DTOs
+                var batchSummaries = new List<BatchSummaryDto>();
+
+                foreach (var group in groupedBatches)
+                {
+                    var batchItems = group.ToList();
+
+                    // Collect all unique provider companies
+                    var uniqueProviders = batchItems
+                        .Where(b => !string.IsNullOrWhiteSpace(b.ProvideCompany))
+                        .Select(b => b.ProvideCompany)
+                        .Distinct()
+                        .ToList();
+
+                    // If no providers found, add "N/A"
+                    if (!uniqueProviders.Any())
+                    {
+                        uniqueProviders.Add("không rõ");
+                    }
+
+                    var summary = new BatchSummaryDto
+                    {
+                        BatchNumber = group.Key,
+                        ReceivedDate = batchItems.First().ReceivedDate,
+                        ProvideCompanies = uniqueProviders,
+                        TotalIngredients = batchItems.Count,
+                        EarliestExpiryDate = batchItems.Min(b => b.BestBeforeDate),
+                        LatestExpiryDate = batchItems.Max(b => b.BestBeforeDate)
+                    };
+
+                    batchSummaries.Add(summary);
+                }
+
+                // Order by most recent received date first
+                return batchSummaries.OrderByDescending(b => b.ReceivedDate).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batch summaries");
+                throw;
+            }
+        }
+        public async Task<List<IngredientBatch>> GetBatchesByBatchNumberAsync(string batchNumber)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(batchNumber))
+                    throw new ValidationException("Số lô không được để trống");
+
+                // Get all batches with the specified batch number
+                var batches = await _unitOfWork.Repository<IngredientBatch>()
+                    .Include(b => b.Ingredient)
+                    .Where(b => b.BatchNumber == batchNumber && !b.IsDelete)
+                    .ToListAsync();
+
+                if (!batches.Any())
+                    throw new NotFoundException($"Không tìm thấy lô hàng với số lô {batchNumber}");
+
+                return batches;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batches with batch number {BatchNumber}", batchNumber);
+                throw;
+            }
+        }
+
 
         public async Task<List<IngredientBatch>> GetAvailableBatchesAsync(int ingredientId)
         {

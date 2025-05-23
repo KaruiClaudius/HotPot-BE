@@ -25,6 +25,120 @@ namespace Capstone.HPTY.API.Controllers.Admin
             _logger = logger;
         }
 
+        [HttpGet("all")]
+        [ProducesResponseType(typeof(ApiResponse<List<BatchSummaryDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponse<List<BatchSummaryDto>>>> GetAllBatchesSummary()
+        {
+            try
+            {
+                _logger.LogInformation("Admin retrieving all batch summaries");
+
+                // Get all batch summaries
+                var batchSummaries = await _ingredientService.GetAllBatchesSummaryAsync();
+
+                return Ok(new ApiResponse<List<BatchSummaryDto>>
+                {
+                    Success = true,
+                    Message = $"Đã lấy {batchSummaries.Count} lô hàng",
+                    Data = batchSummaries
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy tất cả lô hàng");
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Lỗi",
+                    Message = "Không thể lấy tất cả lô hàng"
+                });
+            }
+        }
+
+        [HttpGet("batch-number/{batchNumber}")]
+        [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<List<IngredientBatchDto>>>> GetBatchesByBatchNumber(string batchNumber)
+        {
+            try
+            {
+                _logger.LogInformation("Admin retrieving batches with batch number: {BatchNumber}", batchNumber);
+
+                // Get batches with the specified batch number
+                var batches = await _ingredientService.GetBatchesByBatchNumberAsync(batchNumber);
+
+                // Map to DTOs
+                var batchDtos = new List<IngredientBatchDto>();
+
+                foreach (var batch in batches)
+                {
+                    var ingredient = batch.Ingredient;
+
+                    var batchDto = new IngredientBatchDto
+                    {
+                        IngredientBatchId = batch.IngredientBatchId,
+                        IngredientId = batch.IngredientId,
+                        IngredientName = ingredient?.Name ?? "Unknown",
+                        InitialQuantity = batch.InitialQuantity,
+                        RemainingQuantity = batch.RemainingQuantity,
+                        ProvideCompany = batch.ProvideCompany,
+                        Unit = ingredient?.Unit ?? "unit",
+                        MeasurementValue = ingredient?.MeasurementValue ?? 1.0,
+                        BestBeforeDate = batch.BestBeforeDate,
+                        BatchNumber = batch.BatchNumber ?? string.Empty,
+                        ReceivedDate = batch.ReceivedDate
+                    };
+
+                    batchDtos.Add(batchDto);
+                }
+
+                // Calculate total quantities
+                double totalInitialPhysicalQuantity = 0;
+                double totalRemainingPhysicalQuantity = 0;
+
+                foreach (var batchDto in batchDtos)
+                {
+                    totalInitialPhysicalQuantity += batchDto.InitialQuantity * batchDto.MeasurementValue;
+                    totalRemainingPhysicalQuantity += batchDto.RemainingQuantity * batchDto.MeasurementValue;
+                }
+
+                return Ok(new ApiResponse<List<IngredientBatchDto>>
+                {
+                    Success = true,
+                    Message = $"Đã lấy {batchDtos.Count} lô hàng với số lô '{batchNumber}'. " +
+                              $"Tổng ban đầu: {totalInitialPhysicalQuantity} {batchDtos.FirstOrDefault()?.Unit ?? "unit"}, " +
+                              $"Tổng còn lại: {totalRemainingPhysicalQuantity} {batchDtos.FirstOrDefault()?.Unit ?? "unit"}",
+                    Data = batchDtos
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Không tìm thấy lô hàng với số lô: {BatchNumber}", batchNumber);
+                return NotFound(new ApiErrorResponse
+                {
+                    Status = "Lỗi",
+                    Message = ex.Message
+                });
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "Lỗi xác thực khi lấy lô hàng với số lô: {BatchNumber}", batchNumber);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Lỗi xác thực",
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy lô hàng với số lô: {BatchNumber}", batchNumber);
+                return BadRequest(new ApiErrorResponse
+                {
+                    Status = "Lỗi",
+                    Message = "Không thể lấy lô hàng"
+                });
+            }
+        }
 
         [HttpGet("ingredient/{ingredientId}")]
         [ProducesResponseType(typeof(ApiResponse<List<IngredientBatchDto>>), StatusCodes.Status200OK)]
