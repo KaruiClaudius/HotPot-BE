@@ -4,7 +4,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Customer;
 using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
