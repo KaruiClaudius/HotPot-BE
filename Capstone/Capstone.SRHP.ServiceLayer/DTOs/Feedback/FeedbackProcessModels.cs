@@ -7,21 +7,6 @@ using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.DTOs.Feedback
 {
-    public class ApproveFeedbackRequest
-    {
-        [Required]
-        public int AdminUserId { get; set; }
-    }
-
-    public class RejectFeedbackRequest
-    {
-        [Required]
-        public int AdminUserId { get; set; }
-
-        [Required]
-        [StringLength(500)]
-        public string RejectionReason { get; set; }
-    }
 
     public class FeedbackStats
     {

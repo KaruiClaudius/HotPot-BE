@@ -3,7 +3,6 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
@@ -68,6 +67,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 var today = now.DayOfWeek;
                 var workDay = MapDayOfWeekToWorkDays(today);
 
+                // Define the timeframe for checking recent assignments (e.g., 1 hour)
+                var timeframe = TimeSpan.FromHours(1);
+
                 // Build query for staff users
                 var staffQuery = _unitOfWork.Repository<User>()
                     .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
@@ -117,13 +119,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .GroupBy(a => a.StaffId)
                     .ToDictionary(
                         g => g.Key,
-                        g => new
-                        {
-                            Assignments = g.ToList(),
-                            Count = g.Count(),
-                            OrderIds = g.Select(a => a.OrderId).Distinct().ToList(),
-                            TaskTypes = g.Select(a => a.TaskType).Distinct().ToList()
-                        }
+                        g => g.ToList()
                     );
 
                 // Map to DTOs and determine availability
@@ -133,26 +129,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Check if staff is scheduled to work today
                     bool isScheduledToday = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
 
-                    // Get assignment info for this staff
-                    assignmentsByStaff.TryGetValue(staff.UserId, out var assignmentInfo);
-                    var staffAssignments = assignmentInfo?.Assignments ?? new List<StaffAssignment>();
-                    int assignmentCount = assignmentInfo?.Count ?? 0;
-                    var staffOrderIds = assignmentInfo?.OrderIds ?? new List<int>();
-                    var staffTaskTypes = assignmentInfo?.TaskTypes ?? new List<StaffTaskType>();
+                    // Get assignments for this staff
+                    assignmentsByStaff.TryGetValue(staff.UserId, out var staffAssignments);
+                    var assignments = staffAssignments ?? new List<StaffAssignment>();
+
+                    // Get task types from all assignments (for display purposes)
+                    var staffTaskTypes = assignments.Select(a => a.TaskType).Distinct().ToList();
+                    var staffOrderIds = assignments.Select(a => a.OrderId).Distinct().ToList();
 
                     // Default availability check - staff is available if:
                     // 1. They are scheduled to work today
-                    // 2. They don't have too many active assignments (limit based on task type)
+                    // 2. They don't have too many active assignments within the timeframe
                     bool isAvailable = isScheduledToday &&
-                                       IsStaffAvailableForMoreAssignments(staff.StaffType ?? StaffType.Preparation,
-                                                                         staffTaskTypes,
-                                                                         assignmentCount);
+                                       IsStaffAvailableForMoreAssignments(
+                                           staff.StaffType ?? StaffType.Preparation,
+                                           assignments,
+                                           timeframe);
 
                     // Special handling for shipping task when the staff prepared the order
                     if (taskType == StaffTaskType.Shipping && specificOrder != null)
                     {
                         // Check if this staff has a preparation assignment for this order
-                        bool preparedThisOrder = staffAssignments.Any(a =>
+                        bool preparedThisOrder = assignments.Any(a =>
                             a.OrderId == specificOrder.OrderId && a.TaskType == StaffTaskType.Preparation);
 
                         // If this staff prepared the order and it's now Processed, they can ship it
@@ -160,7 +158,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         if (preparedThisOrder && specificOrder.Status == OrderStatus.Processed)
                         {
                             // Check if they're already assigned to other shipping tasks
-                            bool alreadyShipping = staffAssignments.Any(a =>
+                            bool alreadyShipping = assignments.Any(a =>
                                 a.TaskType == StaffTaskType.Shipping && a.OrderId != specificOrder.OrderId);
 
                             // They can ship this order if they're not already shipping something else
@@ -180,7 +178,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     bool alreadyAssignedToTask = false;
                     if (orderId.HasValue && taskType.HasValue)
                     {
-                        alreadyAssignedToTask = staffAssignments.Any(a =>
+                        alreadyAssignedToTask = assignments.Any(a =>
                             a.OrderId == orderId.Value && a.TaskType == taskType.Value);
 
                         // If already assigned, they're not available for this task
@@ -189,6 +187,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                             isAvailable = false;
                         }
                     }
+
+                    // Count assignments within the timeframe for display
+                    int recentAssignmentCount = assignments
+                        .Count(a => a.AssignedDate >= now.Subtract(timeframe));
 
                     staffDtos.Add(new StaffAvailableDto
                     {
@@ -199,13 +201,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         StaffType = staff.StaffType ?? StaffType.Preparation,
                         IsAvailable = isAvailable,
                         IsEligible = isEligible,
-                        AssignmentCount = assignmentCount,
+                        AssignmentCount = recentAssignmentCount, // Show count of recent assignments
                         WorkDays = staff.WorkDays,
                         // Check if this staff prepared the specific order
                         PreparedThisOrder = specificOrder != null &&
-                            staffAssignments.Any(a => a.OrderId == specificOrder.OrderId && a.TaskType == StaffTaskType.Preparation),
+                            assignments.Any(a => a.OrderId == specificOrder.OrderId && a.TaskType == StaffTaskType.Preparation),
                         ActiveOrderIds = staffOrderIds,
-                        ScheduledForToday = isScheduledToday
+                        ScheduledForToday = isScheduledToday,
+                        // Add a new property to show the timeframe used for counting
+                        TimeframeHours = timeframe.TotalHours
                     });
                 }
 
@@ -527,15 +531,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw new UnauthorizedException("Failed to authenticate manager");
             }
         }
-        private bool IsStaffAvailableForMoreAssignments(StaffType staffType, List<StaffTaskType> currentTaskTypes, int assignmentCount)
+        private bool IsStaffAvailableForMoreAssignments(
+    StaffType staffType,
+    List<StaffAssignment> currentAssignments,
+    TimeSpan timeframe)
         {
             // Define limits for different staff types and task combinations
-            const int MAX_PREPARATION_TASKS = 50;
-            const int MAX_SHIPPING_TASKS = 50;
-            const int MAX_PICKUP_TASKS = 50;
-            const int MAX_TOTAL_TASKS = 100;
+            const int MAX_PREPARATION_TASKS = 5;
+            const int MAX_SHIPPING_TASKS = 5;
+            const int MAX_PICKUP_TASKS = 5;
+            const int MAX_TOTAL_TASKS = 5;
 
-            // Check total assignment limit
+            // Get current time
+            var now = DateTime.UtcNow;
+
+            // Filter assignments to only those within the specified timeframe
+            var recentAssignments = currentAssignments
+                .Where(a => a.AssignedDate >= now.Subtract(timeframe))
+                .ToList();
+
+            // Get task types from recent assignments
+            var currentTaskTypes = recentAssignments.Select(a => a.TaskType).ToList();
+
+            // Check total assignment limit within timeframe
+            int assignmentCount = recentAssignments.Count;
             if (assignmentCount >= MAX_TOTAL_TASKS)
                 return false;
 

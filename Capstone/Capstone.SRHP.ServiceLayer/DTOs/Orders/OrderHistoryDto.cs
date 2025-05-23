@@ -58,5 +58,5 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         public int? PageNumber { get; set; } = 1;
         public int? PageSize { get; set; } = 10;
     }
- 
+
 }

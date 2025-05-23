@@ -32,6 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.User
         public bool PreparedThisOrder { get; set; } = false;
         public List<int> ActiveOrderIds { get; set; } = new List<int>();
         public bool ScheduledForToday { get; set; }
+        public double TimeframeHours { get; set; } // New property
 
     }
 }
