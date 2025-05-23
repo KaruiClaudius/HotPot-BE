@@ -185,7 +185,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             _options.AdminRole,
                             "Ingredient", // Use consistent notification type
                             $"Sắp Hết Hạn: {item.Ingredient.Name}",
-                            $"{totalExpiringQuantity} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
+                            $"{totalExpiringQuantity} x {item.Ingredient.MeasurementValue} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
 
                         _logger.LogInformation(
