@@ -51,7 +51,6 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<Vehicle> Vehicles { get; set; }
         public virtual DbSet<Notification> Notifications { get; set; }
         public virtual DbSet<UserNotification> UserNotifications { get; set; }
-        public virtual DbSet<NotificationTemplate> NotificationTemplates { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
