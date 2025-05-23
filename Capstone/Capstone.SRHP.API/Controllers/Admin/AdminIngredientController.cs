@@ -125,8 +125,10 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 // Get batches for this ingredient
                 var batches = await _ingredientService.GetIngredientBatchesAsync(id);
 
+                var Ingredients = await _ingredientService.GetAllPricesAsync(id);
+
                 // Map to detailed DTO including batches
-                var ingredientDetailDto = await MapToIngredientDetailDto(ingredient, batches);
+                var ingredientDetailDto = await MapToIngredientDetailDto(ingredient, batches, Ingredients);
                 ingredientDetailDto.Price = currentPrice;
 
                 return Ok(new ApiResponse<IngredientDetailDto>
@@ -524,7 +526,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             };
         }
 
-        private async Task<IngredientDetailDto> MapToIngredientDetailDto(Ingredient ingredient, IEnumerable<IngredientBatch> batches)
+        private async Task<IngredientDetailDto> MapToIngredientDetailDto(Ingredient ingredient, IEnumerable<IngredientBatch> batches, IEnumerable<IngredientPrice> prices)
         {
             if (ingredient == null) return null;
 
@@ -556,6 +558,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     IngredientId = b.IngredientId,
                     IngredientName = ingredient.Name,
                     InitialQuantity = b.InitialQuantity,
+                    ProvideCompany = b.ProvideCompany,
                     RemainingQuantity = b.RemainingQuantity,
                     Unit = ingredient.Unit,
                     MeasurementValue = ingredient.MeasurementValue,
@@ -565,6 +568,18 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }).ToList();
             }
 
+
+            if (prices != null)
+            {
+                detailDto.Prices = prices.Select(p => new IngredientPriceDto
+                {
+                    IngredientPriceId = p.IngredientId,
+                    Price = p.Price,
+                    EffectiveDate = p.EffectiveDate,
+                    IngredientID = p.IngredientId,
+                    IngredientName = p.Ingredient.Name
+                }).ToList();
+            }
             return detailDto;
         }
     }

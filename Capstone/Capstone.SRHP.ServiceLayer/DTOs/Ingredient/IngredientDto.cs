@@ -30,6 +30,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
     {
         public List<IngredientBatchDto> Batches { get; set; } = new List<IngredientBatchDto>();
 
+        public List<IngredientPriceDto> Prices { get; set; } = new List<IngredientPriceDto>();
+
     }
 
 

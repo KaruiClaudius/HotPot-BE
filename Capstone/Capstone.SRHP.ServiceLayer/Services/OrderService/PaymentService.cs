@@ -436,7 +436,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     await _notificationService.NotifyUserAsync(
                         user.UserId,
-                        "PaymentSuccess",
+                        "Order",
                         "Thanh Toán Thành Công",
                         $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
                         new Dictionary<string, object>
@@ -458,9 +458,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Send notification to managers
                     await _notificationService.NotifyRoleAsync(
                         "Manager",
-                        "PaymentSuccess",
+                        "Order",
                         "Thanh Toán Thành Công",
-                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderId}",
+                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
                         new Dictionary<string, object>
                         {
                     { "OrderId", order.OrderId },

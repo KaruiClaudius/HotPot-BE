@@ -806,6 +806,31 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
         #region Price Methods
 
+        public async Task<IEnumerable<IngredientPrice>> GetAllPricesAsync(int ingredientId)
+        {
+            try
+            {
+                // First check if the ingredient exists
+                var ingredient = await GetIngredientByIdAsync(ingredientId);
+
+                // Return all prices for the ingredient
+                return await _unitOfWork.Repository<IngredientPrice>()
+                    .Include(p => p.Ingredient)
+                    .Where(p => p.IngredientId == ingredientId && !p.IsDelete)
+                    .OrderByDescending(p => p.EffectiveDate)
+                    .ToListAsync();
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all prices for ingredient with ID {IngredientId}", ingredientId);
+                throw;
+            }
+        }
+
         public async Task<decimal> GetCurrentPriceAsync(int ingredientId)
         {
             try

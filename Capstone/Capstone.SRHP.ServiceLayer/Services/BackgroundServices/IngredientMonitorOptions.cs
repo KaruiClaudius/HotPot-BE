@@ -159,7 +159,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
-                            "IngredientExpiringSoon",
+                            "Ingredient",
                             $"Nguyên liệu sắp hết hạn: {item.Ingredient.Name}",
                             $"{totalExpiringQuantity} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
@@ -235,7 +235,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
-                            "IngredientLowStock",
+                            "Ingredient",
                             $"Cảnh báo tồn kho thấp: {ingredient.Name}",
                             $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại: {ingredient.Quantity} {ingredient.Unit} (Tối thiểu: {ingredient.MinStockLevel} {ingredient.Unit})",
                             notificationData);
