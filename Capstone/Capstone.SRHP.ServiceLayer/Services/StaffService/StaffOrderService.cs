@@ -223,15 +223,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             {
                 _logger.LogInformation("Updating order {OrderId} status to {NewStatus} by staff {StaffId}", orderId, newStatus, staffId);
 
-                // Get the order with shipping details
+                // Get the order with shipping details and rental information
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so != null ? so.Vehicle : null)
+                    .Include(o => o.RentOrder) // Include RentOrder to check if it exists
                     .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
+
+                // Special handling for Delivered status - auto transition to Completed if no rent order
+                if (newStatus == OrderStatus.Delivered && order.RentOrder == null)
+                {
+                    _logger.LogInformation("Order {OrderId} has no rent order, automatically setting to Completed instead of Delivered", orderId);
+                    newStatus = OrderStatus.Completed;
+                }
 
                 // Validate status transition
                 ValidateStatusTransition(order.Status, newStatus);
@@ -283,7 +291,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         break;
 
                     case OrderStatus.Delivered:
-                        // Complete delivery - find and complete the shipping assignment
+                    case OrderStatus.Completed: // Handle both Delivered and Completed the same way
+                                                // Complete delivery - find and complete the shipping assignment
                         var shippingCompleteAssignment = staffAssignments.FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping);
                         if (shippingCompleteAssignment != null)
                         {
@@ -527,6 +536,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 (OrderStatus.Processing, OrderStatus.Processed) => true,
                 (OrderStatus.Processed, OrderStatus.Shipping) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
+                (OrderStatus.Shipping, OrderStatus.Completed) => true,
                 (OrderStatus.Delivered, OrderStatus.Completed) => true,
 
                 // Allow cancellation from most states

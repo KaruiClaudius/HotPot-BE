@@ -251,8 +251,8 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 await _notificationService.NotifyUserAsync(
                     staff.UserId,
                     "ScheduleUpdate",
-                    "Your Work Days Updated",
-                    $"Your work days have been updated: {workDaysText}",
+                    "Lịch làm việc của bạn đã được cập nhật",
+                    $"Lịch của bạn đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>
                     {
                 { "StaffId", staff.UserId },
@@ -266,8 +266,8 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Staff Work Days Updated",
-                    $"Work days for {staff.Name} have been updated: {workDaysText}",
+                    "Lịch của nhân viên mới được cập nhật",
+                    $"Lịch của {staff.Name} đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>
                     {
                 { "StaffId", staff.UserId },

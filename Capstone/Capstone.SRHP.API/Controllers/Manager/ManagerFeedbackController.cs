@@ -16,14 +16,12 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _managerFeedbackService;
-        private readonly INotificationService _notificationService;
 
         public ManagerFeedbackController(
-            IFeedbackService managerFeedbackService,
-            INotificationService notificationService)
+            IFeedbackService managerFeedbackService
+            )
         {
             _managerFeedbackService = managerFeedbackService;
-            _notificationService = notificationService;
         }
 
         [HttpGet]

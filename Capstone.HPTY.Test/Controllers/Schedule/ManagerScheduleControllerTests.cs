@@ -662,7 +662,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
-                    "Your Work Days Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -671,7 +671,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Staff Work Days Updated",
+                    "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -698,14 +698,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
                 "ScheduleUpdate",
-                "Your Work Days Updated",
+                "Lịch làm việc của bạn đã được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Staff Work Days Updated",
+                "Lịch của nhân viên mới được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
@@ -737,7 +737,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
-                    "Your Work Days Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -746,7 +746,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Staff Work Days Updated",
+                    "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1169,7 +1169,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
                     "ScheduleUpdate",
-                    "Your Work Days Updated",
+                    "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1178,7 +1178,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Staff Work Days Updated",
+                    "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
                 .Returns(Task.CompletedTask);
@@ -1204,14 +1204,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
                 "ScheduleUpdate",
-                "Your Work Days Updated",
+                "Lịch làm việc của bạn đã được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
                 "ScheduleUpdate",
-                "Staff Work Days Updated",
+                "Lịch của nhân viên mới được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
