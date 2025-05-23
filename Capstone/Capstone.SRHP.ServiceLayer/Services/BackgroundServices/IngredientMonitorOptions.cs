@@ -184,8 +184,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
                             "Ingredient", // Use consistent notification type
-                            $"Expiring Soon: {item.Ingredient.Name}",
-                            $"{totalExpiringQuantity} {item.Ingredient.Unit} of {item.Ingredient.Name} will expire in {daysUntilExpiry} days",
+                            $"Sắp Hết Hạn: {item.Ingredient.Name}",
+                            $"{totalExpiringQuantity} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
 
                         _logger.LogInformation(
@@ -266,8 +266,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
                             "Ingredient", // Use consistent notification type
-                            $"Low Stock Alert: {ingredient.Name}",
-                            $"{ingredient.Name} is running low. Current stock: {ingredient.Quantity} {ingredient.Unit} (Minimum: {ingredient.MinStockLevel} {ingredient.Unit})",
+                            $"Cảnh báo tồn kho thấp: {ingredient.Name}",
+                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (Minimum: {ingredient.MinStockLevel} x {ingredient.MeasurementValue}{ingredient.Unit})",
                             notificationData);
 
                         _logger.LogInformation(

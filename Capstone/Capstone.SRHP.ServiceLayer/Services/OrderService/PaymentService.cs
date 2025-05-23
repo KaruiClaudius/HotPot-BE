@@ -463,13 +463,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
                         new Dictionary<string, object>
                         {
-                    { "OrderId", order.OrderId },
-                    { "Amount", formattedAmount },
-                    { "CustomerName", user.Name },
-                    { "CustomerPhone", user.PhoneNumber },
-                    { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
-                    { "OrderType", orderType },
-                    { "TransactionId", paymentLinkInformation.id }
+                            { "OrderId", order.OrderId },
+                            { "Amount", formattedAmount },
+                            { "CustomerName", user.Name },
+                            { "CustomerPhone", user.PhoneNumber },
+                            { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                            { "OrderType", orderType },
+                            { "TransactionId", paymentLinkInformation.id }
                         });
 
 
