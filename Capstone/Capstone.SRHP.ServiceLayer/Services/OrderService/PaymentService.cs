@@ -18,7 +18,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -32,6 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IUtensilService _utensilService;
         private readonly IComboService _comboService;
         private readonly ICustomizationService _customizationService;
+        private readonly INotificationService  _notificationService;
 
         public PaymentService(
             PayOS payOS,
@@ -41,6 +42,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             IIngredientService ingredientService,
             IUtensilService utensilService,
             IComboService comboService,
+            INotificationService notificationService,
             ICustomizationService customizationService)
         {
             _payOS = payOS;
@@ -50,6 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _ingredientService = ingredientService;
             _utensilService = utensilService;
             _comboService = comboService;
+            _notificationService = notificationService;
             _customizationService = customizationService;
         }
 
@@ -87,20 +90,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy user", null);
                 }
 
+                bool isEnoughPoints = false;
+
                 if (discountId != null)
                 {
-                    var isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
+                    isEnoughPoints = await _discountService.HasSufficientPointsAsync((int)discountId, user.LoyatyPoint);
 
                     if (!isEnoughPoints)
                     {
                         return new Response(-1, "Không đủ điểm để sử dụng mã giảm giá", null);
                     }
-                    else
-                    {
-                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
-                        user.LoyatyPoint = newPoint;
-                    }
-
                 }
 
                 // 4. Generate transaction code
@@ -139,6 +138,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // 7. Execute all database operations in a transaction
                 return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
                 {
+                    if (isEnoughPoints)
+                    {
+                        var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
+                        user.LoyatyPoint = newPoint;
+                    }
+
                     // Update the order details
                     var updateRequest = new UpdateOrderRequest
                     {
@@ -223,7 +228,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // 3. Validate delivery time
-                if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.Now)
+                if (!deliveryTime.HasValue || deliveryTime.Value <= DateTime.UtcNow.AddHours(7))
                 {
                     throw new ValidationException("Thời gian giao hàng phải được đặt và phải là thời gian trong tương lai");
                 }
@@ -428,6 +433,45 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         user.Name,
                         user.PhoneNumber,
                     };
+
+                    await _notificationService.NotifyUserAsync(
+                        user.UserId,
+                        "PaymentSuccess",
+                        "Thanh Toán Thành Công",
+                        $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
+                        new Dictionary<string, object>
+                        {
+                            { "OrderId", order.OrderId },
+                            { "Amount", paymentLinkInformation.amount },
+                            { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                            { "Status", "Đang xử lý" },
+                            { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
+                        });
+
+                    string orderType = order.HasRentItems && order.HasSellItems
+                       ? "Thuê và Mua"
+                       : (order.HasRentItems ? "Thuê" : "Mua");
+
+                    // Format the amount as currency
+                    var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
+
+                    // Send notification to managers
+                    await _notificationService.NotifyRoleAsync(
+                        "Manager",
+                        "PaymentSuccess",
+                        "Thanh Toán Thành Công",
+                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderId}",
+                        new Dictionary<string, object>
+                        {
+                    { "OrderId", order.OrderId },
+                    { "Amount", formattedAmount },
+                    { "CustomerName", user.Name },
+                    { "CustomerPhone", user.PhoneNumber },
+                    { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                    { "OrderType", orderType },
+                    { "TransactionId", paymentLinkInformation.id }
+                        });
+
 
                     return new Response(0, "Hoàn thành giao dịch",
                         new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
@@ -1413,167 +1457,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<Response> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
-        {
-            try
-            {
-                var order = await GetOrderByIdAsync(orderId);
-
-                // Validate status transition
-                if (!IsValidStatusTransition(order.Status, newStatus))
-                {
-                    return new Response(-1, $"Chuyển đổi trạng thái không hợp lệ từ {order.Status} sang {newStatus}", null);
-                }
-
-                // Track which hotpot types need quantity updates
-                var hotpotIdsToUpdate = new HashSet<int>();
-
-                // Handle inventory based on status change
-                if (newStatus == OrderStatus.Delivered && order.RentOrder != null)
-                {
-                    // Update hotpot inventory status to Rented
-                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
-                    {
-                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .IncludeNested(query => query.Include(h => h.Hotpot))
-                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
-
-                        if (hotpotInventory != null)
-                        {
-                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
-                            hotpotInventory.Status = HotpotStatus.Rented;
-                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                        }
-                    }
-                }
-                else if (newStatus == OrderStatus.Returning && order.RentOrder != null)
-                {
-                    // Update hotpot inventory status to Preparing
-                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
-                    {
-                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .IncludeNested(query => query.Include(h => h.Hotpot))
-                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
-
-                        if (hotpotInventory != null)
-                        {
-                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
-                            hotpotInventory.Status = HotpotStatus.Preparing;
-                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                        }
-                    }
-                }
-                else if (newStatus == OrderStatus.Completed && order.RentOrder != null)
-                {
-                    // Update hotpot inventory status to Available
-                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
-                    {
-                        var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                            .IncludeNested(query => query.Include(h => h.Hotpot))
-                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
-
-                        if (hotpotInventory != null)
-                        {
-                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
-                            hotpotInventory.Status = HotpotStatus.Available;
-
-                            // Update last maintain date on the hotpot itself
-                            if (hotpotInventory.Hotpot != null)
-                            {
-                                hotpotInventory.Hotpot.LastMaintainDate = DateTime.Now;
-                                await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
-                            }
-
-                            await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                        }
-                    }
-                }
-                else if (newStatus == OrderStatus.Cancelled)
-                {
-                    // Get the main payment
-                    var mainPayment = await GetMainPaymentForOrderAsync(orderId);
-
-                    // If payment was successful, we need to handle refunds and inventory
-                    if (mainPayment != null && mainPayment.Status == PaymentStatus.Success)
-                    {
-                        // For now, just update the order status
-                        // In a real system, you might want to create a refund record
-                    }
-                    else
-                    {
-                        // Release inventory reservations
-                        await ReleaseInventoryReservation(order);
-
-                        // Cancel any pending payments
-                        var pendingPayments = (await GetListPaymentByOrderIdAsync(orderId))
-                            .Where(p => p.Status == PaymentStatus.Pending)
-                            .ToList();
-
-                        foreach (var payment in pendingPayments)
-                        {
-                            payment.Status = PaymentStatus.Cancelled;
-                            payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                            await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
-
-                            // If it's an online payment, cancel in PayOS
-                            if (payment.Type == PaymentType.Online)
-                            {
-                                await _payOS.cancelPaymentLink(payment.TransactionCode, "Order cancelled");
-                            }
-                        }
-                    }
-                }
-
-                // Update order status
-                order.Status = newStatus;
-                order.SetUpdateDate();
-                await _unitOfWork.Repository<Order>().Update(order, orderId);
-
-                // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
-
-                await _unitOfWork.CommitAsync();
-
-                return new Response(0, "Trạng thái đơn hàng đã được cập nhật thành công", order);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng cho đơn hàng {OrderId}", orderId);
-                return new Response(-1, "Lỗi khi cập nhật trạng thái đơn hàng", null);
-            }
-        }
-
-        /// <summary>
-        /// Validate if a status transition is allowed
-        /// </summary>
-        private bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
-        {
-            switch (currentStatus)
-            {
-                case OrderStatus.Cart:
-                    return newStatus == OrderStatus.Pending || newStatus == OrderStatus.Cancelled;
-                case OrderStatus.Pending:
-                    return newStatus == OrderStatus.Processing || newStatus == OrderStatus.Cancelled;
-                case OrderStatus.Processing:
-                    return newStatus == OrderStatus.Shipping || newStatus == OrderStatus.Cancelled;
-                case OrderStatus.Shipping:
-                    return newStatus == OrderStatus.Delivered || newStatus == OrderStatus.Cancelled;
-                case OrderStatus.Delivered:
-                    return newStatus == OrderStatus.Returning || newStatus == OrderStatus.Completed;
-                case OrderStatus.Returning:
-                    return newStatus == OrderStatus.Completed;
-                case OrderStatus.Completed:
-                    return false; // Terminal state
-                case OrderStatus.Cancelled:
-                    return false; // Terminal state
-                default:
-                    return false;
-            }
-        }
-
         /// <summary>
         /// Update order details
         /// </summary>
@@ -1598,7 +1481,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (request.DeliveryTime.HasValue)
                 {
                     // Validate delivery time is in the future
-                    if (request.DeliveryTime.Value <= DateTime.Now)
+                    if (request.DeliveryTime.Value <= DateTime.UtcNow.AddHours(7))
                     {
                         throw new ValidationException("Thời gian giao hàng phải là thời gian trong tương lai");
                     }

@@ -7,6 +7,7 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly IComboService _comboService;
         private readonly IPaymentService _paymentService;
         private readonly ILogger<OrderService> _logger;
+        private readonly INotificationService _notificationService;
+
 
         public OrderService(
             IUnitOfWork unitOfWork,
@@ -39,7 +42,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             ICustomizationService customizationService,
             IComboService comboService,
             IPaymentService paymentService,
-            ILogger<OrderService> logger)
+            ILogger<OrderService> logger,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _discountService = discountService;
@@ -50,6 +54,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _comboService = comboService;
             _paymentService = paymentService;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public async Task<PagedResult<Order>> GetOrdersAsync(
@@ -256,7 +261,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     throw new ValidationException("Đơn hàng phải chứa ít nhất một mặt hàng");
 
                 // Execute in transaction to ensure consistency
-                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                return await _unitOfWork.ExecuteInTransactionAsync<Order>(async () =>
                 {
                     // Check if user already has a pending order (cart)
                     // Use a simpler query to avoid duplicate entries
@@ -309,15 +314,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         // No existing pending order - create a new one
                         return await CreateNewOrderAsync(request, userId);
                     }
+                },
+                ex =>
+                {
+                    // Only log non-validation exceptions
+                    if (!(ex is ValidationException))
+                    {
+                        _logger.LogError(ex, "Error in transaction while creating or updating order for user {UserId}", userId);
+                    }
                 });
             }
             catch (ValidationException)
             {
+                // Re-throw validation exceptions without additional logging
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating or updating order");
+                _logger.LogError(ex, "Error creating or updating order for user {UserId}", userId);
                 throw;
             }
         }
@@ -463,8 +477,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 .ToList();
 
             // Set rental dates if not already set
-            DateTime rentalStartDate = DateTime.Now;
-            DateTime expectedReturnDate = DateTime.Now.AddDays(3); // Default 3-day rental period
+            DateTime rentalStartDate = DateTime.UtcNow.AddHours(7);
+            DateTime expectedReturnDate = DateTime.UtcNow.AddHours(7).AddDays(3); // Default 3-day rental period
 
             // Ensure RentOrder exists
             if (order.RentOrder == null)
@@ -837,6 +851,58 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<Order> UpdateCartItemsQuantityAsync(int userId, CartItemUpdate[] itemUpdates)
         {
+            // Validate input
+            ValidateCartItemUpdates(itemUpdates);
+
+            try
+            {
+                // Find the user's cart order
+                var pendingOrder = await GetUserCartOrder(userId);
+
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    // Validate all updates first
+                    await ValidateAllUpdates(pendingOrder, itemUpdates);
+
+                    // Process all updates
+                    await ProcessAllUpdates(pendingOrder, itemUpdates);
+
+                    // Update order flags and total price
+                    await UpdateOrderFlagsAndPrice(pendingOrder);
+
+                    // Update payment if needed
+                    await UpdatePaymentIfNeeded(pendingOrder);
+
+                    // Reload order with all related entities
+                    return await GetByIdAsync(pendingOrder.OrderId);
+                },
+                ex =>
+                {
+                    // Only log non-validation exceptions
+                    if (!(ex is ValidationException) && !(ex is NotFoundException))
+                    {
+                        _logger.LogError(ex, "Error in transaction while updating cart items quantity for user {UserId}", userId);
+                    }
+                });
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating cart items quantity for user {UserId}", userId);
+                throw;
+            }
+        }
+
+        #region edit quantity helper
+        private void ValidateCartItemUpdates(CartItemUpdate[] itemUpdates)
+        {
             if (itemUpdates == null || !itemUpdates.Any())
                 throw new ValidationException("Không có mặt hàng nào để cập nhật");
 
@@ -846,188 +912,192 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (update.NewQuantity < 0)
                     throw new ValidationException("Số lượng không được là số âm");
             }
+        }
 
-                try
+        private async Task<Order> GetUserCartOrder(int userId)
+        {
+            var pendingOrder = await _unitOfWork.Repository<Order>()
+                .IncludeNested(query =>
+                    query.Include(o => o.SellOrder)
+                         .ThenInclude(so => so.SellOrderDetails)
+                         .Include(o => o.RentOrder)
+                         .ThenInclude(ro => ro.RentOrderDetails))
+                .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Cart && !o.IsDelete);
+
+            if (pendingOrder == null)
+                throw new NotFoundException("Không tìm thấy giỏ hàng");
+
+            return pendingOrder;
+        }
+
+        private async Task ValidateAllUpdates(Order pendingOrder, CartItemUpdate[] itemUpdates)
+        {
+            foreach (var update in itemUpdates)
             {
-                // Find the user's cart order
-                var pendingOrder = await _unitOfWork.Repository<Order>()
-                    .IncludeNested(query =>
-                        query.Include(o => o.SellOrder)
-                             .ThenInclude(so => so.SellOrderDetails)
-                             .Include(o => o.RentOrder)
-                             .ThenInclude(ro => ro.RentOrderDetails))
-                    .FirstOrDefaultAsync(o => o.UserId == userId && o.Status == OrderStatus.Cart && !o.IsDelete);
+                // Skip validation for items being removed (quantity = 0)
+                if (update.NewQuantity == 0)
+                    continue;
 
-                if (pendingOrder == null)
-                    throw new NotFoundException("Không tìm thấy giỏ hàng");
-
-                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                if (update.IsSellItem)
                 {
-                    // First, validate all updates to ensure we can complete the transaction
-                    foreach (var update in itemUpdates)
-                    {
-                        // Skip validation for items being removed (quantity = 0)
-                        if (update.NewQuantity == 0)
-                            continue;
-
-                        if (update.IsSellItem)
-                        {
-                            // Find the sell order detail
-                            var detail = pendingOrder.SellOrder?.SellOrderDetails
-                                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
-
-                            if (detail == null)
-                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
-
-                            // Check inventory if it's an ingredient
-                            if (detail.IngredientId.HasValue)
-                            {
-                                var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
-
-                                // Get items of this type in other active carts
-                                var itemsInOtherCarts = await _unitOfWork.Repository<SellOrderDetail>()
-                                    .FindAll(d => d.IngredientId == detail.IngredientId &&
-                                                 d.SellOrder.Order.Status == OrderStatus.Cart &&
-                                                 d.SellOrder.Order.OrderId != pendingOrder.OrderId &&
-                                                 !d.IsDelete)
-                                    .SumAsync(d => d.Quantity);
-
-                                // Calculate available inventory
-                                var availableForThisCart = ingredient.Quantity - itemsInOtherCarts;
-
-                                // Check if requested quantity exceeds available inventory
-                                if (update.NewQuantity > availableForThisCart)
-                                    throw new ValidationException($"Chỉ còn {availableForThisCart} {ingredient.Name} có sẵn");
-                            }
-                            // Add check for utensil inventory
-                            else if (detail.UtensilId.HasValue)
-                            {
-                                var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
-
-                                // Calculate how many more we need
-                                int quantityDifference = update.NewQuantity - detail.Quantity;
-
-                                if (quantityDifference > 0 && utensil.Quantity < quantityDifference)
-                                    throw new ValidationException($"Chỉ còn {utensil.Quantity} {utensil.Name} có sẵn");
-                            }
-                        }
-                        else
-                        {
-                            // Find the rent order detail
-                            var detail = pendingOrder.RentOrder?.RentOrderDetails
-                                .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
-
-                            if (detail == null)
-                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
-
-                            if (detail.HotpotInventoryId.HasValue)
-                            {
-                                // For hotpot inventory, we need special handling
-                                var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                    .GetById(detail.HotpotInventoryId.Value);
-
-                                if (hotpotInventory == null)
-                                    throw new NotFoundException($"Không tìm thấy tồn kho lẩu với ID {detail.HotpotInventoryId.Value}");
-
-                                // Find all hotpots of the same type in the order
-                                var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
-                                    .Where(d => d.HotpotInventoryId.HasValue && !d.IsDelete)
-                                    .ToList();
-
-                                var hotpotInventoryIds = allHotpotDetails
-                                    .Select(d => d.HotpotInventoryId.Value)
-                                    .ToList();
-
-                                var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
-                                    .FindAll(h => hotpotInventoryIds.Contains(h.HotPotInventoryId) && !h.IsDelete)
-                                    .ToListAsync();
-
-                                var sameTypeDetails = allHotpotDetails
-                                    .Where(d => hotpotInventories.Any(h => h.HotPotInventoryId == d.HotpotInventoryId &&
-                                                                          h.HotpotId == hotpotInventory.HotpotId))
-                                    .ToList();
-
-                                // Calculate current quantity and how many more we need
-                                int currentQuantity = sameTypeDetails.Count;
-                                int quantityDifference = update.NewQuantity - currentQuantity;
-
-                                if (quantityDifference > 0)
-                                {
-                                    // Check if we have enough available hotpots of the same type
-                                    var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
-                                        .FindAll(h => h.HotpotId == hotpotInventory.HotpotId &&
-                                                      h.Status == HotpotStatus.Available &&
-                                                      !h.IsDelete)
-                                        .Take(quantityDifference)
-                                        .ToListAsync();
-
-                                    if (availableHotpots.Count < quantityDifference)
-                                        throw new ValidationException($"Chỉ còn {availableHotpots.Count} lẩu loại này có sẵn thêm");
-                                }
-                            }
-                        }
-                    }
-
-                    // Now process all updates
-                    foreach (var update in itemUpdates)
-                    {
-                        if (update.IsSellItem)
-                        {
-                            // Process sell items
-                            await ProcessSellItemUpdate(pendingOrder, update);
-                        }
-                        else
-                        {
-                            // Find the rent order detail
-                            var detail = pendingOrder.RentOrder?.RentOrderDetails
-                                .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
-
-                            if (detail == null)
-                                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID  {update.OrderDetailId}");
-
-                           
-                            if (detail.HotpotInventoryId.HasValue)
-                            {
-                                // Process hotpot items with special handling
-                                await ProcessHotpotUpdate(pendingOrder, update, detail);
-                            }
-                        }
-                    }
-
-                    // Update HasSellItems and HasRentItems flags
-                    pendingOrder.HasSellItems = pendingOrder.SellOrder?.SellOrderDetails?.Any(d => !d.IsDelete) ?? false;
-                    pendingOrder.HasRentItems = pendingOrder.RentOrder?.RentOrderDetails?.Any(d => !d.IsDelete) ?? false;
-
-                    // Use the CalculateOrderTotalPrice method for consistency
-                    await CalculateOrderTotalPrice(pendingOrder);
-
-                    // Update the order
-                    _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
-                    await _unitOfWork.CommitAsync();
-
-                    // Update payment records if needed
-                    var payment = await _unitOfWork.Repository<Payment>()
-                        .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
-
-                    if (payment != null)
-                    {
-                        payment.Price = pendingOrder.TotalPrice;
-                        await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
-                        await _unitOfWork.CommitAsync();
-                    }
-
-                    // Reload order with all related entities
-                    return await GetByIdAsync(pendingOrder.OrderId);
-                });
+                    await ValidateSellItemUpdate(pendingOrder, update);
+                }
+                else
+                {
+                    await ValidateRentItemUpdate(pendingOrder, update);
+                }
             }
-            catch (ValidationException)
+        }
+        private async Task ValidateSellItemUpdate(Order pendingOrder, CartItemUpdate update)
+        {
+            // Find the sell order detail
+            var detail = pendingOrder.SellOrder?.SellOrderDetails
+                .FirstOrDefault(d => d.SellOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+            if (detail == null)
+                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
+
+            // Check inventory if it's an ingredient
+            if (detail.IngredientId.HasValue)
             {
-                throw;
+                var ingredient = await _ingredientService.GetIngredientByIdAsync(detail.IngredientId.Value);
+
+                // Get items of this type in other active carts
+                var itemsInOtherCarts = await _unitOfWork.Repository<SellOrderDetail>()
+                    .FindAll(d => d.IngredientId == detail.IngredientId &&
+                                 d.SellOrder.Order.Status == OrderStatus.Cart &&
+                                 d.SellOrder.Order.OrderId != pendingOrder.OrderId &&
+                                 !d.IsDelete)
+                    .SumAsync(d => d.Quantity);
+
+                // Calculate available inventory
+                var availableForThisCart = ingredient.Quantity - itemsInOtherCarts;
+
+                // Check if requested quantity exceeds available inventory
+                if (update.NewQuantity > availableForThisCart)
+                    throw new ValidationException($"Chỉ còn {availableForThisCart} {ingredient.Name} có sẵn");
             }
-            catch (Exception ex)
+            // Add check for utensil inventory
+            else if (detail.UtensilId.HasValue)
             {
-                _logger.LogError(ex, "Error updating cart items quantity");
-                throw;
+                var utensil = await _utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+
+                // Calculate how many more we need
+                int quantityDifference = update.NewQuantity - detail.Quantity;
+
+                if (quantityDifference > 0 && utensil.Quantity < quantityDifference)
+                    throw new ValidationException($"Chỉ còn {utensil.Quantity} {utensil.Name} có sẵn");
+            }
+        }
+
+        private async Task ValidateRentItemUpdate(Order pendingOrder, CartItemUpdate update)
+        {
+            // Find the rent order detail
+            var detail = pendingOrder.RentOrder?.RentOrderDetails
+                .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+            if (detail == null)
+                throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
+
+            if (detail.HotpotInventoryId.HasValue)
+            {
+                // For hotpot inventory, we need special handling
+                var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                    .GetById(detail.HotpotInventoryId.Value);
+
+                if (hotpotInventory == null)
+                    throw new NotFoundException($"Không tìm thấy tồn kho lẩu với ID {detail.HotpotInventoryId.Value}");
+
+                // Find all hotpots of the same type in the order
+                var allHotpotDetails = pendingOrder.RentOrder.RentOrderDetails
+                    .Where(d => d.HotpotInventoryId.HasValue && !d.IsDelete)
+                    .ToList();
+
+                var hotpotInventoryIds = allHotpotDetails
+                    .Select(d => d.HotpotInventoryId.Value)
+                    .ToList();
+
+                var hotpotInventories = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAll(h => hotpotInventoryIds.Contains(h.HotPotInventoryId) && !h.IsDelete)
+                    .ToListAsync();
+
+                var sameTypeDetails = allHotpotDetails
+                    .Where(d => hotpotInventories.Any(h => h.HotPotInventoryId == d.HotpotInventoryId &&
+                                                          h.HotpotId == hotpotInventory.HotpotId))
+                    .ToList();
+
+                // Calculate current quantity and how many more we need
+                int currentQuantity = sameTypeDetails.Count;
+                int quantityDifference = update.NewQuantity - currentQuantity;
+
+                if (quantityDifference > 0)
+                {
+                    // Check if we have enough available hotpots of the same type
+                    var availableHotpots = await _unitOfWork.Repository<HotPotInventory>()
+                        .FindAll(h => h.HotpotId == hotpotInventory.HotpotId &&
+                                      h.Status == HotpotStatus.Available &&
+                                      !h.IsDelete)
+                        .Take(quantityDifference)
+                        .ToListAsync();
+
+                    if (availableHotpots.Count < quantityDifference)
+                        throw new ValidationException($"Chỉ còn {availableHotpots.Count} lẩu loại này có sẵn thêm");
+                }
+            }
+        }
+
+        private async Task ProcessAllUpdates(Order pendingOrder, CartItemUpdate[] itemUpdates)
+        {
+            foreach (var update in itemUpdates)
+            {
+                if (update.IsSellItem)
+                {
+                    // Process sell items
+                    await ProcessSellItemUpdate(pendingOrder, update);
+                }
+                else
+                {
+                    // Find the rent order detail
+                    var detail = pendingOrder.RentOrder?.RentOrderDetails
+                        .FirstOrDefault(d => d.RentOrderDetailId == update.OrderDetailId && !d.IsDelete);
+
+                    if (detail == null)
+                        throw new NotFoundException($"Không tìm thấy chi tiết đơn hàng với ID {update.OrderDetailId}");
+
+                    if (detail.HotpotInventoryId.HasValue)
+                    {
+                        // Process hotpot items with special handling
+                        await ProcessHotpotUpdate(pendingOrder, update, detail);
+                    }
+                }
+            }
+        }
+
+        private async Task UpdateOrderFlagsAndPrice(Order pendingOrder)
+        {
+            // Update HasSellItems and HasRentItems flags
+            pendingOrder.HasSellItems = pendingOrder.SellOrder?.SellOrderDetails?.Any(d => !d.IsDelete) ?? false;
+            pendingOrder.HasRentItems = pendingOrder.RentOrder?.RentOrderDetails?.Any(d => !d.IsDelete) ?? false;
+
+            // Use the CalculateOrderTotalPrice method for consistency
+            await CalculateOrderTotalPrice(pendingOrder);
+
+            // Update the order
+            _unitOfWork.Repository<Order>().Update(pendingOrder, pendingOrder.OrderId);
+            await _unitOfWork.CommitAsync();
+        }
+
+        private async Task UpdatePaymentIfNeeded(Order pendingOrder)
+        {
+            // Update payment records if needed
+            var payment = await _unitOfWork.Repository<Payment>()
+                .FindAsync(p => p.OrderId == pendingOrder.OrderId && p.Status == PaymentStatus.Pending && !p.IsDelete);
+
+            if (payment != null)
+            {
+                payment.Price = pendingOrder.TotalPrice;
+                await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+                await _unitOfWork.CommitAsync();
             }
         }
 
@@ -1201,6 +1271,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Update the detail in the database
             await _unitOfWork.Repository<SellOrderDetail>().Update(detail, detail.SellOrderDetailId);
         }
+        #endregion
 
         // Helper method for processing utensil updates
         //private async Task ProcessUtensilUpdate(Order pendingOrder, CartItemUpdate update, RentOrderDetail detail)
@@ -1362,7 +1433,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (order.RentOrder != null)
                     {
                         // Update ActualReturnDate in RentOrder
-                        order.RentOrder.ActualReturnDate = DateTime.Now;
+                        order.RentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
                         await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.OrderId);
                         await _unitOfWork.CommitAsync();
 
@@ -1422,6 +1493,78 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }
+                        }
+
+                        // Get user information
+                        var user = await _unitOfWork.Repository<User>().GetById(order.UserId);
+                        if (user != null)
+                        {
+                            // Count the number of hotpot items being returned
+                            int hotpotCount = order.RentOrder.RentOrderDetails
+                                .Count(d => !d.IsDelete && d.HotpotInventoryId.HasValue);
+
+                            // Get hotpot types information
+                            var hotpotTypes = new List<string>();
+                            foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                            {
+                                var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                    .GetById(detail.HotpotInventoryId.Value);
+
+                                if (hotpotInventory?.Hotpot != null && !hotpotTypes.Contains(hotpotInventory.Hotpot.Name))
+                                {
+                                    hotpotTypes.Add(hotpotInventory.Hotpot.Name);
+                                }
+                            }
+
+                            // Format expected return date
+                            string expectedReturnDate = order.RentOrder.ExpectedReturnDate == DateTime.MinValue
+                                ? "Không có"
+                                : order.RentOrder.ExpectedReturnDate.ToString("dd/MM/yyyy HH:mm");
+
+                            // Format rental duration
+                            TimeSpan? rentalDuration = null;
+                            if (order.RentOrder.RentalStartDate != DateTime.MinValue)
+                            {
+                                rentalDuration = DateTime.UtcNow.AddHours(7) - order.RentOrder.RentalStartDate;
+                            }
+
+                            string rentalDurationText = rentalDuration.HasValue
+                                ? $"{Math.Round(rentalDuration.Value.TotalDays, 1)} ngày"
+                                : "Không xác định";
+
+                            // Notify managers about the returning order
+                            await _notificationService.NotifyRoleAsync(
+                                "Manager",
+                                "OrderReturning",
+                                "Đơn Hàng Đang Được Trả",
+                                $"Khách hàng {user.Name} đang trả lại {hotpotCount} nồi lẩu từ đơn hàng #{order.OrderId}",
+                                new Dictionary<string, object>
+                                {
+                            { "OrderId", order.OrderId },
+                            { "CustomerName", user.Name },
+                            { "CustomerPhone", user.PhoneNumber },
+                            { "HotpotCount", hotpotCount },
+                            { "HotpotTypes", string.Join(", ", hotpotTypes) },
+                            { "ExpectedReturnDate", expectedReturnDate },
+                            { "ActualReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
+                            { "RentalDuration", rentalDurationText },
+                            { "RequiredAction", "Cần phân công nhân viên kiểm tra và bảo trì nồi lẩu" }
+                                });
+
+                            // Also notify the customer
+                            await _notificationService.NotifyUserAsync(
+                                order.UserId,
+                                "OrderReturning",
+                                "Đơn Hàng Đang Được Trả",
+                                $"Cảm ơn bạn đã trả lại nồi lẩu. Chúng tôi đang xử lý việc trả hàng của bạn.",
+                                new Dictionary<string, object>
+                                {
+                            { "OrderId", order.OrderId },
+                            { "HotpotCount", hotpotCount },
+                            { "HotpotTypes", string.Join(", ", hotpotTypes) },
+                            { "ReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
+                            { "NextSteps", "Chúng tôi sẽ kiểm tra nồi lẩu và hoàn tất quá trình trả hàng. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!" }
+                                });
                         }
                     }
                 }

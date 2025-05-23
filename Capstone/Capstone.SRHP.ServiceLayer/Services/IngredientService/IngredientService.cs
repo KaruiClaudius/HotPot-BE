@@ -14,7 +14,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class IngredientService : IIngredientService
     {

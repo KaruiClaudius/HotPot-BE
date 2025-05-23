@@ -448,8 +448,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Update rental notes
                 rentOrder.RentalNotes = string.IsNullOrEmpty(rentOrder.RentalNotes)
-                    ? $"Rental period extended by {additionalDays} days on {DateTime.Now}"
-                    : $"{rentOrder.RentalNotes}\nRental period extended by {additionalDays} days on {DateTime.Now}";
+                    ? $"Rental period extended by {additionalDays} days on {DateTime.UtcNow.AddHours(7)}"
+                    : $"{rentOrder.RentalNotes}\nRental period extended by {additionalDays} days on {DateTime.UtcNow.AddHours(7)}";
 
                 // Update subtotal
                 rentOrder.SubTotal += additionalFee;
@@ -520,11 +520,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 return "Returned";
             }
-            else if (DateTime.Now > rentOrderDetail.RentOrder.ExpectedReturnDate)
+            else if (DateTime.UtcNow.AddHours(7) > rentOrderDetail.RentOrder.ExpectedReturnDate)
             {
                 return "Overdue";
             }
-            else if (rentOrderDetail.RentOrder.RentalStartDate > DateTime.Now)
+            else if (rentOrderDetail.RentOrder.RentalStartDate > DateTime.UtcNow.AddHours(7))
             {
                 return "Scheduled";
             }

@@ -186,7 +186,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private List<MonthlyMetrics> CalculateMonthlyMetrics(List<Order> orders, int? year = null)
         {
             
-            int targetYear = year ?? DateTime.Now.Year;
+            int targetYear = year ?? DateTime.UtcNow.AddHours(7).Year;
 
             // Create a list to hold all months in the current year
             var monthlyMetrics = new List<MonthlyMetrics>();

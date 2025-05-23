@@ -13,7 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class ComboService : IComboService
     {
@@ -202,7 +202,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             List<ComboIngredient> baseIngredients = null,
             List<ComboAllowedIngredientType> allowedTypes = null)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync<Combo>(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 // Check for soft-deleted combo with the same name
                 var existingCombo = await _unitOfWork.Repository<Combo>()
@@ -951,7 +951,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             decimal finalPrice = basePrice;
             if (discountPercentage > 0)
             {
-                finalPrice = basePrice * (1 - (discountPercentage / 100m));
+                finalPrice = basePrice * (1 - discountPercentage / 100m);
             }
 
             return finalPrice;
@@ -1024,7 +1024,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                 if (combo.AppliedDiscount != null)
                 {
                     decimal discountPercentage = combo.AppliedDiscount.DiscountPercentage;
-                    totalPrice = basePrice * (1 - (discountPercentage / 100m));
+                    totalPrice = basePrice * (1 - discountPercentage / 100m);
                 }
 
                 // Update total price

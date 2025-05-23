@@ -16,7 +16,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 
-namespace Capstone.HPTY.ServiceLayer.Services.ComboService
+namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 {
     public class CustomizationService : ICustomizationService
     {
@@ -480,7 +480,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
                     .ToListAsync();
             }
 
-            return await _unitOfWork.ExecuteInTransactionAsync<Customization>(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 // Check for soft-deleted customization with the same name for this user
                 var existingCustomization = await _unitOfWork.Repository<Customization>()
@@ -855,7 +855,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ComboService
             if (customization.AppliedDiscount != null)
             {
                 decimal discountPercentage = customization.AppliedDiscount.DiscountPercentage;
-                totalPrice = basePrice * (1 - (discountPercentage / 100m));
+                totalPrice = basePrice * (1 - discountPercentage / 100m);
             }
 
             // Update total price

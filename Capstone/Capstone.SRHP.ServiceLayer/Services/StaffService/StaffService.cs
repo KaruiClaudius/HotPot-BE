@@ -63,7 +63,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 _logger.LogInformation("Getting available staff for task type: {TaskType}, orderId: {OrderId}", taskType, orderId);
 
                 // Get current date
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow.AddHours(7);
                 var today = now.DayOfWeek;
                 var workDay = MapDayOfWeekToWorkDays(today);
 
@@ -363,7 +363,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     CustomerPhone = a.CustomerPhone,
                     OrderCode = a.OrderCode,
                     RentalStartDate = a.RentalDetails?.RentalStartDate,
-                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.Now,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
                     EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
                 }).ToList();
             }
@@ -404,7 +404,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     CustomerPhone = a.CustomerPhone,
                     OrderCode = a.OrderCode,
                     RentalStartDate = a.RentalDetails?.RentalStartDate,
-                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.Now,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
                     EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
                 }).ToList();
 
@@ -449,7 +449,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     CustomerPhone = a.CustomerPhone,
                     OrderCode = a.OrderCode,
                     RentalStartDate = a.RentalDetails?.RentalStartDate,
-                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.Now,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
                     EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details",
                     // Map vehicle information
                     VehicleId = a.RentalDetails?.VehicleId,

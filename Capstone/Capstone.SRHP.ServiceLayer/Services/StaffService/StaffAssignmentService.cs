@@ -81,7 +81,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 }
 
                 // Check staff availability on current day
-                var today = DateTime.Now.DayOfWeek;
+                var today = DateTime.UtcNow.AddHours(7).DayOfWeek;
                 var currentDay = MapDayOfWeekToWorkDays(today);
 
                 // Check if staff is available on the current day

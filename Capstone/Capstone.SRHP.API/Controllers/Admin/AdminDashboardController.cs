@@ -173,7 +173,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 // Set file name
-                string fileName = $"Dashboard_Report_{DateTime.Now:yyyyMMdd}.csv";
+                string fileName = $"Dashboard_Report_{DateTime.UtcNow.AddHours(7):yyyyMMdd}.csv";
 
                 // Return CSV file
                 return File(Encoding.UTF8.GetBytes(csvBuilder.ToString()), "text/csv", fileName);

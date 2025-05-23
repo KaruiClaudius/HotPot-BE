@@ -32,5 +32,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
 
         Task<Response> VerifyCartBeforePaymentAsync(int orderId);
 
+        Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId);
+
     }
 }

@@ -17,11 +17,12 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services;
+using Capstone.HPTY.ServiceLayer.Services.BackgroundServices;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
 using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
+using Capstone.HPTY.ServiceLayer.Services.IngredientService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
@@ -120,8 +121,9 @@ namespace Capstone.HPTY.API.AppStarts
             // Background Services
             //services.AddHostedService<EquipmentStockMonitorService>();
 
-            services.Configure<IngredientMonitorOptions>(options =>
-            {
+            services.AddHostedService<CheckPaymentService>();
+
+            services.Configure<IngredientMonitorOptions>(options => {
                 options.CheckIntervalMinutes = 60; // Check every hour
                 options.ExpirationWarningDays = 7; // Warn 7 days before expiration
                 options.AdminRole = "Admin"; // Target admin role for notifications
