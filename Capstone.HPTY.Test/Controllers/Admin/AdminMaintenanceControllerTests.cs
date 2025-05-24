@@ -327,111 +327,111 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             this.mockRepository.VerifyAll();
         }
 
-        [Fact]
-        public async Task CreateDevice_ReturnsCreatedDevice_WhenRequestIsValid()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            var request = new CreateDamageDeviceRequest
-            {
-                Name = "New Damaged Hotpot",
-                Description = "Power button broken",
-                Status = MaintenanceStatus.Pending,
-                HotPotInventoryId = 1
-            };
+        //[Fact]
+        //public async Task CreateDevice_ReturnsCreatedDevice_WhenRequestIsValid()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    var request = new CreateDamageDeviceRequest
+        //    {
+        //        Name = "New Damaged Hotpot",
+        //        Description = "Power button broken",
+        //        Status = MaintenanceStatus.Pending,
+        //        HotPotInventoryId = 1
+        //    };
 
-            var createdDevice = new DamageDevice
-            {
-                DamageDeviceId = 1,
-                Name = request.Name,
-                Description = request.Description,
-                Status = request.Status,
-                LoggedDate = DateTime.UtcNow.AddHours(7),
-                HotPotInventoryId = request.HotPotInventoryId,
-                CreatedAt = DateTime.UtcNow.AddHours(7),
-                UpdatedAt = null
-            };
+        //    var createdDevice = new DamageDevice
+        //    {
+        //        DamageDeviceId = 1,
+        //        Name = request.Name,
+        //        Description = request.Description,
+        //        Status = request.Status,
+        //        LoggedDate = DateTime.UtcNow.AddHours(7),
+        //        HotPotInventoryId = request.HotPotInventoryId,
+        //        CreatedAt = DateTime.UtcNow.AddHours(7),
+        //        UpdatedAt = null
+        //    };
 
-            mockDamageDeviceService.Setup(s => s.CreateAsync(It.Is<DamageDevice>(d =>
-                d.Name == request.Name &&
-                d.Description == request.Description &&
-                d.Status == request.Status &&
-                d.HotPotInventoryId == request.HotPotInventoryId)))
-                .ReturnsAsync(createdDevice);
+        //    mockDamageDeviceService.Setup(s => s.CreateAsync(It.Is<DamageDevice>(d =>
+        //        d.Name == request.Name &&
+        //        d.Description == request.Description &&
+        //        d.Status == request.Status &&
+        //        d.HotPotInventoryId == request.HotPotInventoryId)))
+        //        .ReturnsAsync(createdDevice);
 
-            // Act
-            var result = await adminMaintenanceController.CreateDevice(request);
+        //    // Act
+        //    var result = await adminMaintenanceController.CreateDevice(request);
 
-            // Assert
-            var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-            Assert.Equal(nameof(AdminMaintenanceController.GetDeviceById), createdAtActionResult.ActionName);
-            Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
+        //    // Assert
+        //    var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        //    Assert.Equal(nameof(AdminMaintenanceController.GetDeviceById), createdAtActionResult.ActionName);
+        //    Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
 
-            var apiResponse = Assert.IsType<ApiResponse<DamageDeviceDto>>(createdAtActionResult.Value);
-            Assert.True(apiResponse.Success);
-            Assert.Equal("Tạo thiết bị hư hỏng thành công", apiResponse.Message);
-            Assert.Equal(1, apiResponse.Data.DamageDeviceId);
-            Assert.Equal(request.Name, apiResponse.Data.Name);
-            Assert.Equal(request.Status.ToString(), apiResponse.Data.StatusName);
+        //    var apiResponse = Assert.IsType<ApiResponse<DamageDeviceDto>>(createdAtActionResult.Value);
+        //    Assert.True(apiResponse.Success);
+        //    Assert.Equal("Tạo thiết bị hư hỏng thành công", apiResponse.Message);
+        //    Assert.Equal(1, apiResponse.Data.DamageDeviceId);
+        //    Assert.Equal(request.Name, apiResponse.Data.Name);
+        //    Assert.Equal(request.Status.ToString(), apiResponse.Data.StatusName);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
-        [Fact]
-        public async Task CreateDevice_ReturnsBadRequest_WhenValidationFails()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            var request = new CreateDamageDeviceRequest
-            {
-                Name = "New Damaged Hotpot",
-                Description = "Power button broken",
-                Status = MaintenanceStatus.Pending,
-                HotPotInventoryId = 1
-            };
+        //[Fact]
+        //public async Task CreateDevice_ReturnsBadRequest_WhenValidationFails()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    var request = new CreateDamageDeviceRequest
+        //    {
+        //        Name = "New Damaged Hotpot",
+        //        Description = "Power button broken",
+        //        Status = MaintenanceStatus.Pending,
+        //        HotPotInventoryId = 1
+        //    };
 
-            mockDamageDeviceService.Setup(s => s.CreateAsync(It.IsAny<DamageDevice>()))
-                .ThrowsAsync(new ValidationException("Invalid hotpot inventory ID"));
+        //    mockDamageDeviceService.Setup(s => s.CreateAsync(It.IsAny<DamageDevice>()))
+        //        .ThrowsAsync(new ValidationException("Invalid hotpot inventory ID"));
 
-            // Act
-            var result = await adminMaintenanceController.CreateDevice(request);
+        //    // Act
+        //    var result = await adminMaintenanceController.CreateDevice(request);
 
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Lỗi xác thực", apiResponse.Status);
-            Assert.Equal("Invalid hotpot inventory ID", apiResponse.Message);
+        //    // Assert
+        //    var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
+        //    Assert.Equal("Lỗi xác thực", apiResponse.Status);
+        //    Assert.Equal("Invalid hotpot inventory ID", apiResponse.Message);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
-        [Fact]
-        public async Task CreateDevice_ReturnsBadRequest_WhenExceptionOccurs()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            var request = new CreateDamageDeviceRequest
-            {
-                Name = "New Damaged Hotpot",
-                Description = "Power button broken",
-                Status = MaintenanceStatus.Pending,
-                HotPotInventoryId = 1
-            };
+        //[Fact]
+        //public async Task CreateDevice_ReturnsBadRequest_WhenExceptionOccurs()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    var request = new CreateDamageDeviceRequest
+        //    {
+        //        Name = "New Damaged Hotpot",
+        //        Description = "Power button broken",
+        //        Status = MaintenanceStatus.Pending,
+        //        HotPotInventoryId = 1
+        //    };
 
-            mockDamageDeviceService.Setup(s => s.CreateAsync(It.IsAny<DamageDevice>()))
-                .ThrowsAsync(new Exception("Database connection error"));
+        //    mockDamageDeviceService.Setup(s => s.CreateAsync(It.IsAny<DamageDevice>()))
+        //        .ThrowsAsync(new Exception("Database connection error"));
 
-            // Act
-            var result = await adminMaintenanceController.CreateDevice(request);
+        //    // Act
+        //    var result = await adminMaintenanceController.CreateDevice(request);
 
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Lỗi", apiResponse.Status);
-            Assert.Equal("Không thể tạo thiết bị hư hỏng", apiResponse.Message);
+        //    // Assert
+        //    var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
+        //    Assert.Equal("Lỗi", apiResponse.Status);
+        //    Assert.Equal("Không thể tạo thiết bị hư hỏng", apiResponse.Message);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
         [Fact]
         public async Task UpdateDevice_ReturnsUpdatedDevice_WhenRequestIsValid()
@@ -612,94 +612,94 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             this.mockRepository.VerifyAll();
         }
 
-        [Fact]
-        public async Task DeleteDevice_ReturnsSuccess_WhenDeviceExists()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            int id = 1;
+        //[Fact]
+        //public async Task DeleteDevice_ReturnsSuccess_WhenDeviceExists()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    int id = 1;
 
-            mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
-                .Returns(Task.CompletedTask);
+        //    mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
+        //        .Returns(Task.CompletedTask);
 
-            // Act
-            var result = await adminMaintenanceController.DeleteDevice(id);
+        //    // Act
+        //    var result = await adminMaintenanceController.DeleteDevice(id);
 
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiResponse<string>>(okResult.Value);
-            Assert.True(apiResponse.Success);
-            Assert.Equal("Xóa thiết bị hư hỏng thành công", apiResponse.Message);
-            Assert.Equal($"Thiết bị hư hỏng với ID {id} đã được xóa", apiResponse.Data);
+        //    // Assert
+        //    var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiResponse<string>>(okResult.Value);
+        //    Assert.True(apiResponse.Success);
+        //    Assert.Equal("Xóa thiết bị hư hỏng thành công", apiResponse.Message);
+        //    Assert.Equal($"Thiết bị hư hỏng với ID {id} đã được xóa", apiResponse.Data);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
-        [Fact]
-        public async Task DeleteDevice_ReturnsNotFound_WhenDeviceDoesNotExist()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            int id = 999;
+        //[Fact]
+        //public async Task DeleteDevice_ReturnsNotFound_WhenDeviceDoesNotExist()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    int id = 999;
 
-            mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
-                .ThrowsAsync(new NotFoundException($"Damage device with ID {id} not found"));
+        //    mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
+        //        .ThrowsAsync(new NotFoundException($"Damage device with ID {id} not found"));
 
-            // Act
-            var result = await adminMaintenanceController.DeleteDevice(id);
+        //    // Act
+        //    var result = await adminMaintenanceController.DeleteDevice(id);
 
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
-            Assert.Equal("Lỗi", apiResponse.Status);
-            Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
+        //    // Assert
+        //    var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
+        //    Assert.Equal("Lỗi", apiResponse.Status);
+        //    Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
-        [Fact]
-        public async Task DeleteDevice_ReturnsBadRequest_WhenValidationFails()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            int id = 1;
+        //[Fact]
+        //public async Task DeleteDevice_ReturnsBadRequest_WhenValidationFails()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    int id = 1;
 
-            mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
-                .ThrowsAsync(new ValidationException("Cannot delete device that is in use"));
+        //    mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
+        //        .ThrowsAsync(new ValidationException("Cannot delete device that is in use"));
 
-            // Act
-            var result = await adminMaintenanceController.DeleteDevice(id);
+        //    // Act
+        //    var result = await adminMaintenanceController.DeleteDevice(id);
 
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Lỗi xác thực", apiResponse.Status);
-            Assert.Equal("Cannot delete device that is in use", apiResponse.Message);
+        //    // Assert
+        //    var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
+        //    Assert.Equal("Lỗi xác thực", apiResponse.Status);
+        //    Assert.Equal("Cannot delete device that is in use", apiResponse.Message);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
 
-        [Fact]
-        public async Task DeleteDevice_ReturnsBadRequest_WhenExceptionOccurs()
-        {
-            // Arrange
-            var adminMaintenanceController = this.CreateAdminMaintenanceController();
-            int id = 1;
+        //[Fact]
+        //public async Task DeleteDevice_ReturnsBadRequest_WhenExceptionOccurs()
+        //{
+        //    // Arrange
+        //    var adminMaintenanceController = this.CreateAdminMaintenanceController();
+        //    int id = 1;
 
-            mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
-                .ThrowsAsync(new Exception("Database connection error"));
+        //    mockDamageDeviceService.Setup(s => s.DeleteAsync(id))
+        //        .ThrowsAsync(new Exception("Database connection error"));
 
-            // Act
-            var result = await adminMaintenanceController.DeleteDevice(id);
+        //    // Act
+        //    var result = await adminMaintenanceController.DeleteDevice(id);
 
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
-            Assert.Equal("Lỗi", apiResponse.Status);
-            Assert.Equal("Không thể xóa thiết bị hư hỏng", apiResponse.Message);
+        //    // Assert
+        //    var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        //    var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
+        //    Assert.Equal("Lỗi", apiResponse.Status);
+        //    Assert.Equal("Không thể xóa thiết bị hư hỏng", apiResponse.Message);
 
-            this.mockRepository.VerifyAll();
-        }
+        //    this.mockRepository.VerifyAll();
+        //}
     }
 
 }

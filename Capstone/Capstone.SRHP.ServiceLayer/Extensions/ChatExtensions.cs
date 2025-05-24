@@ -54,7 +54,9 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 ReceiverName = entity.ReceiverUser?.Name ?? "Unknown",
                 ChatSessionId = entity.ChatSessionId,
                 Message = entity.Message,
-                CreatedAt = entity.CreatedAt
+                CreatedAt = entity.CreatedAt,
+                IsBroadcast = entity.IsBroadcast
+
             };
         }
 

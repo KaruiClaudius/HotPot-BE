@@ -123,8 +123,26 @@ public class ChatController : ControllerBase
                 senderId = message.SenderUserId,
                 receiverId = message.ReceiverUserId,
                 content = message.Message,
-                timestamp = message.CreatedAt
+                timestamp = message.CreatedAt,
+                isBroadcast = message.IsBroadcast, // Include the broadcast flag
+                senderName = message.SenderName    // Include sender name for better UI display
             });
+
+            // If this is a broadcast message (customer message without a manager),
+            // also emit a special event for all available managers
+            if (message.IsBroadcast)
+            {
+                await _socketService.NotifyEvent("newBroadcastMessage", new
+                {
+                    messageId = message.ChatMessageId,
+                    sessionId = request.ChatSessionId,
+                    senderId = message.SenderUserId,
+                    content = message.Message,
+                    timestamp = message.CreatedAt,
+                    senderName = message.SenderName,
+                    customerName = message.SenderName // Since sender is customer in broadcast messages
+                });
+            }
 
             return Ok(ApiResponse<ChatMessageDto>.SuccessResponse(message, "Message sent"));
         }

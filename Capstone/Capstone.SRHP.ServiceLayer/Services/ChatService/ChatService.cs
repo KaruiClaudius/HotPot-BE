@@ -98,15 +98,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
 
             // Determine receiver based on sender
             int receiverId;
+            bool hasSpecificReceiver = true;
+
             if (senderId == session.CustomerId)
             {
-                if (!session.ManagerId.HasValue)
-                    throw new InvalidOperationException("No manager has joined this chat session yet");
-
-                receiverId = session.ManagerId.Value;
+                // Customer is sending a message
+                if (session.ManagerId.HasValue)
+                {
+                    // If a manager has joined, set them as the receiver
+                    receiverId = session.ManagerId.Value;
+                }
+                else
+                {
+                    // If no manager has joined, set the receiver as the customer (self)
+                    // This indicates a broadcast message waiting for a manager
+                    receiverId = senderId;
+                    hasSpecificReceiver = false;
+                }
             }
             else if (senderId == session.ManagerId)
             {
+                // Manager is sending a message, customer is always the receiver
                 receiverId = session.CustomerId;
             }
             else
@@ -120,15 +132,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.ChatService
                 ReceiverUserId = receiverId,
                 ChatSessionId = chatSessionId,
                 Message = message,
-                CreatedAt = DateTime.UtcNow.AddHours(7)
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                IsBroadcast = !hasSpecificReceiver
             };
 
             _unitOfWork.Repository<ChatMessage>().Insert(chatMessage);
             await _unitOfWork.CommitAsync();
 
-            // Load sender and receiver details for the DTO
+            // Load sender details for the DTO
             chatMessage.SenderUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == senderId);
-            chatMessage.ReceiverUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == receiverId);
+
+            // Load receiver details
+            if (hasSpecificReceiver)
+            {
+                chatMessage.ReceiverUser = await _unitOfWork.Repository<User>().FindAsync(u => u.UserId == receiverId);
+            }
+            else
+            {
+                // For broadcast messages, we don't load a specific receiver
+                // or we could set it to the sender for consistency
+                chatMessage.ReceiverUser = chatMessage.SenderUser;
+            }
 
             return chatMessage.ToDto();
         }

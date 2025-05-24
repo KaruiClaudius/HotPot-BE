@@ -32,5 +32,7 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual User SenderUser { get; set; }
         public virtual User ReceiverUser { get; set; }
         public virtual ChatSession ChatSession { get; set; }
+        public bool IsBroadcast { get; set; }
+
     }
 }

@@ -52,5 +52,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Chat
         public int ChatSessionId { get; set; }
         public string Message { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsBroadcast { get; set; }
+
     }
 }
