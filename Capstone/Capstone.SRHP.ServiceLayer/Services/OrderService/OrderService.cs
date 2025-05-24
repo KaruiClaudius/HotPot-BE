@@ -1482,14 +1482,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (order.RentOrder != null)
                     {
+                        order.RentOrder.ExpectedReturnDate = DateTime.UtcNow.AddHours(7);
                         foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                         {
+                            
                             var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                                 .GetById(detail.HotpotInventoryId.Value);
 
                             if (hotpotInventory != null)
                             {
-                                hotpotInventory.Status = HotpotStatus.Preparing; // Set to maintenance
+                                hotpotInventory.Status = HotpotStatus.Preparing; 
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }
