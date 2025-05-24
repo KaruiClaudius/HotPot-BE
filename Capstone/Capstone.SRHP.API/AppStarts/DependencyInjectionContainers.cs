@@ -161,7 +161,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             services.AddSingleton<IEventPublisher, EventPublisher>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
-            services.AddSingleton<SocketIOClientService>();
+            //services.AddSingleton<SocketIOClientService>();
             //services.AddScoped<OrderNotificationHandler>();
             //services.AddScoped<FeedbackNotificationHandler>();
             //services.AddScoped<ReplacementRequestNotificationHandler>();
