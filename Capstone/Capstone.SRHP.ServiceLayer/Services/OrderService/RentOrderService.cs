@@ -201,6 +201,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Create response object for this order
                 var response = new RentOrderDetailResponse
                 {
+                    OrderCode = order?.OrderCode ?? "Unknown",
                     OrderId = rentOrder.OrderId,
                     RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                     ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
@@ -238,7 +239,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 PageSize = pageSize
             };
         }
-
         public async Task<RentOrderDetailResponse> GetOrderDetailAsync(int rentOrderDetailId)
         {
             // Get the rent order detail with related entities

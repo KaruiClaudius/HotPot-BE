@@ -330,7 +330,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 else if (assignment.TaskType == StaffTaskType.Pickup)
                 {
                     // Handle pickup completion logic
-                    // You might want to update the rental status or create a return record
                     var rentOrder = await _unitOfWork.Repository<RentOrder>()
                         .FindAsync(ro => ro.OrderId == assignment.OrderId);
 
@@ -338,7 +337,38 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     {
                         rentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
                         rentOrder.SetUpdateDate();
+
+                        // Update hotpot inventory status to Available after maintenance
+                        // Get all rent order details associated with this order
+                        var rentOrderDetails = await _unitOfWork.Repository<RentOrderDetail>()
+                            .GetAll(d => d.OrderId == rentOrder.OrderId && !d.IsDelete && d.HotpotInventoryId.HasValue)
+                            .ToListAsync();
+
+                        foreach (var detail in rentOrderDetails)
+                        {
+                            if (detail.HotpotInventoryId.HasValue)
+                            {
+                                var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                                    .GetById(detail.HotpotInventoryId.Value);
+
+                                if (hotpotInventory != null)
+                                {
+                                    // Update hotpot status to Available after maintenance
+                                    hotpotInventory.Status = HotpotStatus.Available;
+
+                                    // Update last maintain date on the hotpot itself
+                                    if (hotpotInventory.Hotpot != null)
+                                    {
+                                        hotpotInventory.Hotpot.LastMaintainDate = DateTime.UtcNow.AddHours(7);
+                                        await _unitOfWork.Repository<Hotpot>().Update(hotpotInventory.Hotpot, hotpotInventory.Hotpot.HotpotId);
+                                    }
+
+                                    await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                                }
+                            }
+                        }
                     }
+
                     assignment.Order.Status = OrderStatus.Completed;
                     assignment.Order.SetUpdateDate();
                 }
