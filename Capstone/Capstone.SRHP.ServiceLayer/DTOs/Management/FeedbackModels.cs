@@ -25,8 +25,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         [StringLength(2000)]
         public string Comment { get; set; }
 
-        public string[]? ImageURLs { get; set; }
-
         [Required]
         public int OrderId { get; set; }
 
