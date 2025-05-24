@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.API.SideServices;
+﻿using Capstone.HPTY.API.Services;
+using Capstone.HPTY.API.SideServices;
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -101,6 +102,8 @@ namespace Capstone.HPTY.API.AppStarts
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
             services.AddScoped<IChatService, ChatService>();
+            services.AddScoped<IChatSignalRService, ChatSignalRService>();
+
             services.AddScoped<IFeedbackService, FeedbackService>();
             services.AddScoped<IScheduleService, ScheduleService>();
             services.AddScoped<IEquipmentConditionService, EquipmentConditionService>();
@@ -123,10 +126,11 @@ namespace Capstone.HPTY.API.AppStarts
 
             services.AddHostedService<CheckPaymentService>();
 
-            services.Configure<IngredientMonitorOptions>(options => {
-                options.CheckIntervalMinutes = 60; 
-                options.ExpirationWarningDays = 2; 
-                options.AdminRole = "Admin"; 
+            services.Configure<IngredientMonitorOptions>(options =>
+            {
+                options.CheckIntervalMinutes = 60;
+                options.ExpirationWarningDays = 2;
+                options.AdminRole = "Admin";
                 options.NotificationCooldownHours = 24;
             });
 
