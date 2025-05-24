@@ -311,6 +311,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     }
                 }
 
+                //validate types of ingredient given
+                if (!combo.IsCustomizable && baseIngredients != null && baseIngredients.Count > 0)
+                {
+                    var ingredientIds = baseIngredients.Select(i => i.IngredientId).ToList();
+                    await ValidateComboIngredientsAsync(ingredientIds);
+                }
+
+                if (combo.IsCustomizable && allowedTypes != null && allowedTypes.Count > 0)
+                {
+                    var allowedTypeIds = allowedTypes.Select(t => t.IngredientTypeId).ToList();
+                    await ValidateAllowedIngredientTypesAsync(allowedTypeIds);
+                }
+
                 // If combo is customizable, ensure allowed types are provided
                 if (combo.IsCustomizable && (allowedTypes == null || allowedTypes.Count == 0))
                     throw new ValidationException("Combo tùy chỉnh phải có ít nhất một loại nguyên liệu được phép");
@@ -414,6 +427,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             return uniqueIdentifier;
         }
 
+
+
         private async Task ReactivateOrCreateComboIngredients(int comboId, List<ComboIngredient> ingredients)
         {
             if (ingredients == null || ingredients.Count == 0)
@@ -504,6 +519,68 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             }
 
             await _unitOfWork.CommitAsync();
+        }
+
+        public async Task ValidateComboIngredientsAsync(List<int> ingredientIds)
+        {
+            // Get all ingredients to check their types
+            var ingredients = await _unitOfWork.Repository<Ingredient>()
+                .FindAll(i => ingredientIds.Contains(i.IngredientId) && !i.IsDelete)
+                .ToListAsync();
+
+            // Check if all requested ingredients exist
+            if (ingredients.Count != ingredientIds.Count)
+            {
+                var missingIds = ingredientIds.Except(ingredients.Select(i => i.IngredientId));
+                throw new ValidationException($"Không tìm thấy nguyên liệu với ID: {string.Join(", ", missingIds)}");
+            }
+
+            // Check if there's at least one broth (ingredientTypeId = 1)
+            bool hasBroth = ingredients.Any(i => i.IngredientTypeId == 1);
+            if (!hasBroth)
+            {
+                throw new ValidationException("Combo phải có ít nhất một loại nước lẩu (Nước Lẩu)");
+            }
+
+            // Check if there's either meat OR seafood, but not both
+            bool hasMeat = ingredients.Any(i => i.IngredientTypeId == 7);
+            bool hasSeafood = ingredients.Any(i => i.IngredientTypeId == 2);
+
+            if (hasMeat && hasSeafood)
+            {
+                throw new ValidationException("Combo không thể chứa cả thịt và hải sản cùng lúc");
+            }
+        }
+
+        public async Task ValidateAllowedIngredientTypesAsync(List<int> allowedTypeIds)
+        {
+            // Get all ingredient types to validate they exist
+            var ingredientTypes = await _unitOfWork.Repository<IngredientType>()
+                .FindAll(it => allowedTypeIds.Contains(it.IngredientTypeId) && !it.IsDelete)
+                .ToListAsync();
+
+            // Check if all requested types exist
+            if (ingredientTypes.Count != allowedTypeIds.Count)
+            {
+                var missingIds = allowedTypeIds.Except(ingredientTypes.Select(it => it.IngredientTypeId));
+                throw new ValidationException($"Không tìm thấy loại nguyên liệu với ID: {string.Join(", ", missingIds)}");
+            }
+
+            // Check if broth type (ingredientTypeId = 1) is allowed
+            bool allowsBroth = allowedTypeIds.Contains(1);
+            if (!allowsBroth)
+            {
+                throw new ValidationException("Combo tùy chỉnh phải cho phép loại nước lẩu (Nước Lẩu)");
+            }
+
+            // Check if both meat and seafood types are allowed
+            bool allowsMeat = allowedTypeIds.Contains(7);
+            bool allowsSeafood = allowedTypeIds.Contains(2);
+
+            if (allowsMeat && allowsSeafood)
+            {
+                throw new ValidationException("Combo tùy chỉnh không thể cho phép cả thịt và hải sản cùng lúc");
+            }
         }
 
         public async Task UpdateAsync(

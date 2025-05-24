@@ -406,30 +406,30 @@ namespace Capstone.HPTY.API.Controllers.Auth
             }
         }
 
-        [HttpPost("signin-google")]
-        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
-        {
-            try
-            {
-                var response = await _authService.GoogleLoginAsync(request.IdToken);
-                return Ok(new ApiResponse<AuthResponse>
-                {
-                    Success = true,
-                    Message = "Đăng nhập Google thành công",
-                    Data = response
-                });
-            }
-            catch (UnauthorizedException ex)
-            {
-                _logger.LogWarning(ex, "Đăng nhập Google thất bại");
-                return Unauthorized(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = ex.Message
-                });
-            }
-        }
+        //[HttpPost("signin-google")]
+        //[ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+        //public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        //{
+        //    try
+        //    {
+        //        var response = await _authService.GoogleLoginAsync(request.IdToken);
+        //        return Ok(new ApiResponse<AuthResponse>
+        //        {
+        //            Success = true,
+        //            Message = "Đăng nhập Google thành công",
+        //            Data = response
+        //        });
+        //    }
+        //    catch (UnauthorizedException ex)
+        //    {
+        //        _logger.LogWarning(ex, "Đăng nhập Google thất bại");
+        //        return Unauthorized(new ApiErrorResponse
+        //        {
+        //            Status = "Error",
+        //            Message = ex.Message
+        //        });
+        //    }
+        //}
     }
 }

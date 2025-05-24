@@ -920,6 +920,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 assignDto.WorkShiftIds), Times.Once);
         }
 
+
         [Fact]
         public async Task AssignManagerWorkDaysAndShifts_HandlesNullShiftIds_ByUsingEmptyList()
         {
@@ -1267,6 +1268,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
 
+
         [Fact]
         public async Task UpdateWorkShift_HandlesNullStaffList()
         {
@@ -1350,6 +1352,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
 
+
         [Fact]
         public async Task DeleteWorkShift_HandlesNullStaffList()
         {
@@ -1406,6 +1409,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
         }
+
 
         #endregion
     }

@@ -907,6 +907,9 @@ namespace Capstone.HPTY.RepositoryLayer
         private static void SeedIngredientBatches(ModelBuilder modelBuilder)
         {
             var currentDate = DateTime.UtcNow.AddHours(7);
+            string timestamp = currentDate.ToString("yyyyMMddHHmmss");
+            string batch = $"BATCH-{timestamp}";
+
 
             modelBuilder.Entity<IngredientBatch>().HasData(
                 // Meat batches
@@ -916,8 +919,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 1, // Beef
                     InitialQuantity = 50, // 50 packs
                     RemainingQuantity = 50,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = "BEEF-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-3),
                 },
                 new IngredientBatch
@@ -926,8 +930,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 1, // Beef
                     InitialQuantity = 30, // 30 packs
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(21),
-                    BatchNumber = "BEEF-2025-04-15",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-1),
                 },
                 new IngredientBatch
@@ -936,8 +941,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 2, // Lamb
                     InitialQuantity = 40, // 40 packs
                     RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = "LAMB-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-3),
                 },
                 new IngredientBatch
@@ -946,8 +952,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 3, // Pork Belly
                     InitialQuantity = 45, // 45 packs
                     RemainingQuantity = 45,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(10),
-                    BatchNumber = "PORK-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-3),
                 },
 
@@ -958,8 +965,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 4, // Shrimp
                     InitialQuantity = 35, // 35 packs
                     RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = "SHRIMP-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
@@ -968,8 +976,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 5, // Fish Balls
                     InitialQuantity = 60, // 60 packs
                     RemainingQuantity = 60,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = "FISHBALL-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-3),
                 },
                 new IngredientBatch
@@ -978,8 +987,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 6, // Squid
                     InitialQuantity = 30, // 30 packs
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = "SQUID-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
@@ -990,8 +1000,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 7, // Napa Cabbage
                     InitialQuantity = 40, // 40 packs
                     RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(5),
-                    BatchNumber = "CABBAGE-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-1),
                 },
                 new IngredientBatch
@@ -1000,8 +1011,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 8, // Spinach
                     InitialQuantity = 35, // 35 packs
                     RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(4),
-                    BatchNumber = "SPINACH-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-1),
                 },
                 new IngredientBatch
@@ -1010,8 +1022,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 9, // Corn
                     InitialQuantity = 30, // 30 packs
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = "CORN-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
@@ -1022,8 +1035,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 10, // Udon
                     InitialQuantity = 50, // 50 packs
                     RemainingQuantity = 50,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(60),
-                    BatchNumber = "UDON-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
@@ -1032,8 +1046,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 11, // Glass Noodles
                     InitialQuantity = 45, // 45 packs
                     RemainingQuantity = 45,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(90),
-                    BatchNumber = "GLASS-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
@@ -1042,8 +1057,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 12, // Ramen
                     InitialQuantity = 55, // 55 packs
                     RemainingQuantity = 55,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(60),
-                    BatchNumber = "RAMEN-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
 
@@ -1054,8 +1070,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 13, // Firm Tofu
                     InitialQuantity = 40, // 40 packs
                     RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = "TOFU-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
@@ -1064,8 +1081,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 14, // Fried Tofu
                     InitialQuantity = 35, // 35 packs
                     RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(14),
-                    BatchNumber = "FRIEDTOFU-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-3),
                 },
 
@@ -1076,8 +1094,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 15, // Shiitake
                     InitialQuantity = 30, // 30 packs
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(10),
-                    BatchNumber = "SHIITAKE-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
                 new IngredientBatch
@@ -1086,8 +1105,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 16, // Enoki
                     InitialQuantity = 35, // 35 packs
                     RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(7),
-                    BatchNumber = "ENOKI-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-2),
                 },
 
@@ -1098,8 +1118,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 17, // Sichuan Broth
                     InitialQuantity = 25, // 25 containers
                     RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = "SICHUAN-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
@@ -1108,8 +1129,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 18, // Tomato Broth
                     InitialQuantity = 25, // 25 containers
                     RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = "TOMATO-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
@@ -1118,8 +1140,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 19, // Mushroom Broth
                     InitialQuantity = 25, // 25 containers
                     RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = "MUSHBROTH-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
                 new IngredientBatch
@@ -1128,8 +1151,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 20, // Bone Broth
                     InitialQuantity = 25, // 25 containers
                     RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(30),
-                    BatchNumber = "BONE-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-5),
                 },
 
@@ -1140,8 +1164,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 21, // Sesame Sauce
                     InitialQuantity = 30, // 30 bottles
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(90),
-                    BatchNumber = "SESAME-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-10),
                 },
                 new IngredientBatch
@@ -1150,8 +1175,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 22, // Garlic Soy Sauce
                     InitialQuantity = 30, // 30 bottles
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = "GARLICSOY-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-10),
                 },
                 new IngredientBatch
@@ -1160,8 +1186,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 23, // Chili Oil
                     InitialQuantity = 30, // 30 bottles
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = "CHILI-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-10),
                 },
                 new IngredientBatch
@@ -1170,8 +1197,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 24, // Shacha Sauce
                     InitialQuantity = 30, // 30 bottles
                     RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
                     BestBeforeDate = currentDate.AddDays(180),
-                    BatchNumber = "SHACHA-2025-04-01",
+                    BatchNumber = batch,
                     ReceivedDate = currentDate.AddDays(-10),
                 }
             );

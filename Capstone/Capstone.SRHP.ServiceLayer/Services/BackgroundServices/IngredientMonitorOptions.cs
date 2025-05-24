@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -16,9 +18,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
     public class IngredientMonitorOptions
     {
-        public int CheckIntervalMinutes { get; set; } = 60; // Default: check every hour
-        public int ExpirationWarningDays { get; set; } = 2; // Default: warn 7 days before expiration
-        public string AdminRole { get; set; } = "Admin"; // Default admin role name
+        public int CheckIntervalMinutes { get; set; } = 60;
+        public int ExpirationWarningDays { get; set; } = 2;
+        public string AdminRole { get; set; } = "Admin";
         public int NotificationCooldownHours { get; set; } = 24;
     }
 
@@ -27,8 +29,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<IngredientMonitorService> _logger;
         private readonly IngredientMonitorOptions _options;
-        private readonly Dictionary<string, DateTime> _lastNotificationSent = new();
-
 
         public IngredientMonitorService(
             IServiceProvider serviceProvider,
@@ -38,22 +38,42 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             _serviceProvider = serviceProvider;
             _logger = logger;
             _options = options.Value;
+
+            // Validate configuration
+            if (_options.CheckIntervalMinutes <= 0)
+            {
+                _logger.LogWarning("Invalid CheckIntervalMinutes value: {value}. Using default of 60 minutes.",
+                    _options.CheckIntervalMinutes);
+                _options.CheckIntervalMinutes = 60;
+            }
+
+            if (_options.NotificationCooldownHours <= 0)
+            {
+                _logger.LogWarning("Invalid NotificationCooldownHours value: {value}. Using default of 24 hours.",
+                    _options.NotificationCooldownHours);
+                _options.NotificationCooldownHours = 24;
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Ingredient Monitor Service started at: {time}", DateTimeOffset.Now);
-
-            using PeriodicTimer timer = new(TimeSpan.FromMinutes(_options.CheckIntervalMinutes));
+            _logger.LogInformation("Check interval set to {minutes} minutes", _options.CheckIntervalMinutes);
+            _logger.LogInformation("Notification cooldown set to {hours} hours", _options.NotificationCooldownHours);
 
             try
             {
+                // Use a timer for more accurate timing
+                using PeriodicTimer timer = new(TimeSpan.FromMinutes(_options.CheckIntervalMinutes));
+
                 // Run immediately on startup
+                _logger.LogInformation("Running initial ingredient check");
                 await CheckIngredientsAsync(stoppingToken);
 
                 // Then run on the timer
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    _logger.LogInformation("Timer triggered after {minutes} minutes", _options.CheckIntervalMinutes);
                     await CheckIngredientsAsync(stoppingToken);
                 }
             }
@@ -89,6 +109,59 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             }
         }
 
+        private async Task<bool> HasRecentNotificationAsync(
+            IUnitOfWork unitOfWork,
+            string notificationType,
+            int ingredientId,
+            CancellationToken stoppingToken = default)
+        {
+            try
+            {
+                // Calculate the cooldown date
+                var cooldownDate = DateTime.UtcNow.AddHours(7).AddHours(-_options.NotificationCooldownHours);
+
+                _logger.LogInformation(
+                    "Checking for recent {type} notifications for ingredient {id} since {date}",
+                    notificationType,
+                    ingredientId,
+                    cooldownDate);
+
+                // Query for recent notifications of this type for this ingredient
+                var recentNotification = await unitOfWork.Repository<Notification>()
+                    .FindAll(n =>
+                        !n.IsDelete &&
+                        n.Type == notificationType &&
+                        n.TargetType == "Role" &&
+                        n.TargetId == _options.AdminRole &&
+                        n.CreatedAt > cooldownDate)
+                    .Where(n => n.DataJson.Contains($"\"IngredientId\":{ingredientId}"))
+                    .FirstOrDefaultAsync(stoppingToken);
+
+                if (recentNotification != null)
+                {
+                    _logger.LogInformation(
+                        "Found recent notification (ID: {id}) for {type} and ingredient {ingredientId} sent at {time}",
+                        recentNotification.NotificationId,
+                        notificationType,
+                        ingredientId,
+                        recentNotification.CreatedAt);
+                    return true;
+                }
+
+                _logger.LogInformation(
+                    "No recent {type} notifications found for ingredient {id} since {date}",
+                    notificationType,
+                    ingredientId,
+                    cooldownDate);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking for recent notifications");
+                return false; // Assume no recent notification in case of error
+            }
+        }
+
         private async Task CheckExpiringIngredientsAsync(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
@@ -96,8 +169,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
         {
             try
             {
-                var warningDate = DateTime.UtcNow.AddDays(_options.ExpirationWarningDays);
-                var cooldownDate = DateTime.UtcNow.AddHours(-_options.NotificationCooldownHours);
+                var warningDate = DateTime.UtcNow.AddHours(7).AddDays(_options.ExpirationWarningDays);
+                var now = DateTime.UtcNow.AddHours(7);
+
+                _logger.LogInformation("Checking expiring ingredients. Warning date: {warningDate}", warningDate);
 
                 // Get all active ingredient batches that will expire within the warning period
                 var expiringBatches = await unitOfWork.Repository<IngredientBatch>()
@@ -125,47 +200,43 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                     foreach (var item in groupedByIngredient)
                     {
-                        var daysUntilExpiry = (item.EarliestExpiryDate - DateTime.UtcNow.AddHours(7)).Days;
-                        var totalExpiringQuantity = item.ExpiringBatches.Sum(b => b.RemainingQuantity);
-
-                        // Check if we've recently sent a notification about this
-                        var recentNotification = await unitOfWork.Repository<Notification>()
-                            .FindAsync(n =>
-                                n.Type == "IngredientExpiringSoon" &&
-                                n.TargetType == "Role" &&
-                                n.TargetId == _options.AdminRole &&
-                                n.CreatedAt > cooldownDate &&
-                                n.DataJson.Contains($"\"IngredientId\":{item.Ingredient.IngredientId}"));
-
-                        if (recentNotification != null)
+                        // Check if we've sent a notification for this ingredient recently
+                        if (await HasRecentNotificationAsync(
+                            unitOfWork,
+                            "Ingredient",
+                            item.Ingredient.IngredientId,
+                            stoppingToken))
                         {
                             _logger.LogInformation(
-                                "Skipping expiration notification for {ingredient} - cooldown period not elapsed",
+                                "Skipping expiration notification for {ingredient} - notification sent within cooldown period",
                                 item.Ingredient.Name);
                             continue;
                         }
 
+                        var daysUntilExpiry = (item.EarliestExpiryDate - now).Days;
+                        var totalExpiringQuantity = item.ExpiringBatches.Sum(b => b.RemainingQuantity);
+
                         // Prepare notification data
                         var notificationData = new Dictionary<string, object>
-                        {
-                            { "IngredientId", item.Ingredient.IngredientId },
-                            { "IngredientName", item.Ingredient.Name },
-                            { "ExpiryDate", item.EarliestExpiryDate },
-                            { "DaysUntilExpiry", daysUntilExpiry },
-                            { "ExpiringQuantity", totalExpiringQuantity },
-                            { "Unit", item.Ingredient.Unit }
-                        };
+                    {
+                        { "IngredientId", item.Ingredient.IngredientId },
+                        { "IngredientName", item.Ingredient.Name },
+                        { "ExpiryDate", item.EarliestExpiryDate },
+                        { "DaysUntilExpiry", daysUntilExpiry },
+                        { "ExpiringQuantity", totalExpiringQuantity },
+                        { "Unit", item.Ingredient.Unit }
+                    };
 
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
-                            "IngredientExpiringSoon",
-                            $"Nguyên liệu sắp hết hạn: {item.Ingredient.Name}",
-                            $"{totalExpiringQuantity} {item.Ingredient.Unit} của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
+                            "Ingredient", 
+                            $"Sắp Hết Hạn: {item.Ingredient.Name}",
+                            $"{totalExpiringQuantity} phần của {item.Ingredient.Name} sẽ hết hạn trong {daysUntilExpiry} ngày",
                             notificationData);
 
                         _logger.LogInformation(
-                            "Đã gửi thông báo hết hạn cho {ingredient} ({quantity} {unit}), sẽ hết hạn trong {days} ngày",
+                            "Sent expiration notification for {ingredient} ({quantity} {unit}), expiring in {days} days",
                             item.Ingredient.Name,
                             totalExpiringQuantity,
                             item.Ingredient.Unit,
@@ -184,12 +255,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
         }
 
         private async Task CheckLowStockIngredientsAsync(
-    IUnitOfWork unitOfWork,
-    INotificationService notificationService,
-    CancellationToken stoppingToken)
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService,
+            CancellationToken stoppingToken)
         {
             try
             {
+                var now = DateTime.UtcNow.AddHours(7);
+                _logger.LogInformation("Checking low stock ingredients");
+
                 // Get all active ingredients with their batches
                 var ingredients = await unitOfWork.Repository<Ingredient>()
                     .FindAll(i => !i.IsDelete)
@@ -206,42 +280,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                     foreach (var ingredient in lowStockIngredients)
                     {
-                        // Create a unique key for this notification
-                        string notificationKey = $"lowstock_{ingredient.IngredientId}";
-
-                        // Check if we've recently sent a notification about this
-                        if (_lastNotificationSent.TryGetValue(notificationKey, out DateTime lastSent))
+                        // Check if we've sent a notification for this ingredient recently
+                        if (await HasRecentNotificationAsync(
+                            unitOfWork,
+                            "Ingredient",
+                            ingredient.IngredientId,
+                            stoppingToken))
                         {
-                            // If the cooldown period hasn't elapsed, skip this notification
-                            if (DateTime.UtcNow.AddHours(7) < lastSent.AddHours(_options.NotificationCooldownHours))
-                            {
-                                _logger.LogInformation(
-                                    "Skipping low stock notification for {ingredient} - cooldown period not elapsed",
-                                    ingredient.Name);
-                                continue;
-                            }
+                            _logger.LogInformation(
+                                "Skipping low stock notification for {ingredient} - notification sent within cooldown period",
+                                ingredient.Name);
+                            continue;
                         }
 
                         // Prepare notification data
                         var notificationData = new Dictionary<string, object>
-                        {
-                            { "IngredientId", ingredient.IngredientId },
-                            { "IngredientName", ingredient.Name },
-                            { "CurrentStock", ingredient.Quantity },
-                            { "MinStockLevel", ingredient.MinStockLevel },
-                            { "Unit", ingredient.Unit }
-                        };
+                    {
+                        { "IngredientId", ingredient.IngredientId },
+                        { "IngredientName", ingredient.Name },
+                        { "CurrentStock", ingredient.Quantity },
+                        { "MinStockLevel", ingredient.MinStockLevel },
+                        { "Unit", ingredient.Unit }
+                    };
 
                         // Send notification
                         await notificationService.NotifyRoleAsync(
                             _options.AdminRole,
-                            "IngredientLowStock",
+                            "Ingredient", 
                             $"Cảnh báo tồn kho thấp: {ingredient.Name}",
-                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại: {ingredient.Quantity} {ingredient.Unit} (Tối thiểu: {ingredient.MinStockLevel} {ingredient.Unit})",
+                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (Minimum: {ingredient.MinStockLevel} phần)",
                             notificationData);
-
-                        // Update the last notification time
-                        _lastNotificationSent[notificationKey] = DateTime.UtcNow.AddHours(7);
 
                         _logger.LogInformation(
                             "Sent low stock notification for {ingredient}. Current: {current} {unit}, Minimum: {min} {unit}",
@@ -264,4 +332,3 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
         }
     }
 }
-

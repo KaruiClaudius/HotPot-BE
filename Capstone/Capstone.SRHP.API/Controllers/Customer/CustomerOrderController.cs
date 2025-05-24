@@ -63,6 +63,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
+                    // This returns UnauthorizedObjectResult
                     return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
                 }
 
@@ -263,6 +264,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
+                var userIdClaim = User.FindFirstValue("id");
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    // This returns UnauthorizedObjectResult
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
+                }
+
                 var updatedOrder = await _orderService.UpdateStatusAsync(id, request.Status);
                 var orderResponse = MapOrderToResponse(updatedOrder);
                 return Ok(orderResponse);

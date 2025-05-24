@@ -1535,35 +1535,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             // Notify managers about the returning order
                             await _notificationService.NotifyRoleAsync(
                                 "Manager",
-                                "OrderReturning",
+                                "Order",
                                 "Đơn Hàng Đang Được Trả",
-                                $"Khách hàng {user.Name} đang trả lại {hotpotCount} nồi lẩu từ đơn hàng #{order.OrderId}",
+                                $"Khách hàng {user.Name} đang trả lại {hotpotCount} nồi lẩu từ đơn hàng #{order.OrderCode}",
                                 new Dictionary<string, object>
                                 {
-                            { "OrderId", order.OrderId },
-                            { "CustomerName", user.Name },
-                            { "CustomerPhone", user.PhoneNumber },
-                            { "HotpotCount", hotpotCount },
-                            { "HotpotTypes", string.Join(", ", hotpotTypes) },
-                            { "ExpectedReturnDate", expectedReturnDate },
-                            { "ActualReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
-                            { "RentalDuration", rentalDurationText },
-                            { "RequiredAction", "Cần phân công nhân viên kiểm tra và bảo trì nồi lẩu" }
+                                    { "OrderId", order.OrderId },
+                                    { "CustomerName", user.Name },
+                                    { "CustomerPhone", user.PhoneNumber },
+                                    { "HotpotCount", hotpotCount },
+                                    { "HotpotTypes", string.Join(", ", hotpotTypes) },
+                                    { "ExpectedReturnDate", expectedReturnDate },
+                                    { "ActualReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
+                                    { "RentalDuration", rentalDurationText },
+                                    { "RequiredAction", "Cần phân công nhân viên kiểm tra và bảo trì nồi lẩu" }
                                 });
 
                             // Also notify the customer
                             await _notificationService.NotifyUserAsync(
                                 order.UserId,
-                                "OrderReturning",
+                                "Order",
                                 "Đơn Hàng Đang Được Trả",
                                 $"Cảm ơn bạn đã trả lại nồi lẩu. Chúng tôi đang xử lý việc trả hàng của bạn.",
                                 new Dictionary<string, object>
                                 {
-                            { "OrderId", order.OrderId },
-                            { "HotpotCount", hotpotCount },
-                            { "HotpotTypes", string.Join(", ", hotpotTypes) },
-                            { "ReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
-                            { "NextSteps", "Chúng tôi sẽ kiểm tra nồi lẩu và hoàn tất quá trình trả hàng. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!" }
+                                    { "OrderId", order.OrderId },
+                                    { "HotpotCount", hotpotCount },
+                                    { "HotpotTypes", string.Join(", ", hotpotTypes) },
+                                    { "ReturnDate", DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm") },
+                                    { "NextSteps", "Chúng tôi sẽ kiểm tra nồi lẩu và hoàn tất quá trình trả hàng. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!" }
                                 });
                         }
                     }
