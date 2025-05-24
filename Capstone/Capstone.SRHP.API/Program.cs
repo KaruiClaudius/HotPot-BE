@@ -127,59 +127,59 @@ app.MapGet("/api/socket-health", async (HttpContext context) =>
     var httpClientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
 
     // Get the Socket.IO server URL from configuration
-    var serverUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/";
+    //var serverUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/";
 
-    try
-    {
-        // Create HTTP client
-        var client = httpClientFactory.CreateClient();
+    //try
+    //{
+    //    // Create HTTP client
+    //    var client = httpClientFactory.CreateClient();
 
-        // Call the Socket.IO server's health endpoint
-        var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health");
+    //    // Call the Socket.IO server's health endpoint
+    //    var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health");
 
-        if (response.IsSuccessStatusCode)
-        {
-            // Parse the health data from the Socket.IO server
-            var socketServerHealth = await response.Content.ReadFromJsonAsync<object>();
+    //    if (response.IsSuccessStatusCode)
+    //    {
+    //        // Parse the health data from the Socket.IO server
+    //        var socketServerHealth = await response.Content.ReadFromJsonAsync<object>();
 
-            // Return combined health information
-            return Results.Ok(new
-            {
-                ServerUrl = serverUrl,
-                Timestamp = DateTime.UtcNow.AddHours(7),
-                TimeZone = "UTC+7",
-                SocketServerHealth = socketServerHealth
-            });
-        }
-        else
-        {
-            return Results.Ok(new
-            {
-                ServerUrl = serverUrl,
-                Timestamp = DateTime.UtcNow.AddHours(7),
-                TimeZone = "UTC+7",
-                SocketServerHealth = new
-                {
-                    status = "unavailable",
-                    error = $"Failed to connect to Socket.IO server: {response.StatusCode}"
-                }
-            });
-        }
-    }
-    catch (Exception ex)
-    {
-        return Results.Ok(new
-        {
-            ServerUrl = serverUrl,
-            Timestamp = DateTime.UtcNow.AddHours(7),
-            TimeZone = "UTC+7",
-            SocketServerHealth = new
-            {
-                status = "error",
-                error = $"Exception when connecting to Socket.IO server: {ex.Message}"
-            }
-        });
-    }
+    //        // Return combined health information
+    //        return Results.Ok(new
+    //        {
+    //            ServerUrl = serverUrl,
+    //            Timestamp = DateTime.UtcNow.AddHours(7),
+    //            TimeZone = "UTC+7",
+    //            SocketServerHealth = socketServerHealth
+    //        });
+    //    }
+    //    else
+    //    {
+    //        return Results.Ok(new
+    //        {
+    //            ServerUrl = serverUrl,
+    //            Timestamp = DateTime.UtcNow.AddHours(7),
+    //            TimeZone = "UTC+7",
+    //            SocketServerHealth = new
+    //            {
+    //                status = "unavailable",
+    //                error = $"Failed to connect to Socket.IO server: {response.StatusCode}"
+    //            }
+    //        });
+    //    }
+    //}
+    //catch (Exception ex)
+    //{
+    //    return Results.Ok(new
+    //    {
+    //        ServerUrl = serverUrl,
+    //        Timestamp = DateTime.UtcNow.AddHours(7),
+    //        TimeZone = "UTC+7",
+    //        SocketServerHealth = new
+    //        {
+    //            status = "error",
+    //            error = $"Exception when connecting to Socket.IO server: {ex.Message}"
+    //        }
+    //    });
+    //}
 });
 
 
