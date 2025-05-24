@@ -115,37 +115,49 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var today = DateTime.Today;
 
-            // Load orders with users first to filter by those with customer names
-            var ordersWithUsers = await _unitOfWork.Repository<Order>()
-                .AsQueryable(o => !o.IsDelete)
-                .Include(o => o.User)
-                .Where(o => o.User != null && !string.IsNullOrEmpty(o.User.Name) && o.Status == OrderStatus.Returning)
-                .Select(o => new { o.OrderId, o.User })
+            // First, get all order IDs that have details
+            var orderIdsWithDetails = await _unitOfWork.Repository<RentOrderDetail>()
+                .AsQueryable(d => !d.IsDelete)
+                .Select(d => d.OrderId)
+                .Distinct()
                 .ToListAsync();
 
-            var orderIdsWithCustomers = ordersWithUsers.Select(o => o.OrderId).ToList();
-            var userDict = ordersWithUsers.ToDictionary(o => o.OrderId, o => o.User);
+            // Get all order IDs that already have active pickup assignments
+            var assignedOrderIds = await _unitOfWork.Repository<StaffAssignment>()
+                .AsQueryable(a => a.TaskType == StaffTaskType.Pickup &&
+                                  a.CompletedDate == null &&
+                                  !a.IsDelete)
+                .Select(a => a.OrderId)
+                .Distinct()
+                .ToListAsync();
 
-            // Create base query for unassigned rent orders with customer names
-            var unassignedRentOrdersQuery = _unitOfWork.Repository<RentOrder>()
+            // Start with rental orders and include the related order and user
+            var query = _unitOfWork.Repository<RentOrder>()
                 .AsQueryable(r => r.ExpectedReturnDate.Date <= today &&
-                                  r.ActualReturnDate == null &&
-                                  !r.IsDelete &&
-                                  orderIdsWithCustomers.Contains(r.OrderId))
+                                 r.ActualReturnDate == null &&
+                                 !r.IsDelete &&
+                                 orderIdsWithDetails.Contains(r.OrderId) &&
+                                 !assignedOrderIds.Contains(r.OrderId))  // Exclude orders that already have active pickup assignments
+                .Include(r => r.Order)
+                    .ThenInclude(o => o.User)
+                .Where(r => r.Order != null &&
+                           !r.Order.IsDelete &&
+                           r.Order.Status == OrderStatus.Returning &&
+                           r.Order.User != null &&
+                           !string.IsNullOrEmpty(r.Order.User.Name))
                 .OrderBy(r => r.OrderId);
 
             // Get total count for pagination
-            var totalCount = await unassignedRentOrdersQuery.CountAsync();
+            var totalCount = await query.CountAsync();
 
-            // Get the IDs for this page
-            var unassignedOrderIds = await unassignedRentOrdersQuery
+            // Get the paged results
+            var pagedResults = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Select(r => r.OrderId)
                 .ToListAsync();
 
-            // If no orders found, return empty result
-            if (!unassignedOrderIds.Any())
+            // If no orders found for this page, return empty result with correct count
+            if (!pagedResults.Any())
             {
                 return new PagedResult<RentOrderDetailResponse>
                 {
@@ -156,16 +168,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 };
             }
 
-            // Load rent orders
-            var rentOrders = await _unitOfWork.Repository<RentOrder>()
-                .AsQueryable(r => unassignedOrderIds.Contains(r.OrderId))
-                .ToListAsync();
-
-            var rentOrderDict = rentOrders.ToDictionary(r => r.OrderId);
+            // Get the order IDs for this page
+            var pagedOrderIds = pagedResults.Select(r => r.OrderId).ToList();
 
             // Load all details with hotpot information in a single query
             var details = await _unitOfWork.Repository<RentOrderDetail>()
-                .AsQueryable(d => unassignedOrderIds.Contains(d.OrderId) && !d.IsDelete)
+                .AsQueryable(d => pagedOrderIds.Contains(d.OrderId) && !d.IsDelete)
                 .Include(d => d.HotpotInventory)
                     .ThenInclude(h => h != null ? h.Hotpot : null)
                 .ToListAsync();
@@ -176,20 +184,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Map to DTOs
             var dtoItems = new List<RentOrderDetailResponse>();
 
-            foreach (var orderId in unassignedOrderIds)
+            foreach (var rentOrder in pagedResults)
             {
-                // Get rent order
-                if (!rentOrderDict.TryGetValue(orderId, out var rentOrder))
+                // Get details for this order - we already filtered for orders with details,
+                // but we'll double-check just to be safe
+                if (!detailsByOrderId.TryGetValue(rentOrder.OrderId, out var orderDetails) ||
+                    orderDetails == null ||
+                    !orderDetails.Any())
+                {
                     continue;
+                }
 
-                // Get user (we already filtered for orders with users)
-                userDict.TryGetValue(orderId, out var user);
+                var order = rentOrder.Order;
+                var user = order?.User;
 
                 // Create response object for this order
                 var response = new RentOrderDetailResponse
                 {
                     OrderId = rentOrder.OrderId,
-
                     RentalStartDate = rentOrder.RentalStartDate.ToString("yyyy-MM-dd"),
                     ExpectedReturnDate = rentOrder.ExpectedReturnDate.ToString("yyyy-MM-dd"),
                     ActualReturnDate = rentOrder.ActualReturnDate?.ToString("yyyy-MM-dd"),
@@ -201,35 +213,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     EquipmentItems = new List<EquipmentItem>()
                 };
 
-                // Get details
-                detailsByOrderId.TryGetValue(orderId, out var orderDetails);
-
-                // If no details, add a placeholder equipment item
-                if (orderDetails == null || !orderDetails.Any())
+                // Add each equipment item
+                foreach (var detail in orderDetails)
                 {
                     response.EquipmentItems.Add(new EquipmentItem
                     {
-                        DetailId = 0,
-                        Type = "Unknown",
-                        Id = 0,
-                        Name = "No Equipment"
+                        DetailId = detail.RentOrderDetailId,
+                        Type = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Unknown",
+                        Id = detail.HotpotInventoryId ?? 0,
+                        Name = detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null
+                            ? detail.HotpotInventory.Hotpot.Name
+                            : "Unknown Equipment"
                     });
-                }
-                else
-                {
-                    // Add each equipment item
-                    foreach (var detail in orderDetails)
-                    {
-                        response.EquipmentItems.Add(new EquipmentItem
-                        {
-                            DetailId = detail.RentOrderDetailId,
-                            Type = detail.HotpotInventoryId.HasValue ? "Hotpot" : "Unknown",
-                            Id = detail.HotpotInventoryId ?? 0,
-                            Name = detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null
-                                ? detail.HotpotInventory.Hotpot.Name
-                                : "Unknown Equipment"
-                        });
-                    }
                 }
 
                 dtoItems.Add(response);
@@ -243,6 +238,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 PageSize = pageSize
             };
         }
+
         public async Task<RentOrderDetailResponse> GetOrderDetailAsync(int rentOrderDetailId)
         {
             // Get the rent order detail with related entities
