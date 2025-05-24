@@ -37,13 +37,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         public string Notes { get; set; }
     }
 
-    public class CompletePickupRequestDto
-    {
-        public int AssignmentId { get; set; }
-        public DateTime CompletedDate { get; set; }
-        public string ReturnCondition { get; set; }
-        public decimal? DamageFee { get; set; }
-    }
+    //public class CompletePickupRequestDto
+    //{
+    //    public int AssignmentId { get; set; }
+    //    public DateTime CompletedDate { get; set; }
+    //    public string ReturnCondition { get; set; }
+    //    public decimal? DamageFee { get; set; }
+    //}
 
     public class UnifiedReturnRequestDto
     {
