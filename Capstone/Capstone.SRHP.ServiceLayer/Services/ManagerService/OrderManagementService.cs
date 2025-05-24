@@ -898,7 +898,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Rule 1: If order has more than 2 rental items, it's considered large
                 if (order.HasRentItems &&
                     order.RentOrder?.RentOrderDetails?.Any() == true &&
-                    order.RentOrder.RentOrderDetails.Count() > 2)
+                    order.RentOrder.RentOrderDetails.Count() > 5)
                 {
                     isLarge = true;
                 }
@@ -917,7 +917,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         .Where(d => d.ComboId.HasValue)
                         .Sum(d => d.Quantity);
 
-                    if (totalQuantity >= LARGE_ORDER_ITEM_THRESHOLD && comboItemCount >= 2)
+                    if (totalQuantity >= LARGE_ORDER_ITEM_THRESHOLD && comboItemCount >= 4)
                     {
                         isLarge = true;
                     }
