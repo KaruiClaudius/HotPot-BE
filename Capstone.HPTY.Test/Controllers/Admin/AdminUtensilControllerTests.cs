@@ -259,7 +259,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var apiErrorResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
 
             Assert.Equal("Error", apiErrorResponse.Status);
-            Assert.Equal("Failed to retrieve utensil", apiErrorResponse.Message);
+            Assert.Equal("Không thể lấy dụng cụ", apiErrorResponse.Message);
 
             // Verify service calls
             mockUtensilService.Verify();
@@ -486,7 +486,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             };
 
             mockUtensilService.Setup(s => s.CreateUtensilAsync(It.IsAny<Utensil>()))
-                .ThrowsAsync(new ValidationException("Name already exists"));
+                .ThrowsAsync(new ValidationException("Dụng cụ này đã tồn tại"));
 
             // Act
             var result = await adminUtensilController.CreateUtensil(request);
@@ -496,7 +496,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var apiErrorResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
 
             Assert.Equal("Lỗi xác thực thông tin", apiErrorResponse.Status);
-            Assert.Equal("Name already exists", apiErrorResponse.Message);
+            Assert.Equal("Dụng cụ này đã tồn tại", apiErrorResponse.Message);
 
             // Verify service calls
             mockUtensilService.Verify();
