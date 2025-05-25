@@ -1446,6 +1446,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 // Update hotpot status to Available after maintenance
                                 hotpotInventory.Status = HotpotStatus.Available;
+                                hotpotInventory.Hotpot.Quantity = await CountHotpotInventoryByStatusAsync(hotpotInventory.Hotpot.HotpotId, 
+                                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
                                 // Update last maintain date on the hotpot itself
                                 if (hotpotInventory.Hotpot != null)
                                 {
@@ -1836,6 +1838,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             Ingredient,
             Utensil,
             Hotpot
+        }
+
+        private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
+        {
+            try
+            {
+                // Query for the specific hotpot type with the given statuses
+                var count = await _unitOfWork.Repository<HotPotInventory>()
+                    .CountAsync(h => h.HotpotId == hotpotId &&
+                                   statuses.Contains(h.Status) &&
+                                   !h.IsDelete);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting hotpot inventory for hotpot ID {HotpotId}", hotpotId);
+                return 0; // Return 0 on error to be safe
+            }
         }
 
 
