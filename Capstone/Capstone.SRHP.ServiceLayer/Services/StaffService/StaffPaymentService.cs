@@ -33,8 +33,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         {
             try
             {
-                // Start with base query
-                var query = _unitOfWork.Repository<Payment>().AsQueryable();
+                // Start with base query - filter out deleted payments
+                var query = _unitOfWork.Repository<Payment>()
+                    .AsQueryable()
+                    .Where(p => !p.IsDelete);
 
                 // Apply filters
                 if (filter.Status.HasValue)
@@ -52,9 +54,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     query = query.Where(p => p.CreatedAt <= filter.ToDate.Value);
                 }
 
-                // Include related entities
+                query = query.Where(p => p.Order != null && !p.Order.IsDelete && !string.IsNullOrEmpty(p.Order.OrderCode));
+
+                // Include related entities - ensure we filter out deleted orders
                 query = query.Include(p => p.Order)
-                             .Include(p => p.User);
+                        .Include(p => p.User);
 
                 // Get total count for pagination
                 var totalCount = await query.CountAsync();
@@ -76,6 +80,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         CreatedAt = p.CreatedAt,
                         UpdatedAt = p.UpdatedAt,
                         OrderId = p.OrderId,
+                        OrderCode = p.Order != null ? p.Order.OrderCode : string.Empty,
                         OrderStatus = p.Order != null ? p.Order.Status.ToString() : string.Empty,
                         UserId = p.UserId,
                         CustomerName = p.User != null ? p.User.Name : string.Empty,
@@ -128,13 +133,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
             // Load all necessary details for the receipt
             await LoadOrderDetailsAsync(order);
-
-            //// Calculate discount amount
-            //decimal discountAmount = 0;
-            //if (order.Discount != null)
-            //{
-            //    discountAmount = order.SubTotal * (order.Discount.DiscountPercentage / 100m);
-            //}
 
             // Build sold items list
             var soldItems = new List<ReceiptItemDto>();
@@ -242,10 +240,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         private string GetItemType(SellOrderDetail detail)
         {
-            if (detail.IngredientId.HasValue) return "Ingredient";
-            if (detail.UtensilId.HasValue) return "Utensil";
+            if (detail.IngredientId.HasValue) return "Nguyên liệu";
+            if (detail.UtensilId.HasValue) return "Dụng cụ ăn";
             if (detail.ComboId.HasValue) return "Combo";
-            if (detail.CustomizationId.HasValue) return "Customization";
+            if (detail.CustomizationId.HasValue) return " Combo Tùy chỉnh";
             return "Unknown";
         }
 

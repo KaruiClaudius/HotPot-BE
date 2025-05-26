@@ -110,89 +110,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<OrderHistoryDto> GetOrderDetailsAsync(int orderId)
-        {
-            try
-            {
-                _logger.LogInformation("Getting details for order ID: {OrderId}", orderId);
-
-                var order = await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Where(o => o.OrderId == orderId && !o.IsDelete)
-                    .Include(o => o.User)
-                    .Include(o => o.ShippingOrder)
-                    .Include(o => o.Feedback)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Ingredient)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Customization)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(od => od.Combo)
-                    .Include(o => o.SellOrder.SellOrderDetails)
-                        .ThenInclude(rd => rd.Utensil)
-                    .Include(o => o.RentOrder.RentOrderDetails)
-                        .ThenInclude(rd => rd.HotpotInventory)
-                            .ThenInclude(hi => hi != null ? hi.Hotpot : null)
-                    .FirstOrDefaultAsync();
-
-                if (order == null)
-                {
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-                }
-
-                return MapToOrderHistoryDto(order);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving order details for ID: {OrderId}", orderId);
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<OrderHistoryDto>> GetOrdersByStatusAsync(OrderStatus status, int pageNumber = 1, int pageSize = 10)
-        {
-            try
-            {
-                _logger.LogInformation("Getting orders with status: {Status}", status);
-
-                var filter = new OrderHistoryFilterRequest
-                {
-                    Status = status,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
-
-                return await GetOrderHistoryAsync(filter);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
-                throw;
-            }
-        }
-
-        public async Task<PagedResult<OrderHistoryDto>> GetOrdersByDateRangeAsync(DateTime startDate, DateTime endDate, int pageNumber = 1, int pageSize = 10)
-        {
-            try
-            {
-                _logger.LogInformation("Getting orders between {StartDate} and {EndDate}", startDate, endDate);
-
-                var filter = new OrderHistoryFilterRequest
-                {
-                    StartDate = startDate,
-                    EndDate = endDate,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                };
-
-                return await GetOrderHistoryAsync(filter);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving orders between {StartDate} and {EndDate}", startDate, endDate);
-                throw;
-            }
-        }
 
         // Helper method to map Order entity to OrderHistoryDto
         private OrderHistoryDto MapToOrderHistoryDto(Order order)
@@ -202,6 +119,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var dto = new OrderHistoryDto
             {
                 OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
                 UserId = order.UserId,
                 CustomerName = order.User?.Name ?? "Unknown",
                 Address = order.Address,
@@ -216,7 +134,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             };
 
             // Map sell order details to order items
-            if (order.SellOrder.SellOrderDetails != null && order.SellOrder.SellOrderDetails.Any())
+            if (order.SellOrder != null && order.SellOrder.SellOrderDetails != null && order.SellOrder.SellOrderDetails.Any())
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails)
                 {

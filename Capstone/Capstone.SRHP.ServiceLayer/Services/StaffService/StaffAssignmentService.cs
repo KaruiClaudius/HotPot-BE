@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -266,7 +267,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-        public async Task<bool> CompleteAssignmentAsync(int assignmentId)
+        public async Task<bool> CompleteAssignmentAsync(int assignmentId, EquipmentReturnRequest returnRequest = null)
         {
             try
             {
@@ -338,7 +339,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         rentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
                         rentOrder.SetUpdateDate();
 
-                        // Update hotpot inventory status to Available after maintenance
                         // Get all rent order details associated with this order
                         var rentOrderDetails = await _unitOfWork.Repository<RentOrderDetail>()
                             .GetAll(d => d.OrderId == rentOrder.OrderId && !d.IsDelete && d.HotpotInventoryId.HasValue)
@@ -353,8 +353,19 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
                                 if (hotpotInventory != null)
                                 {
-                                    // Update hotpot status to Available after maintenance
-                                    hotpotInventory.Status = HotpotStatus.Available;
+                                    // Simply check if return condition indicates damage
+                                    if (returnRequest != null &&
+                                        !string.IsNullOrEmpty(returnRequest.ReturnCondition) &&
+                                        returnRequest.ReturnCondition.ToLower().Contains("damage"))
+                                    {
+                                        // Set to Damaged if return condition indicates damage
+                                        hotpotInventory.Status = HotpotStatus.Damaged;
+                                    }
+                                    else
+                                    {
+                                        // Set to Available if no damage reported
+                                        hotpotInventory.Status = HotpotStatus.Available;
+                                    }
 
                                     // Update last maintain date on the hotpot itself
                                     if (hotpotInventory.Hotpot != null)

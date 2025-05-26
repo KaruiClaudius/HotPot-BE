@@ -11,7 +11,7 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
 {
     [Route("api/order-history")]
     [ApiController]
-    [Authorize(Roles = "Staff,Admin")]
+    [Authorize(Roles = "Manager,Admin")]
 
     public class OrderHistoryController : ControllerBase
     {
@@ -84,50 +84,5 @@ namespace Capstone.HPTY.API.Controllers.OrderHistory
             }
         }
 
-        /// <summary>
-        /// Get details of a specific order
-        /// </summary>
-        /// <param name="orderId">The ID of the order</param>
-        /// <returns>Detailed information about the order</returns>
-        [HttpGet("{orderId}")]
-        [ProducesResponseType(typeof(ApiResponse<OrderHistoryDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<OrderHistoryDto>>> GetOrderDetails(int orderId)
-        {
-            try
-            {
-                _logger.LogInformation("Staff retrieving details for order ID: {OrderId}", orderId);
-
-                var order = await _orderHistoryService.GetOrderDetailsAsync(orderId);
-
-                return Ok(new ApiResponse<OrderHistoryDto>
-                {
-                    Success = true,
-                    Message = "Order details retrieved successfully",
-                    Data = order
-                });
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Order not found with ID: {OrderId}", orderId);
-
-                return NotFound(new ApiErrorResponse
-                {
-                    Status = "Not Found",
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving order details for ID: {OrderId}", orderId);
-
-                return BadRequest(new ApiErrorResponse
-                {
-                    Status = "Error",
-                    Message = "Failed to retrieve order details"
-                });
-            }
-        }
     }
 }

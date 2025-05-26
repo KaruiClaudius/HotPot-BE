@@ -87,6 +87,7 @@ namespace Capstone.HPTY.API.Controllers.Notification
             }
         }
 
+
         [HttpPut("{id}/read")]
         public async Task<ActionResult<ApiResponse<object>>> MarkAsRead(int id)
         {

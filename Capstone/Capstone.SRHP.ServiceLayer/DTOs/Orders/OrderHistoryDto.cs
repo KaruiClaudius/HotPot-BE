@@ -10,6 +10,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
     public class OrderHistoryDto
     {
         public int OrderId { get; set; }
+        public string OrderCode { get; set; }
         public int UserId { get; set; }
         public string? CustomerName { get; set; }
         public string Address { get; set; }
