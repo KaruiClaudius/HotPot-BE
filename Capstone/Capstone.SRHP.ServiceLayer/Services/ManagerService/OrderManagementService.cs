@@ -11,6 +11,8 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Extensions;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,262 +22,358 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<OrderManagementService> _logger;
-        private const int STAFF_ROLE_ID = 3; // Staff role ID
+        private readonly IStaffAssignmentService _staffAssignmentService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public OrderManagementService(IUnitOfWork unitOfWork, ILogger<OrderManagementService> logger)
+
+        private const int MANAGER_ROLE_ID = 2; // Manager role ID
+        private const int STAFF_ROLE_ID = 3; // Staff role ID
+        public OrderManagementService(
+       IUnitOfWork unitOfWork,
+       ILogger<OrderManagementService> logger,
+       IStaffAssignmentService staffAssignmentService,
+       ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _staffAssignmentService = staffAssignmentService;
+            _currentUserService = currentUserService;
         }
 
         // Order allocation
-        public async Task<StaffAssignmentResponse> AssignStaffToOrderAsync(int orderId, int staffId, StaffTaskType taskType, int? vehicleId = null)
+        public async Task<MultiStaffAssignmentResponse> AssignMultipleStaffToOrderAsync(
+    string orderCode,
+    List<int>? preparationStaffIds,
+    int? shippingStaffId,
+    int? vehicleId = null)
         {
             try
             {
-                _logger.LogInformation("Assigning staff {StaffId} to order {OrderId} for task type {TaskType}",
-                    staffId, orderId, taskType);
+                _logger.LogInformation("Assigning staff to order {OrderCode}: Preparation staff {PrepStaffIds}, Shipping staff {ShipStaffId}",
+                    orderCode, preparationStaffIds != null ? string.Join(",", preparationStaffIds) : "none", shippingStaffId);
 
-                // Check if order exists
-                var order = await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Where(o => o.OrderId == orderId && !o.IsDelete)
-                    .FirstOrDefaultAsync();
-
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-
-                // Check if staff exists (user with staff role)
-                var staff = await _unitOfWork.Repository<User>()
-                    .AsQueryable()
-                    .Where(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
-                    .FirstOrDefaultAsync();
-
-                if (staff == null)
-                    throw new NotFoundException($"Staff with ID {staffId} not found");
-
-                // Check staff eligibility based on task type
-                if (taskType == StaffTaskType.Preparation && staff.StaffType != StaffType.Preparation)
+                // Use the ExecuteInTransactionAsync method which properly handles the execution strategy
+                return await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    throw new ValidationException($"Staff with ID {staffId} is not authorized for order preparation. Only preparation staff can prepare orders.");
-                }
-                else if (taskType == StaffTaskType.Shipping &&
-                         staff.StaffType != StaffType.Preparation &&
-                         staff.StaffType != StaffType.Shipping)
-                {
-                    throw new ValidationException($"Staff with ID {staffId} is not authorized for shipping. Staff type: {staff.StaffType}");
-                }
+                    // Check if order exists
+                    var order = await _unitOfWork.Repository<Order>()
+                        .AsQueryable()
+                        .Where(o => o.OrderCode == orderCode && !o.IsDelete)
+                        .FirstOrDefaultAsync();
 
-                // Check staff availability on current day
-                var today = DateTime.Now.DayOfWeek;
-                var currentDay = today switch
-                {
-                    DayOfWeek.Sunday => WorkDays.Sunday,
-                    DayOfWeek.Monday => WorkDays.Monday,
-                    DayOfWeek.Tuesday => WorkDays.Tuesday,
-                    DayOfWeek.Wednesday => WorkDays.Wednesday,
-                    DayOfWeek.Thursday => WorkDays.Thursday,
-                    DayOfWeek.Friday => WorkDays.Friday,
-                    DayOfWeek.Saturday => WorkDays.Saturday,
-                    _ => WorkDays.None
-                };
+                    if (order == null)
+                        throw new NotFoundException($"Order with ID {orderCode} not found");
 
-                // Check if staff is available on the current day
-                if ((staff.WorkDays & currentDay) == 0)
-                {
-                    throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
-                }
+                    // Get the current manager ID
+                    int managerId = await GetCurrentManagerIdAsync();
 
-                // Create the response object
-                var response = new StaffAssignmentResponse
-                {
-                    OrderId = order.OrderId,
-                    OrderCode = order.OrderCode,
-                    StaffId = staffId,
-                    StaffName = staff.Name,
-                    AssignedAt = DateTime.UtcNow,
-                    TaskType = taskType
-                };
+                    // Initialize variables to store assignment results
+                    List<StaffAssignmentResponse> preparationAssignmentResponses = new List<StaffAssignmentResponse>();
+                    StaffAssignmentResponse shippingAssignmentResponse = null;
 
-                // Handle the assignment based on task type
-                if (taskType == StaffTaskType.Preparation)
-                {
-                    // Update order with preparation staff
-                    order.PreparationStaffId = staffId;
-                    order.Status = OrderStatus.Processing;
-                    order.SetUpdateDate();
+                    // Get existing staff assignments for this order
+                    var existingAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                        .GetAll(sa => sa.OrderId == order.OrderId && !sa.IsDelete)
+                        .Include(sa => sa.Staff)
+                        .ToListAsync();
 
-                    response.Status = order.Status;
-                }
-                else if (taskType == StaffTaskType.Shipping)
-                {
-                    // Handle shipping assignment
-                    ShippingOrder shippingOrder;
-
-                    // Check if shipping order already exists
-                    var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                        .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
-
-                    if (existingShippingOrder != null)
+                    // 1. Assign preparation staff if provided
+                    if (preparationStaffIds != null && preparationStaffIds.Any())
                     {
-                        _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
-                            existingShippingOrder.ShippingOrderId, orderId);
+                        // Get existing preparation assignments
+                        var existingPrepAssignments = existingAssignments
+                            .Where(a => a.TaskType == StaffTaskType.Preparation)
+                            .ToList();
 
-                        // Update existing shipping order
-                        existingShippingOrder.StaffId = staffId;
+                        // Get IDs of staff already assigned to preparation
+                        var existingPrepStaffIds = existingPrepAssignments
+                            .Select(a => a.StaffId)
+                            .ToHashSet();
 
-                        if (vehicleId.HasValue)
+                        // Assign each preparation staff that isn't already assigned
+                        foreach (var prepStaffId in preparationStaffIds.Where(id => id > 0))
                         {
-                            // Validate vehicle if provided
-                            var vehicle = await _unitOfWork.Repository<Vehicle>()
-                                .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
+                            // Skip if staff is already assigned to preparation
+                            if (existingPrepStaffIds.Contains(prepStaffId))
+                            {
+                                _logger.LogInformation("Staff {StaffId} is already assigned to preparation for order {OrderId}, skipping",
+                                    prepStaffId, order.OrderId);
 
-                            if (vehicle == null)
-                                throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+                                // Add the existing assignment to our response
+                                var existingAssignment = existingPrepAssignments
+                                    .FirstOrDefault(a => a.StaffId == prepStaffId);
 
-                            if (vehicle.Status != VehicleStatus.Available)
-                                throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
+                                if (existingAssignment != null)
+                                {
+                                    preparationAssignmentResponses.Add(new StaffAssignmentResponse
+                                    {
+                                        AssignmentId = existingAssignment.StaffAssignmentId,
+                                        OrderId = order.OrderId,
+                                        OrderCode = order.OrderCode,
+                                        StaffId = existingAssignment.StaffId,
+                                        StaffName = existingAssignment.Staff?.Name,
+                                        Status = order.Status,
+                                        AssignedAt = existingAssignment.AssignedDate,
+                                        TaskType = StaffTaskType.Preparation
+                                    });
+                                }
 
-                            existingShippingOrder.VehicleId = vehicleId;
+                                continue;
+                            }
 
-                            // Update vehicle status
-                            vehicle.Status = VehicleStatus.InUse;
-                            vehicle.SetUpdateDate();
+                            try
+                            {
+                                var response = await AssignStaffToTaskAsync(
+                                    orderCode,
+                                    prepStaffId,
+                                    StaffTaskType.Preparation);
 
-                            // Add vehicle details to response
-                            response.VehicleId = vehicle.VehicleId;
-                            response.VehicleName = vehicle.Name;
-                            response.VehicleType = vehicle.Type;
+                                preparationAssignmentResponses.Add(response);
+                            }
+                            catch (BusinessException ex) when (ex.Message.Contains("already actively assigned"))
+                            {
+                                // Log the exception but continue with other staff
+                                _logger.LogWarning(ex, "Staff {StaffId} is already assigned to preparation for order {OrderId}",
+                                    prepStaffId, order.OrderId);
+
+                                // Add the existing assignment to our response if we can find it
+                                var existingAssignment = existingPrepAssignments
+                                    .FirstOrDefault(a => a.StaffId == prepStaffId);
+
+                                if (existingAssignment != null)
+                                {
+                                    preparationAssignmentResponses.Add(new StaffAssignmentResponse
+                                    {
+                                        AssignmentId = existingAssignment.StaffAssignmentId,
+                                        OrderId = order.OrderId,
+                                        OrderCode = order.OrderCode,
+                                        StaffId = existingAssignment.StaffId,
+                                        StaffName = existingAssignment.Staff?.Name,
+                                        Status = order.Status,
+                                        AssignedAt = existingAssignment.AssignedDate,
+                                        TaskType = StaffTaskType.Preparation
+                                    });
+                                }
+                            }
                         }
-
-                        existingShippingOrder.SetUpdateDate();
-                        shippingOrder = existingShippingOrder;
                     }
                     else
                     {
-                        _logger.LogInformation("Creating new shipping order for order {OrderId}", orderId);
+                        // Get existing preparation assignments if any
+                        var existingPrepAssignments = existingAssignments
+                            .Where(a => a.TaskType == StaffTaskType.Preparation)
+                            .OrderByDescending(a => a.CreatedAt)
+                            .ToList();
 
-                        // Estimate order size
-                        var orderSize = await EstimateOrderSizeAsync(orderId);
-
-                        // Create new shipping order
-                        shippingOrder = new ShippingOrder
+                        if (existingPrepAssignments.Any())
                         {
-                            OrderId = orderId,
-                            StaffId = staffId,
-                            VehicleId = vehicleId,
-                            OrderSize = orderSize,
-                            IsDelivered = false,
-                            CreatedAt = DateTime.UtcNow
-                        };
-
-                        if (vehicleId.HasValue)
-                        {
-                            // Validate vehicle if provided
-                            var vehicle = await _unitOfWork.Repository<Vehicle>()
-                                .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
-
-                            if (vehicle == null)
-                                throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
-
-                            if (vehicle.Status != VehicleStatus.Available)
-                                throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
-
-                            // Update vehicle status
-                            vehicle.Status = VehicleStatus.InUse;
-                            vehicle.SetUpdateDate();
-
-                            // Add vehicle details to response
-                            response.VehicleId = vehicle.VehicleId;
-                            response.VehicleName = vehicle.Name;
-                            response.VehicleType = vehicle.Type;
+                            foreach (var assignment in existingPrepAssignments)
+                            {
+                                preparationAssignmentResponses.Add(new StaffAssignmentResponse
+                                {
+                                    AssignmentId = assignment.StaffAssignmentId,
+                                    OrderId = order.OrderId,
+                                    OrderCode = order.OrderCode,
+                                    StaffId = assignment.StaffId,
+                                    StaffName = assignment.Staff?.Name,
+                                    Status = order.Status,
+                                    AssignedAt = assignment.CreatedAt,
+                                    TaskType = StaffTaskType.Preparation
+                                });
+                            }
                         }
-
-                        _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
-
-                        response.OrderSize = orderSize;
                     }
 
-                    // Update order status to Shipping
-                    order.Status = OrderStatus.Shipping;
-                    order.SetUpdateDate();
+                    // 2. Assign shipping staff if provided
+                    if (shippingStaffId.HasValue && shippingStaffId.Value > 0)
+                    {
+                        // Check if shipping staff is already assigned
+                        var existingShippingAssignment = existingAssignments
+                            .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == shippingStaffId.Value);
 
-                    // Add shipping details to response
-                    response.Status = order.Status;
-                    response.ShippingOrderId = shippingOrder.ShippingOrderId;
-                    response.IsDelivered = shippingOrder.IsDelivered;
-                }
+                        if (existingShippingAssignment != null)
+                        {
+                            _logger.LogInformation("Staff {StaffId} is already assigned to shipping for order {OrderId}, skipping",
+                                shippingStaffId.Value, order.OrderId);
 
-                // Save all changes
-                await _unitOfWork.CommitAsync();
+                            // Use existing shipping assignment
+                            var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                                .AsQueryable()
+                                .Include(so => so.Staff)
+                                .Include(so => so.Vehicle)
+                                .Where(so => so.OrderId == order.OrderId && !so.IsDelete)
+                                .OrderByDescending(so => so.CreatedAt)
+                                .FirstOrDefaultAsync();
 
-                return response;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error assigning staff {StaffId} to order {OrderId} for task type {TaskType}",
-                    staffId, orderId, taskType);
-                throw;
-            }
-        }
+                            if (existingShippingOrder != null)
+                            {
+                                shippingAssignmentResponse = new StaffAssignmentResponse
+                                {
+                                    AssignmentId = existingShippingAssignment.StaffAssignmentId,
+                                    OrderId = order.OrderId,
+                                    OrderCode = order.OrderCode,
+                                    StaffId = existingShippingAssignment.StaffId,
+                                    StaffName = existingShippingAssignment.Staff?.Name,
+                                    Status = order.Status,
+                                    AssignedAt = existingShippingAssignment.AssignedDate,
+                                    TaskType = StaffTaskType.Shipping,
+                                    ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                    IsDelivered = existingShippingOrder.IsDelivered,
+                                    VehicleId = existingShippingOrder.VehicleId,
+                                    VehicleName = existingShippingOrder.Vehicle?.Name,
+                                    VehicleType = existingShippingOrder.Vehicle?.Type,
+                                    OrderSize = existingShippingOrder.OrderSize
+                                };
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                // Create a request object for the shipping assignment
+                                var shippingRequest = new StaffAssignmentRequest
+                                {
+                                    OrderCode = orderCode,
+                                    StaffId = shippingStaffId.Value,
+                                    TaskType = StaffTaskType.Shipping,
+                                    VehicleId = vehicleId
+                                };
+                                shippingAssignmentResponse = await AssignShippingStaffAsync(shippingRequest);
+                            }
+                            catch (BusinessException ex) when (ex.Message.Contains("already actively assigned"))
+                            {
+                                // Log the exception but continue
+                                _logger.LogWarning(ex, "Staff {StaffId} is already assigned to shipping for order {OrderId}",
+                                    shippingStaffId.Value, order.OrderId);
 
-        public async Task<IEnumerable<StaffShippingOrderDTO>> GetOrdersByStaff(int staffId)
-        {
-            try
-            {
-                _logger.LogInformation("Getting orders for staff {StaffId}", staffId);
+                                // Try to get the existing shipping assignment
+                                var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                                    .AsQueryable()
+                                    .Include(so => so.Staff)
+                                    .Include(so => so.Vehicle)
+                                    .Where(so => so.OrderId == order.OrderId && !so.IsDelete)
+                                    .OrderByDescending(so => so.CreatedAt)
+                                    .FirstOrDefaultAsync();
 
-                // Check if staff exists (user with staff role)
-                var staff = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
+                                if (existingShippingOrder != null)
+                                {
+                                    var existingShippingAssign = existingAssignments
+                                        .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == shippingStaffId.Value);
 
-                if (staff == null)
-                    throw new NotFoundException($"Staff with ID {staffId} not found");
+                                    if (existingShippingAssign != null)
+                                    {
+                                        shippingAssignmentResponse = new StaffAssignmentResponse
+                                        {
+                                            AssignmentId = existingShippingAssign.StaffAssignmentId,
+                                            OrderId = order.OrderId,
+                                            OrderCode = order.OrderCode,
+                                            StaffId = existingShippingAssign.StaffId,
+                                            StaffName = existingShippingAssign.Staff?.Name,
+                                            Status = order.Status,
+                                            AssignedAt = existingShippingAssign.AssignedDate,
+                                            TaskType = StaffTaskType.Shipping,
+                                            ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                            IsDelivered = existingShippingOrder.IsDelivered,
+                                            VehicleId = existingShippingOrder.VehicleId,
+                                            VehicleName = existingShippingOrder.Vehicle?.Name,
+                                            VehicleType = existingShippingOrder.Vehicle?.Type,
+                                            OrderSize = existingShippingOrder.OrderSize
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Get existing shipping assignment if any
+                        var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                            .AsQueryable()
+                            .Include(so => so.Staff)
+                            .Include(so => so.Vehicle)
+                            .Where(so => so.OrderId == order.OrderId && !so.IsDelete)
+                            .OrderByDescending(so => so.CreatedAt)
+                            .FirstOrDefaultAsync();
 
-                // Get all shipping orders for this staff
-                var shippingOrders = await _unitOfWork.Repository<ShippingOrder>()
-                    .GetAll(so => so.StaffId == staffId && !so.IsDelete)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.User)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.SellOrder.SellOrderDetails)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.RentOrder.RentOrderDetails)
-                    .Include(so => so.Staff)
-                    .ToListAsync();
+                        if (existingShippingOrder != null)
+                        {
+                            var existingShippingAssignment = existingAssignments
+                                .FirstOrDefault(a => a.TaskType == StaffTaskType.Shipping && a.StaffId == existingShippingOrder.StaffId);
 
-                // Map to DTOs
-                return shippingOrders.Select(so => new StaffShippingOrderDTO
+                            if (existingShippingAssignment != null)
+                            {
+                                shippingAssignmentResponse = new StaffAssignmentResponse
+                                {
+                                    AssignmentId = existingShippingAssignment.StaffAssignmentId,
+                                    OrderId = order.OrderId,
+                                    OrderCode = order.OrderCode,
+                                    StaffId = existingShippingOrder.StaffId,
+                                    StaffName = existingShippingOrder.Staff?.Name,
+                                    Status = order.Status,
+                                    AssignedAt = existingShippingAssignment.AssignedDate,
+                                    TaskType = StaffTaskType.Shipping,
+                                    ShippingOrderId = existingShippingOrder.ShippingOrderId,
+                                    IsDelivered = existingShippingOrder.IsDelivered,
+                                    VehicleId = existingShippingOrder.VehicleId,
+                                    VehicleName = existingShippingOrder.Vehicle?.Name,
+                                    VehicleType = existingShippingOrder.Vehicle?.Type,
+                                    OrderSize = existingShippingOrder.OrderSize
+                                };
+                            }
+                        }
+                    }
+
+                    // Explicitly ensure the order status is updated to Processing if we assigned preparation staff
+                    order = await _unitOfWork.Repository<Order>()
+                        .GetAll(o => o.OrderId == order.OrderId)
+                        .FirstOrDefaultAsync();
+
+                    if (order.Status == OrderStatus.Pending && preparationAssignmentResponses.Any())
+                    {
+                        order.Status = OrderStatus.Processing;
+                        order.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+                    }
+
+                    // Create the response with multiple preparation staff assignments
+                    return new MultiStaffAssignmentResponse
+                    {
+                        OrderId = order.OrderId,
+                        OrderCode = order.OrderCode,
+                        Status = order.Status,
+
+                        // Preparation details - now a collection
+                        PreparationStaffAssignments = preparationAssignmentResponses.Select(pa => new StaffAssignmentSummaryDTO
+                        {
+                            StaffId = pa.StaffId,
+                            StaffName = pa.StaffName,
+                            AssignedDate = pa.AssignedAt
+                        }).ToList(),
+
+                        // Shipping details (unchanged)
+                        ShippingStaffId = shippingAssignmentResponse?.StaffId,
+                        ShippingStaffName = shippingAssignmentResponse?.StaffName,
+                        ShippingAssignmentId = shippingAssignmentResponse?.AssignmentId,
+                        ShippingAssignedAt = shippingAssignmentResponse?.AssignedAt,
+                        ShippingOrderId = shippingAssignmentResponse?.ShippingOrderId,
+                        IsDelivered = shippingAssignmentResponse?.IsDelivered ?? false,
+                        VehicleId = shippingAssignmentResponse?.VehicleId,
+                        VehicleName = shippingAssignmentResponse?.VehicleName,
+                        VehicleType = shippingAssignmentResponse?.VehicleType,
+                        OrderSize = shippingAssignmentResponse?.OrderSize ?? OrderSize.Small
+                    };
+                }, ex =>
                 {
-                    ShippingOrderId = so.ShippingOrderId,
-                    OrderId = so.Order.OrderCode,
-                    DeliveryTime = so.Order?.DeliveryTime,
-                    DeliveryNotes = so.DeliveryNotes,
-                    IsDelivered = so.IsDelivered,
-
-                    // Order information
-                    Address = so.Order?.Address,
-                    Notes = so.Order?.Notes,
-                    TotalPrice = so.Order?.TotalPrice ?? 0,
-                    Status = so.Order?.Status ?? OrderStatus.Pending,
-
-                    // Customer information
-                    CustomerId = so.Order?.UserId ?? 0,
-                    CustomerName = so.Order?.User?.Name,
-
-                    // Order type indicators
-                    HasSellItems = so.Order?.HasSellItems ?? false,
-                    HasRentItems = so.Order?.HasRentItems ?? false,
-                }).ToList();
+                    _logger.LogError(ex, "Error in transaction while assigning staff to order {OrderCode}", orderCode);
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting orders for staff {StaffId}", staffId);
+                _logger.LogError(ex, "Error assigning staff to order {OrderCode}", orderCode);
                 throw;
             }
         }
 
-        // Order status tracking
         public async Task<OrderStatusUpdateDTO> UpdateOrderStatus(string orderId, OrderStatus status)
         {
             try
@@ -299,7 +397,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     OrderCode = order.OrderCode,
                     OrderId = order.OrderId,
                     Status = order.Status,
-                    UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow
+                    UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -322,13 +420,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so.Staff)
                     .Include(o => o.ShippingOrder)
-                        .ThenInclude(so => so.Vehicle) // Add this to include vehicle information
+                        .ThenInclude(so => so.Vehicle)
                     .Include(o => o.SellOrder)
                         .ThenInclude(so => so.SellOrderDetails)
                     .Include(o => o.RentOrder)
                         .ThenInclude(ro => ro.RentOrderDetails)
-                    .AsSplitQuery() // This can help with large object graphs
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderId} not found");
+
+                // Get staff assignments for this order
+                var staffAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                    .GetAll(sa => sa.OrderId == order.OrderId && !sa.IsDelete)
+                    .Include(sa => sa.Staff)
+                    .OrderByDescending(sa => sa.AssignedDate)
+                    .ToListAsync();
+
+                // Get all preparation assignments
+                var preparationAssignments = staffAssignments
+                    .Where(sa => sa.TaskType == StaffTaskType.Preparation)
+                    .OrderByDescending(sa => sa.AssignedDate)
+                    .ToList();
+
+                // Get the most recent shipping assignment
+                var shippingAssignment = staffAssignments
+                    .Where(sa => sa.TaskType == StaffTaskType.Shipping)
+                    .OrderByDescending(sa => sa.AssignedDate)
+                    .FirstOrDefault();
 
                 // Then load the details separately if needed
                 if (order?.SellOrder != null)
@@ -353,9 +473,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         .LoadAsync();
                 }
 
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-
                 // Map to DTO
                 var orderDetailDTO = new OrderDetailDTO
                 {
@@ -374,6 +491,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     UserId = order.UserId,
                     UserName = order.User?.Name ?? string.Empty,
                     UserPhone = order.User.PhoneNumber ?? string.Empty,
+
+                    // Multiple preparation staff assignments
+                    PreparationAssignments = preparationAssignments.Select(pa => new StaffAssignmentDTO
+                    {
+                        AssignmentId = pa.StaffAssignmentId,
+                        StaffId = pa.StaffId,
+                        StaffName = pa.Staff?.Name ?? string.Empty,
+                        TaskType = pa.TaskType,
+                        AssignedDate = pa.AssignedDate,
+                        CompletedDate = pa.CompletedDate
+                    }).ToList(),
+
+                    // Shipping assignment
+                    ShippingAssignment = shippingAssignment != null ? new StaffAssignmentDTO
+                    {
+                        AssignmentId = shippingAssignment.StaffAssignmentId,
+                        StaffId = shippingAssignment.StaffId,
+                        StaffName = shippingAssignment.Staff?.Name ?? string.Empty,
+                        TaskType = shippingAssignment.TaskType,
+                        AssignedDate = shippingAssignment.AssignedDate,
+                        CompletedDate = shippingAssignment.CompletedDate
+                    } : null,
 
                     // Shipping information
                     ShippingInfo = order.ShippingOrder != null ? new ShippingDetailDTO
@@ -449,7 +588,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     {
                         RentalStartDate = order.RentOrder.RentalStartDate,
                         ExpectedReturnDate = order.RentOrder.ExpectedReturnDate,
-
                     };
 
                     foreach (var detail in order.RentOrder.RentOrderDetails)
@@ -523,7 +661,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     IsDelivered = shippingOrder.IsDelivered,
                     DeliveryTime = shippingOrder.Order?.DeliveryTime,
                     DeliveryNotes = shippingOrder.DeliveryNotes ?? string.Empty,
-                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
+                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -566,8 +704,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     ShippingOrderId = shippingOrder.ShippingOrderId,
                     OrderId = shippingOrder.OrderId,
                     OrderCode = orderCode,
-                    DeliveryTime = shippingOrder.Order?.DeliveryTime ?? DateTime.UtcNow,
-                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow
+                    DeliveryTime = shippingOrder.Order?.DeliveryTime ?? DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = shippingOrder.UpdatedAt ?? DateTime.UtcNow.AddHours(7)
                 };
             }
             catch (Exception ex)
@@ -577,134 +715,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
-        public async Task<PagedResult<UnallocatedOrderDTO>> GetUnallocatedOrdersPaged(OrderQueryParams queryParams)
-        {
-            try
-            {
-                _logger.LogInformation("Getting unallocated orders, page {Page}, size {Size}",
-                    queryParams.PageNumber, queryParams.PageSize);
-
-                // Explicitly declare as IQueryable<Order>
-                IQueryable<Order> query = _unitOfWork.Repository<Order>()
-                    .GetAll(o => o.ShippingOrder == null && !o.IsDelete)
-                    .Include(o => o.User)
-                    .Include(o => o.SellOrder)
-                        .ThenInclude(so => so.SellOrderDetails)
-                    .Include(o => o.RentOrder)
-                        .ThenInclude(ro => ro.RentOrderDetails);
-
-                // Apply filters (except status since we're filtering by ShippingOrder == null)
-                if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
-                {
-                    var searchTerm = queryParams.SearchTerm.ToLower();
-                    query = query.Where(o =>
-                        o.Address.ToLower().Contains(searchTerm) ||
-                        (o.Notes != null && o.Notes.ToLower().Contains(searchTerm)) ||
-                        (o.User != null && o.User.Name.ToLower().Contains(searchTerm))
-                    );
-                }
-
-                // Apply sorting
-                query = query.ApplySorting(queryParams);
-
-                // Get paged result with entities
-                var pagedResult = await query.ToPagedResultAsync(queryParams);
-
-                // Map to DTOs
-                var dtoPagedResult = new PagedResult<UnallocatedOrderDTO>
-                {
-                    Items = pagedResult.Items.Select(o => new UnallocatedOrderDTO
-                    {
-                        OrderId = o.OrderId,
-                        OrderCode = o.OrderCode,
-                        Address = o.Address,
-                        Notes = o.Notes ?? string.Empty,
-                        TotalPrice = o.TotalPrice,
-                        Status = o.Status,
-                        UserId = o.UserId,
-                        UserName = o.User?.Name ?? string.Empty,
-                        HasSellItems = o.HasSellItems,
-                        HasRentItems = o.HasRentItems,
-                    }).ToList(),
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize,
-                    TotalCount = pagedResult.TotalCount,
-                };
-
-                return dtoPagedResult;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting unallocated orders");
-                throw;
-            }
-        }
-        public async Task<PagedResult<PendingDeliveryDTO>> GetPendingDeliveriesPaged(ShippingOrderQueryParams queryParams)
-        {
-            try
-            {
-                _logger.LogInformation("Getting pending deliveries, page {Page}, size {Size}",
-                    queryParams.PageNumber, queryParams.PageSize);
-
-                // Explicitly declare as IQueryable<ShippingOrder>
-                IQueryable<ShippingOrder> query = _unitOfWork.Repository<ShippingOrder>()
-                    .GetAll(so => !so.IsDelivered && !so.IsDelete)
-                    .Include(so => so.Order)
-                        .ThenInclude(o => o.User)
-                    .Include(so => so.Vehicle); // Add this to include vehicle information
-
-                // Apply filters
-                query = query.ApplyFilters(queryParams);
-
-                // Apply sorting
-                query = query.ApplySorting(queryParams);
-
-                // Get paged result with entities
-                var pagedResult = await query.ToPagedResultAsync(queryParams);
-
-                // Map to DTOs
-                var dtoPagedResult = new PagedResult<PendingDeliveryDTO>
-                {
-                    Items = pagedResult.Items.Select(so => new PendingDeliveryDTO
-                    {
-                        ShippingOrderId = so.ShippingOrderId,
-                        OrderId = so.Order.OrderCode,
-                        DeliveryTime = so.Order?.DeliveryTime,
-                        DeliveryNotes = so.DeliveryNotes ?? string.Empty,
-
-                        // Order information
-                        Address = so.Order?.Address ?? string.Empty,
-                        Notes = so.Order?.Notes ?? string.Empty,
-                        TotalPrice = so.Order?.TotalPrice ?? 0,
-                        Status = so.Order?.Status ?? OrderStatus.Pending,
-
-                        // Customer information
-                        UserId = so.Order?.UserId ?? 0,
-                        UserName = so.Order?.User?.Name ?? string.Empty,
-
-                        // Vehicle information
-                        VehicleInfo = so.Vehicle != null ? new VehicleInfoDto
-                        {
-                            VehicleId = so.Vehicle.VehicleId,
-                            VehicleName = so.Vehicle.Name,
-                            LicensePlate = so.Vehicle.LicensePlate,
-                            VehicleType = so.Vehicle.Type,
-                            OrderSize = so.OrderSize
-                        } : null
-                    }).ToList(),
-                    PageNumber = pagedResult.PageNumber,
-                    PageSize = pagedResult.PageSize,
-                    TotalCount = pagedResult.TotalCount
-                };
-
-                return dtoPagedResult;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pending deliveries");
-                throw;
-            }
-        }
 
         public async Task<PagedResult<OrderWithDetailsDTO>> GetOrdersByStatusPaged(OrderQueryParams queryParams)
         {
@@ -734,46 +744,123 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Get paged result with entities
                 var pagedResult = await query.ToPagedResultAsync(queryParams);
 
+                // Get all order IDs in the current page
+                var orderIds = pagedResult.Items.Select(o => o.OrderId).ToList();
+
+                // Get all staff assignments for these orders
+                var staffAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                    .GetAll(sa => orderIds.Contains(sa.OrderId) && !sa.IsDelete)
+                    .Include(sa => sa.Staff)
+                    .ToListAsync();
+
+                // Group assignments by order ID and task type, but keep all preparation assignments
+                var assignmentsByOrder = new Dictionary<int, Dictionary<StaffTaskType, List<StaffAssignment>>>();
+
+                foreach (var assignment in staffAssignments)
+                {
+                    if (!assignmentsByOrder.ContainsKey(assignment.OrderId))
+                    {
+                        assignmentsByOrder[assignment.OrderId] = new Dictionary<StaffTaskType, List<StaffAssignment>>();
+                    }
+
+                    if (!assignmentsByOrder[assignment.OrderId].ContainsKey(assignment.TaskType))
+                    {
+                        assignmentsByOrder[assignment.OrderId][assignment.TaskType] = new List<StaffAssignment>();
+                    }
+
+                    assignmentsByOrder[assignment.OrderId][assignment.TaskType].Add(assignment);
+                }
+
                 // Map to DTOs
                 var dtoPagedResult = new PagedResult<OrderWithDetailsDTO>
                 {
-                    Items = pagedResult.Items.Select(o => new OrderWithDetailsDTO
+                    Items = pagedResult.Items.Select(o =>
                     {
-                        OrderId = o.OrderCode,
-                        Address = o.Address,
-                        Notes = o.Notes ?? string.Empty,
-                        TotalPrice = o.TotalPrice,
-                        Status = o.Status,
-                        HasSellItems = o.HasSellItems,
-                        HasRentItems = o.HasRentItems,
+                        // Get assignments for this order
+                        var orderAssignments = assignmentsByOrder.GetValueOrDefault(o.OrderId,
+                            new Dictionary<StaffTaskType, List<StaffAssignment>>());
 
-                        // User information
-                        UserId = o.UserId,
-                        UserName = o.User?.Name ?? string.Empty,
+                        // Get all preparation assignments
+                        var preparationAssignments = orderAssignments.GetValueOrDefault(StaffTaskType.Preparation,
+                            new List<StaffAssignment>());
 
-                        // Shipping information
-                        ShippingInfo = o.ShippingOrder != null ? new ShippingInfoDTO
+                        // Get the most recent shipping assignment
+                        var shippingAssignments = orderAssignments.GetValueOrDefault(StaffTaskType.Shipping,
+                            new List<StaffAssignment>());
+                        var shippingAssignment = shippingAssignments.OrderByDescending(sa => sa.AssignedDate).FirstOrDefault();
+
+                        // Create the DTO
+                        var dto = new OrderWithDetailsDTO
                         {
-                            ShippingOrderId = o.ShippingOrder.ShippingOrderId,
-                            DeliveryTime = o.DeliveryTime,
-                            IsDelivered = o.ShippingOrder.IsDelivered,
-                            DeliveryNotes = o.ShippingOrder.DeliveryNotes ?? string.Empty,
-                            Staff = o.ShippingOrder.Staff != null ? new StaffDTO
-                            {
-                                StaffId = o.ShippingOrder.Staff.UserId,
-                                Name = o.ShippingOrder.Staff.Name
-                            } : null
-                        } : null,
+                            OrderId = o.OrderCode,
+                            Address = o.Address,
+                            Notes = o.Notes ?? string.Empty,
+                            TotalPrice = o.TotalPrice,
+                            Status = o.Status,
+                            HasSellItems = o.HasSellItems,
+                            HasRentItems = o.HasRentItems,
 
-                        // Vehicle information
-                        VehicleInfo = o.ShippingOrder?.Vehicle != null ? new VehicleInfoDto
-                        {
-                            VehicleId = o.ShippingOrder.Vehicle.VehicleId,
-                            VehicleName = o.ShippingOrder.Vehicle.Name,
-                            LicensePlate = o.ShippingOrder.Vehicle.LicensePlate,
-                            VehicleType = o.ShippingOrder.Vehicle.Type,
-                            OrderSize = o.ShippingOrder.OrderSize
-                        } : null
+                            // User information
+                            UserId = o.UserId,
+                            UserName = o.User?.Name ?? string.Empty,
+
+                            // Staff assignment status
+                            IsPreparationStaffAssigned = preparationAssignments.Any(),
+                            IsShippingStaffAssigned = shippingAssignment != null,
+
+                            // Multiple preparation assignments
+                            PreparationAssignments = preparationAssignments
+                                .OrderByDescending(pa => pa.AssignedDate)
+                                .Select(pa => new StaffAssignmentSummaryDTO
+                                {
+                                    StaffId = pa.StaffId,
+                                    StaffName = pa.Staff?.Name ?? string.Empty,
+                                    AssignedDate = pa.AssignedDate
+                                })
+                                .ToList(),
+
+                            // Shipping assignment
+                            ShippingAssignment = shippingAssignment != null
+                                ? new StaffAssignmentSummaryDTO
+                                {
+                                    StaffId = shippingAssignment.StaffId,
+                                    StaffName = shippingAssignment.Staff?.Name ?? string.Empty,
+                                    AssignedDate = shippingAssignment.AssignedDate
+                                }
+                                : null,
+
+                            // Shipping information
+                            ShippingInfo = o.ShippingOrder != null
+                                ? new ShippingInfoDTO
+                                {
+                                    ShippingOrderId = o.ShippingOrder.ShippingOrderId,
+                                    DeliveryTime = o.DeliveryTime,
+                                    IsDelivered = o.ShippingOrder.IsDelivered,
+                                    DeliveryNotes = o.ShippingOrder.DeliveryNotes ?? string.Empty,
+                                    Staff = o.ShippingOrder.Staff != null
+                                        ? new StaffDTO
+                                        {
+                                            StaffId = o.ShippingOrder.Staff.UserId,
+                                            Name = o.ShippingOrder.Staff.Name
+                                        }
+                                        : null
+                                }
+                                : null,
+
+                            // Vehicle information
+                            VehicleInfo = o.ShippingOrder?.Vehicle != null
+                                ? new VehicleInfoDto
+                                {
+                                    VehicleId = o.ShippingOrder.Vehicle.VehicleId,
+                                    VehicleName = o.ShippingOrder.Vehicle.Name,
+                                    LicensePlate = o.ShippingOrder.Vehicle.LicensePlate,
+                                    VehicleType = o.ShippingOrder.Vehicle.Type,
+                                    OrderSize = o.ShippingOrder.OrderSize
+                                }
+                                : null
+                        };
+
+                        return dto;
                     }).ToList(),
                     PageNumber = pagedResult.PageNumber,
                     PageSize = pagedResult.PageSize,
@@ -789,21 +876,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
         }
 
-        public async Task<OrderSize> EstimateOrderSizeAsync(int orderId)
+        public async Task<OrderSize> EstimateOrderSizeAsync(string orderCode)
         {
             try
             {
-                _logger.LogInformation("Estimating size for order {OrderId}", orderId);
+                _logger.LogInformation("Estimating size for order {OrderId}", orderCode);
 
                 var order = await _unitOfWork.Repository<Order>()
                     .AsQueryable()
-                    .Where(o => o.OrderId == orderId && !o.IsDelete)
+                    .Where(o => o.OrderCode == orderCode && !o.IsDelete)
                     .Include(o => o.SellOrder.SellOrderDetails)
                     .Include(o => o.RentOrder.RentOrderDetails)
                     .FirstOrDefaultAsync();
 
                 if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
+                    throw new NotFoundException($"Order with ID {orderCode} not found");
 
                 // Define business rules for order size estimation
                 bool isLarge = false;
@@ -840,109 +927,140 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderId);
+                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderCode);
                 throw;
             }
         }
 
-        public async Task<VehicleType> SuggestVehicleTypeAsync(int orderId)
+        public async Task<VehicleType> SuggestVehicleTypeAsync(string orderCode)
         {
             try
             {
-                _logger.LogInformation("Suggesting vehicle type for order {OrderId}", orderId);
+                _logger.LogInformation("Suggesting vehicle type for order {OrderId}", orderCode);
 
                 // Estimate order size
-                var orderSize = await EstimateOrderSizeAsync(orderId);
+                var orderSize = await EstimateOrderSizeAsync(orderCode);
 
                 // Suggest vehicle type based on order size
                 return orderSize == OrderSize.Large ? VehicleType.Car : VehicleType.Scooter;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error suggesting vehicle type for order {OrderId}", orderId);
+                _logger.LogError(ex, "Error suggesting vehicle type for order {OrderId}", orderCode);
                 throw;
             }
         }
 
-        public async Task<ShippingOrderAllocationDTO> AllocateOrderToStaffWithVehicle(int orderId, int staffId, int? vehicleId = null)
+        private async Task<int> GetCurrentManagerIdAsync()
         {
             try
             {
-                _logger.LogInformation("Allocating order {OrderId} to staff {StaffId} with vehicle {VehicleId}",
-                    orderId, staffId, vehicleId);
+                // Get the current user
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
 
-                // Check if order exists
-                var order = await _unitOfWork.Repository<Order>()
-                    .AsQueryable()
-                    .Where(o => o.OrderId == orderId && !o.IsDelete)
-                    .FirstOrDefaultAsync();
-
-                if (order == null)
-                    throw new NotFoundException($"Order with ID {orderId} not found");
-
-                // Check if staff exists (user with staff role)
-                var staff = await _unitOfWork.Repository<User>()
-                    .AsQueryable()
-                    .Where(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
-                    .FirstOrDefaultAsync();
-
-                if (staff == null)
-                    throw new NotFoundException($"Staff with ID {staffId} not found");
-
-                // Allow both Preparation and Shipping staff types to deliver
-                if (staff.StaffType != StaffType.Preparation && staff.StaffType != StaffType.Shipping)
-                    throw new ValidationException($"Staff with ID {staffId} is not authorized for shipping. Staff type: {staff.StaffType}");
-
-                // Check staff availability on current day
-                var today = DateTime.Now.DayOfWeek;
-                var currentDay = today switch
+                // Verify the user is a manager
+                if (currentUser.RoleId != MANAGER_ROLE_ID)
                 {
-                    DayOfWeek.Sunday => WorkDays.Sunday,
-                    DayOfWeek.Monday => WorkDays.Monday,
-                    DayOfWeek.Tuesday => WorkDays.Tuesday,
-                    DayOfWeek.Wednesday => WorkDays.Wednesday,
-                    DayOfWeek.Thursday => WorkDays.Thursday,
-                    DayOfWeek.Friday => WorkDays.Friday,
-                    DayOfWeek.Saturday => WorkDays.Saturday,
-                    _ => WorkDays.None
-                };
-
-                if ((staff.WorkDays & currentDay) == 0)
-                {
-                    throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+                    throw new UnauthorizedException("Current user is not authorized to make staff assignments");
                 }
 
-                // Estimate order size
-                var orderSize = await EstimateOrderSizeAsync(orderId);
+                return currentUser.UserId;
+            }
+            catch (UnauthorizedException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting current manager ID");
+                throw new UnauthorizedException("Failed to authenticate manager");
+            }
+        }
 
-                // If no vehicle ID is provided, suggest one based on order size
-                if (!vehicleId.HasValue)
+        private async Task<StaffAssignmentResponse> AssignShippingStaffWithoutStatusCheckAsync(
+            int orderId,
+            int staffId,
+            int managerId,
+            int? vehicleId = null)
+        {
+            // Get the order
+            var order = await _unitOfWork.Repository<Order>()
+                .GetAll(o => o.OrderId == orderId && !o.IsDelete)
+                .FirstOrDefaultAsync();
+
+            if (order == null)
+            {
+                throw new NotFoundException($"Order with ID {orderId} not found.");
+            }
+
+            // Get the staff member
+            var staff = await _unitOfWork.Repository<User>()
+                .GetAll(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync();
+
+            if (staff == null)
+            {
+                throw new NotFoundException($"Staff with ID {staffId} not found or is not a staff member.");
+            }
+
+            // Check staff eligibility for shipping
+            if (staff.StaffType != StaffType.Preparation && staff.StaffType != StaffType.Shipping)
+            {
+                throw new ValidationException($"Staff with ID {staffId} is not authorized for shipping. Staff type: {staff.StaffType}");
+            }
+
+            // Check staff availability on current day
+            var today = DateTime.UtcNow.AddHours(7).DayOfWeek;
+            var currentDay = MapDayOfWeekToWorkDays(today);
+
+            // Check if staff is available on the current day
+            if ((staff.WorkDays & currentDay) == 0)
+            {
+                throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+            }
+
+            // Check for existing active assignment
+            var existingAssignment = await _unitOfWork.Repository<StaffAssignment>()
+                .GetAll(sa => sa.OrderId == orderId && sa.StaffId == staffId &&
+                             sa.TaskType == StaffTaskType.Shipping && sa.CompletedDate == null)
+                .FirstOrDefaultAsync();
+
+            if (existingAssignment != null)
+            {
+                throw new BusinessException($"Staff {staffId} is already actively assigned to shipping for order {orderId}.");
+            }
+
+            // Create the new assignment
+            var newAssignment = new StaffAssignment
+            {
+                OrderId = orderId,
+                StaffId = staffId,
+                ManagerId = managerId,
+                TaskType = StaffTaskType.Shipping,
+                AssignedDate = DateTime.UtcNow.AddHours(7),
+            };
+
+            await _unitOfWork.Repository<StaffAssignment>().InsertAsync(newAssignment);
+
+            // Handle shipping assignment
+            ShippingOrder shippingOrder;
+
+            // Check if shipping order already exists
+            var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
+                .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
+
+            if (existingShippingOrder != null)
+            {
+                _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
+                    existingShippingOrder.ShippingOrderId, orderId);
+
+                // Update existing shipping order
+                existingShippingOrder.StaffId = staffId;
+
+                if (vehicleId.HasValue)
                 {
-                    var suggestedVehicleType = await SuggestVehicleTypeAsync(orderId);
-
-                    // Find an available vehicle of the suggested type
-                    var availableVehicle = await _unitOfWork.Repository<Vehicle>()
-                        .AsQueryable()
-                        .Where(v => v.Type == suggestedVehicleType && v.Status == VehicleStatus.Available && !v.IsDelete)
-                        .FirstOrDefaultAsync();
-
-                    if (availableVehicle == null)
-                    {
-                        // If no vehicle of suggested type is available, try any available vehicle
-                        availableVehicle = await _unitOfWork.Repository<Vehicle>()
-                            .AsQueryable()
-                            .Where(v => v.Status == VehicleStatus.Available && !v.IsDelete)
-                            .FirstOrDefaultAsync();
-
-                        if (availableVehicle == null)
-                            throw new ValidationException("No vehicles are currently available for delivery");
-                    }
-
-                    vehicleId = availableVehicle.VehicleId;
-                }
-                else
-                {
-                    // If a specific vehicle ID is provided, check if it exists and is available
+                    // Validate vehicle if provided
                     var vehicle = await _unitOfWork.Repository<Vehicle>()
                         .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
 
@@ -951,90 +1069,283 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                     if (vehicle.Status != VehicleStatus.Available)
                         throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
-                }
 
-                // Check if shipping order already exists
-                var existingShippingOrder = await _unitOfWork.Repository<ShippingOrder>()
-                    .FindAsync(so => so.OrderId == orderId && !so.IsDelete);
-
-                ShippingOrder shippingOrder;
-                if (existingShippingOrder != null)
-                {
-                    _logger.LogInformation("Updating existing shipping order {ShippingOrderId} for order {OrderId}",
-                        existingShippingOrder.ShippingOrderId, orderId);
-
-                    // Update existing shipping order
-                    existingShippingOrder.StaffId = staffId;
                     existingShippingOrder.VehicleId = vehicleId;
-                    existingShippingOrder.OrderSize = orderSize;
-                    existingShippingOrder.SetUpdateDate();
-                    shippingOrder = existingShippingOrder;
+
+                    // Update vehicle status
+                    vehicle.Status = VehicleStatus.InUse;
+                    vehicle.SetUpdateDate();
                 }
-                else
+
+                existingShippingOrder.SetUpdateDate();
+                await _unitOfWork.CommitAsync();
+                shippingOrder = existingShippingOrder;
+            }
+            else
+            {
+                _logger.LogInformation("Creating new shipping order for order {OrderId}", orderId);
+
+                // Estimate order size
+                var orderSize = await EstimateOrderSizeAsync(order.OrderCode);
+
+                // Create new shipping order
+                shippingOrder = new ShippingOrder
                 {
-                    _logger.LogInformation("Creating new shipping order for order {OrderId}", orderId);
+                    OrderId = order.OrderId,
+                    StaffId = staffId,
+                    VehicleId = vehicleId,
+                    OrderSize = orderSize,
+                    IsDelivered = false,
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                };
 
-                    // Create new shipping order
-                    shippingOrder = new ShippingOrder
-                    {
-                        OrderId = orderId,
-                        StaffId = staffId,
-                        VehicleId = vehicleId,
-                        OrderSize = orderSize,
-                        IsDelivered = false,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
-                }
-
-                // Update order status to Shipping
-                order.Status = OrderStatus.Shipping;
-                order.SetUpdateDate();
-
-                // Update vehicle status to InUse
                 if (vehicleId.HasValue)
                 {
+                    // Validate vehicle if provided
                     var vehicle = await _unitOfWork.Repository<Vehicle>()
-                        .FindAsync(v => v.VehicleId == vehicleId.Value);
+                        .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
 
-                    if (vehicle != null)
-                    {
-                        vehicle.Status = VehicleStatus.InUse;
-                        vehicle.SetUpdateDate();
-                    }
+                    if (vehicle == null)
+                        throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+
+                    if (vehicle.Status != VehicleStatus.Available)
+                        throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
+
+                    // Update vehicle status
+                    vehicle.Status = VehicleStatus.InUse;
+                    vehicle.SetUpdateDate();
                 }
 
-                // Save all changes
+                _unitOfWork.Repository<ShippingOrder>().Insert(shippingOrder);
+
+                // Make sure to commit the changes
                 await _unitOfWork.CommitAsync();
+            }
 
-                // Get staff and vehicle details for the response
-                var staffDetails = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == staffId);
+            // Create the response
+            var response = new StaffAssignmentResponse
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                StaffId = staffId,
+                StaffName = staff.Name,
+                AssignedAt = DateTime.UtcNow.AddHours(7),
+                TaskType = StaffTaskType.Shipping,
+                AssignmentId = newAssignment.StaffAssignmentId,
+                Status = order.Status,
+                ShippingOrderId = shippingOrder.ShippingOrderId,
+                IsDelivered = shippingOrder.IsDelivered,
+                OrderSize = shippingOrder.OrderSize
+            };
 
-                var vehicleDetails = vehicleId.HasValue
-                    ? await _unitOfWork.Repository<Vehicle>().FindAsync(v => v.VehicleId == vehicleId.Value)
-                    : null;
+            // Add vehicle details if applicable
+            if (vehicleId.HasValue)
+            {
+                var vehicle = await _unitOfWork.Repository<Vehicle>()
+                    .FindAsync(v => v.VehicleId == vehicleId.Value);
 
-                // Map to DTO
-                return new ShippingOrderAllocationDTO
+                if (vehicle != null)
                 {
-                    ShippingOrderId = shippingOrder.ShippingOrderId,
-                    OrderId = shippingOrder.OrderId,
-                    OrderCode = order.OrderCode,
-                    StaffId = shippingOrder.StaffId,
-                    StaffName = staffDetails?.Name ?? string.Empty,
-                    VehicleId = shippingOrder.VehicleId,
-                    VehicleName = vehicleDetails?.Name ?? string.Empty,
-                    VehicleType = vehicleDetails?.Type ?? VehicleType.Scooter,
-                    OrderSize = shippingOrder.OrderSize,
-                    IsDelivered = shippingOrder.IsDelivered,
-                    CreatedAt = shippingOrder.CreatedAt
-                };
+                    response.VehicleId = vehicle.VehicleId;
+                    response.VehicleName = vehicle.Name;
+                    response.VehicleType = vehicle.Type;
+                }
+            }
+
+            return response;
+        }
+
+        // Helper method to assign staff to a task (internal version)
+        private async Task<StaffAssignmentResponse> AssignStaffToTaskInternalAsync(
+            int orderId,
+            int staffId,
+            int managerId,
+            StaffTaskType taskType,
+            int? vehicleId = null)
+        {
+
+            // Get the order
+            var order = await _unitOfWork.Repository<Order>()
+                .GetAll(o => o.OrderId == orderId && !o.IsDelete)
+                .FirstOrDefaultAsync();
+
+            if (order == null)
+            {
+                throw new NotFoundException($"Order with ID {orderId} not found.");
+            }
+
+            // Get the staff member
+            var staff = await _unitOfWork.Repository<User>()
+                .GetAll(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync();
+
+            if (staff == null)
+            {
+                throw new NotFoundException($"Staff with ID {staffId} not found or is not a staff member.");
+            }
+
+            // Check staff eligibility based on task type
+            if (taskType == StaffTaskType.Preparation && staff.StaffType != StaffType.Preparation)
+            {
+                throw new ValidationException($"Staff with ID {staffId} is not authorized for order preparation. Only preparation staff can prepare orders.");
+            }
+
+            // Check staff availability on current day
+            var today = DateTime.UtcNow.AddHours(7).DayOfWeek;
+            var currentDay = MapDayOfWeekToWorkDays(today);
+
+            // Check if staff is available on the current day
+            if ((staff.WorkDays & currentDay) == 0)
+            {
+                throw new ValidationException($"Staff with ID {staffId} is not available on {today}. Staff works on: {staff.WorkDays}");
+            }
+
+            // Check for existing active assignment
+            var existingAssignment = await _unitOfWork.Repository<StaffAssignment>()
+                .GetAll(sa => sa.OrderId == orderId && sa.StaffId == staffId &&
+                             sa.TaskType == taskType && sa.CompletedDate == null)
+                .FirstOrDefaultAsync();
+
+            if (existingAssignment != null)
+            {
+                throw new BusinessException($"Staff {staffId} is already actively assigned to task {taskType} for order {orderId}.");
+            }
+
+            // Create the new assignment
+            var newAssignment = new StaffAssignment
+            {
+                OrderId = orderId,
+                StaffId = staffId,
+                ManagerId = managerId,
+                TaskType = taskType,
+                AssignedDate = DateTime.UtcNow.AddHours(7),
+            };
+
+            await _unitOfWork.Repository<StaffAssignment>().InsertAsync(newAssignment);
+
+            // Handle task-specific logic
+            StaffAssignmentResponse response = new StaffAssignmentResponse
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                StaffId = staffId,
+                StaffName = staff.Name,
+                AssignedAt = DateTime.UtcNow.AddHours(7),
+                TaskType = taskType,
+                AssignmentId = newAssignment.StaffAssignmentId
+            };
+
+            if (taskType == StaffTaskType.Preparation)
+            {
+                // Update order with preparation staff
+                order.PreparationStaffId = staffId;
+                order.Status = OrderStatus.Processing;
+                order.SetUpdateDate();
+
+                await _unitOfWork.CommitAsync();
+                response.Status = order.Status;
+            }
+
+            return response;
+        }
+        private WorkDays MapDayOfWeekToWorkDays(DayOfWeek dayOfWeek)
+        {
+            return dayOfWeek switch
+            {
+                DayOfWeek.Monday => WorkDays.Monday,
+                DayOfWeek.Tuesday => WorkDays.Tuesday,
+                DayOfWeek.Wednesday => WorkDays.Wednesday,
+                DayOfWeek.Thursday => WorkDays.Thursday,
+                DayOfWeek.Friday => WorkDays.Friday,
+                DayOfWeek.Saturday => WorkDays.Saturday,
+                DayOfWeek.Sunday => WorkDays.Sunday,
+                _ => throw new ArgumentOutOfRangeException(nameof(dayOfWeek), dayOfWeek, null)
+            };
+        }
+
+        // Helper method to assign shipping staff
+        private async Task<StaffAssignmentResponse> AssignShippingStaffAsync(StaffAssignmentRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Assigning shipping staff {StaffId} to order {OrderCode}",
+                    request.StaffId, request.OrderCode);
+
+                // Get the order
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => o.OrderCode == request.OrderCode && !o.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {request.OrderCode} not found");
+
+                // Get the current manager ID
+                int managerId = await GetCurrentManagerIdAsync();
+
+                // Call the internal method to handle the assignment
+                return await AssignShippingStaffWithoutStatusCheckAsync(
+                    order.OrderId,
+                    request.StaffId,
+                    managerId,
+                    request.VehicleId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error allocating order {OrderId} to staff {StaffId} with vehicle {VehicleId}",
-           orderId, staffId, vehicleId);
+                _logger.LogError(ex, "Error assigning shipping staff {StaffId} to order {OrderCode}",
+                    request.StaffId, request.OrderCode);
+                throw;
+            }
+        }
+
+        // Helper method to assign staff to a task
+        private async Task<StaffAssignmentResponse> AssignStaffToTaskAsync(
+            string orderCode,
+            int staffId,
+            StaffTaskType taskType,
+            int? vehicleId = null)
+        {
+            try
+            {
+                _logger.LogInformation("Assigning staff {StaffId} to {TaskType} task for order {OrderCode}",
+                    staffId, taskType, orderCode);
+
+                // Get the order
+                var order = await _unitOfWork.Repository<Order>()
+                    .AsQueryable()
+                    .Where(o => o.OrderCode == orderCode && !o.IsDelete)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                    throw new NotFoundException($"Order with ID {orderCode} not found");
+
+                // Get the current manager ID
+                int managerId = await GetCurrentManagerIdAsync();
+
+                // Call the appropriate internal method based on task type
+                if (taskType == StaffTaskType.Shipping)
+                {
+                    return await AssignShippingStaffWithoutStatusCheckAsync(
+                        order.OrderId,
+                        staffId,
+                        managerId,
+                        vehicleId);
+                }
+                else
+                {
+                    return await AssignStaffToTaskInternalAsync(
+                        order.OrderId,
+                        staffId,
+                        managerId,
+                        taskType,
+                        vehicleId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning staff {StaffId} to {TaskType} task for order {OrderCode}",
+                    staffId, taskType, orderCode);
                 throw;
             }
         }

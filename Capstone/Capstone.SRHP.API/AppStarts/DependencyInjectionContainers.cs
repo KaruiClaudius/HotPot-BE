@@ -1,4 +1,5 @@
-﻿using Capstone.HPTY.API.SideServices;
+﻿using Capstone.HPTY.API.Services;
+using Capstone.HPTY.API.SideServices;
 using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
@@ -9,6 +10,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
@@ -16,11 +18,12 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services;
+using Capstone.HPTY.ServiceLayer.Services.BackgroundServices;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
-using Capstone.HPTY.ServiceLayer.Services.ComboService;
 using Capstone.HPTY.ServiceLayer.Services.Customer;
 using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Capstone.HPTY.ServiceLayer.Services.HotpotService;
+using Capstone.HPTY.ServiceLayer.Services.IngredientService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
 using Capstone.HPTY.ServiceLayer.Services.ManagerService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
@@ -66,10 +69,14 @@ namespace Capstone.HPTY.API.AppStarts
             // Core Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddHttpContextAccessor();
 
             // Auth Services
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IAuthService, AuthService>();
+
+            // Identity Services
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             // Business Services
             services.AddScoped<IComboService, ComboService>();
@@ -81,6 +88,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IIngredientService, IngredientService>();
             services.AddScoped<ICustomizationService, CustomizationService>();
             services.AddScoped<ISizeDiscountService, SizeDiscountService>();
+            services.AddScoped<IIngredientReportService, IngredientReportService>();
 
             services.AddScoped<IOrderService, OrderService>();
 
@@ -94,6 +102,8 @@ namespace Capstone.HPTY.API.AppStarts
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
             services.AddScoped<IChatService, ChatService>();
+            services.AddScoped<IChatSignalRService, ChatSignalRService>();
+
             services.AddScoped<IFeedbackService, FeedbackService>();
             services.AddScoped<IScheduleService, ScheduleService>();
             services.AddScoped<IEquipmentConditionService, EquipmentConditionService>();
@@ -105,15 +115,30 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IStaffService, StaffService>();
             services.AddScoped<IStaffPaymentService, StaffPaymentService>();
             services.AddScoped<IStaffOrderService, StaffOrderService>();
+            services.AddScoped<IStaffAssignmentService, StaffAssignmentService>();
+
 
             // Notification Services
-            services.AddScoped<INotificationService, SignalRNotificationService>();
+            services.AddScoped<INotificationService, NotificationService>();
 
             // Background Services
-            services.AddHostedService<EquipmentStockMonitorService>();
+            //services.AddHostedService<EquipmentStockMonitorService>();
+
+            services.AddHostedService<CheckPaymentService>();
+
+            services.Configure<IngredientMonitorOptions>(options =>
+            {
+                options.CheckIntervalMinutes = 60;
+                options.ExpirationWarningDays = 2;
+                options.AdminRole = "Admin";
+                options.NotificationCooldownHours = 24;
+            });
+
+            // background hosting service
+            services.AddSingleton<IHostedService, IngredientMonitorService>();
 
             // Shipping Services
-            services.AddScoped<IStaffShippingService, StaffShippingService>();
+            //services.AddScoped<IStaffShippingService, StaffShippingService>();
 
             // Equipment Services
             services.AddScoped<IStaffEquipmentService, StaffEquipmentService>();
@@ -136,8 +161,10 @@ namespace Capstone.HPTY.API.AppStarts
 
             services.AddSingleton<IEventPublisher, EventPublisher>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
-            services.AddSingleton<SocketIOClientService>();
-
+            //services.AddSingleton<SocketIOClientService>();
+            //services.AddScoped<OrderNotificationHandler>();
+            //services.AddScoped<FeedbackNotificationHandler>();
+            //services.AddScoped<ReplacementRequestNotificationHandler>();
 
             // External Services
             services.AddHttpClient();

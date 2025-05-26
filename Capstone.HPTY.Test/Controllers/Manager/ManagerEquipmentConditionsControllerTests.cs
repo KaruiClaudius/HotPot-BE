@@ -4,7 +4,6 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System;
@@ -18,6 +17,7 @@ using System.Linq;
 
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 
 namespace Capstone.HPTY.Test.Controllers.Manager
 {
@@ -74,7 +74,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Name = "Test Condition",
                 Description = "Test Description",
                 Status = MaintenanceStatus.Pending,
-                EquipmentType = "HotPot",
                 EquipmentId = 1,
                 EquipmentName = "Test HotPot"
             };
@@ -93,7 +92,7 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             var apiResponse = Assert.IsType<ApiResponse<EquipmentConditionDetailDto>>(createdAtActionResult.Value);
             Assert.Equal(expectedResult, apiResponse.Data);
             Assert.True(apiResponse.Success);
-            Assert.Equal("Equipment condition logged successfully", apiResponse.Message);
+            Assert.Equal("HotPot condition logged successfully", apiResponse.Message);
             Assert.Equal(nameof(controller.GetConditionLogById), createdAtActionResult.ActionName);
             Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
 
@@ -138,7 +137,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Description = "The heating element is not working properly",
                 Status = MaintenanceStatus.Pending,
                 HotPotInventoryId = 123,
-                //UtensilId = null
             };
 
             var expectedResult = new EquipmentConditionDetailDto
@@ -147,15 +145,13 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Name = request.Name,
                 Description = request.Description,
                 Status = request.Status,
-                LoggedDate = DateTime.UtcNow,
-                EquipmentType = "HotPot"
+                LoggedDate = DateTime.UtcNow.AddHours(7),
             };
 
             // Create a Hotpot with a Name
             var hotpot = new Hotpot
             {
                 Name = "Premium HotPot",
-                // Add any other required properties
                 HotpotId = 789
             };
 
@@ -179,11 +175,11 @@ namespace Capstone.HPTY.Test.Controllers.Manager
 
             // Setup the mock to return the HotPotInventory object
             _mockHotpotService
-                .Setup(s => s.GetByInvetoryIdAsync(request.HotPotInventoryId.Value))
+                .Setup(s => s.GetByInvetoryIdAsync(request.HotPotInventoryId))
                 .ReturnsAsync(hotpotInventory);
 
             _mockNotificationService
-                .Setup(s => s.NotifyRole(
+                .Setup(s => s.NotifyRoleAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -201,15 +197,14 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             result.Result.Should().BeOfType<CreatedAtActionResult>();
 
             // Verify notification was sent with correct parameters
-            _mockNotificationService.Verify(s => s.NotifyRole(
+            _mockNotificationService.Verify(s => s.NotifyRoleAsync(
                 "Administrators",
                 "ConditionIssue",
-                "New Equipment Condition Issue",
-                $"New issue reported for Premium HotPot: {request.Name}",
+                "Vấn Đề Mới Về Tình Trạng Nồi Lẩu",
+                $"Vấn đề mới được báo cáo cho {hotpot.Name}: {request.Name}", // Fix this line
                 It.Is<Dictionary<string, object>>(d =>
                     d.ContainsKey("ConditionLogId") && (int)d["ConditionLogId"] == expectedResult.DamageDeviceId &&
-                    d.ContainsKey("EquipmentType") && (string)d["EquipmentType"] == "HotPot" &&
-                    d.ContainsKey("EquipmentName") && (string)d["EquipmentName"] == "Premium HotPot" &&
+                    d.ContainsKey("HotPotName") && (string)d["HotPotName"] == "Premium HotPot" &&
                     d.ContainsKey("IssueName") && (string)d["IssueName"] == request.Name &&
                     d.ContainsKey("Description") && (string)d["Description"] == request.Description &&
                     d.ContainsKey("Status") && (string)d["Status"] == request.Status.ToString() &&
@@ -230,7 +225,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 Name = "Test Condition",
                 Description = "Test Description",
                 Status = MaintenanceStatus.Pending,
-                EquipmentType = "HotPot",
                 EquipmentId = 1,
                 EquipmentName = "Test HotPot"
             };
@@ -442,7 +436,6 @@ namespace Capstone.HPTY.Test.Controllers.Manager
                 DamageDeviceId = conditionLogId,
                 Name = "Test Condition",
                 Status = MaintenanceStatus.InProgress,
-                EquipmentType = "HotPot",
                 EquipmentId = 1,
                 EquipmentName = "Test HotPot"
             };

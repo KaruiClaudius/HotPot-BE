@@ -1,11 +1,10 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -57,7 +56,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var pagedResult = await _feedbackService.GetFilteredFeedbackAsync(request);
                 return Ok(ApiResponse<PagedResult<FeedbackListDto>>.SuccessResponse(
-                    pagedResult, "Feedback retrieved successfully"));
+                    pagedResult, "Đã lấy phản hồi thành công"));
             }
             catch (Exception ex)
             {
@@ -77,139 +76,13 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var feedback = await _feedbackService.GetFeedbackDetailByIdAsync(id);
                 if (feedback == null)
                 {
-                    return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse($"Feedback with ID {id} not found"));
+                    return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse($"Không tìm thấy phản hồi với ID {id}"));
                 }
 
                 return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(
-                    feedback, "Feedback retrieved successfully"));
+                    feedback, "Đã lấy phản hồi thành công"));
             }
             catch (NotFoundException ex)
-            {
-                return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpGet("by-status/{status}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetFeedbackByStatus(
-            [FromRoute] FeedbackApprovalStatus status,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var pagedResult = await _feedbackService.GetFeedbackByStatusAsync(status, pageNumber, pageSize);
-
-                string statusName = status.ToString().ToLower();
-                return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
-                    pagedResult,
-                    $"{char.ToUpper(statusName[0])}{statusName.Substring(1)} feedback retrieved successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<PagedResult<ManagerFeedbackListDto>>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpPost("{id}/approve")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<FeedbackDetailDto>>> ApproveFeedback(int id, [FromBody] ApproveFeedbackRequest request)
-        {
-            try
-            {
-                var feedback = await _feedbackService.ApproveFeedbackAsync(id, request.AdminUserId);
-
-                // Get admin name for notification
-                string adminName = feedback.ApprovedByUserName ?? "Admin";
-
-                // Notify managers about the newly approved feedback
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "FeedbackApproved",
-                    "Feedback Approved",
-                    $"Feedback '{feedback.Title}' has been approved by {adminName}",
-                    new Dictionary<string, object>
-                    {
-                { "FeedbackId", feedback.FeedbackId },
-                { "Title", feedback.Title },
-                { "AdminName", adminName },
-                { "AdminId", request.AdminUserId },
-                { "ApprovalDate", DateTime.UtcNow },
-                { "CustomerName", feedback.UserName ?? "Anonymous" }
-                    });
-
-                // Notify the customer that their feedback was approved
-                if (feedback.UserId != 0)
-                {
-                    await _notificationService.NotifyUser(
-                        feedback.UserId,
-                        "FeedbackResponse",
-                        "Feedback Approved",
-                        "Your feedback has been approved and will be shared with our management team.",
-                        new Dictionary<string, object>
-                        {
-                    { "FeedbackId", feedback.FeedbackId },
-                    { "Title", feedback.Title },
-                    { "ResponseMessage", "Your feedback has been approved and will be shared with our management team." },
-                    { "ResponderName", adminName },
-                    { "ResponseDate", DateTime.UtcNow }
-                        });
-                }
-
-                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback approved successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpPost("{id}/reject")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<FeedbackDetailDto>>> RejectFeedback(int id, [FromBody] RejectFeedbackRequest request)
-        {
-            try
-            {
-                var feedback = await _feedbackService.RejectFeedbackAsync(id, request.AdminUserId, request.RejectionReason);
-
-                // Get admin name for notification
-                string adminName = feedback.ApprovedByUserName ?? "Admin";
-
-                // Notify the customer that their feedback was rejected
-                if (feedback.UserId != 0)
-                {
-                    await _notificationService.NotifyUser(
-                        feedback.UserId,
-                        "FeedbackResponse",
-                        "Feedback Not Approved",
-                        $"Your feedback was not approved. Reason: {request.RejectionReason}",
-                        new Dictionary<string, object>
-                        {
-                    { "FeedbackId", feedback.FeedbackId },
-                    { "Title", feedback.Title },
-                    { "ResponseMessage", $"Your feedback was not approved. Reason: {request.RejectionReason}" },
-                    { "ResponderName", adminName },
-                    { "ResponseDate", DateTime.UtcNow },
-                    { "RejectionReason", request.RejectionReason }
-                        });
-                }
-
-                return Ok(ApiResponse<FeedbackDetailDto>.SuccessResponse(feedback, "Feedback rejected successfully"));
-            }
-            catch (KeyNotFoundException ex)
             {
                 return NotFound(ApiResponse<FeedbackDetailDto>.ErrorResponse(ex.Message));
             }
@@ -224,7 +97,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
         public async Task<ActionResult<ApiResponse<FeedbackStats>>> GetFeedbackStats()
         {
             var stats = await _feedbackService.GetFeedbackStatsAsync();
-            return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Feedback statistics retrieved successfully"));
+            return Ok(ApiResponse<FeedbackStats>.SuccessResponse(stats, "Thống kê phản hồi đã được lấy thành công."));
         }
     }
 }

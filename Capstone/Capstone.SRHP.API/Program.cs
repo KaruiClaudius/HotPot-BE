@@ -1,14 +1,13 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Capstone.HPTY.API.AppStarts;
 using Capstone.HPTY.API.Hubs;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Capstone.HPTY.ServiceLayer.Services.ChatService;
 using Capstone.HPTY.ServiceLayer.Services.MailService;
+using Capstone.HPTY.ServiceLayer.Services.UserService;
 using Mapster;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Capstone.HPTY.Test")]
 
 
@@ -48,13 +47,6 @@ builder.Services.AddSignalR(options =>
     options.PayloadSerializerOptions.PropertyNamingPolicy = null;
 });
 
-// Add logging
-//builder.Logging.AddConsole();
-//builder.Logging.AddDebug();
-//builder.Logging.SetMinimumLevel(LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
-//builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
-
 // Add Email
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
@@ -74,7 +66,7 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:5000",  // Your local frontend
                 "http://localhost:3000",   // React default port
-                "https://yourdomain.com"   // Your production domain
+                "https://hotpot-web-app-production.up.railway.app"   // Your production domain
             )
     );
 });
@@ -82,47 +74,8 @@ builder.Services.AddCors(options =>
 // Build the app
 var app = builder.Build();
 
-app.Lifetime.ApplicationStarted.Register(async () =>
-{
-    try
-    {
-        using var scope = app.Services.CreateScope();
-        var socketService = scope.ServiceProvider.GetRequiredService<SocketIOClientService>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-        logger.LogInformation($"Attempting to connect to Socket.IO server at {socketService.GetServerUrl()}");
-        var connected = await socketService.ConnectAsync();
-
-        if (connected)
-        {
-            logger.LogInformation("Successfully connected to Socket.IO server at startup");
-        }
-        else
-        {
-            logger.LogWarning("Could not connect to Socket.IO server at startup. Chat functionality may be limited.");
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Failed to connect to Socket.IO server at startup");
-    }
-});
-
 // Get logger from service provider
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-
-// Connect to Socket.IO server at startup
-try
-{
-    var socketService = app.Services.GetRequiredService<SocketIOClientService>();
-    await socketService.ConnectAsync();
-    logger.LogInformation("Successfully connected to Socket.IO server at startup");
-}
-catch (Exception ex)
-{
-    logger.LogError(ex, "Failed to connect to Socket.IO server at startup");
-}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -166,14 +119,69 @@ app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow.AddHours(7) }));
-app.MapGet("/api/socket-health", (HttpContext context) =>
+
+// Simplified socket health check that doesn't rely on methods that don't exist
+app.MapGet("/api/socket-health", async (HttpContext context) =>
 {
-    var socketService = context.RequestServices.GetRequiredService<SocketIOClientService>();
-    return Results.Ok(new
-    {
-        IsConnected = socketService._isConnected,
-        ServerUrl = socketService.GetServerUrl(),
-        Timestamp = DateTime.UtcNow
-    });
+    var config = context.RequestServices.GetRequiredService<IConfiguration>();
+    var httpClientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
+
+    // Get the Socket.IO server URL from configuration
+    //var serverUrl = config["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/";
+
+    //try
+    //{
+    //    // Create HTTP client
+    //    var client = httpClientFactory.CreateClient();
+
+    //    // Call the Socket.IO server's health endpoint
+    //    var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health");
+
+    //    if (response.IsSuccessStatusCode)
+    //    {
+    //        // Parse the health data from the Socket.IO server
+    //        var socketServerHealth = await response.Content.ReadFromJsonAsync<object>();
+
+    //        // Return combined health information
+    //        return Results.Ok(new
+    //        {
+    //            ServerUrl = serverUrl,
+    //            Timestamp = DateTime.UtcNow.AddHours(7),
+    //            TimeZone = "UTC+7",
+    //            SocketServerHealth = socketServerHealth
+    //        });
+    //    }
+    //    else
+    //    {
+    //        return Results.Ok(new
+    //        {
+    //            ServerUrl = serverUrl,
+    //            Timestamp = DateTime.UtcNow.AddHours(7),
+    //            TimeZone = "UTC+7",
+    //            SocketServerHealth = new
+    //            {
+    //                status = "unavailable",
+    //                error = $"Failed to connect to Socket.IO server: {response.StatusCode}"
+    //            }
+    //        });
+    //    }
+    //}
+    //catch (Exception ex)
+    //{
+    //    return Results.Ok(new
+    //    {
+    //        ServerUrl = serverUrl,
+    //        Timestamp = DateTime.UtcNow.AddHours(7),
+    //        TimeZone = "UTC+7",
+    //        SocketServerHealth = new
+    //        {
+    //            status = "error",
+    //            error = $"Exception when connecting to Socket.IO server: {ex.Message}"
+    //        }
+    //    });
+    //}
 });
+
+
+
 app.Run();

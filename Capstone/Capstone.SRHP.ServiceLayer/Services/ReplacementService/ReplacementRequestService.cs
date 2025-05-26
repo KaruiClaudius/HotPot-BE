@@ -7,6 +7,7 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -119,7 +120,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     throw new ValidationException("Chỉ có thể xem xét các yêu cầu đang chờ xử lý");
 
                 request.Status = isApproved ? ReplacementRequestStatus.Approved : ReplacementRequestStatus.Rejected;
-                request.ReviewDate = DateTime.UtcNow;
+                request.ReviewDate = DateTime.UtcNow.AddHours(7);
                 request.ReviewNotes = reviewNotes;
                 request.SetUpdateDate();
 
@@ -148,7 +149,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 {
                     string equipmentName = GetEquipmentName(request);
                     string statusMessage = GetCustomerFriendlyStatusMessage(request.Status);
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementStatusUpdate",
                         "Replacement Request Update",
@@ -164,20 +165,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "ReplacementStatusUpdate",
-                    "Replacement Status Update",
-                    $"Replacement request #{request.ReplacementRequestId} is now {request.Status}",
-                    new Dictionary<string, object>
-                    {
+                await _notificationService.NotifyRoleAsync(
+                     "Managers",
+                     "ReplacementStatusUpdate",
+                     "Replacement Status Update",
+                     $"Replacement request #{request.ReplacementRequestId} is now {request.Status}",
+                     new Dictionary<string, object>
+                     {
                         { "ReplacementRequestId", request.ReplacementRequestId },
                         { "EquipmentType", "HotPot" },
                         { "EquipmentName", GetEquipmentName(request) },
                         { "Status", request.Status.ToString() },
                         { "ReviewNotes", request.ReviewNotes },
                         { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
-                    });
+                     });
 
                 return request;
             },
@@ -241,34 +242,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about the assignment
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementStatusUpdate",
                         "Replacement Request Update",
                         $"Your replacement request for {equipmentName} is now being processed",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "Status", request.Status.ToString() },
-                        { "StaffName", staff.Name },
-                        { "Message", "A staff member has been assigned to handle your replacement request." }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "Status", request.Status.ToString() },
+                    { "StaffName", staff.Name },
+                    { "Message", "A staff member has been assigned to handle your replacement request." }
                         });
                 }
 
                 // Notify staff about the assignment
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     staffId,
                     "StaffReplacementAssignment",
                     "New Replacement Assignment",
                     $"You have been assigned to handle a replacement for {equipmentName}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "RequestReason", request.RequestReason },
-                    { "Status", request.Status.ToString() },
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "RequestReason", request.RequestReason },
+                { "Status", request.Status.ToString() },
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -281,6 +282,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 }
             });
         }
+
         public async Task<ReplacementRequest> MarkReplacementAsCompletedAsync(int requestId, string completionNotes)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -296,7 +298,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     throw new ValidationException("Chỉ có thể đánh dấu hoàn thành cho yêu cầu đang xử lý");
 
                 request.Status = ReplacementRequestStatus.Completed;
-                request.CompletionDate = DateTime.UtcNow;
+                request.CompletionDate = DateTime.UtcNow.AddHours(7);
                 request.AdditionalNotes = (request.AdditionalNotes ?? "") + "\nGhi chú hoàn thành: " + completionNotes;
                 request.SetUpdateDate();
 
@@ -306,8 +308,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     Name = request.HotPotInventory.Hotpot.Name,
                     Description = $"Nồi đã được thay thế. Lí Do: {request.RequestReason}. Notes: {completionNotes}",
                     Status = MaintenanceStatus.Completed,
-                    LoggedDate = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow
+                    LoggedDate = DateTime.UtcNow.AddHours(7),
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
                 };
 
                 // Set the HotPotInventoryId if provided
@@ -354,34 +356,34 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about completion
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "ReplacementCompleted",
                         "Replacement Request Completed",
                         $"Your replacement request for {equipmentName} has been completed",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "CompletionNotes", completionNotes },
-                        { "CompletionDate", request.CompletionDate }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "CompletionNotes", completionNotes },
+                    { "CompletionDate", request.CompletionDate }
                         });
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCompleted",
                     "Replacement Request Completed",
                     $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been completed",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "CompletionNotes", completionNotes },
-                    { "CompletionDate", request.CompletionDate },
-                    { "StaffName", request.AssignedStaff?.Name ?? "Unknown Staff" },
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "CompletionNotes", completionNotes },
+                { "CompletionDate", request.CompletionDate },
+                { "StaffName", request.AssignedStaff?.Name ?? "Unknown Staff" },
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -456,7 +458,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
 
                 if (status == ReplacementRequestStatus.Completed)
                 {
-                    request.CompletionDate = DateTime.UtcNow;
+                    request.CompletionDate = DateTime.UtcNow.AddHours(7);
                 }
 
                 await _unitOfWork.CommitAsync();
@@ -494,14 +496,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     // If faulty, mark as in progress (ready for physical replacement)
                     request.Status = ReplacementRequestStatus.InProgress;
                     request.AdditionalNotes = (request.AdditionalNotes ?? "") +
-                        $"\n\nXác minh ({DateTime.UtcNow:dd/MM/yyyy HH:mm}): Thiết bị lỗi. {verificationNotes}";
+                        $"\n\nXác minh ({DateTime.UtcNow.AddHours(7):dd/MM/yyyy HH:mm}): Thiết bị lỗi. {verificationNotes}";
                 }
                 else
                 {
                     // If not faulty, mark as rejected
                     request.Status = ReplacementRequestStatus.Rejected;
                     request.AdditionalNotes = (request.AdditionalNotes ?? "") +
-                        $"\n\nXác minh ({DateTime.UtcNow:dd/MM/yyyy HH:mm}): Thiết bị không lỗi. {verificationNotes}";
+                        $"\n\nXác minh ({DateTime.UtcNow.AddHours(7):dd/MM/yyyy HH:mm}): Thiết bị không lỗi. {verificationNotes}";
                 }
 
                 request.SetUpdateDate();
@@ -533,36 +535,36 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 // Notify customer about verification
                 if (request.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.CustomerId.Value,
                         "EquipmentVerification",
                         "Equipment Verification Result",
                         $"Your {equipmentName} has been {statusMessage}",
                         new Dictionary<string, object>
                         {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentName", equipmentName },
-                        { "IsFaulty", isFaulty },
-                        { "Status", request.Status.ToString() },
-                        { "VerificationNotes", verificationNotes }
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentName", equipmentName },
+                    { "IsFaulty", isFaulty },
+                    { "Status", request.Status.ToString() },
+                    { "VerificationNotes", verificationNotes }
                         });
                 }
 
                 // Notify managers about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "EquipmentVerification",
                     "Equipment Verification Result",
                     $"Equipment for replacement request #{request.ReplacementRequestId} has been {(isFaulty ? "confirmed faulty" : "found working properly")}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "IsFaulty", isFaulty },
-                    { "Status", request.Status.ToString() },
-                    { "VerificationNotes", verificationNotes },
-                    { "StaffName", staffId.ToString() }, // We should load staff name here
-                    { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "IsFaulty", isFaulty },
+                { "Status", request.Status.ToString() },
+                { "VerificationNotes", verificationNotes },
+                { "StaffName", staffId.ToString() }, // We should load staff name here
+                { "CustomerName", request.Customer?.Name ?? "Unknown Customer" }
                     });
 
                 return request;
@@ -624,7 +626,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 {
                     // Reactivate and update the soft-deleted request
                     softDeletedRequest.IsDelete = false;
-                    softDeletedRequest.RequestDate = DateTime.UtcNow;
+                    softDeletedRequest.RequestDate = DateTime.UtcNow.AddHours(7);
                     softDeletedRequest.Status = ReplacementRequestStatus.Pending;
                     softDeletedRequest.AssignedStaffId = null;
                     softDeletedRequest.CompletionDate = null;
@@ -639,29 +641,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                     softDeletedRequest.Customer = customer;
                     softDeletedRequest.HotPotInventory = hotpotInventory;
 
-                    await _notificationService.NotifyRole(
-                    "Managers",
-                    "NewReplacementRequest",
-                    "New Replacement Request",
-                    $"New replacement request for {GetEquipmentName(request)} from {customer.Name}",
-                    new Dictionary<string, object>
-                    {
-                        { "ReplacementRequestId", request.ReplacementRequestId },
-                        { "EquipmentType", "HotPot" },
-                        { "EquipmentName", GetEquipmentName(request) },
-                        { "RequestReason", request.RequestReason },
-                        { "CustomerName", customer.Name },
-                        { "CustomerId", customer.UserId },
-                        { "RequestDate", request.RequestDate }
-                    });
+                    await _notificationService.NotifyRoleAsync(
+                        "Managers",
+                        "NewReplacementRequest",
+                        "New Replacement Request",
+                        $"New replacement request for {GetEquipmentName(request)} from {customer.Name}",
+                        new Dictionary<string, object>
+                        {
+                    { "ReplacementRequestId", request.ReplacementRequestId },
+                    { "EquipmentType", "HotPot" },
+                    { "EquipmentName", GetEquipmentName(request) },
+                    { "RequestReason", request.RequestReason },
+                    { "CustomerName", customer.Name },
+                    { "CustomerId", customer.UserId },
+                    { "RequestDate", request.RequestDate }
+                        });
 
                     return softDeletedRequest;
                 }
 
                 // Set default values
                 request.Status = ReplacementRequestStatus.Pending;
-                request.RequestDate = DateTime.UtcNow;
-                request.CreatedAt = DateTime.UtcNow;
+                request.RequestDate = DateTime.UtcNow.AddHours(7);
+                request.CreatedAt = DateTime.UtcNow.AddHours(7);
 
                 _unitOfWork.Repository<ReplacementRequest>().Insert(request);
                 await _unitOfWork.CommitAsync();
@@ -674,20 +676,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 string equipmentName = GetEquipmentName(request);
 
                 // Notify managers about the new request
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "NewReplacementRequest",
                     "New Replacement Request",
                     $"New replacement request for {equipmentName} from {customer.Name}",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentType", "HotPot" },
-                    { "EquipmentName", equipmentName },
-                    { "RequestReason", request.RequestReason },
-                    { "CustomerName", customer.Name },
-                    { "CustomerId", customer.UserId },
-                    { "RequestDate", request.RequestDate }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentType", "HotPot" },
+                { "EquipmentName", equipmentName },
+                { "RequestReason", request.RequestReason },
+                { "CustomerName", customer.Name },
+                { "CustomerId", customer.UserId },
+                { "RequestDate", request.RequestDate }
                     });
 
                 return request;
@@ -773,18 +775,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.ReplacementService
                 string equipmentName = GetEquipmentName(request);
 
                 // Notify managers about the cancellation
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCancelled",
                     "Replacement Request Cancelled",
                     $"Replacement request #{request.ReplacementRequestId} for {equipmentName} has been cancelled by the customer",
                     new Dictionary<string, object>
                     {
-                    { "ReplacementRequestId", request.ReplacementRequestId },
-                    { "EquipmentName", equipmentName },
-                    { "CustomerName", customer.Name },
-                    { "CustomerId", customer.UserId },
-                    { "CancellationDate", DateTime.UtcNow }
+                { "ReplacementRequestId", request.ReplacementRequestId },
+                { "EquipmentName", equipmentName },
+                { "CustomerName", customer.Name },
+                { "CustomerId", customer.UserId },
+                { "CancellationDate", DateTime.UtcNow.AddHours(7) }
                     });
 
                 return request;

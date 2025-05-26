@@ -44,11 +44,13 @@ namespace Capstone.HPTY.RepositoryLayer
         public virtual DbSet<ReplacementRequest> ReplacementRequests { get; set; }
         public virtual DbSet<ComboAllowedIngredientType> ComboAllowedIngredientTypes { get; set; }
         public virtual DbSet<SizeDiscount> SizeDiscounts { get; set; }
-        public virtual DbSet<StaffPickupAssignment> StaffPickupAssignments { get; set; }
         public virtual DbSet<PaymentReceipt> PaymentReceipts { get; set; }
         public virtual DbSet<IngredientBatch> IngredientBatchs { get; set; }
-
+        public virtual DbSet<IngredientUsage> IngredientUsages { get; set; }
+        public virtual DbSet<StaffAssignment> StaffAssignments { get; set; }
         public virtual DbSet<Vehicle> Vehicles { get; set; }
+        public virtual DbSet<Notification> Notifications { get; set; }
+        public virtual DbSet<UserNotification> UserNotifications { get; set; }
 
         public HPTYContext(DbContextOptions<HPTYContext> options) : base(options)
         {
@@ -146,18 +148,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 .HasForeignKey(r => r.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<StaffPickupAssignment>()
-
-                .HasOne(a => a.RentOrder)
-                .WithMany()
-                .HasForeignKey(a => a.OrderId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<StaffPickupAssignment>()
-                .HasOne(a => a.Staff)
-                .WithMany()
-                .HasForeignKey(a => a.StaffId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Discount>(entity =>
             {
@@ -165,11 +155,16 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasDefaultValue(0);
 
                 entity.Property(d => d.PointCost)
-                    .HasDefaultValue(0);
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
 
-                entity.HasOne(d => d.Order)
+                entity.Property(d => d.Duration)
+                    .IsRequired(false)
+                    .HasDefaultValue(null);
+
+                entity.HasMany(d => d.Orders)
                     .WithOne(o => o.Discount)
-                    .HasForeignKey<Order>(o => o.DiscountId)
+                    .HasForeignKey(o => o.DiscountId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -221,7 +216,6 @@ namespace Capstone.HPTY.RepositoryLayer
                     .WithMany(u => u.Orders)
                     .HasForeignKey(o => o.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
-
                 // Configure the relationship between Order and User (PreparationStaff)
                 entity.HasOne(o => o.PreparationStaff)
                     .WithMany(u => u.PreparedOrders)
@@ -461,7 +455,33 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired();
             });
 
-
+            modelBuilder.Entity<IngredientUsage>(entity =>
+            {
+                entity.HasOne(i => i.Ingredient)
+                    .WithMany()
+                    .HasForeignKey(i => i.IngredientId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.IngredientBatch)
+                    .WithMany()
+                    .HasForeignKey(i => i.IngredientBatchId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.Order)
+                    .WithMany()
+                    .HasForeignKey(i => i.OrderId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.OrderDetail)
+                    .WithMany()
+                    .HasForeignKey(i => i.OrderDetailId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.Combo)
+                    .WithMany()
+                    .HasForeignKey(i => i.ComboId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(i => i.Customization)
+                    .WithMany()
+                    .HasForeignKey(i => i.CustomizationId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
 
             // Configure ChatMessage entity
             modelBuilder.Entity<ChatMessage>(entity =>
@@ -471,26 +491,75 @@ namespace Capstone.HPTY.RepositoryLayer
 
                 // Relationship with User as Sender
                 entity.HasOne(e => e.SenderUser)
-                    .WithMany() // Assuming User doesn't have a navigation property back to sent messages
+                    .WithMany()
                     .HasForeignKey(e => e.SenderUserId)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 // Relationship with User as Receiver
                 entity.HasOne(e => e.ReceiverUser)
-                    .WithMany() // Assuming User doesn't have a navigation property back to received messages
+                    .WithMany()
                     .HasForeignKey(e => e.ReceiverUserId)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relationship with ChatSession - THIS IS MISSING
+                entity.HasOne(e => e.ChatSession)
+                    .WithMany(s => s.Messages)
+                    .HasForeignKey(e => e.ChatSessionId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade); // Or Restrict, depending on your needs
 
                 // Configure properties
                 entity.Property(e => e.Message)
                     .IsRequired()
                     .HasMaxLength(2000);
-
-                entity.Property(e => e.IsRead)
-                    .IsRequired();
             });
+
+            modelBuilder.Entity<StaffAssignment>(entity =>
+            {
+                entity.HasKey(e => e.StaffAssignmentId);
+
+                entity.HasOne(sa => sa.Staff)
+                    .WithMany(u => u.StaffAssignments) // Assumes 'StaffAssignments' collection in User entity
+                    .HasForeignKey(sa => sa.StaffId)
+                    .OnDelete(DeleteBehavior.Restrict); // Choose delete behavior as appropriate
+
+                entity.HasOne(sa => sa.Manager)
+                    .WithMany(u => u.ManagedAssignments) // Assumes 'ManagedAssignments' collection in User entity
+                    .HasForeignKey(sa => sa.ManagerId)
+                    .OnDelete(DeleteBehavior.Restrict); // Choose delete behavior as appropriate
+
+                entity.HasOne(sa => sa.Order)
+                    .WithMany(o => o.StaffAssignments) // Assumes 'StaffAssignments' collection in Order entity
+                    .HasForeignKey(sa => sa.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade); // Or Restrict, as appropriate
+            });
+
+            modelBuilder.Entity<UserNotification>()
+                .HasOne(un => un.Notification)
+                .WithMany(n => n.UserNotifications)
+                .HasForeignKey(un => un.NotificationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserNotification>()
+                .HasOne(un => un.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(un => un.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Add indexes for better performance
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => n.CreatedAt);
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.TargetType, n.TargetId });
+
+            modelBuilder.Entity<UserNotification>()
+                .HasIndex(un => un.UserId);
+
+            modelBuilder.Entity<UserNotification>()
+                .HasIndex(un => new { un.UserId, un.IsRead });
 
             if (modelBuilder.Model.FindEntityType(typeof(ChatMessage))
                 .FindProperty("SessionId") != null)
@@ -502,6 +571,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     .IsRequired(false) // Optional relationship
                     .OnDelete(DeleteBehavior.Cascade); // Messages are deleted when session is deleted
             }
+
             DataSeeder.SeedData(modelBuilder);
         }
     }

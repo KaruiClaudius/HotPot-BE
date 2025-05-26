@@ -24,6 +24,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsLowStock { get; set; }
+
+    }    
+    public class IngredientDetailDto : IngredientDto
+    {
         public List<IngredientBatchDto> Batches { get; set; } = new List<IngredientBatchDto>();
+
+        public List<IngredientPriceDto> Prices { get; set; } = new List<IngredientPriceDto>();
+
     }
+
+
 }

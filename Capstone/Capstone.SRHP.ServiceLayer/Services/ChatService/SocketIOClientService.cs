@@ -1,218 +1,393 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using SocketIO.Core;
-using SocketIOClient;
-using SocketIOClient.Transport;
+﻿//using System;
+//using System.Threading;
+//using System.Threading.Tasks;
+//using Capstone.HPTY.ServiceLayer.DTOs.Chat;
+//using Microsoft.Extensions.Configuration;
+//using Microsoft.Extensions.Logging;
+//using SocketIOClient;
 
-namespace Capstone.HPTY.ServiceLayer.Services.ChatService
-{
-    public class SocketIOClientService : IDisposable
-    {
-        private readonly SocketIOClient.SocketIO _client;
-        private readonly ILogger<SocketIOClientService> _logger;
-        public bool _isConnected;
-        private readonly string _serverUrl;
+//namespace Capstone.HPTY.ServiceLayer.Services.ChatService
+//{
+//    public class SocketIOClientService : IDisposable, IAsyncDisposable
+//    {
+//        private readonly SocketIOClient.SocketIO _client;
+//        private readonly ILogger<SocketIOClientService> _logger;
+//        private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
+//        private bool _isDisposed;
+//        private bool _isConnecting;
+//        private readonly string _serverUrl;
+
+//        public SocketIOClientService(IConfiguration configuration, ILogger<SocketIOClientService> logger)
+//        {
+//            _logger = logger;
+//            _serverUrl = configuration["SocketIO:ServerUrl"] ?? "https://chat-server-production-9950.up.railway.app/";
+
+//            _logger.LogInformation($"Initializing Socket.IO client with URL: {_serverUrl}");
+
+//            _client = new SocketIOClient.SocketIO(_serverUrl, new SocketIOOptions
+//            {
+//                Reconnection = true,
+//                ReconnectionAttempts = 5,
+//                ReconnectionDelay = 2000,
+//                Transport = SocketIOClient.Transport.TransportProtocol.WebSocket,
+//            });
+
+//            SetupEventHandlers();
+
+//            // Don't block constructor with Wait() - instead use fire-and-forget with error handling
+//            Task.Run(async () =>
+//            {
+//                try
+//                {
+//                    await ConnectAsync();
+//                }
+//                catch (Exception ex)
+//                {
+//                    _logger.LogError(ex, "Failed to connect to Socket.IO server during initialization");
+//                }
+//            });
+//        }
+
+//        private void SetupEventHandlers()
+//        {
+//            _client.OnConnected += (sender, e) =>
+//            {
+//                _logger.LogInformation("Connected to Socket.IO server");
+//                _isConnecting = false;
+//            };
+
+//            _client.OnDisconnected += (sender, e) =>
+//            {
+//                _logger.LogInformation($"Disconnected from Socket.IO server: {e}");
+//            };
+
+//            _client.OnError += (sender, e) =>
+//            {
+//                _logger.LogError($"Socket.IO Error: {e}");
+//            };
+
+//            _client.OnReconnectAttempt += (sender, e) =>
+//            {
+//                _logger.LogInformation($"Attempting to reconnect to Socket.IO server (attempt {e})");
+//            };
+
+//            _client.OnReconnectError += (sender, e) =>
+//            {
+//                _logger.LogError($"Socket.IO Reconnection Error: {e}");
+//            };
+
+//            _client.OnReconnected += (sender, e) =>
+//            {
+//                _logger.LogInformation("Successfully reconnected to Socket.IO server");
+//            };
+//        }
+
+//        public async Task ConnectAsync()
+//        {
+//            if (_isDisposed)
+//            {
+//                _logger.LogWarning("Attempted to connect with disposed Socket.IO client");
+//                return;
+//            }
+
+//            // Prevent multiple simultaneous connection attempts
+//            if (_isConnecting)
+//            {
+//                _logger.LogInformation("Connection attempt already in progress");
+//                return;
+//            }
+
+//            await _connectionLock.WaitAsync();
+//            try
+//            {
+//                // Double-check after acquiring lock
+//                if (_client.Connected || _isConnecting)
+//                {
+//                    _logger.LogDebug("Socket already connected or connecting");
+//                    return;
+//                }
+
+//                _isConnecting = true;
+//                _logger.LogInformation("Connecting to Socket.IO server...");
+
+//                // Set a timeout for the connection attempt
+//                var connectionTask = _client.ConnectAsync();
+//                var timeoutTask = Task.Delay(15000); // 15 second timeout
+
+//                var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
+
+//                if (completedTask == timeoutTask)
+//                {
+//                    _logger.LogWarning("Connection attempt timed out after 15 seconds");
+//                    _isConnecting = false;
+//                    throw new TimeoutException("Connection to Socket.IO server timed out");
+//                }
+
+//                // Wait for the connection task to complete (it should be done already)
+//                await connectionTask;
+
+//                _logger.LogInformation("Successfully connected to Socket.IO server");
+//            }
+//            catch (Exception ex)
+//            {
+//                _isConnecting = false;
+//                _logger.LogError(ex, "Failed to connect to Socket.IO server");
+//                throw;
+//            }
+//            finally
+//            {
+//                _connectionLock.Release();
+//            }
+//        }
+
+//        public async Task NotifyEvent(string eventName, object data)
+//        {
+//            if (_isDisposed)
+//            {
+//                _logger.LogWarning($"Attempted to emit event '{eventName}' with disposed Socket.IO client");
+//                return;
+//            }
+
+//            await _connectionLock.WaitAsync();
+//            try
+//            {
+//                // Check if we need to reconnect
+//                if (!_client.Connected && !_isConnecting)
+//                {
+//                    _logger.LogInformation("Reconnecting to Socket.IO server before sending event");
+//                    try
+//                    {
+//                        _isConnecting = true;
+//                        await _client.ConnectAsync();
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        _logger.LogError(ex, "Failed to reconnect before sending event");
+//                        _isConnecting = false;
+//                        return; // Don't try to emit if we couldn't connect
+//                    }
+//                    finally
+//                    {
+//                        _isConnecting = false;
+//                    }
+//                }
+
+//                // Only emit if connected
+//                if (_client.Connected)
+//                {
+//                    // Set a timeout for the emit operation
+//                    var emitTask = _client.EmitAsync(eventName, data);
+//                    var timeoutTask = Task.Delay(5000); // 5 second timeout
+
+//                    var completedTask = await Task.WhenAny(emitTask, timeoutTask);
+
+//                    if (completedTask == timeoutTask)
+//                    {
+//                        _logger.LogWarning($"Emit operation for '{eventName}' timed out after 5 seconds");
+//                        throw new TimeoutException($"Emit operation for '{eventName}' timed out");
+//                    }
+
+//                    // Wait for the emit task to complete (it should be done already)
+//                    await emitTask;
+
+//                    _logger.LogInformation($"Successfully emitted event '{eventName}'");
+//                }
+//                else
+//                {
+//                    _logger.LogWarning($"Could not emit event '{eventName}' - not connected to Socket.IO server");
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                _logger.LogError(ex, $"Error emitting event '{eventName}'");
+//                // Don't rethrow - we don't want to fail the API call if socket notification fails
+//            }
+//            finally
+//            {
+//                _connectionLock.Release();
+//            }
+//        }
+
+//        public async Task AuthenticateAsync(int userId, string role)
+//        {
+//            if (_isDisposed)
+//            {
+//                _logger.LogWarning("Attempted to authenticate with disposed Socket.IO client");
+//                return;
+//            }
+
+//            if (!_client.Connected)
+//            {
+//                await ConnectAsync();
+//            }
+
+//            await NotifyEvent("authenticate", new
+//            {
+//                userId = userId.ToString(), // Server expects string
+//                role = role
+//            });
+
+//            _logger.LogInformation($"Authenticated user {userId} with role {role}");
+
+//            // Start heartbeat after authentication
+//            StartHeartbeat();
+//        }
+
+//        // Add heartbeat mechanism
+//        private Timer _heartbeatTimer;
+
+//        private void StartHeartbeat()
+//        {
+//            // Stop existing timer if any
+//            _heartbeatTimer?.Dispose();
+
+//            // Send heartbeat every 20 seconds (slightly less than server's PING_INTERVAL)
+//            _heartbeatTimer = new Timer(async _ =>
+//            {
+//                try
+//                {
+//                    if (_client.Connected && !_isDisposed)
+//                    {
+//                        await NotifyEvent("heartbeat", new { });
+//                    }
+//                }
+//                catch (Exception ex)
+//                {
+//                    _logger.LogError(ex, "Error sending heartbeat");
+//                }
+//            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(20));
+//        }
+
+//        // Update event names to match server
+//        public async Task NotifyNewChat(ChatSessionDto session)
+//        {
+//            await NotifyEvent("newChat", new
+//            {
+//                sessionId = session.ChatSessionId,
+//                customerId = session.CustomerId.ToString(), // Server expects string
+//                customerName = session.CustomerName,
+//                topic = session.Topic
+//            });
+//        }
+
+//        public async Task NotifyChatAccepted(ChatSessionDto session)
+//        {
+//            await NotifyEvent("chatAccepted", new
+//            {
+//                sessionId = session.ChatSessionId,
+//                managerId = session.ManagerId.ToString(), // Server expects string
+//                managerName = session.ManagerName,
+//                customerId = session.CustomerId.ToString() // Server expects string
+//            });
+//        }
+
+//        public async Task NotifyNewMessage(ChatMessageDto message)
+//        {
+//            await NotifyEvent("newMessage", new
+//            {
+//                messageId = message.ChatMessageId,
+//                senderId = message.SenderUserId.ToString(), // Server expects string
+//                receiverId = message.ReceiverUserId.ToString(), // Server expects string
+//                content = message.Message,
+//                timestamp = message.CreatedAt
+//            });
+//        }
+
+//        public async Task NotifyChatEnded(ChatSessionDto session)
+//        {
+//            await NotifyEvent("chatEnded", new
+//            {
+//                sessionId = session.ChatSessionId,
+//                customerId = session.CustomerId.ToString(), // Server expects string
+//                managerId = session.ManagerId.ToString() // Server expects string
+//            });
+//        }
 
 
-        public SocketIOClientService(IConfiguration configuration, ILogger<SocketIOClientService> logger)
-        {
-            _logger = logger;
-            _serverUrl = configuration["SocketIO:ServerUrl"] ?? "http://localhost:3000";
+//        public void Dispose()
+//        {
+//            if (_isDisposed)
+//                return;
 
-            _logger.LogInformation($"Initializing Socket.IO client with URL: {_serverUrl}");
+//            _isDisposed = true;
 
-            _client = new SocketIOClient.SocketIO(_serverUrl, new SocketIOOptions
-            {
-                EIO = EngineIO.V4,
-                Reconnection = true,
-                ReconnectionAttempts = 5,
-                ReconnectionDelay = 1000,
-                Transport = TransportProtocol.WebSocket,
-                ConnectionTimeout = TimeSpan.FromSeconds(10)
-            });
+//            try
+//            {
+//                _heartbeatTimer?.Dispose();
+//                _connectionLock.Dispose();
 
-            SetupEventHandlers();
-        }
+//                if (_client != null && _client.Connected)
+//                {
+//                    // Use a timeout to prevent hanging on disconnect
+//                    var disconnectTask = _client.DisconnectAsync();
+//                    var timeoutTask = Task.Delay(3000); // 3 second timeout
 
-        private void SetupEventHandlers()
-        {
-            _client.OnConnected += (sender, e) =>
-            {
-                _isConnected = true;
-                _logger.LogInformation($"Connected to Socket.IO server at {_serverUrl}");
-            };
+//                    Task.WhenAny(disconnectTask, timeoutTask).Wait();
+//                }
 
-            _client.OnDisconnected += (sender, e) =>
-            {
-                _isConnected = false;
-                _logger.LogInformation($"Disconnected from Socket.IO server at {_serverUrl}");
-            };
+//                _client?.Dispose();
 
-            _client.OnError += (sender, e) =>
-            {
-                _logger.LogError($"Socket.IO Error: {e}");
-            };
+//                _logger.LogInformation("Socket.IO client successfully disposed");
+//            }
+//            catch (Exception ex)
+//            {
+//                _logger.LogError(ex, "Error during Socket.IO client disposal");
+//            }
+//        }
 
-            _client.OnReconnectAttempt += (sender, e) =>
-            {
-                _logger.LogInformation($"Reconnecting to Socket.IO server, attempt {e}");
-            };
+//        public async ValueTask DisposeAsync()
+//        {
+//            if (_isDisposed)
+//                return;
 
-            _client.OnReconnectError += (sender, e) =>
-            {
-                _logger.LogError($"Reconnection error: {e}");
-            };
+//            _isDisposed = true;
 
-            _client.OnReconnectFailed += (sender, e) =>
-            {
-                _logger.LogError("Reconnection failed after all attempts");
-            };
-        }
+//            try
+//            {
+//                _heartbeatTimer?.Dispose();
+//                _connectionLock.Dispose();
 
-        public async Task<bool> ConnectAsync()
-        {
-            if (_isConnected)
-            {
-                _logger.LogInformation("Already connected to Socket.IO server");
-                return true;
-            }
+//                if (_client != null && _client.Connected)
+//                {
+//                    // Use a timeout to prevent hanging on disconnect
+//                    var disconnectTask = _client.DisconnectAsync();
+//                    var timeoutTask = Task.Delay(3000); // 3 second timeout
 
-            try
-            {
-                _logger.LogInformation($"Attempting to connect to Socket.IO server at {_serverUrl}...");
+//                    await Task.WhenAny(disconnectTask, timeoutTask);
+//                }
 
-                // Try to ping the server first to check if it's reachable
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.Timeout = TimeSpan.FromSeconds(5);
-                    try
-                    {
-                        var response = await httpClient.GetAsync(_serverUrl);
-                        _logger.LogInformation($"Socket.IO server ping result: {response.StatusCode}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning($"Socket.IO server ping failed: {ex.Message}. Will still try to connect.");
-                    }
-                }
+//                _client?.Dispose();
 
-                await _client.ConnectAsync();
-                _logger.LogInformation("Connection attempt completed successfully");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error connecting to Socket.IO server at {_serverUrl}");
-                return false;
-            }
-        }
+//                _logger.LogInformation("Socket.IO client successfully disposed asynchronously");
+//            }
+//            catch (Exception ex)
+//            {
+//                _logger.LogError(ex, "Error during Socket.IO client async disposal");
+//            }
+//        }
 
-        public async Task AuthenticateAsync(int userId, string role)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
+//        public void RegisterEventHandler<T>(string eventName, Action<T> handler)
+//        {
+//            if (_isDisposed)
+//            {
+//                _logger.LogWarning($"Attempted to register handler for '{eventName}' with disposed Socket.IO client");
+//                return;
+//            }
 
-            await _client.EmitAsync("authenticate", new { userId, role });
-        }
+//            _client.On(eventName, response =>
+//            {
+//                try
+//                {
+//                    var data = response.GetValue<T>();
+//                    handler(data);
+//                }
+//                catch (Exception ex)
+//                {
+//                    _logger.LogError(ex, $"Error handling Socket.IO event '{eventName}'");
+//                }
+//            });
 
-        // New chat request (from customer)
-        public async Task SendNewChatRequestAsync(int sessionId, int customerId, string customerName, string topic, DateTime createdAt)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
-
-            await _client.EmitAsync("newChatRequest", new
-            {
-                chatSessionId = sessionId,
-                customerId,
-                customerName,
-                topic,
-                createdAt
-            });
-
-            _logger.LogInformation($"Sent new chat request: Session {sessionId}, Customer {customerId}");
-        }
-
-        // Chat accepted (from manager)
-        public async Task SendChatAcceptedAsync(int sessionId, int managerId, string managerName, int customerId)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
-
-            await _client.EmitAsync("acceptChat", new
-            {
-                sessionId,
-                managerId,
-                managerName,
-                customerId
-            });
-
-            _logger.LogInformation($"Sent chat accepted: Session {sessionId}, Manager {managerId}, Customer {customerId}");
-        }
-
-        // Send message
-        public async Task SendMessageAsync(int messageId, int senderId, int receiverId, string message, DateTime createdAt)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
-
-            await _client.EmitAsync("sendMessage", new
-            {
-                messageId,
-                senderId,
-                receiverId,
-                message,
-                createdAt
-            });
-
-            _logger.LogInformation($"Sent message: ID {messageId}, From {senderId} to {receiverId}");
-        }
-
-        // Mark message as read
-        public async Task MarkMessageAsReadAsync(int messageId, int senderId)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
-
-            await _client.EmitAsync("markMessageRead", new
-            {
-                messageId,
-                senderId
-            });
-
-            _logger.LogInformation($"Marked message as read: ID {messageId}");
-        }
-
-        // End chat session
-        public async Task EndChatSessionAsync(int sessionId, int customerId, int? managerId)
-        {
-            if (!_isConnected)
-                await ConnectAsync();
-
-            await _client.EmitAsync("endChat", new
-            {
-                sessionId,
-                customerId,
-                managerId
-            });
-
-            _logger.LogInformation($"Ended chat session: ID {sessionId}");
-        }
-
-        public string GetServerUrl()
-        {
-            return _serverUrl;
-        }
-
-        public void Dispose()
-        {
-            _client?.Dispose();
-        }
-
-    }
-}
+//            _logger.LogInformation($"Registered handler for event '{eventName}'");
+//        }
+//    }
+//}

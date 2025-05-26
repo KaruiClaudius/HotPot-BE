@@ -1,5 +1,6 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
+using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,6 +36,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task DeleteIngredientTypeAsync(int id);
 
         // Essential price-related methods
+        Task<IEnumerable<IngredientPrice>> GetAllPricesAsync(int ingredientId);
         Task<decimal> GetCurrentPriceAsync(int ingredientId);
         Task<Dictionary<int, decimal>> GetCurrentPricesAsync(IEnumerable<int> ingredientIds);
         Task<IEnumerable<IngredientPrice>> GetPriceHistoryAsync(int ingredientId);
@@ -44,12 +46,16 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task<IEnumerable<Ingredient>> GetLowStockIngredientsAsync();
 
         // batch logic
+
+        Task<List<BatchSummaryDto>> GetAllBatchesSummaryAsync();
+        Task<List<IngredientBatch>> GetBatchesByBatchNumberAsync(string batchNumber);
         Task<IEnumerable<IngredientBatch>> GetIngredientBatchesAsync(int ingredientId);
         Task<IngredientBatch> GetBatchByIdAsync(int batchId);
-        Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string batchNumber = null);
+        Task<IngredientBatch> AddBatchAsync(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany, bool isInitial = false);
+        Task<List<IngredientBatch>> AddMultipleBatchesAsync(List<(int ingredientId, int quantity, DateTime bestBeforeDate, string? provideCompany)> batches);
         Task UpdateBatchAsync(int batchId, int quantity, DateTime bestBeforeDate, string batchNumber = null);
         Task DeleteBatchAsync(int batchId);
-        Task<int> ConsumeIngredientAsync(int ingredientId, int quantity);
+        Task<int> ConsumeIngredientAsync(int ingredientId, int quantity, int orderId, int? orderDetailId = null, int? comboId = null, int? customizationId = null);
         Task<IEnumerable<IngredientBatch>> GetExpiringBatchesAsync(int daysThreshold = 7);
         Task<IEnumerable<IngredientBatch>> GetExpiredBatchesAsync();
     }

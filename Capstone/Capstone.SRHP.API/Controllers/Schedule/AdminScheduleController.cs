@@ -1,10 +1,9 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -101,22 +100,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 var createdShift = await _scheduleService.CreateWorkShiftAsync(workShift);
 
-                // Notify all managers about the new shift
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "ScheduleUpdate",
-                    "New Work Shift Created",
-                    $"New work shift '{createdShift.ShiftName}' has been created: {createdShift.ShiftStartTime} - {createdShift.ShiftEndTime}",
-                    new Dictionary<string, object>
-                    {
-                { "ShiftId", createdShift.WorkShiftId },
-                { "ShiftName", createdShift.ShiftName },
-                { "StartTime", createdShift.ShiftStartTime },
-                { "EndTime", createdShift.ShiftEndTime },
-                { "CreatedAt", DateTime.UtcNow },
-                { "Action", "Created" }
-                    });             
-
                 var shiftDto = createdShift.Adapt<WorkShiftDto>();
                 return CreatedAtAction(
                     nameof(GetWorkShiftById),
@@ -156,7 +139,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
                 // Get the updated shift with staff information
                 var shiftWithStaff = await _scheduleService.GetWorkShiftByIdAsync(shiftId);
-          
+
 
                 // Notify staff members about their schedule update
                 if (shiftWithStaff.Staff != null && shiftWithStaff.Staff.Any())
@@ -164,29 +147,29 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     foreach (var staff in shiftWithStaff.Staff)
                     {
                         // Notify each staff member about their schedule update
-                        await _notificationService.NotifyUser(
+                        await _notificationService.NotifyUserAsync(
                             staff.UserId,
                             "ScheduleUpdate",
-                            "Work Shift Updated",
-                            $"Your work shift '{updatedShift.ShiftName}' has been updated: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
+                            "Cập nhật ca làm việc",
+                            $"Ca làm việc của bạn '{updatedShift.ShiftName}' đã được cập nhật thành: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
                             new Dictionary<string, object>
                             {
                         { "ShiftId", shiftId },
                         { "ShiftName", updatedShift.ShiftName },
                         { "NewStartTime", updatedShift.ShiftStartTime },
                         { "NewEndTime", updatedShift.ShiftEndTime },
-                        { "UpdatedAt", DateTime.UtcNow },
+                        { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                         { "Action", "Updated" }
                             });
                     }
                 }
 
                 // Notify all managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Updated",
-                    $"Work shift '{updatedShift.ShiftName}' has been updated: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
+                    "Cập nhật ca làm việc",
+                    $"Ca '{updatedShift.ShiftName}' đã được cập nhật thành: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
                     new Dictionary<string, object>
                     {
                 { "ShiftId", shiftId },
@@ -194,7 +177,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "NewStartTime", updatedShift.ShiftStartTime },
                 { "NewEndTime", updatedShift.ShiftEndTime },
                 { "StaffCount", shiftWithStaff.Staff?.Count ?? 0 },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "Updated" }
                     });
 
@@ -240,29 +223,29 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 {
                     foreach (var staff in staffMembers)
                     {
-                        await _notificationService.NotifyUser(
+                        await _notificationService.NotifyUserAsync(
                             staff.UserId,
                             "ScheduleUpdate",
-                            "Work Shift Deleted",
-                            $"Your work shift '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) has been deleted",
+                            "Đã xóa ca làm việc",
+                            $"Ca làm việc của bạn '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) đã bị xóa",
                             new Dictionary<string, object>
                             {
                         { "ShiftId", shiftId },
                         { "ShiftName", shift.ShiftName },
                         { "StartTime", shift.ShiftStartTime },
                         { "EndTime", shift.ShiftEndTime },
-                        { "DeletedAt", DateTime.UtcNow },
+                        { "DeletedAt", DateTime.UtcNow.AddHours(7) },
                         { "Action", "Deleted" }
                             });
                     }
                 }
 
                 // Notify all managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Work Shift Deleted",
-                    $"Work shift '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) has been deleted",
+                    "Đã xóa ca làm việc",
+                    $"Ca '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) đã bị xóa",
                     new Dictionary<string, object>
                     {
                 { "ShiftId", shiftId },
@@ -270,7 +253,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "StartTime", shift.ShiftStartTime },
                 { "EndTime", shift.ShiftEndTime },
                 { "AffectedStaffCount", staffMembers?.Count ?? 0 },
-                { "DeletedAt", DateTime.UtcNow },
+                { "DeletedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "Deleted" }
                     });
 
@@ -322,11 +305,11 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 string workDaysText = GetWorkDaysText(manager.WorkDays.Value);
 
                 // Notify the manager about their schedule update
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     manager.UserId,
                     "ScheduleUpdate",
-                    "Your Schedule Has Been Updated",
-                    $"Your work schedule has been updated: {workDaysText}, Shifts: {shiftSummary}",
+                    "Lịch làm việc của bạn đã được cập nhật",
+                    $"Lịch làm việc của bạn đã được cập nhật: {workDaysText}, Shifts: {shiftSummary}",
                     new Dictionary<string, object>
                     {
                 { "ManagerId", manager.UserId },
@@ -334,16 +317,16 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "WorkDaysText", workDaysText },
                 { "ShiftIds", assignDto.WorkShiftIds },
                 { "ShiftNames", shiftNames },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "ManagerAssigned" }
                     });
 
                 // Notify all other managers about the schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Manager Schedule Updated",
-                    $"Schedule for {manager.Name} has been updated: {workDaysText}, Shifts: {shiftSummary}",
+                    "Lịch trình của Quản lý được cập nhật",
+                    $"Lịch cho {manager.Name} đã được cập nhật: {workDaysText}, ca: {shiftSummary}",
                     new Dictionary<string, object>
                     {
                 { "ManagerId", manager.UserId },
@@ -352,7 +335,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 { "WorkDaysText", workDaysText },
                 { "ShiftIds", assignDto.WorkShiftIds },
                 { "ShiftNames", shiftNames },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "ManagerAssigned" }
                     });
 
@@ -382,92 +365,6 @@ namespace Capstone.HPTY.API.Controllers.Schedule
             {
                 return StatusCode(500, ApiResponse<ManagerDto>.ErrorResponse(
                     "An error occurred while assigning manager work days and shifts. Please try again later."));
-            }
-        }
-
-        /// <summary>
-        /// Manually send a notification to all users about schedule updates
-        /// </summary>
-        [HttpPost("notify-all")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<ApiResponse<bool>>> NotifyAllUsers()
-        {
-            try
-            {
-                // Get current schedule summary
-                var shifts = await _scheduleService.GetAllWorkShiftsAsync();
-                int shiftCount = shifts.Count();
-
-                // Notify all staff about schedule updates
-                await _notificationService.NotifyRole(
-                    "Staff",
-                    "ScheduleUpdate",
-                    "Schedule Update Available",
-                    "The work schedule has been updated. Please check your assignments.",
-                    new Dictionary<string, object>
-                    {
-                { "UpdatedAt", DateTime.UtcNow },
-                { "TotalShifts", shiftCount },
-                { "Action", "ManualNotification" }
-                    });
-
-                // Notify all managers about schedule updates
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "ScheduleUpdate",
-                    "Schedule Update Available",
-                    "The work schedule has been updated. Please review the changes.",
-                    new Dictionary<string, object>
-                    {
-                { "UpdatedAt", DateTime.UtcNow },
-                { "TotalShifts", shiftCount },
-                { "Action", "ManualNotification" }
-                    });
-
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "Notifications sent successfully"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
-            }
-        }
-
-        /// <summary>
-        /// Manually send a notification to a specific staff member
-        /// </summary>
-        [HttpPost("notify-staff/{staffId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<ApiResponse<bool>>> NotifyStaff(int staffId)
-        {
-            try
-            {
-                // Get staff member's shifts
-                var staffShifts = await _scheduleService.GetStaffWorkShiftsAsync(staffId);
-                var shiftNames = staffShifts.Select(s => s.ShiftName).ToList();
-                string shiftSummary = shiftNames.Any() ? string.Join(", ", shiftNames) : "No shifts assigned";
-
-                // Notify the specific staff member about their schedule
-                await _notificationService.NotifyUser(
-                    staffId,
-                    "ScheduleUpdate",
-                    "Your Schedule Information",
-                    $"Your current work schedule: {shiftSummary}",
-                    new Dictionary<string, object>
-                    {
-                { "StaffId", staffId },
-                { "ShiftCount", staffShifts.Count() },
-                { "ShiftNames", shiftNames },
-                { "NotifiedAt", DateTime.UtcNow },
-                { "Action", "ManualStaffNotification" }
-                    });
-
-                return Ok(ApiResponse<bool>.SuccessResponse(true, $"Notification sent to staff {staffId}"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<bool>.ErrorResponse(ex.Message));
             }
         }
 

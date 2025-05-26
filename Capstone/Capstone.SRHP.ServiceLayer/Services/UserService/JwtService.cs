@@ -27,8 +27,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         {
             var claims = new[]
             {
-            new Claim("id", user.UserId.ToString()),    
-            new Claim("email", user.Email ?? string.Empty),        
+            new Claim("id", user.UserId.ToString()),
+            new Claim("email", user.Email ?? string.Empty),
             new Claim("role", user.Role?.Name ?? "Customer"),
             new Claim("name", user.Name ?? string.Empty),
             new Claim("phone", user.PhoneNumber ?? string.Empty)

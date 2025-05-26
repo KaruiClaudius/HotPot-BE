@@ -23,7 +23,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [StringLength(2000)]
         public string? ImageURL { get; set; }
-
+ 
+        [Required]
         [StringLength(50)]
         public string Unit { get; set; }
 

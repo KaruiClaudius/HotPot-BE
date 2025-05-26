@@ -2,7 +2,7 @@
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -73,19 +73,19 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = result.HotpotName ?? $"HotPot #{result.SeriesNumber}";
 
                 // Notify administrators about the status change using the simplified notification service
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "EquipmentStatusChange",
-                    "HotPot Status Changed",
-                    $"{equipmentName} status changed to {result.Status}",
+                    "Trạng Thái Nồi Lẩu Đã Thay Đổi",
+                    $"Trạng thái của {equipmentName} đã thay đổi thành {result.Status}",
                     new Dictionary<string, object>
                     {
-                { "EquipmentId", id },
-                { "EquipmentType", "HotPot" },
-                { "EquipmentName", equipmentName },
-                { "NewStatus", result.Status },
-                { "Reason", request.Reason ?? "No reason provided" },
-                { "UpdateTime", DateTime.UtcNow },
+                        { "EquipmentId", id },
+                        { "EquipmentType", "HotPot" },
+                        { "EquipmentName", equipmentName },
+                        { "NewStatus", result.Status },
+                        { "Reason", request.Reason ?? "Không có lý do được cung cấp" },
+                        { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                     });
 
                 return Ok(ApiResponse<HotPotInventoryDetailDto>.SuccessResponse(result, "HotPot inventory status updated successfully"));
@@ -145,43 +145,43 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Check if the quantity is below the threshold and notify administrators
                 if (result.Quantity <= DEFAULT_LOW_STOCK_THRESHOLD && result.Quantity > 0)
                 {
-                    await _notificationService.NotifyRole(
+                    await _notificationService.NotifyRoleAsync(
                         "Administrators",
                         "LowStock",
-                        "Low Utensil Stock Alert",
-                        $"Low stock for {result.Name}: {result.Quantity} remaining (threshold: {DEFAULT_LOW_STOCK_THRESHOLD})",
+                        "Cảnh Báo Dụng Cụ Sắp Hết Hàng",
+                        $"Hàng tồn kho thấp cho {result.Name}: còn lại {result.Quantity} (ngưỡng: {DEFAULT_LOW_STOCK_THRESHOLD})",
                         new Dictionary<string, object>
                         {
-                    { "EquipmentId", id },
-                    { "EquipmentType", "Utensil" },
-                    { "EquipmentName", result.Name },
-                    { "Quantity", result.Quantity },
-                    { "Threshold", DEFAULT_LOW_STOCK_THRESHOLD },
-                    { "UtensilTypeId", result.UtensilTypeId },
-                    { "UtensilTypeName", result.UtensilTypeName },
-                    { "UpdateTime", DateTime.UtcNow },
-                        });                
+                            { "EquipmentId", id },
+                            { "EquipmentType", "Utensil" },
+                            { "EquipmentName", result.Name },
+                            { "Quantity", result.Quantity },
+                            { "Threshold", DEFAULT_LOW_STOCK_THRESHOLD },
+                            { "UtensilTypeId", result.UtensilTypeId },
+                            { "UtensilTypeName", result.UtensilTypeName },
+                            { "UpdateTime", DateTime.UtcNow.AddHours(7) },
+                        });
                 }
 
                 // If quantity is 0, notify about out of stock
                 if (result.Quantity == 0)
                 {
-                    await _notificationService.NotifyRole(
-                        "Administrators",
-                        "OutOfStock",
-                        "Utensil Out of Stock",
-                        $"{result.Name} is now out of stock",
-                        new Dictionary<string, object>
-                        {
+                    await _notificationService.NotifyRoleAsync(
+                  "Administrators",
+                  "OutOfStock",
+                  "Dụng Cụ Đã Hết Hàng",
+                  $"{result.Name} hiện đã hết hàng",
+                  new Dictionary<string, object>
+                  {
                     { "EquipmentId", id },
                     { "EquipmentType", "Utensil" },
                     { "EquipmentName", result.Name },
                     { "UtensilTypeId", result.UtensilTypeId },
                     { "UtensilTypeName", result.UtensilTypeName },
-                    { "UpdateTime", DateTime.UtcNow },
+                    { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                     { "Priority", "High" }
-                        });
-               
+                  });
+
                 }
 
                 return Ok(ApiResponse<UtensilDetailDto>.SuccessResponse(result, "Utensil quantity updated successfully"));
@@ -213,7 +213,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string statusText = result.Status ? "Available" : "Unavailable";
 
                 // Notify administrators about the status change
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Administrators",
                     "EquipmentStatusChange",
                     "Utensil Status Changed",
@@ -226,7 +226,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 { "PreviousStatus", !result.Status ? "Available" : "Unavailable" }, // Invert current status to get previous
                 { "NewStatus", statusText },
                 { "Reason", request.Reason ?? "No reason provided" },
-                { "UpdateTime", DateTime.UtcNow },
+                { "UpdateTime", DateTime.UtcNow.AddHours(7) },
                 { "UtensilTypeId", result.UtensilTypeId },
                 { "UtensilTypeName", result.UtensilTypeName }
                     });
@@ -264,44 +264,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             return Ok(ApiResponse<IEnumerable<EquipmentStatusDto>>.SuccessResponse(summary, "Equipment status summary retrieved successfully"));
         }
 
-        //[HttpPost("notify-admin")]
-        //[ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<bool>>> NotifyAdminDirectly([FromBody] NotifyAdminStockRequest request)
-        //{
-        //    try
-        //    {
-        //        if (request.NotificationType == "LowStock")
-        //        {
-        //            // Notify administrators about low stock
-        //            await _notificationService.NotifyLowStock(
-        //                request.EquipmentType,
-        //                request.EquipmentName,
-        //                request.CurrentQuantity,
-        //                request.Threshold);
-        //        }
-        //        else if (request.NotificationType == "StatusChange")
-        //        {
-        //            // Notify administrators about status change
-        //            await _notificationService.NotifyEquipmentStatusChange(
-        //                request.EquipmentId,
-        //                request.EquipmentType,
-        //                request.EquipmentName,
-        //                request.IsAvailable ? "Available" : "Unavailable",
-        //                request.Reason);
-        //        }
-        //        else
-        //        {
-        //            return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid notification type. Must be 'LowStock' or 'StatusChange'."));
-        //        }
-
-        //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Administrators notified successfully"));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-        //    }
-        //}
 
         [HttpGet("unavailable")]
         [ProducesResponseType(StatusCodes.Status200OK)]

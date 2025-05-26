@@ -44,6 +44,9 @@ namespace Capstone.HPTY.RepositoryLayer
             // Ingredient Prices
             SeedIngredientPrices(modelBuilder);
 
+            // Ingredient Batches
+            SeedIngredientBatches(modelBuilder);
+
             // Damage Devices
             SeedDamageDevices(modelBuilder);
 
@@ -77,10 +80,10 @@ namespace Capstone.HPTY.RepositoryLayer
                 new User { UserId = 7, PhoneNumber = "444444444", Name = "Đinh Thị Hà", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
 
                 // New staff
-                new User { UserId = 18, PhoneNumber = "0901234567", Name = "Võ Anh Dũng", Email = "Staff5@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 19, PhoneNumber = "0907654321", Name = "Nguyễn Thị Mai", Email = "Staff6@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 20, PhoneNumber = "0912345678", Name = "Bùi Văn Hậu", Email = "Staff7@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
-                new User { UserId = 21, PhoneNumber = "0918765432", Name = "Trương Thị Lan", Email = "Staff8@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User { UserId = 18, PhoneNumber = "901234567", Name = "Võ Anh Dũng", Email = "Staff5@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
+                new User { UserId = 19, PhoneNumber = "907654321", Name = "Nguyễn Thị Mai", Email = "Staff6@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
+                new User { UserId = 20, PhoneNumber = "912345678", Name = "Bùi Văn Hậu", Email = "Staff7@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User { UserId = 21, PhoneNumber = "918765432", Name = "Trương Thị Lan", Email = "Staff8@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
 
                 new User { UserId = 8, PhoneNumber = "333333333", Name = "Đặng Văn Nam", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
                 new User { UserId = 9, PhoneNumber = "222222222", Name = "Lý Thị Ngọc", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
@@ -101,42 +104,42 @@ namespace Capstone.HPTY.RepositoryLayer
         private static void SeedTutorialVideos(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<TurtorialVideo>().HasData(
-     new TurtorialVideo
-     {
-         TurtorialVideoId = 1,
-         Name = "Cách Sử Dụng Nồi Lẩu Truyền Thống",
-         Description = "Hướng dẫn toàn diện về cách thiết lập và sử dụng nồi lẩu truyền thống.",
-         VideoURL = "https://www.youtube.com/watch?v=traditional-hotpot-guide",
-     },
-     new TurtorialVideo
-     {
-         TurtorialVideoId = 2,
-         Name = "Hướng Dẫn Thiết Lập Nồi Lẩu Điện",
-         Description = "Học cách thiết lập và sử dụng nồi lẩu điện an toàn.",
-         VideoURL = "https://www.youtube.com/watch?v=electric-hotpot-setup",
-     },
-     new TurtorialVideo
-     {
-         TurtorialVideoId = 3,
-         Name = "Nồi Lẩu Di Động Mọi Lúc Mọi Nơi",
-         Description = "Mẹo và thủ thuật để sử dụng nồi lẩu di động ở bất kỳ đâu.",
-         VideoURL = "https://www.youtube.com/watch?v=portable-hotpot-guide",
-     },
-     new TurtorialVideo
-     {
-         TurtorialVideoId = 4,
-         Name = "Làm Chủ Nồi Lẩu Đa Ngăn",
-         Description = "Cách sử dụng hiệu quả tất cả các ngăn trong nồi lẩu đa ngăn của bạn.",
-         VideoURL = "https://www.youtube.com/watch?v=multi-compartment-guide",
-     },
-     new TurtorialVideo
-     {
-         TurtorialVideoId = 5,
-         Name = "Hướng Dẫn Chăm Sóc Nồi Lẩu Gốm",
-         Description = "Học cách chăm sóc và bảo quản nồi lẩu gốm đúng cách.",
-         VideoURL = "https://www.youtube.com/watch?v=ceramic-hotpot-care",
-     }
- );
+                new TurtorialVideo
+                {
+                    TurtorialVideoId = 1,
+                    Name = "Cách Sử Dụng Nồi Lẩu Truyền Thống",
+                    Description = "Hướng dẫn toàn diện về cách thiết lập và sử dụng nồi lẩu truyền thống.",
+                    VideoURL = "https://www.youtube.com/watch?v=traditional-hotpot-guide",
+                },
+                new TurtorialVideo
+                {
+                    TurtorialVideoId = 2,
+                    Name = "Hướng Dẫn Thiết Lập Nồi Lẩu Điện",
+                    Description = "Học cách thiết lập và sử dụng nồi lẩu điện an toàn.",
+                    VideoURL = "https://www.youtube.com/watch?v=electric-hotpot-setup",
+                },
+                new TurtorialVideo
+                {
+                    TurtorialVideoId = 3,
+                    Name = "Nồi Lẩu Di Động Mọi Lúc Mọi Nơi",
+                    Description = "Mẹo và thủ thuật để sử dụng nồi lẩu di động ở bất kỳ đâu.",
+                    VideoURL = "https://www.youtube.com/watch?v=portable-hotpot-guide",
+                },
+                new TurtorialVideo
+                {
+                    TurtorialVideoId = 4,
+                    Name = "Làm Chủ Nồi Lẩu Đa Ngăn",
+                    Description = "Cách sử dụng hiệu quả tất cả các ngăn trong nồi lẩu đa ngăn của bạn.",
+                    VideoURL = "https://www.youtube.com/watch?v=multi-compartment-guide",
+                },
+                new TurtorialVideo
+                {
+                    TurtorialVideoId = 5,
+                    Name = "Hướng Dẫn Chăm Sóc Nồi Lẩu Gốm",
+                    Description = "Học cách chăm sóc và bảo quản nồi lẩu gốm đúng cách.",
+                    VideoURL = "https://www.youtube.com/watch?v=ceramic-hotpot-care",
+                }
+            );
         }
         private static void SeedHotpots(ModelBuilder modelBuilder)
         {
@@ -433,6 +436,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 1,
                     Name = "Thịt Bò Cắt Lát",
                     Description = "Thịt bò cao cấp cắt lát mỏng hoàn hảo cho lẩu.",
+                    Unit = "g",
+                    MeasurementValue = 250.0, // Standard pack size of 250g
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/89d16277-5f5d-45f0-9be4-6d710ecf2eaa.png?alt=media&token=a0db0650-a99e-4044-8552-88b096956487",
                     MinStockLevel = 20,
                     IngredientTypeId = 7,
@@ -442,6 +447,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 2,
                     Name = "Thịt Cừu Cắt Lát",
                     Description = "Thịt cừu mềm cắt lát, hoàn hảo cho nấu nhanh.",
+                    Unit = "g",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/thit-cuu-cat-lat.jpg?alt=media&token=c2d6bbbd-b69d-450a-8d0e-396b135f35f3",
                     MinStockLevel = 15,
                     IngredientTypeId = 7,
@@ -451,6 +458,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 3,
                     Name = "Ba Chỉ Heo",
                     Description = "Thịt ba chỉ heo cắt mỏng với tỷ lệ mỡ-thịt hoàn hảo.",
+                    Unit = "g",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/ba-chi-heo.png?alt=media&token=83bbc055-4726-4c68-8ede-f0a0ea17c2d4",
                     MinStockLevel = 15,
                     IngredientTypeId = 7,
@@ -461,6 +470,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 4,
                     Name = "Tôm",
                     Description = "Tôm tươi, đã bóc vỏ và làm sạch.",
+                    Unit = "g",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/shrimps.jpg?alt=media&token=3ef01d1a-0df5-4f5a-b8db-b1fe34ae89ca",
                     MinStockLevel = 20,
                     IngredientTypeId = 2,
@@ -470,9 +481,10 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 5,
                     Name = "Cá Viên",
                     Description = "Cá viên đàn hồi làm từ cá tươi xay.",
+                    Unit = "g",
+                    MeasurementValue = 300.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/C%C3%A1-vi%C3%AAn-g%E1%BA%A7n-nh%C6%B0-%C4%91%C6%B0%E1%BB%A3c-l%C3%A0m-m%C3%B3n-%C4%83n-ph%E1%BB%95-bi%E1%BA%BFn-nh%C6%B0-c%C3%A1-vi%C3%AAn-chi%C3%AAn.jpg?alt=media&token=98bd96d8-124e-4883-afa0-4482913cadfa",
                     MinStockLevel = 30,
-
                     IngredientTypeId = 2,
                 },
                 new Ingredient
@@ -480,20 +492,22 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 6,
                     Name = "Mực",
                     Description = "Mực tươi cắt thành khoanh.",
+                    Unit = "g",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/M%E1%BB%B1c-t%C6%B0%C6%A1i-2-532x532.jpg?alt=media&token=1cd9d76a-0435-4fc3-b773-64af8b515e76",
                     MinStockLevel = 15,
                     IngredientTypeId = 2,
                 },
-
 
                 new Ingredient
                 {
                     IngredientId = 7,
                     Name = "Cải Thảo",
                     Description = "Rau giòn, lá xanh hoàn hảo cho lẩu.",
+                    Unit = "g",
+                    MeasurementValue = 400.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/1ad2d8b1-30c1-45c6-aa26-fe898a065120.png?alt=media&token=918e0ce5-e455-4391-9d17-f7430b41c195",
                     MinStockLevel = 25,
-
                     IngredientTypeId = 3,
                 },
                 new Ingredient
@@ -501,6 +515,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 8,
                     Name = "Rau Chân Vịt",
                     Description = "Rau chân vịt tươi, đã rửa sạch và sẵn sàng để nấu.",
+                    Unit = "g",
+                    MeasurementValue = 300.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/spinach.png?alt=media&token=4ae0c9f7-e3a3-48bc-b56a-8594a0d081f2",
                     MinStockLevel = 20,
                     IngredientTypeId = 3,
@@ -510,17 +526,20 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 9,
                     Name = "Bắp",
                     Description = "Bắp ngọt cắt thành miếng vừa ăn.",
+                    Unit = "g",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/corn.jpg?alt=media&token=3d64d225-6be7-4c8f-b8b4-8b19a220d09b",
                     MinStockLevel = 15,
                     IngredientTypeId = 3,
                 },
-
 
                 new Ingredient
                 {
                     IngredientId = 10,
                     Name = "Mì Udon",
                     Description = "Mì lúa mì Nhật Bản dày và dai.",
+                    Unit = "g",
+                    MeasurementValue = 300.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/udon.png?alt=media&token=c05be1ca-db95-4dd2-8d36-c9567b3f7ea0",
                     MinStockLevel = 20,
                     IngredientTypeId = 4,
@@ -530,6 +549,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 11,
                     Name = "Miến",
                     Description = "Miến trong suốt làm từ tinh bột đậu xanh.",
+                    Unit = "g",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/1663922149_8W3viNBAwDyUEHTj_1663931837-php9bcja8.png?alt=media&token=8a3b05d0-3cdb-4916-b451-f1ee01d38cbf",
                     MinStockLevel = 20,
                     IngredientTypeId = 4,
@@ -539,17 +560,20 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 12,
                     Name = "Mì Ramen",
                     Description = "Mì lúa mì xoăn hoàn hảo cho lẩu.",
+                    Unit = "g",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/mi-ramen-luoc-cap-dong%20(2).png?alt=media&token=5826d348-02c2-4ded-b350-c70cc7ebc42e",
                     MinStockLevel = 25,
                     IngredientTypeId = 4,
                 },
-
 
                 new Ingredient
                 {
                     IngredientId = 13,
                     Name = "Đậu Phụ Cứng",
                     Description = "Đậu phụ cứng cắt khối giữ nguyên hình dạng trong lẩu.",
+                    Unit = "g",
+                    MeasurementValue = 300.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/tofu.png?alt=media&token=31b50c1e-c030-43a7-9eed-a9543f30b51d",
                     MinStockLevel = 15,
                     IngredientTypeId = 5,
@@ -559,6 +583,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 14,
                     Name = "Đậu Phụ Chiên",
                     Description = "Đậu phụ chiên giòn hấp thụ hương vị nước lẩu.",
+                    Unit = "g",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/fried-tofu.png?alt=media&token=e645c47c-95f5-4a45-9407-4d99464e0023",
                     MinStockLevel = 15,
                     IngredientTypeId = 5,
@@ -569,6 +595,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 15,
                     Name = "Nấm Hương",
                     Description = "Nấm hương thơm ngon, tươi hoặc khô.",
+                    Unit = "g",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/mnam-huong.png?alt=media&token=f6e2ec47-ad19-4688-b20b-ffba6ae5fd7a",
                     MinStockLevel = 15,
                     IngredientTypeId = 6,
@@ -578,17 +606,20 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 16,
                     Name = "Nấm Kim Châm",
                     Description = "Nấm kim châm mỏng, thân dài.",
+                    Unit = "g",
+                    MeasurementValue = 150.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/nam-kim-cham.png?alt=media&token=060215f1-02b2-402e-83e4-ba93d2535928",
                     MinStockLevel = 15,
                     IngredientTypeId = 6,
                 },
-
 
                 new Ingredient
                 {
                     IngredientId = 17,
                     Name = "Nước Lẩu Tứ Xuyên Cay",
                     Description = "Nước lẩu cay truyền thống với hạt tiêu Tứ Xuyên và dầu ớt.",
+                    Unit = "ml",
+                    MeasurementValue = 500.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-tu-xuyen-cay.png?alt=media&token=cb8f5064-ee26-499b-8fe9-f3f4a6adc473",
                     MinStockLevel = 10,
                     IngredientTypeId = 1,
@@ -598,6 +629,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 18,
                     Name = "Nước Lẩu Cà Chua",
                     Description = "Nước lẩu cà chua chua ngọt.",
+                    Unit = "ml",
+                    MeasurementValue = 500.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-ca-chua.png?alt=media&token=8fcf88b3-6128-4689-aab0-e64a48ce8b5a",
                     MinStockLevel = 10,
                     IngredientTypeId = 1,
@@ -607,6 +640,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 19,
                     Name = "Nước Lẩu Nấm",
                     Description = "Nước lẩu đậm đà làm từ nhiều loại nấm.",
+                    Unit = "ml",
+                    MeasurementValue = 500.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-nam.jpg?alt=media&token=d2080167-804c-4909-9bef-1d7e8e7dcfdc",
                     MinStockLevel = 10,
                     IngredientTypeId = 1,
@@ -616,17 +651,19 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 20,
                     Name = "Nước Lẩu Xương Trong",
                     Description = "Nước lẩu nhẹ, trong làm từ xương hầm nhiều giờ.",
+                    Unit = "ml",
+                    MeasurementValue = 500.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-xuong-trong.jpg?alt=media&token=49407a13-5f3e-47a0-8126-bab93c157b69",
                     MinStockLevel = 10,
                     IngredientTypeId = 1,
                 },
-
-
                 new Ingredient
                 {
                     IngredientId = 21,
                     Name = "Sốt Mè",
                     Description = "Sốt kem làm từ hạt mè xay.",
+                    Unit = "ml",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-me.jpg?alt=media&token=560bf6c4-26fb-4adb-b543-308089fd0e40",
                     MinStockLevel = 10,
                     IngredientTypeId = 8,
@@ -636,6 +673,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 22,
                     Name = "Nước Tương Tỏi",
                     Description = "Nước tương pha với tỏi băm.",
+                    Unit = "ml",
+                    MeasurementValue = 250.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-tuong-toi.png?alt=media&token=fe07fff2-694d-420f-aea0-9bd6723f0798",
                     MinStockLevel = 10,
                     IngredientTypeId = 8,
@@ -645,6 +684,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 23,
                     Name = "Dầu Ớt",
                     Description = "Dầu cay làm từ ớt ngâm dầu.",
+                    Unit = "ml",
+                    MeasurementValue = 150.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/dau-ot.png?alt=media&token=0ed694a6-cdfe-4a7a-b788-8f679ab5a86f",
                     MinStockLevel = 10,
                     IngredientTypeId = 8,
@@ -654,6 +695,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     IngredientId = 24,
                     Name = "Tương Sa Tế",
                     Description = "Sốt đậm đà làm từ dầu đậu nành, tỏi, hành và hải sản khô.",
+                    Unit = "ml",
+                    MeasurementValue = 200.0,
                     ImageURL = "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/sot-sa-te.png?alt=media&token=fae51735-1dc5-4fb2-b950-27163f9eebdc",
                     MinStockLevel = 10,
                     IngredientTypeId = 8,
@@ -858,6 +901,306 @@ namespace Capstone.HPTY.RepositoryLayer
                     Price = 42000m, // 42,000 VND for 200ml bottle of shacha sauce
                     EffectiveDate = DateTime.UtcNow.AddHours(7).AddDays(-3),
                     IngredientId = 24,
+                }
+            );
+        }
+        private static void SeedIngredientBatches(ModelBuilder modelBuilder)
+        {
+            var currentDate = DateTime.UtcNow.AddHours(7);
+            string timestamp = currentDate.ToString("yyyyMMddHHmmss");
+            string batch = $"BATCH-{timestamp}";
+
+
+            modelBuilder.Entity<IngredientBatch>().HasData(
+                // Meat batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 1,
+                    IngredientId = 1, // Beef
+                    InitialQuantity = 50, // 50 packs
+                    RemainingQuantity = 50,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(14),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 2,
+                    IngredientId = 1, // Beef
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(21),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-1),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 3,
+                    IngredientId = 2, // Lamb
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(14),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 4,
+                    IngredientId = 3, // Pork Belly
+                    InitialQuantity = 45, // 45 packs
+                    RemainingQuantity = 45,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(10),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+
+                // Seafood batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 5,
+                    IngredientId = 4, // Shrimp
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(7),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 6,
+                    IngredientId = 5, // Fish Balls
+                    InitialQuantity = 60, // 60 packs
+                    RemainingQuantity = 60,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 7,
+                    IngredientId = 6, // Squid
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(7),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+
+                // Vegetable batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 8,
+                    IngredientId = 7, // Napa Cabbage
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(5),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-1),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 9,
+                    IngredientId = 8, // Spinach
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(4),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-1),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 10,
+                    IngredientId = 9, // Corn
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(7),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+
+                // Noodle batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 11,
+                    IngredientId = 10, // Udon
+                    InitialQuantity = 50, // 50 packs
+                    RemainingQuantity = 50,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(60),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 12,
+                    IngredientId = 11, // Glass Noodles
+                    InitialQuantity = 45, // 45 packs
+                    RemainingQuantity = 45,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(90),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 13,
+                    IngredientId = 12, // Ramen
+                    InitialQuantity = 55, // 55 packs
+                    RemainingQuantity = 55,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(60),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+
+                // Tofu batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 14,
+                    IngredientId = 13, // Firm Tofu
+                    InitialQuantity = 40, // 40 packs
+                    RemainingQuantity = 40,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(7),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 15,
+                    IngredientId = 14, // Fried Tofu
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(14),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-3),
+                },
+
+                // Mushroom batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 16,
+                    IngredientId = 15, // Shiitake
+                    InitialQuantity = 30, // 30 packs
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(10),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 17,
+                    IngredientId = 16, // Enoki
+                    InitialQuantity = 35, // 35 packs
+                    RemainingQuantity = 35,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(7),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-2),
+                },
+
+                // Broth batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 18,
+                    IngredientId = 17, // Sichuan Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 19,
+                    IngredientId = 18, // Tomato Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 20,
+                    IngredientId = 19, // Mushroom Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 21,
+                    IngredientId = 20, // Bone Broth
+                    InitialQuantity = 25, // 25 containers
+                    RemainingQuantity = 25,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(30),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-5),
+                },
+
+                // Sauce batches
+                new IngredientBatch
+                {
+                    IngredientBatchId = 22,
+                    IngredientId = 21, // Sesame Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(90),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-10),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 23,
+                    IngredientId = 22, // Garlic Soy Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(180),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-10),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 24,
+                    IngredientId = 23, // Chili Oil
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(180),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-10),
+                },
+                new IngredientBatch
+                {
+                    IngredientBatchId = 25,
+                    IngredientId = 24, // Shacha Sauce
+                    InitialQuantity = 30, // 30 bottles
+                    RemainingQuantity = 30,
+                    ProvideCompany = "FPT",
+                    BestBeforeDate = currentDate.AddDays(180),
+                    BatchNumber = batch,
+                    ReceivedDate = currentDate.AddDays(-10),
                 }
             );
         }
@@ -1085,6 +1428,127 @@ namespace Capstone.HPTY.RepositoryLayer
                     Type = VehicleType.Car,
                     Status = VehicleStatus.Available,
                     Notes = "Xe sedan 4 chỗ, tiết kiệm nhiên liệu, phù hợp cho giao hàng khoảng cách xa",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 11,
+                    Name = "Kia Morning",
+                    LicensePlate = "51A-56789",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe nhỏ gọn, di chuyển linh hoạt trong nội thành",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 12,
+                    Name = "SYM Elegant",
+                    LicensePlate = "59P5-12345",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe số tiết kiệm nhiên liệu, dễ bảo trì",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 13,
+                    Name = "Mazda CX-5",
+                    LicensePlate = "51H-67890",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe SUV 5 chỗ, phù hợp vận chuyển hàng hóa trong điều kiện thời tiết xấu",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 14,
+                    Name = "Yamaha Janus",
+                    LicensePlate = "59P6-23456",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tay ga tiết kiệm nhiên liệu, nhẹ và dễ lái",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 15,
+                    Name = "Honda Air Blade",
+                    LicensePlate = "59P6-34567",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tay ga mạnh mẽ, thích hợp giao hàng ngoài giờ cao điểm",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 16,
+                    Name = "VinFast Klara",
+                    LicensePlate = "59X1-45678",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe máy điện thân thiện môi trường, hoạt động tốt trong thành phố",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 17,
+                    Name = "Chevrolet Spark",
+                    LicensePlate = "51G-78901",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe nhỏ gọn 4 chỗ, phù hợp giao hàng trong khu dân cư đông đúc",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 18,
+                    Name = "Hyundai Grand i10",
+                    LicensePlate = "51A-89012",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe hatchback nhỏ gọn, dễ dàng đỗ xe và di chuyển",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 19,
+                    Name = "Suzuki Carry Truck",
+                    LicensePlate = "51C-34567",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe tải nhẹ chuyên dùng giao hàng cồng kềnh trong thành phố",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 20,
+                    Name = "Yamaha Exciter",
+                    LicensePlate = "59P7-56789",
+                    Type = VehicleType.Scooter,
+                    Status = VehicleStatus.Available,
+                    Notes = "Xe số phân khối lớn, phù hợp cho giao hàng nhanh và xa",
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                },
+                new Vehicle
+                {
+                    VehicleId = 21,
+                    Name = "Ferrari La Ferrari",
+                    LicensePlate = "60F3-56874",
+                    Type = VehicleType.Car,
+                    Status = VehicleStatus.Available,
+                    Notes = "Siêu xe, lái cho vui :))",
                     CreatedAt = DateTime.UtcNow.AddHours(7),
                     UpdatedAt = DateTime.UtcNow.AddHours(7)
                 }

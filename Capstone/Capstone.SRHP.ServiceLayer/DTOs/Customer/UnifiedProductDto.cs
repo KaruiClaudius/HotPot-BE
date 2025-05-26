@@ -24,6 +24,11 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Customer
         public string Size { get; set; } // For Hotpot
         public int TypeId { get; set; } // For Ingredient and Utensil
         public string TypeName { get; set; } // For Ingredient and Utensil
+
+        // ingredient measurements
+        public string Unit { get; set; }
+        public double MeasurementValue { get; set; }
+        public string FormattedQuantity { get; set; }
     }
 
 

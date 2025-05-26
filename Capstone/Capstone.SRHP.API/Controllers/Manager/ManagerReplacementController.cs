@@ -1,9 +1,9 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -88,41 +88,41 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 string equipmentName = dto.EquipmentName;
 
                 // Notify staff about the review decision
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Staff",
                     "ReplacementReviewed",
-                    $"Replacement Request {statusText.ToUpper()}",
-                    $"Replacement request for {equipmentName} has been {statusText}",
+                    $"Yêu Cầu Thay Thế Đã Được {statusText.ToUpper()}",
+                    $"Yêu cầu thay thế cho {equipmentName} đã được {statusText}",
                     new Dictionary<string, object>
                     {
-                { "RequestId", id },
-                { "EquipmentName", equipmentName },
-                //{ "EquipmentType", dto.EquipmentType },
-                { "IsApproved", reviewDto.IsApproved },
-                { "Status", dto.Status },
-                { "ReviewNotes", reviewDto.ReviewNotes },
-                { "ReviewDate", DateTime.UtcNow },
+                        { "RequestId", id },
+                        { "EquipmentName", equipmentName },
+                        //{ "EquipmentType", dto.EquipmentType },
+                        { "IsApproved", reviewDto.IsApproved },
+                        { "Status", dto.Status },
+                        { "ReviewNotes", reviewDto.ReviewNotes },
+                        { "ReviewDate", DateTime.UtcNow.AddHours(7) },
                     });
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
-                        dto.CustomerId.Value,
-                        "ReplacementReviewed",
-                        $"Your Replacement Request was {statusText}",
-                        $"Your request to replace {equipmentName} has been {statusText}",
-                        new Dictionary<string, object>
-                        {
-                    { "RequestId", id },
-                    { "EquipmentName", equipmentName },
-                    { "IsApproved", reviewDto.IsApproved },
-                    { "Status", dto.Status },
-                    { "ReviewNotes", reviewDto.ReviewNotes },
-                    { "NextSteps", reviewDto.IsApproved ?
-                        "A staff member will be assigned to handle your replacement soon." :
-                        "Please contact customer service if you have any questions." }
-                        });
+                    await _notificationService.NotifyUserAsync(
+                         dto.CustomerId.Value,
+                         "ReplacementReviewed",
+                         $"Yêu Cầu Thay Thế Của Bạn Đã Được {statusText}",
+                         $"Yêu cầu thay thế {equipmentName} của bạn đã được {statusText}",
+                         new Dictionary<string, object>
+                         {
+                            { "RequestId", id },
+                            { "EquipmentName", equipmentName },
+                            { "IsApproved", reviewDto.IsApproved },
+                            { "Status", dto.Status },
+                            { "ReviewNotes", reviewDto.ReviewNotes },
+                            { "NextSteps", reviewDto.IsApproved ?
+                                "Một nhân viên sẽ sớm được phân công xử lý việc thay thế cho bạn." :
+                                "Vui lòng liên hệ dịch vụ khách hàng nếu bạn có bất kỳ câu hỏi nào." }
+                         });
                 }
 
                 return Ok(ApiResponse<ReplacementRequestDetailDto>.SuccessResponse(
@@ -160,33 +160,33 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 var dto = MapToDetailDto(request);
                 string equipmentName = dto.EquipmentName;
- 
+
                 // Notify the specific staff member who was assigned
                 if (request.AssignedStaffId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         request.AssignedStaffId.Value,
                         "ReplacementAssignment",
-                        "New Replacement Assignment",
-                        $"You've been assigned to handle a replacement for {equipmentName}",
+                        "Nhiệm Vụ Thay Thế Mới",
+                        $"Bạn đã được phân công xử lý việc thay thế cho {equipmentName}",
                         new Dictionary<string, object>
                         {
-                    { "RequestId", id },
-                    { "EquipmentName", equipmentName },
-                    //{ "EquipmentType", dto.EquipmentType },
-                    { "RequestReason", dto.RequestReason },
-                    { "CustomerName", dto.CustomerName },
-                    { "CustomerId", dto.CustomerId },
-                    { "Status", dto.Status },
-                    { "AssignmentDate", DateTime.UtcNow },
-                    { "Instructions", "Please inspect the equipment and confirm if replacement is needed." }
+                            { "RequestId", id },
+                            { "EquipmentName", equipmentName },
+                            //{ "EquipmentType", dto.EquipmentType },
+                            { "RequestReason", dto.RequestReason },
+                            { "CustomerName", dto.CustomerName },
+                            { "CustomerId", dto.CustomerId },
+                            { "Status", dto.Status },
+                            { "AssignmentDate", DateTime.UtcNow.AddHours(7) },
+                            { "Instructions", "Vui lòng kiểm tra thiết bị và xác nhận nếu cần thay thế." }
                         });
                 }
 
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementInProgress",
                         "Your Replacement Request is in Progress",
@@ -218,34 +218,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 return BadRequest(ApiResponse<ReplacementRequestDetailDto>.ErrorResponse(ex.Message));
             }
         }
-
-        //[HttpPost("notify-customer")]
-        //[ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<ApiResponse<bool>>> NotifyCustomerDirectly([FromBody] NotifyCustomerRequest request)
-        //{
-        //    try
-        //    {
-        //        // Validate the request
-        //        if (request.CustomerId <= 0)
-        //        {
-        //            return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid customer ID"));
-        //        }
-
-        //        // Send a direct notification to the customer
-        //        await _notificationService.NotifyCustomerDirectlyAsync(
-        //            request.CustomerId,
-        //            request.ConditionLogId,
-        //            request.Message,
-        //            request.EstimatedResolutionTime);
-
-        //        return Ok(ApiResponse<bool>.SuccessResponse(true, "Customer notified successfully"));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
-        //    }
-        //}
 
         #endregion
 

@@ -225,7 +225,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         existingHotpot.ImageURL = entity.ImageURL;
                         existingHotpot.Price = entity.Price;
                         existingHotpot.BasePrice = entity.BasePrice;
-                        existingHotpot.LastMaintainDate = DateTime.UtcNow;
+                        existingHotpot.LastMaintainDate = DateTime.UtcNow.AddHours(7);
                         existingHotpot.SetUpdateDate();
 
                         await _unitOfWork.CommitAsync();
@@ -245,7 +245,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     }
                 }
 
-                entity.LastMaintainDate = DateTime.UtcNow;
+                entity.LastMaintainDate = DateTime.UtcNow.AddHours(7);
 
                 // Set quantity based on series numbers
                 if (seriesNumbers != null && seriesNumbers.Length > 0)
@@ -638,7 +638,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             foreach (var seriesNumber in seriesNumbers)
             {
                 if (string.IsNullOrWhiteSpace(seriesNumber))
-                    throw new ValidationException("Số sê-ri không được để trống");
+                    throw new ValidationException("Serial number cannot be empty");
             }
 
             // Check for duplicates within the provided array
@@ -650,19 +650,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             if (duplicates.Any())
             {
-                throw new ValidationException($"Tìm thấy số sê-ri trùng lặp: {string.Join(", ", duplicates)}");
+                throw new ValidationException($"Found duplicate serial numbers in your input: {string.Join(", ", duplicates)}");
             }
 
-            // Check if any of these serial numbers already exist in the system
-            var existingSerialNumbers = await _unitOfWork.Repository<HotPotInventory>()
+            // Check if any of these serial numbers already exist for the SAME hotpot type
+            // This is the modified part - we now include the hotpotId in our query
+            var existingInventories = await _unitOfWork.Repository<HotPotInventory>()
                 .FindAll(i => seriesNumbers.Contains(i.SeriesNumber) && !i.IsDelete)
-                .Select(i => i.SeriesNumber)
+                .Include(i => i.Hotpot) // Include the Hotpot to access its ID
                 .ToListAsync();
 
-            if (existingSerialNumbers.Any())
+            // Filter to only consider duplicates for the same hotpot type
+            var duplicatesForSameHotpot = existingInventories
+                .Where(i => i.HotpotId == hotpotId)
+                .Select(i => i.SeriesNumber)
+                .ToList();
+
+            if (duplicatesForSameHotpot.Any())
             {
-                throw new ValidationException($"Số sê-ri đã tồn tại trong hệ thống: {string.Join(", ", existingSerialNumbers)}");
+                throw new ValidationException($"Serial numbers already exist for this hotpot type: {string.Join(", ", duplicatesForSameHotpot)}");
             }
+
         }
 
     }

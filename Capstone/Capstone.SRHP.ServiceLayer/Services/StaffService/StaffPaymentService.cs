@@ -29,176 +29,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             _logger = logger;
         }
 
-        public async Task<PaymentDetailDto> ConfirmDepositAsync(ConfirmDepositRequest request)
-        {
-            try
-            {
-                // Get the payment
-                var payment = await _unitOfWork.Repository<Payment>()
-                    .AsQueryable(p => p.PaymentId == request.PaymentId && p.OrderId == request.OrderId)
-                    .Include(p => p.Order)
-                    .Include(p => p.User)
-                    .Include(p => p.Receipt)
-                    .FirstOrDefaultAsync();
-
-                if (payment == null)
-                {
-                    throw new NotFoundException($"Payment with ID {request.PaymentId} not found");
-                }
-
-                // Validate payment status
-                if (payment.Status != PaymentStatus.Pending)
-                {
-                    throw new ValidationException($"Cannot confirm deposit for payment with status {payment.Status}");
-                }
-
-                // Keep payment status as Pending but update the timestamp
-                payment.UpdatedAt = DateTime.UtcNow;
-
-                // Update order status to show payment is being processed
-                var order = payment.Order;
-                if (order != null)
-                {
-                    order.Status = OrderStatus.Processing;
-                    order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
-                }
-
-                // Save changes
-                await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
-                await _unitOfWork.CommitAsync();
-
-                _logger.LogInformation("Deposit confirmed for payment {PaymentId}, order {OrderId}",
-                    payment.PaymentId, payment.OrderId);
-
-                // Map to DTO
-                return new PaymentDetailDto
-                {
-                    PaymentId = payment.PaymentId,
-                    TransactionCode = payment.TransactionCode,
-                    PaymentType = payment.Type.ToString(),
-                    Status = payment.Status.ToString(),
-                    Price = payment.Price,
-                    CreatedAt = payment.CreatedAt,
-                    UpdatedAt = payment.UpdatedAt,
-                    Order = payment.Order != null ? new OrderInfoDto
-                    {
-                        OrderId = payment.Order.OrderId,
-                        Status = payment.Order.Status.ToString(),
-                        TotalPrice = payment.Order.TotalPrice,
-                        Address = payment.Order.Address,
-                        Notes = payment.Order.Notes
-                    } : null,
-                    User = new UserInfoDto
-                    {
-                        UserId = payment.User.UserId,
-                        Name = payment.User.Name,
-                        Email = payment.User.Email,
-                        PhoneNumber = payment.User.PhoneNumber
-                    },
-                    Receipt = payment.Receipt != null ? new ReceiptInfoDto
-                    {
-                        ReceiptId = payment.Receipt.ReceiptId,
-                        ReceiptNumber = payment.Receipt.ReceiptNumber,
-                        GeneratedAt = payment.Receipt.GeneratedAt
-                    } : null
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error confirming deposit for payment {PaymentId}, order {OrderId}",
-                    request.PaymentId, request.OrderId);
-                throw;
-            }
-        }
-
-        public async Task<PaymentReceiptDto> ProcessPaymentAsync(ProcessPaymentRequest request)
-        {
-            try
-            {
-                // Get the payment
-                var payment = await _unitOfWork.Repository<Payment>()
-                    .AsQueryable(p => p.PaymentId == request.PaymentId && p.OrderId == request.OrderId)
-                    .Include(p => p.Order)
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync();
-
-                if (payment == null)
-                {
-                    throw new NotFoundException($"Payment with ID {request.PaymentId} not found");
-                }
-
-                // Validate payment status transition
-                if (!IsValidPaymentStatusTransition(payment.Status, request.NewStatus))
-                {
-                    throw new ValidationException($"Invalid payment status transition from {payment.Status} to {request.NewStatus}");
-                }
-
-                // Update payment status
-                payment.Status = request.NewStatus;
-                payment.UpdatedAt = DateTime.UtcNow;
-
-                // Update order status based on payment status
-                var order = payment.Order;
-                if (order != null)
-                {
-                    if (request.NewStatus == PaymentStatus.Success)
-                    {
-                        // Payment successful, update order status accordingly
-                        if (order.Status == OrderStatus.Processing)
-                        {
-                            // Move to confirmed if currently processing
-                            order.Status = OrderStatus.Shipping;
-                        }
-                        else if (order.Status == OrderStatus.Shipping ||
-                                 order.Status == OrderStatus.Delivered)
-                        {
-                            // Keep shipping/delivered status if already in those states
-                            // No change needed
-                        }
-                        else
-                        {
-                            // For any other status, move to confirmed
-                            order.Status = OrderStatus.Completed;
-                        }
-                    }
-                    else if (request.NewStatus == PaymentStatus.Cancelled)
-                    {
-                        order.Status = OrderStatus.Cancelled;
-                    }
-                    else if (request.NewStatus == PaymentStatus.Refunded)
-                    {
-                        order.Status = OrderStatus.Returning;
-                    }
-
-                    order.SetUpdateDate();
-                    await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
-                }
-
-                // Save changes
-                await _unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
-                await _unitOfWork.CommitAsync();
-
-                _logger.LogInformation("Payment {PaymentId} processed with status {Status}",
-                    payment.PaymentId, payment.Status);
-
-                // Generate receipt if requested
-                PaymentReceiptDto receipt = null;
-                if (request.GenerateReceipt && request.NewStatus == PaymentStatus.Success)
-                {
-                    receipt = await GenerateReceiptAsync(payment.PaymentId);
-                }
-
-                return receipt;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing payment {PaymentId}, order {OrderId}",
-                    request.PaymentId, request.OrderId);
-                throw;
-            }
-        }
-
         public async Task<PagedResult<PaymentListItemDto>> GetPaymentsAsync(PaymentFilterRequest filter, int pageNumber, int pageSize)
         {
             try
@@ -269,67 +99,163 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
         }
 
-        public async Task<PaymentReceiptDto> GenerateReceiptAsync(int paymentId)
+        public async Task<PaymentReceiptDto> GenerateDetailedReceiptAsync(int paymentId)
         {
-            try
-            {
-                var payment = await _unitOfWork.Repository<Payment>()
-                    .AsQueryable(p => p.PaymentId == paymentId)
-                    .Include(p => p.Order)
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync();
+            // Get the payment with related data
+            var payment = await _unitOfWork.Repository<Payment>()
+                .AsQueryable()
+                .Include(p => p.User)
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.Discount)
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.SellOrder)
+                        .ThenInclude(so => so.SellOrderDetails)
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.RentOrder)
+                        .ThenInclude(ro => ro.RentOrderDetails)
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
 
-                if (payment == null)
+            if (payment == null)
+                throw new NotFoundException($"Payment with ID {paymentId} not found");
+
+            // Validate payment status is Success
+            if (payment.Status != PaymentStatus.Success)
+                throw new ValidationException($"Cannot generate receipt for payment with status '{payment.Status}'. Only successful payments can have receipts generated.");
+
+            var order = payment.Order;
+            if (order == null)
+                throw new NotFoundException($"Order associated with payment ID {paymentId} not found");
+
+            // Load all necessary details for the receipt
+            await LoadOrderDetailsAsync(order);
+
+            //// Calculate discount amount
+            //decimal discountAmount = 0;
+            //if (order.Discount != null)
+            //{
+            //    discountAmount = order.SubTotal * (order.Discount.DiscountPercentage / 100m);
+            //}
+
+            // Build sold items list
+            var soldItems = new List<ReceiptItemDto>();
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
-                    throw new NotFoundException($"Payment with ID {paymentId} not found");
+                    soldItems.Add(new ReceiptItemDto
+                    {
+                        ItemType = GetItemType(detail),
+                        Name = GetItemName(detail),
+                        Quantity = detail.Quantity,
+                        UnitPrice = detail.UnitPrice,
+                        TotalPrice = detail.UnitPrice * detail.Quantity
+                    });
                 }
-
-                // Create receipt record
-                var receipt = new PaymentReceipt
-                {
-                    PaymentId = payment.PaymentId,
-                    OrderId = payment.OrderId ?? 0,
-                    Amount = payment.Price,
-                    GeneratedAt = DateTime.UtcNow,
-                    ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMdd}-{payment.TransactionCode}",
-                };
-
-                await _unitOfWork.Repository<PaymentReceipt>().InsertAsync(receipt);
-                await _unitOfWork.CommitAsync();
-
-                // Return receipt DTO
-                return new PaymentReceiptDto
-                {
-                    ReceiptId = receipt.ReceiptId,
-                    OrderId = payment.OrderId ?? 0,
-                    PaymentId = payment.PaymentId,
-                    TransactionCode = payment.TransactionCode.ToString(),
-                    Amount = payment.Price,
-                    PaymentDate = payment.UpdatedAt ?? payment.CreatedAt,
-                    CustomerName = payment.User?.Name ?? "Unknown",
-                    CustomerPhone = payment.User?.PhoneNumber ?? "Unknown",
-                    PaymentMethod = payment.Type.ToString(),
-                };
             }
-            catch (Exception ex)
+
+            // Build rented items list
+            var rentedItems = new List<ReceiptRentalItemDto>();
+            if (order.RentOrder != null)
             {
-                _logger.LogError(ex, "Error generating receipt for payment {PaymentId}", paymentId);
-                throw;
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventory?.Hotpot != null)
+                    {
+                        rentedItems.Add(new ReceiptRentalItemDto
+                        {
+                            Name = detail.HotpotInventory.Hotpot.Name,
+                            Quantity = 1,
+                            RentalPrice = detail.RentalPrice,
+                            RentalStartDate = order.RentOrder.RentalStartDate,
+                            ExpectedReturnDate = order.RentOrder.ExpectedReturnDate,
+                            ActualReturnDate = order.RentOrder.ActualReturnDate
+                        });
+                    }
+                }
+            }
+
+            // Create the receipt
+            return new PaymentReceiptDto
+            {
+                ReceiptId = payment.PaymentId, // Using payment ID as receipt ID
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                PaymentId = payment.PaymentId,
+                TransactionCode = payment.TransactionCode.ToString(),
+                Amount = payment.Price,
+                PaymentDate = payment.CreatedAt,
+                CustomerName = payment.User?.Name ?? "Unknown",
+                CustomerPhone = payment.User?.PhoneNumber ?? "Unknown",
+                PaymentMethod = payment.Type.ToString(),
+                OrderStatus = order.Status.ToString(),
+                DeliveryAddress = order.Address,
+                SoldItems = soldItems,
+                RentedItems = rentedItems,
+                //DiscountAmount = discountAmount,
+                TotalAmount = order.TotalPrice,
+                LateFee = order.RentOrder?.LateFee,
+                DamageFee = order.RentOrder?.DamageFee,
+                Notes = order.Notes
+            };
+        }
+
+        private async Task LoadOrderDetailsAsync(Order order)
+        {
+            // Load all the necessary details for ingredients, utensils, combos, and customizations
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.IngredientId.HasValue && detail.Ingredient == null)
+                    {
+                        detail.Ingredient = await _unitOfWork.Repository<Ingredient>().GetById(detail.IngredientId.Value);
+                    }
+                    else if (detail.UtensilId.HasValue && detail.Utensil == null)
+                    {
+                        detail.Utensil = await _unitOfWork.Repository<Utensil>().GetById(detail.UtensilId.Value);
+                    }
+                    else if (detail.ComboId.HasValue && detail.Combo == null)
+                    {
+                        detail.Combo = await _unitOfWork.Repository<Combo>().GetById(detail.ComboId.Value);
+                    }
+                    else if (detail.CustomizationId.HasValue && detail.Customization == null)
+                    {
+                        detail.Customization = await _unitOfWork.Repository<Customization>().GetById(detail.CustomizationId.Value);
+                    }
+                }
+            }
+
+            // Load hotpot details
+            if (order.RentOrder != null)
+            {
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory == null)
+                    {
+                        detail.HotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
+                    }
+                }
             }
         }
 
-        private bool IsValidPaymentStatusTransition(PaymentStatus currentStatus, PaymentStatus newStatus)
+        private string GetItemType(SellOrderDetail detail)
         {
-            // Only allow transitions from Pending to Success/Cancelled/Refunded
-            if (currentStatus == PaymentStatus.Pending)
-            {
-                return newStatus == PaymentStatus.Success ||
-                       newStatus == PaymentStatus.Cancelled ||
-                       newStatus == PaymentStatus.Refunded;
-            }
+            if (detail.IngredientId.HasValue) return "Ingredient";
+            if (detail.UtensilId.HasValue) return "Utensil";
+            if (detail.ComboId.HasValue) return "Combo";
+            if (detail.CustomizationId.HasValue) return "Customization";
+            return "Unknown";
+        }
 
-            // Don't allow changing status once it's finalized
-            return false;
+        private string GetItemName(SellOrderDetail detail)
+        {
+            if (detail.Ingredient != null) return detail.Ingredient.Name;
+            if (detail.Utensil != null) return detail.Utensil.Name;
+            if (detail.Combo != null) return detail.Combo.Name;
+            if (detail.Customization != null) return detail.Customization.Name;
+            return "Unknown Item";
         }
 
         private IQueryable<Payment> ApplySorting(IQueryable<Payment> query, string sortBy, bool sortDescending)

@@ -24,19 +24,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
         // Existing methods remain the same
         public async Task<EquipmentConditionDetailDto> LogEquipmentConditionAsync(CreateEquipmentConditionRequest request)
         {
-            // Validate that HotPotInventoryId is provided
-            if (!request.HotPotInventoryId.HasValue)
-            {
-                throw new ArgumentException("HotPotInventoryId must be provided");
-            }
-
             // Create entity from request
             var conditionLog = new DamageDevice
             {
                 Name = request.Name,
                 Description = request.Description,
                 Status = request.Status,
-                LoggedDate = DateTime.UtcNow,
+                LoggedDate = DateTime.UtcNow.AddHours(7),
                 HotPotInventoryId = request.HotPotInventoryId
             };
 
@@ -45,7 +39,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Load related entities
             conditionLog.HotPotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId.Value)
+                .AsQueryable(h => h.HotPotInventoryId == conditionLog.HotPotInventoryId)
                 .Include(h => h.Hotpot)
                 .FirstOrDefaultAsync();
 
@@ -208,12 +202,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
             // Update status
             conditionLog.Status = request.Status;
-            conditionLog.UpdatedAt = DateTime.UtcNow;
+            conditionLog.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             // Set finish date if status is Completed or Cancelled
             if (request.Status == MaintenanceStatus.Completed || request.Status == MaintenanceStatus.Cancelled)
             {
-                conditionLog.FinishDate = DateTime.UtcNow;
+                conditionLog.FinishDate = DateTime.UtcNow.AddHours(7);
             }
 
             // If status is changing from Completed/Cancelled to something else, clear the finish date
@@ -248,7 +242,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
             {
                 // Set to damaged if condition is pending
                 hotpot.Status = HotpotStatus.Damaged;
-                hotpot.UpdatedAt = DateTime.UtcNow;
+                hotpot.UpdatedAt = DateTime.UtcNow.AddHours(7);
             }
 
             await _unitOfWork.CommitAsync();

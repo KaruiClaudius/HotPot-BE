@@ -30,7 +30,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [DataType(DataType.DateTime)]
         public DateTime LoggedDate { get; set; }
 
-        [Required]
         [DataType(DataType.DateTime)]
         public DateTime? FinishDate { get; set; }
 

@@ -2,8 +2,8 @@
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,8 +21,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
         private readonly INotificationService _notificationService;
 
 
-        public CustomerRentalController(IRentOrderService rentOrderService, 
-            INotificationService notificationService, 
+        public CustomerRentalController(IRentOrderService rentOrderService,
+            INotificationService notificationService,
             IEquipmentReturnService equipmentReturnService)
         {
             _rentOrderService = rentOrderService;
@@ -39,7 +39,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Get current user ID from claims
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -60,7 +60,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Get current user ID from claims
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -87,7 +87,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Verify the rental belongs to the current user
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -119,7 +119,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 // Verify the rental belongs to the current user
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized("User ID not found in claims");
+                    return Unauthorized("Không tìm thấy ID người dùng trong thông tin xác thực");
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -155,7 +155,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
                 var userIdClaim = User.FindFirst("id");
                 if (userIdClaim == null)
-                    return Unauthorized(ApiResponse<bool>.ErrorResponse("User ID not found in claims"));
+                    return Unauthorized(ApiResponse<bool>.ErrorResponse("Không tìm thấy ID người dùng trong thông tin xác thực"));
 
                 int userId = int.Parse(userIdClaim.Value);
 
@@ -173,7 +173,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 string equipmentSummary = await GetEquipmentSummaryForRental(rentOrder);
 
                 // Send notification to the customer about the extension
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     userId,
                     "RentalExtended",
                     "Rental Period Extended",
@@ -185,10 +185,10 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 { "NewReturnDate", request.NewExpectedReturnDate },
                 { "ExtensionDays", (request.NewExpectedReturnDate - originalReturnDate).Days },
                 { "EquipmentSummary", equipmentSummary },
-                { "ExtensionDate", DateTime.UtcNow }
+                { "ExtensionDate", DateTime.UtcNow.AddHours(7) }
                     });
 
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "Rental period extended successfully"));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Gia hạn thời gian thuê thành công"));
             }
             catch (NotFoundException ex)
             {
@@ -220,15 +220,15 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (hotpotRentals.Any())
                 {
                     var hotpotCount = hotpotRentals.Count;
-                    equipmentItems.Add($"{hotpotCount} hot pot{(hotpotCount > 1 ? "s" : "")}");
+                    equipmentItems.Add($"{hotpotCount} nồi lẩu{(hotpotCount > 1 ? "" : "")}");
                 }
 
                 // Group hotpots by type if you want more detailed information
                 // This assumes Hotpot has a Type or Category property
                 // If it doesn't, you can remove this section
                 var hotpotGroups = hotpotRentals
-                    .GroupBy(d => d.HotpotInventory?.Hotpot?.GetType().Name ?? "Other Hotpots")
-                    .Where(g => g.Key != "Other Hotpots" || g.Any())
+                    .GroupBy(d => d.HotpotInventory?.Hotpot?.GetType().Name ?? "Nồi lẩu khác")
+                    .Where(g => g.Key != "Nồi lẩu khác" || g.Any())
                     .Select(g => $"{g.Count()} {g.Key}");
 
                 if (hotpotGroups.Any())
@@ -241,12 +241,12 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 return equipmentItems.Any()
                     ? string.Join(", ", equipmentItems)
-                    : "equipment";
+                    : "thiết bị";
             }
             catch (Exception)
             {
                 // If there's any error getting the equipment summary, return a generic message
-                return "equipment";
+                return "thiết bị";
             }
         }
     }

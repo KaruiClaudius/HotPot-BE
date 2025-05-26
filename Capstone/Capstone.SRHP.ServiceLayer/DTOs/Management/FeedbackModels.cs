@@ -20,9 +20,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
     public class CreateFeedbackRequest
     {
-        [Required]
-        [StringLength(200)]
-        public string Title { get; set; }
 
         [Required]
         [StringLength(2000)]
@@ -37,14 +34,12 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int UserId { get; set; }
     }
 
-   
+
 
     public class ManagerFeedbackStats
     {
         public int TotalFeedbackCount { get; set; }
-        public int RespondedFeedbackCount { get; set; }
-        public int UnrespondedFeedbackCount { get; set; }
-        public double ResponseRate { get; set; }
+
     }
 
     public class ManagerFeedbackListDto
@@ -97,7 +92,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     // Basic order info needed for feedback
     public class OrderInfoDto
     {
-        public int OrderId { get; set; }    
+        public int OrderId { get; set; }
     }
 
     public class FeedbackStatusSummary

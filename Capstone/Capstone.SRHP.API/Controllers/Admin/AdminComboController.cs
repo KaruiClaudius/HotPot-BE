@@ -1,8 +1,8 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using System.ComponentModel.DataAnnotations;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Combo;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
-using Capstone.HPTY.ServiceLayer.DTOs.Ingredient;
 using Capstone.HPTY.ServiceLayer.DTOs.Video;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Microsoft.AspNetCore.Authorization;
@@ -19,19 +19,17 @@ namespace Capstone.HPTY.API.Controllers.Admin
         private readonly IIngredientService _ingredientService;
         private readonly ILogger<AdminHotpotController> _logger;
 
-        public AdminComboController(IComboService comboService, IIngredientService ingredientService, ILogger<AdminHotpotController> logger)
+        public AdminComboController(IComboService comboService, ILogger<AdminHotpotController> logger, IIngredientService ingredientService)
         {
             _comboService = comboService;
-            _ingredientService = ingredientService;
             _logger = logger;
+            _ingredientService = ingredientService;
         }
 
-
-
         [HttpGet]
-        public async Task<ActionResult<PagedResult<ComboDto>>> GetCombos(
+        public async Task<ActionResult<object>> GetCombos(
             [FromQuery] string searchTerm = null,
-            [FromQuery] bool? isCustomizable = null,
+            [FromQuery, Required] bool isCustomizable = false,
             [FromQuery] bool activeOnly = true,
             [FromQuery] int? minSize = null,
             [FromQuery] int? maxSize = null,
@@ -48,15 +46,37 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     searchTerm, isCustomizable, activeOnly, minSize, maxSize,
                     minPrice, maxPrice, pageNumber, pageSize, sortBy, ascending);
 
-                var pagedResult = new PagedResult<ComboDto>
+                // Return different data structures based on isCustomizable
+                if (isCustomizable)
                 {
-                    Items = result.Items.Select(MapToComboDto).ToList(),
-                    TotalCount = result.TotalCount,
-                    PageNumber = result.PageNumber,
-                    PageSize = result.PageSize
-                };
+                    var pagedResult = new PagedResult<CustomizableComboDto>
+                    {
+                        Items = new List<CustomizableComboDto>(), // Initialize as a List<T>
+                        TotalCount = result.TotalCount,
+                        PageNumber = result.PageNumber,
+                        PageSize = result.PageSize
+                    };
 
-                return Ok(pagedResult);
+                    // Map each combo individually to handle the async mapping
+                    foreach (var combo in result.Items)
+                    {
+                        var mappedCombo = await MapToCustomizableComboDto(combo);
+                        ((List<CustomizableComboDto>)pagedResult.Items).Add(mappedCombo);
+                    }
+
+                    return Ok(pagedResult);
+                }
+                else
+                {
+                    var pagedResult = new PagedResult<RegularComboDto>
+                    {
+                        Items = result.Items.Select(MapToRegularComboDto).ToList(),
+                        TotalCount = result.TotalCount,
+                        PageNumber = result.PageNumber,
+                        PageSize = result.PageSize
+                    };
+                    return Ok(pagedResult);
+                }
             }
             catch (Exception ex)
             {
@@ -66,17 +86,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ComboDetailDto>> GetById(int id)
+        public async Task<ActionResult<object>> GetById(int id)
         {
             try
             {
                 var combo = await _comboService.GetByIdAsync(id);
                 if (combo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
-                var comboDto = MapToComboDetailDto(combo);
-
-                return Ok(comboDto);
+                var detailDto = await MapToComboDetailDto(combo);
+                return Ok(detailDto);
             }
             catch (NotFoundException ex)
             {
@@ -84,16 +103,20 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting combo by id {ComboId}", id);
+                _logger.LogError(ex, "Error getting combo detail by id {ComboId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
 
         [HttpPost]
-        public async Task<ActionResult<ComboDto>> Create(CreateComboRequest request)
+        public async Task<ActionResult<RegularComboDto>> Create(CreateComboRequest request)
         {
             try
             {
+                // Validate ingredients using the service
+                var ingredientIds = request.Ingredients.Select(i => i.IngredientID).ToList();
+                await _comboService.ValidateComboIngredientsAsync(ingredientIds);
+
                 // Create tutorial video if provided
                 TurtorialVideo tutorialVideo = null;
                 if (request.TutorialVideo != null)
@@ -123,26 +146,52 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, comboIngredients);
 
-                return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, MapToComboDto(createdCombo));
+                return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, MapToRegularComboDto(createdCombo));
             }
-            catch (ValidationException ex)
+            catch (ModelLayer.Exceptions.ValidationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating combo");
-                return StatusCode(500, new { message = "An error occurred while creating the combo" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo combo" });
             }
         }
 
-
         [HttpPost("customizable")]
-        public async Task<ActionResult<ComboDto>> CreateCustomizable(CreateCustomizableComboRequest request)
+        public async Task<ActionResult<CustomizableComboDto>> CreateCustomizable(CreateCustomizableComboRequest request)
         {
             try
             {
-                // Create tutorial video if provided
+                // Validate allowed ingredient types using the service
+                var allowedTypeIds = request.AllowedIngredientTypes.Select(t => t.IngredientTypeId).ToList();
+                await _comboService.ValidateAllowedIngredientTypesAsync(allowedTypeIds);
+
+                string groupIdentifier = request.GroupIdentifier;
+                bool isFirstInGroup = string.IsNullOrEmpty(groupIdentifier);
+
+                // If this is the first combo in a group, generate a new group identifier
+                if (isFirstInGroup)
+                {
+                    groupIdentifier = await _comboService.GenerateGroupIdentifierAsync(request.Name);
+                }
+                else
+                {
+                    // Verify that the group exists
+                    var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
+                    if (!existingGroupCombos.Any())
+                    {
+                        return BadRequest(new { message = $"Không tìm thấy nhóm combo hiện có với định danh '{groupIdentifier}'" });
+                    }
+
+                    // Verify that no combo in this group has the same size
+                    if (existingGroupCombos.Any(c => c.Size == request.Size))
+                    {
+                        return BadRequest(new { message = $"Một combo với kích thước {request.Size} đã tồn tại trong nhóm này" });
+                    }
+                }
+
                 TurtorialVideo tutorialVideo = null;
                 if (request.TutorialVideo != null)
                 {
@@ -157,7 +206,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 var combo = new Combo
                 {
                     Name = request.Name,
-                    Description = request.Description,
+                    Description = groupIdentifier, // Set the group identifier here
                     Size = request.Size,
                     IsCustomizable = true,
                     ImageURLs = request.ImageURLs
@@ -171,15 +220,16 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                 var createdCombo = await _comboService.CreateComboWithVideoAsync(combo, tutorialVideo, null, allowedTypes);
 
-                return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, MapToComboDto(createdCombo));
+                var mappedCombo = await MapToCustomizableComboDto(createdCombo);
+                return CreatedAtAction(nameof(GetById), new { id = createdCombo.ComboId }, mappedCombo);
             }
-            catch (ValidationException ex)
+            catch (ModelLayer.Exceptions.ValidationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error create customize combo");
+                _logger.LogError(ex, "Error creating customizable combo");
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -191,41 +241,38 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 var existingCombo = await _comboService.GetByIdAsync(id);
                 if (existingCombo == null)
-                    return NotFound(new { message = $"Combo with ID {id} not found" });
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
 
+                // Verify this is not a customizable combo
+                if (existingCombo.IsCustomizable)
+                    return BadRequest(new { message = "Endpoint này chỉ dành cho các combo thông thường. Hãy sử dụng /customizable/{id} cho các combo tùy chỉnh." });
 
-                // Only update properties that are explicitly provided in the request
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    existingCombo.Name = request.Name;
-                }
+                // Update base properties
+                UpdateComboBaseProperties(existingCombo, request);
 
-                // For nullable properties, check if they're provided in the request
-                if (request.Description != null) // This allows explicitly setting to null or a new value
+                // Update description if provided
+                if (request.Description != null)
                 {
                     existingCombo.Description = request.Description;
                 }
 
-                if (request.Size > 0)
+                // Create ingredients list if provided in the request
+                List<ComboIngredient> ingredients = null;
+                if (request.Ingredients != null && request.Ingredients.Any())
                 {
-                    existingCombo.Size = request.Size.Value;
+                    ingredients = request.Ingredients.Select(i => new ComboIngredient
+                    {
+                        IngredientId = i.IngredientID,
+                        Quantity = i.Quantity
+                    }).ToList();
                 }
 
-                if (request.ImageURLs != null) // This allows explicitly setting to null or a new array
-                {
-                    existingCombo.ImageURLs = request.ImageURLs;
-                }
-
-                if (request.TurtorialVideoID.HasValue)
-                {
-                    existingCombo.TurtorialVideoId = request.TurtorialVideoID.Value;
-                }
-
-                await _comboService.UpdateAsync(id, existingCombo);
+                // Pass the ingredients to the service
+                await _comboService.UpdateAsync(id, existingCombo, null, ingredients, null);
 
                 return NoContent();
             }
-            catch (ValidationException ex)
+            catch (ModelLayer.Exceptions.ValidationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
@@ -235,10 +282,83 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating combo with ID {ComboId}", id);
+                _logger.LogError(ex, "Error updating regular combo with ID {ComboId}", id);
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
+
+        [HttpPut("customizable/{id}")]
+        public async Task<ActionResult> UpdateCustomizable(int id, UpdateCustomizeComboRequest request)
+        {
+            try
+            {
+                var existingCombo = await _comboService.GetByIdAsync(id);
+                if (existingCombo == null)
+                    return NotFound(new { message = $"Không tìm thấy combo với ID {id}" });
+
+                // Verify this is a customizable combo
+                if (!existingCombo.IsCustomizable)
+                    return BadRequest(new { message = "Endpoint này chỉ dành cho các combo tùy chỉnh. Hãy sử dụng endpoint cập nhật thông thường cho các combo không tùy chỉnh." });
+
+                // Update base properties
+                UpdateComboBaseProperties(existingCombo, request);
+
+                // Update group identifier if provided
+                if (request.GroupIdentifier != null)
+                {
+                    // If changing group identifier, verify the new group exists
+                    if (!string.IsNullOrEmpty(request.GroupIdentifier) &&
+                        request.GroupIdentifier != existingCombo.Description)
+                    {
+                        var existingGroupCombos = await _comboService.GetCombosByGroupIdentifierAsync(request.GroupIdentifier);
+                        if (!existingGroupCombos.Any())
+                        {
+                            return BadRequest(new { message = $"Không tìm thấy nhóm combo hiện có với định danh '{request.GroupIdentifier}'" });
+                        }
+
+                        // Verify that no combo in this group has the same size
+                        if (existingGroupCombos.Any(c => c.Size == (request.Size ?? existingCombo.Size) && c.ComboId != id))
+                        {
+                            return BadRequest(new { message = $"Một combo với kích thước {request.Size ?? existingCombo.Size} đã tồn tại trong nhóm này" });
+                        }
+                    }
+
+                    existingCombo.Description = request.GroupIdentifier;
+                }
+
+                // Create allowed ingredient types list if provided in the request
+                List<ComboAllowedIngredientType> allowedTypes = null;
+                if (request.AllowedIngredientTypes != null && request.AllowedIngredientTypes.Any())
+                {
+                    allowedTypes = request.AllowedIngredientTypes.Select(t => new ComboAllowedIngredientType
+                    {
+                        IngredientTypeId = t.IngredientTypeId,
+                        MinQuantity = t.MinQuantity
+                    }).ToList();
+                }
+
+                // Pass the allowed types to the service
+                await _comboService.UpdateAsync(id, existingCombo, null, null, allowedTypes);
+
+                return NoContent();
+            }
+            catch (ModelLayer.Exceptions.ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating customizable combo with ID {ComboId}", id);
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
@@ -248,7 +368,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 await _comboService.DeleteAsync(id);
                 return NoContent();
             }
-            catch (ValidationException ex)
+            catch (ModelLayer.Exceptions.ValidationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
@@ -263,71 +383,88 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
-
-        private ComboDto MapToComboDto(Combo combo)
+        [HttpGet("group/{groupIdentifier}")]
+        public async Task<ActionResult<IEnumerable<CustomizableComboDto>>> GetCombosByGroup(string groupIdentifier)
         {
-            if (combo == null) return null;
-
-            var comboDto = new ComboDto
+            try
             {
-                ComboId = combo.ComboId,
-                Name = combo.Name,
-                Description = combo.Description ?? string.Empty,
-                Size = combo.Size,
-                BasePrice = combo.BasePrice,
-                TotalPrice = combo.TotalPrice,
-                IsCustomizable = combo.IsCustomizable,
-                ImageURLs = combo.ImageURLs ?? []
-            };
+                var combos = await _comboService.GetCombosByGroupIdentifierAsync(groupIdentifier);
+                if (!combos.Any())
+                    return NotFound(new { message = $"Không tìm thấy combo nào với định danh nhóm '{groupIdentifier}'" });
 
-            // Only set Ingredients if there are any
-            if (combo.ComboIngredients != null && combo.ComboIngredients.Any())
-            {
-                comboDto.Ingredients = combo.ComboIngredients.Select(ci => new ComboIngredientDto
+                var comboDtos = new List<CustomizableComboDto>();
+                foreach (var combo in combos)
                 {
-                    ComboIngredientId = ci.ComboIngredientId,
-                    IngredientID = ci.IngredientId,
-                    IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                    Quantity = ci.Quantity
-                }).ToList();
-            }
+                    comboDtos.Add(await MapToCustomizableComboDto(combo));
+                }
 
-            // Only set AllowedIngredientTypes for customizable combos if there are any
-            if (combo.IsCustomizable && combo.AllowedIngredientTypes != null && combo.AllowedIngredientTypes.Any())
+                return Ok(comboDtos);
+            }
+            catch (Exception ex)
             {
-                comboDto.AllowedIngredientTypes = combo.AllowedIngredientTypes.Select(ait => new ComboAllowedIngredientTypeDto
-                {
-                    Id = ait.ComboAllowedIngredientTypeId,
-                    IngredientTypeId = ait.IngredientTypeId,
-                    IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                    MinQuantity = ait.MinQuantity
-                }).ToList();
+                _logger.LogError(ex, "Error getting combos by group identifier '{GroupIdentifier}'", groupIdentifier);
+                return StatusCode(500, new { message = ex.Message });
             }
-
-            return comboDto;
         }
 
-        private ComboDetailDto MapToComboDetailDto(Combo combo)
+        private void UpdateComboBaseProperties(Combo combo, UpdateRequest request)
+        {
+            if (!string.IsNullOrEmpty(request.Name))
+            {
+                combo.Name = request.Name;
+            }
+
+            if (request.Size.HasValue && request.Size > 0)
+            {
+                combo.Size = request.Size.Value;
+            }
+
+            if (request.ImageURLs != null)
+            {
+                combo.ImageURLs = request.ImageURLs;
+            }
+
+            if (request.TurtorialVideoID.HasValue)
+            {
+                combo.TurtorialVideoId = request.TurtorialVideoID.Value;
+            }
+        }
+
+        private ComboDto MapToBaseComboDto(Combo combo)
         {
             if (combo == null) return null;
 
-            var comboDetailDto = new ComboDetailDto
+            return new ComboDto
             {
                 ComboId = combo.ComboId,
                 Name = combo.Name,
-                Description = combo.Description ?? string.Empty,
                 Size = combo.Size,
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
-                IsCustomizable = combo.IsCustomizable,
+                ImageURLs = combo.ImageURLs ?? Array.Empty<string>()
+            };
+        }
+
+        private async Task<ComboDetailDto> MapToComboDetailDto(Combo combo)
+        {
+            if (combo == null) return null;
+
+            var dto = new ComboDetailDto
+            {
+                ComboId = combo.ComboId,
+                Name = combo.Name,
+                Size = combo.Size,
+                BasePrice = combo.BasePrice,
+                TotalPrice = combo.TotalPrice,
+                ImageURLs = combo.ImageURLs ?? Array.Empty<string>(),
                 AppliedDiscountID = combo.AppliedDiscountId,
                 AppliedDiscountPercentage = combo.AppliedDiscount?.DiscountPercentage ?? 0,
-                ImageURLs = combo.ImageURLs ?? [],
                 TurtorialVideoID = combo.TurtorialVideoId,
                 TutorialVideoName = combo.TurtorialVideo?.Name,
                 TutorialVideoUrl = combo.TurtorialVideo?.VideoURL,
                 CreatedAt = combo.CreatedAt,
-                UpdatedAt = (DateTime)combo.UpdatedAt,
+                UpdatedAt = combo.UpdatedAt ?? DateTime.UtcNow.AddHours(7),
+                IsCustomizable = combo.IsCustomizable,
                 TutorialVideo = combo.TurtorialVideo != null ? new TutorialVideoDto
                 {
                     TurtorialVideoId = combo.TurtorialVideo.TurtorialVideoId,
@@ -337,31 +474,137 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 } : null
             };
 
-            // Only set Ingredients if there are any
-            if (combo.ComboIngredients != null && combo.ComboIngredients.Any())
+            // Populate type-specific properties
+            if (combo.IsCustomizable)
             {
-                comboDetailDto.Ingredients = combo.ComboIngredients.Select(ci => new ComboIngredientDto
+                // Customizable combo properties
+                dto.GroupIdentifier = combo.Description ?? string.Empty;
+                dto.AllowedIngredientTypes = combo.AllowedIngredientTypes?
+                    .Where(ait => !ait.IsDelete)
+                    .Select(ait => new ComboAllowedIngredientTypeDto
+                    {
+                        Id = ait.ComboAllowedIngredientTypeId,
+                        IngredientTypeId = ait.IngredientTypeId,
+                        IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
+                        MinQuantity = ait.MinQuantity
+                    })
+                    .ToList() ?? new List<ComboAllowedIngredientTypeDto>();
+
+                // Check if this is part of a group
+                if (!string.IsNullOrEmpty(combo.Description))
                 {
-                    ComboIngredientId = ci.ComboIngredientId,
-                    IngredientID = ci.IngredientId,
-                    IngredientName = ci.Ingredient?.Name ?? "Unknown",
-                    Quantity = ci.Quantity
-                }).ToList();
+                    var groupCombos = await _comboService.GetCombosByGroupIdentifierAsync(combo.Description);
+
+                    dto.IsPartOfGroup = groupCombos.Count() > 1;
+
+                    if (dto.IsPartOfGroup)
+                    {
+                        dto.GroupVariants = groupCombos
+                            .Where(c => c.ComboId != combo.ComboId) // Exclude the current combo
+                            .Select(c => new CustomizableComboVariantDto
+                            {
+                                ComboId = c.ComboId,
+                                Name = c.Name,
+                                Size = c.Size,
+                            })
+                            .ToList();
+                    }
+                }
+            }
+            else
+            {
+                // Regular combo properties
+                dto.Description = combo.Description ?? string.Empty;
+                dto.Ingredients = combo.ComboIngredients?
+                    .Where(ci => !ci.IsDelete)
+                    .Select(ci => new ComboIngredientDto
+                    {
+                        ComboIngredientId = ci.ComboIngredientId,
+                        IngredientID = ci.IngredientId,
+                        IngredientName = ci.Ingredient?.Name ?? "Unknown",
+                        Quantity = ci.Quantity,
+                        ImageURL = ci.Ingredient?.ImageURL,
+                        TotalPrice = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result
+                    })
+                    .ToList() ?? new List<ComboIngredientDto>();
             }
 
-            // Only set AllowedIngredientTypes for customizable combos if there are any
-            if (combo.IsCustomizable && combo.AllowedIngredientTypes != null && combo.AllowedIngredientTypes.Any())
+            return dto;
+        }
+
+        private RegularComboDto MapToRegularComboDto(Combo combo)
+        {
+            if (combo == null) return null;
+
+            return new RegularComboDto
             {
-                comboDetailDto.AllowedIngredientTypes = combo.AllowedIngredientTypes.Select(ait => new ComboAllowedIngredientTypeDto
+                ComboId = combo.ComboId,
+                Name = combo.Name,
+                Description = combo.Description ?? string.Empty,
+                Size = combo.Size,
+                BasePrice = combo.BasePrice,
+                TotalPrice = combo.TotalPrice,
+                ImageURLs = combo.ImageURLs ?? Array.Empty<string>(),
+                Ingredients = combo.ComboIngredients?
+                    .Where(ci => !ci.IsDelete)
+                    .Select(ci => new ComboIngredientDto
+                    {
+                        ComboIngredientId = ci.ComboIngredientId,
+                        IngredientID = ci.IngredientId,
+                        IngredientName = ci.Ingredient?.Name ?? "Unknown",
+                        Quantity = ci.Quantity,
+                    })
+                    .ToList() ?? new List<ComboIngredientDto>()
+            };
+        }
+
+        private async Task<CustomizableComboDto> MapToCustomizableComboDto(Combo combo)
+        {
+            if (combo == null) return null;
+
+            var dto = new CustomizableComboDto
+            {
+                ComboId = combo.ComboId,
+                Name = combo.Name,
+                GroupIdentifier = combo.Description ?? string.Empty,
+                Size = combo.Size,
+                BasePrice = combo.BasePrice,
+                TotalPrice = combo.TotalPrice,
+                ImageURLs = combo.ImageURLs ?? Array.Empty<string>(),
+                AllowedIngredientTypes = combo.AllowedIngredientTypes?
+                    .Where(ait => !ait.IsDelete)
+                    .Select(ait => new ComboAllowedIngredientTypeDto
+                    {
+                        Id = ait.ComboAllowedIngredientTypeId,
+                        IngredientTypeId = ait.IngredientTypeId,
+                        IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
+                        MinQuantity = ait.MinQuantity,
+                    })
+                    .ToList() ?? new List<ComboAllowedIngredientTypeDto>()
+            };
+
+            // Check if this is part of a group
+            if (!string.IsNullOrEmpty(combo.Description))
+            {
+                var groupCombos = await _comboService.GetCombosByGroupIdentifierAsync(combo.Description);
+
+                dto.IsPartOfGroup = groupCombos.Count() > 1;
+
+                if (dto.IsPartOfGroup)
                 {
-                    Id = ait.ComboAllowedIngredientTypeId,
-                    IngredientTypeId = ait.IngredientTypeId,
-                    IngredientTypeName = ait.IngredientType?.Name ?? "Unknown",
-                    MinQuantity = ait.MinQuantity
-                }).ToList();
+                    dto.GroupVariants = groupCombos
+                        .Where(c => c.ComboId != combo.ComboId) // Exclude the current combo
+                        .Select(c => new CustomizableComboVariantDto
+                        {
+                            ComboId = c.ComboId,
+                            Name = c.Name,
+                            Size = c.Size,
+                        })
+                        .ToList();
+                }
             }
 
-            return comboDetailDto;
+            return dto;
         }
     }
 }

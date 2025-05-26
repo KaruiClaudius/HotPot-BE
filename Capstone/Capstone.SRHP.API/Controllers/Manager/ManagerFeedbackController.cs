@@ -3,7 +3,8 @@ using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Feedback;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.FeedbackService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using Capstone.HPTY.ServiceLayer.Services.FeedbackService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,150 +16,47 @@ namespace Capstone.HPTY.API.Controllers.Manager
     public class ManagerFeedbackController : ControllerBase
     {
         private readonly IFeedbackService _managerFeedbackService;
-        private readonly INotificationService _notificationService;
 
         public ManagerFeedbackController(
-            IFeedbackService managerFeedbackService,
-            INotificationService notificationService)
+            IFeedbackService managerFeedbackService
+            )
         {
             _managerFeedbackService = managerFeedbackService;
-            _notificationService = notificationService;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetAllFeedback(
-           [FromQuery] int pageNumber = 1,
-           [FromQuery] int pageSize = 10)
-        {
-            // Only get approved feedback
-            var pagedResult = await _managerFeedbackService.GetFeedbackByStatusAsync(
-                FeedbackApprovalStatus.Approved, pageNumber, pageSize);
-
-            return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
-                pagedResult, "Approved feedback retrieved successfully"));
-        }
-
-        [HttpGet("unresponded")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetUnrespondedFeedback(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var pagedResult = await _managerFeedbackService.GetUnrespondedFeedbackAsync(pageNumber, pageSize);
-
-            return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
-                pagedResult, "Unresponded feedback retrieved successfully"));
-        }
-
-        [HttpGet("user/{userId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<ManagerFeedbackListDto>>>> GetFeedbackByUserId(
-            int userId,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var pagedResult = await _managerFeedbackService.GetFeedbackByUserIdAsync(
-                userId, pageNumber, pageSize);
-
-            return Ok(ApiResponse<PagedResult<ManagerFeedbackListDto>>.SuccessResponse(
-                pagedResult, "User feedback retrieved successfully"));
-        }
-
-        [HttpGet("order/{orderId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ManagerFeedbackListDto>>>> GetFeedbackByOrderId(int orderId)
-        {
-            var feedback = await _managerFeedbackService.GetFeedbackByOrderIdAsync(orderId);
-
-            return Ok(ApiResponse<IEnumerable<ManagerFeedbackListDto>>.SuccessResponse(
-                feedback, "Order feedback retrieved successfully"));
-        }
-
-        [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<ManagerFeedbackDetailDto>>> GetFeedbackById(int id)
-        {
-            var feedback = await _managerFeedbackService.GetFeedbackByIdAsync(id);
-
-            if (feedback == null)
-            {
-                return NotFound(ApiResponse<ManagerFeedbackDetailDto>.ErrorResponse("Feedback not found"));
-            }
-
-            return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(
-                feedback, "Feedback retrieved successfully"));
-        }
-
-        [HttpPost("{id}/respond")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult<ApiResponse<ManagerFeedbackDetailDto>>> RespondToFeedback(
-      int id, [FromBody] RespondToFeedbackRequest request)
+        public async Task<ActionResult<ApiResponse<PagedResult<FeedbackListDto>>>> GetFilteredFeedback([FromQuery] FeedbackFilterRequest request)
         {
             try
             {
-                var feedback = await _managerFeedbackService.RespondToFeedbackAsync(
-                    id, request.ManagerId, request.Response);
+                // Validate and fix request parameters
+                if (request.PageNumber < 1)
+                    request.PageNumber = 1;
 
-                // Get manager name for notification
-                string managerName = feedback.Manager?.Name ?? "Manager";
+                if (request.PageSize < 1)
+                    request.PageSize = 10;
+                else if (request.PageSize > 100)
+                    request.PageSize = 100;
 
-                // Notify the customer about the response via the simplified notification service
-                await _notificationService.NotifyUser(
-                    feedback.User.UserId,
-                    "FeedbackResponse",
-                    "Response to Your Feedback",
-                    $"A manager has responded to your feedback: {feedback.Title}",
-                    new Dictionary<string, object>
-                    {
-                { "FeedbackId", feedback.FeedbackId },
-                { "Title", feedback.Title },
-                { "Response", feedback.Response },
-                { "ResponderName", managerName },
-                { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
-                    });
+                if (request.FromDate.HasValue && request.ToDate.HasValue && request.FromDate > request.ToDate)
+                {
+                    var temp = request.FromDate;
+                    request.FromDate = request.ToDate;
+                    request.ToDate = temp;
+                }
 
-                // Also notify other managers about the response for transparency
-                await _notificationService.NotifyRole(
-                    "Managers",
-                    "FeedbackResponseAdded",
-                    "Feedback Response Added",
-                    $"{managerName} responded to feedback: {feedback.Title}",
-                    new Dictionary<string, object>
-                    {
-                { "FeedbackId", feedback.FeedbackId },
-                { "Title", feedback.Title },
-                { "Response", feedback.Response },
-                { "ResponderName", managerName },
-                { "ResponderId", request.ManagerId },
-                { "ResponseDate", DateTime.UtcNow },
-                { "CustomerName", feedback.User?.Name ?? "Customer" },
-                { "CustomerId", feedback.User?.UserId ?? 0 },
-                    });
-
-                return Ok(ApiResponse<ManagerFeedbackDetailDto>.SuccessResponse(
-                    feedback, "Response added successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ManagerFeedbackDetailDto>.ErrorResponse(ex.Message));
-            }
-            catch (InvalidOperationException ex)
-            {
-                // This will catch the error when trying to respond to unapproved feedback
-                return StatusCode(StatusCodes.Status403Forbidden,
-                    ApiResponse<ManagerFeedbackDetailDto>.ErrorResponse(ex.Message));
+                var pagedResult = await _managerFeedbackService.GetFilteredFeedbackAsync(request);
+                return Ok(ApiResponse<PagedResult<FeedbackListDto>>.SuccessResponse(
+                    pagedResult, "Đã lấy phản hồi thành công"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ManagerFeedbackDetailDto>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<PagedResult<FeedbackListDto>>.ErrorResponse(ex.Message));
             }
         }
+
 
         [HttpGet("stats")]
         [ProducesResponseType(StatusCodes.Status200OK)]

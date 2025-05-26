@@ -19,6 +19,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Ingredient
         [Required]
         public DateTime BestBeforeDate { get; set; }
 
-        public string BatchNumber { get; set; }
+        public string? ProvideCompany { get; set; }
     }
 }

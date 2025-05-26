@@ -13,7 +13,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 {
     [Route("api/admin/dashboard")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin, Manager")]
     public class AdminDashboardController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -37,41 +37,53 @@ namespace Capstone.HPTY.API.Controllers.Admin
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<ConsolidatedDashboardResponse>> GetDashboard(
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null,
-            [FromQuery] string status = null,
-            [FromQuery] string productType = null,
-            [FromQuery] bool? hasHotpot = null,
-            [FromQuery] string paymentStatus = null,
-            [FromQuery] int topProductsLimit = 5)
+          [FromQuery] DateTime? fromDate = null,
+          [FromQuery] DateTime? toDate = null,
+          [FromQuery] string status = null,
+          [FromQuery] string productType = null,
+          [FromQuery] bool? hasHotpot = null,
+          [FromQuery] string paymentStatus = null,
+          [FromQuery] int topProductsLimit = 5,
+          [FromQuery] int? year = null)
         {
             try
             {
-                // Set default date range if not provided (current year)
-                if (!toDate.HasValue)
-                    toDate = DateTime.UtcNow;
-
-                if (!fromDate.HasValue)
+                // If year is specified, it takes precedence over fromDate and toDate
+                if (year.HasValue)
                 {
-                    // Default to start of current year
-                    fromDate = new DateTime(toDate.Value.Year, 1, 1);
+                    // Year parameter will override fromDate and toDate in the service
+                    fromDate = null;
+                    toDate = null;
+                }
+                else
+                {
+                    // Set default date range if not provided (current year)
+                    if (!toDate.HasValue)
+                        toDate = DateTime.UtcNow.AddHours(7);
+
+                    if (!fromDate.HasValue)
+                    {
+                        // Default to start of current year
+                        fromDate = new DateTime(toDate.Value.Year, 1, 1);
+                    }
                 }
 
                 var dashboardData = await _analyticsService.GetConsolidatedDashboardDataAsync(
-                    fromDate.Value,
-                    toDate.Value,
+                    fromDate ?? DateTime.MinValue,  // These will be overridden if year is specified
+                    toDate ?? DateTime.MaxValue,    // These will be overridden if year is specified
                     status,
                     productType,
                     hasHotpot,
                     paymentStatus,
-                    topProductsLimit);
+                    topProductsLimit,
+                    year);
 
                 return Ok(dashboardData);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving consolidated dashboard data");
-                return StatusCode(500, new { message = "An error occurred while retrieving dashboard data" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy dữ liệu bảng điều khiển" });
             }
         }
 
@@ -91,7 +103,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 // Set default date range if not provided (current year)
                 if (!toDate.HasValue)
-                    toDate = DateTime.UtcNow;
+                    toDate = DateTime.UtcNow.AddHours(7);
 
                 if (!fromDate.HasValue)
                 {
@@ -161,7 +173,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 }
 
                 // Set file name
-                string fileName = $"Dashboard_Report_{DateTime.Now:yyyyMMdd}.csv";
+                string fileName = $"Dashboard_Report_{DateTime.UtcNow.AddHours(7):yyyyMMdd}.csv";
 
                 // Return CSV file
                 return File(Encoding.UTF8.GetBytes(csvBuilder.ToString()), "text/csv", fileName);
@@ -169,7 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error exporting dashboard data");
-                return StatusCode(500, new { message = "An error occurred while exporting dashboard data" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xuất dữ liệu bảng điều khiển" });
             }
         }
 
@@ -227,7 +239,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving orders");
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách đơn hàng" });
             }
         }
 
@@ -250,7 +262,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin đơn hàng" });
             }
         }
 
@@ -277,7 +289,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order status" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng" });
             }
         }
 
@@ -512,6 +524,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = mainPayment.PaymentId,
+                            TransactionCode = mainPayment.TransactionCode,
                             Type = mainPayment.Type.ToString(),
                             Status = mainPayment.Status.ToString(),
                             Amount = mainPayment.Price,
@@ -529,6 +542,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = firstPayment.PaymentId,
+                            TransactionCode = firstPayment.TransactionCode,
                             Type = firstPayment.Type.ToString(),
                             Status = firstPayment.Status.ToString(),
                             Amount = firstPayment.Price,
@@ -548,6 +562,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     response.AdditionalPayments.Add(new PaymentInfo
                     {
                         PaymentId = payment.PaymentId,
+                        TransactionCode = payment.TransactionCode,
                         Type = payment.Type.ToString(),
                         Status = payment.Status.ToString(),
                         Amount = payment.Price,

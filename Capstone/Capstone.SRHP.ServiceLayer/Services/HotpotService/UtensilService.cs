@@ -185,14 +185,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         existingUtensil.Status = entity.Status;
                         existingUtensil.Quantity = entity.Quantity;
                         existingUtensil.UtensilTypeId = entity.UtensilTypeId;
-                        existingUtensil.LastMaintainDate = DateTime.UtcNow;
+                        existingUtensil.LastMaintainDate = DateTime.UtcNow.AddHours(7);
                         existingUtensil.SetUpdateDate();
                         await _unitOfWork.CommitAsync();
                         return existingUtensil;
                     }
                 }
 
-                entity.LastMaintainDate = DateTime.UtcNow;
+                entity.LastMaintainDate = DateTime.UtcNow.AddHours(7);
                 _unitOfWork.Repository<Utensil>().Insert(entity);
                 await _unitOfWork.CommitAsync();
                 return entity;

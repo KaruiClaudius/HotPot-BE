@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 using Capstone.HPTY.ServiceLayer.DTOs.User;
-using Capstone.HPTY.ServiceLayer.Interfaces.ShippingService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
+using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,18 +15,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     public class StaffService : IStaffService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IEquipmentReturnService _equipmentReturnService;
         private readonly ILogger<StaffService> _logger;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly IStaffAssignmentService _staffAssignmentService;
+
         private const int STAFF_ROLE_ID = 3; // Staff role ID
+        private const int MANAGER_ROLE_ID = 2; // Manager role ID
 
         public StaffService(
          IUnitOfWork unitOfWork,
-         IEquipmentReturnService equipmentReturnService,
-         ILogger<StaffService> logger)
+         ILogger<StaffService> logger,
+         IStaffAssignmentService staffAssignmentService,
+         ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
-            _equipmentReturnService = equipmentReturnService;
             _logger = logger;
+            _staffAssignmentService = staffAssignmentService;
+            _currentUserService = currentUserService;
         }
 
         public async Task<User> GetStaffByIdAsync(int userId)
@@ -56,18 +56,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 .ToListAsync();
         }
 
-        public async Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null)
+        public async Task<List<StaffAvailableDto>> GetAvailableStaffForTaskAsync(StaffTaskType? taskType = null, int? orderId = null)
         {
             try
             {
-                _logger.LogInformation("Getting available staff for task type: {TaskType}", taskType);
+                _logger.LogInformation("Getting available staff for task type: {TaskType}, orderId: {OrderId}", taskType, orderId);
 
-                // Get current day of week
-                var today = DateTime.Now.DayOfWeek;
+                // Get current date
+                var now = DateTime.UtcNow.AddHours(7);
+                var today = now.DayOfWeek;
                 var workDay = MapDayOfWeekToWorkDays(today);
 
+                // Define the timeframe for checking recent assignments (e.g., 1 hour)
+                var timeframe = TimeSpan.FromHours(1);
+
                 // Build query for staff users
-                // First filter by role and deletion status
                 var staffQuery = _unitOfWork.Repository<User>()
                     .AsQueryable(u => u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
 
@@ -84,60 +87,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         // Both preparation and shipping staff can handle shipping tasks
                         staffQuery = staffQuery.Where(u => u.StaffType == StaffType.Preparation || u.StaffType == StaffType.Shipping);
                     }
+                    else if (taskType == StaffTaskType.Pickup)
+                    {
+                        // Both preparation and shipping staff can handle pickup tasks
+                        staffQuery = staffQuery.Where(u => u.StaffType == StaffType.Preparation || u.StaffType == StaffType.Shipping);
+                    }
                 }
-
-                // Then include the related data
-                staffQuery = staffQuery.Include(u => u.StaffWorkShifts);
 
                 var staffUsers = await staffQuery.ToListAsync();
 
-                // Get all active assignments in a single query for each type
-                var activePickupAssignments = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .AsQueryable(a => a.CompletedDate == null)
-                    .Select(a => new { a.StaffId, a.AssignedDate })
+                // Get the specific order if orderId is provided
+                Order specificOrder = null;
+                if (orderId.HasValue)
+                {
+                    specificOrder = await _unitOfWork.Repository<Order>()
+                        .AsQueryable()
+                        .Include(o => o.ShippingOrder)
+                        .FirstOrDefaultAsync(o => o.OrderId == orderId.Value && !o.IsDelete);
+
+                    if (specificOrder == null)
+                        throw new NotFoundException($"Order with ID {orderId.Value} not found");
+                }
+
+                // Get all active staff assignments (not completed)
+                var activeAssignments = await _unitOfWork.Repository<StaffAssignment>()
+                    .GetAll(a => a.CompletedDate == null && !a.IsDelete)
                     .ToListAsync();
-
-                var activeShippingOrders = await _unitOfWork.Repository<ShippingOrder>()
-                    .AsQueryable(so => !so.IsDelivered && !so.IsDelete)
-                    .Select(so => new { so.StaffId })
-                    .ToListAsync();
-
-                var activeReplacementRequests = await _unitOfWork.Repository<ReplacementRequest>()
-                    .AsQueryable(rr => rr.Status != ReplacementRequestStatus.Completed &&
-                                      rr.Status != ReplacementRequestStatus.Rejected &&
-                                      rr.AssignedStaffId != null &&
-                                      !rr.IsDelete)
-                    .Select(rr => new { StaffId = rr.AssignedStaffId.Value })
-                    .ToListAsync();
-
-                // Combine all active assignments
-                var allActiveAssignments = new List<(int StaffId, bool HasActiveOrder)>();
-
-                // Add pickup assignments
-                allActiveAssignments.AddRange(
-                    activePickupAssignments.Select(a => (a.StaffId, a.AssignedDate != null))
-                );
-
-                // Add shipping orders
-                allActiveAssignments.AddRange(
-                    activeShippingOrders.Select(so => (so.StaffId, true))
-                );
-
-                // Add replacement requests
-                allActiveAssignments.AddRange(
-                    activeReplacementRequests.Select(rr => (rr.StaffId, true))
-                );
 
                 // Group assignments by staff ID
-                var assignmentsByStaff = allActiveAssignments
+                var assignmentsByStaff = activeAssignments
                     .GroupBy(a => a.StaffId)
                     .ToDictionary(
                         g => g.Key,
-                        g => new
-                        {
-                            Count = g.Count(),
-                            HasActiveOrder = g.Any(a => a.HasActiveOrder)
-                        }
+                        g => g.ToList()
                     );
 
                 // Map to DTOs and determine availability
@@ -147,13 +129,43 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Check if staff is scheduled to work today
                     bool isScheduledToday = (staff.WorkDays.HasValue && (staff.WorkDays.Value & workDay) == workDay);
 
-                    // Get assignment info for this staff
-                    assignmentsByStaff.TryGetValue(staff.UserId, out var assignmentInfo);
-                    bool hasActiveOrder = assignmentInfo?.HasActiveOrder ?? false;
-                    int assignmentCount = assignmentInfo?.Count ?? 0;
+                    // Get assignments for this staff
+                    assignmentsByStaff.TryGetValue(staff.UserId, out var staffAssignments);
+                    var assignments = staffAssignments ?? new List<StaffAssignment>();
 
-                    // Staff is not available if they're not scheduled today or currently working on an order
-                    bool isAvailable = isScheduledToday && !hasActiveOrder;
+                    // Get task types from all assignments (for display purposes)
+                    var staffTaskTypes = assignments.Select(a => a.TaskType).Distinct().ToList();
+                    var staffOrderIds = assignments.Select(a => a.OrderId).Distinct().ToList();
+
+                    // Default availability check - staff is available if:
+                    // 1. They are scheduled to work today
+                    // 2. They don't have too many active assignments within the timeframe
+                    bool isAvailable = isScheduledToday &&
+                                       IsStaffAvailableForMoreAssignments(
+                                           staff.StaffType ?? StaffType.Preparation,
+                                           assignments,
+                                           timeframe);
+
+                    // Special handling for shipping task when the staff prepared the order
+                    if (taskType == StaffTaskType.Shipping && specificOrder != null)
+                    {
+                        // Check if this staff has a preparation assignment for this order
+                        bool preparedThisOrder = assignments.Any(a =>
+                            a.OrderId == specificOrder.OrderId && a.TaskType == StaffTaskType.Preparation);
+
+                        // If this staff prepared the order and it's now Processed, they can ship it
+                        // even if they have other active assignments
+                        if (preparedThisOrder && specificOrder.Status == OrderStatus.Processed)
+                        {
+                            // Check if they're already assigned to other shipping tasks
+                            bool alreadyShipping = assignments.Any(a =>
+                                a.TaskType == StaffTaskType.Shipping && a.OrderId != specificOrder.OrderId);
+
+                            // They can ship this order if they're not already shipping something else
+                            // and they are scheduled to work today
+                            isAvailable = isScheduledToday && !alreadyShipping;
+                        }
+                    }
 
                     // Check if staff is eligible for the task type (if specified)
                     bool isEligible = true;
@@ -161,6 +173,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     {
                         isEligible = IsStaffEligibleForTask(staff, taskType.Value);
                     }
+
+                    // Check if staff is already assigned to this order for this task type
+                    bool alreadyAssignedToTask = false;
+                    if (orderId.HasValue && taskType.HasValue)
+                    {
+                        alreadyAssignedToTask = assignments.Any(a =>
+                            a.OrderId == orderId.Value && a.TaskType == taskType.Value);
+
+                        // If already assigned, they're not available for this task
+                        if (alreadyAssignedToTask)
+                        {
+                            isAvailable = false;
+                        }
+                    }
+
+                    // Count assignments within the timeframe for display
+                    int recentAssignmentCount = assignments
+                        .Count(a => a.AssignedDate >= now.Subtract(timeframe));
 
                     staffDtos.Add(new StaffAvailableDto
                     {
@@ -171,8 +201,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         StaffType = staff.StaffType ?? StaffType.Preparation,
                         IsAvailable = isAvailable,
                         IsEligible = isEligible,
-                        AssignmentCount = assignmentCount,
-                        WorkDays = staff.WorkDays
+                        AssignmentCount = recentAssignmentCount, // Show count of recent assignments
+                        WorkDays = staff.WorkDays,
+                        // Check if this staff prepared the specific order
+                        PreparedThisOrder = specificOrder != null &&
+                            assignments.Any(a => a.OrderId == specificOrder.OrderId && a.TaskType == StaffTaskType.Preparation),
+                        ActiveOrderIds = staffOrderIds,
+                        ScheduledForToday = isScheduledToday,
+                        // Add a new property to show the timeframe used for counting
+                        TimeframeHours = timeframe.TotalHours
                     });
                 }
 
@@ -184,8 +221,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 throw;
             }
         }
-
-
 
         public async Task<User> CreateStaffAsync(User staff)
         {
@@ -233,15 +268,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 
         // Pickup Service Methods
 
-
-        public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, string notes = null)
+        public async Task<bool> AssignStaffToPickupAsync(int staffId, int rentOrderDetailId, int? vehicleId = null, string notes = null)
         {
-            // Get the execution strategy
-            var strategy = _unitOfWork.CreateExecutionStrategy();
-
-            // Execute everything in a retryable unit
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
+                _logger.LogInformation("Assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId} with vehicle {VehicleId}",
+                    staffId, rentOrderDetailId, vehicleId);
+
                 // Verify the staff member exists
                 var staff = await _unitOfWork.Repository<User>()
                         .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
@@ -259,408 +292,203 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 // Get the OrderId from the RentOrderDetail
                 int orderId = rentOrderDetail.OrderId;
 
-                // Check if this rental is already assigned
-                var existingAssignment = await _unitOfWork.Repository<StaffPickupAssignment>()
-                    .FindAsync(a => a.OrderId == orderId && a.CompletedDate == null);
-
-                if (existingAssignment != null)
+                // Verify the vehicle exists and is available if provided
+                if (vehicleId.HasValue)
                 {
-                    // Update existing assignment
-                    existingAssignment.StaffId = staffId;
-                    existingAssignment.Notes = notes;
-                    existingAssignment.AssignedDate = DateTime.UtcNow;
-                    existingAssignment.SetUpdateDate();
+                    var vehicle = await _unitOfWork.Repository<Vehicle>()
+                        .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
 
-                    await _unitOfWork.Repository<StaffPickupAssignment>().UpdateDetached(existingAssignment);
+                    if (vehicle == null)
+                        throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+
+                    if (vehicle.Status != VehicleStatus.Available)
+                        throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
                 }
-                else
+
+                // Get the current manager ID
+                int managerId = await GetCurrentManagerIdAsync();
+
+                // Use the unified staff assignment service
+                await _staffAssignmentService.AssignStaffToTaskAsync(
+                    orderId,
+                    staffId,
+                    managerId,
+                    StaffTaskType.Pickup,
+                    vehicleId);
+
+                // If notes are provided, update the rent order with the notes
+                if (!string.IsNullOrWhiteSpace(notes))
                 {
-                    // Create new assignment
-                    var assignment = new StaffPickupAssignment
+                    var rentOrder = await _unitOfWork.Repository<RentOrder>()
+                        .FindAsync(ro => ro.OrderId == orderId && !ro.IsDelete);
+
+                    if (rentOrder != null)
                     {
-                        OrderId = orderId, // Use the OrderId from RentOrderDetail
-                        StaffId = staffId,
-                        AssignedDate = DateTime.UtcNow,
-                        Notes = notes
-                    };
-
-                    _unitOfWork.Repository<StaffPickupAssignment>().Insert(assignment);
+                        rentOrder.RentalNotes = notes;
+                        rentOrder.SetUpdateDate();
+                        await _unitOfWork.CommitAsync();
+                    }
                 }
 
-                await _unitOfWork.CommitAsync();
                 return true;
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning staff {StaffId} to pickup for rent order detail {RentOrderDetailId} with vehicle {VehicleId}",
+                    staffId, rentOrderDetailId, vehicleId);
+                throw;
+            }
         }
 
         public async Task<List<StaffPickupAssignmentDto>> GetStaffAssignmentsAsync(int staffId)
         {
-            // Verify the staff member exists
-            var staff = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
-
-            if (staff == null)
-                throw new NotFoundException($"Staff with ID {staffId} not found");
-
-            // Get all assignments for this staff member
-            var assignments = await _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.StaffId == staffId && !a.IsDelete)
-                .Include(a => a.Staff)
-                .Include(a => a.RentOrder)
-                    .ThenInclude(r => r.Order)
-                        .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.HotpotInventory)
-                        .ThenInclude(h => h != null ? h.Hotpot : null)
-                .ToListAsync();
-
-            // Map to DTOs
-            var assignmentDtos = new List<StaffPickupAssignmentDto>();
-
-            foreach (var assignment in assignments)
+            try
             {
-                // Get the RentOrderDetails for this assignment
-                var rentOrderDetails = assignment.RentOrder?.RentOrderDetails?.ToList() ?? new List<RentOrderDetail>();
+                _logger.LogInformation("Getting pickup assignments for staff {StaffId}", staffId);
 
-                // If there are no details, create one assignment DTO with the RentOrder info
-                if (!rentOrderDetails.Any())
-                {
-                    assignmentDtos.Add(new StaffPickupAssignmentDto
-                    {
-                        AssignmentId = assignment.AssignmentId,
-                        OrderId = assignment.OrderId, // This is RentOrder.OrderId
-                        StaffId = assignment.StaffId,
-                        StaffName = assignment.Staff?.Name,
-                        AssignedDate = assignment.AssignedDate,
-                        CompletedDate = assignment.CompletedDate,
-                        Notes = assignment.Notes,
-                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
-                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
-                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
-                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
-                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
-                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                        EquipmentSummary = "No equipment details"
-                    });
-                    continue;
-                }
+                // Use the unified staff assignment service to get assignments
+                var assignments = await _staffAssignmentService.GetStaffAssignmentsAsync(staffId, StaffTaskType.Pickup);
 
-                // Create one assignment DTO for each RentOrderDetail
-                foreach (var detail in rentOrderDetails)
-                {
-                    assignmentDtos.Add(new StaffPickupAssignmentDto
-                    {
-                        AssignmentId = assignment.AssignmentId,
-                        OrderId = detail.RentOrderDetailId, // Use RentOrderDetailId instead of RentOrder.OrderId
-                        StaffId = assignment.StaffId,
-                        StaffName = assignment.Staff?.Name,
-                        AssignedDate = assignment.AssignedDate,
-                        CompletedDate = assignment.CompletedDate,
-                        Notes = assignment.Notes,
-                        CustomerName = assignment.RentOrder?.Order?.User?.Name,
-                        CustomerAddress = assignment.RentOrder?.Order?.User?.Address,
-                        CustomerPhone = assignment.RentOrder?.Order?.User?.PhoneNumber,
-                        OrderCode = assignment.RentOrder?.Order?.OrderCode,
-                        RentalStartDate = assignment.RentOrder?.RentalStartDate,
-                        ExpectedReturnDate = assignment.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                        EquipmentSummary = GetEquipmentSummary(new List<RentOrderDetail> { detail })
-                    });
-                }
-            }
-
-            return assignmentDtos;
-        }
-
-        public async Task<PagedResult<StaffPickupAssignmentDto>> GetStaffAssignmentsPaginatedAsync(int staffId, bool pendingOnly, int pageNumber, int pageSize)
-        {
-            // Verify the staff member exists
-            var staff = await _unitOfWork.Repository<User>()
-                .FindAsync(u => u.UserId == staffId && u.RoleId == STAFF_ROLE_ID && !u.IsDelete);
-
-            if (staff == null)
-                throw new NotFoundException($"Staff with ID {staffId} not found");
-
-            // Get all assignments for this staff member
-            var query = _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.StaffId == staffId && !a.IsDelete);
-
-            if (pendingOnly)
-            {
-                query = query.Where(a => a.CompletedDate == null);
-            }
-
-            // Get total count before pagination
-            var totalCount = await query.CountAsync();
-
-            // Get basic assignments first (without includes)
-            var basicAssignments = await query
-                .OrderBy(a => a.AssignedDate)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            // Map to DTOs
-            var assignmentDtos = new List<StaffPickupAssignmentDto>();
-
-            foreach (var a in basicAssignments)
-            {
-                // Create basic DTO
-                var dto = new StaffPickupAssignmentDto
+                // Map to the old DTO format for backward compatibility
+                return assignments.Select(a => new StaffPickupAssignmentDto
                 {
                     AssignmentId = a.AssignmentId,
                     OrderId = a.OrderId,
                     StaffId = a.StaffId,
+                    StaffName = a.StaffName,
                     AssignedDate = a.AssignedDate,
                     CompletedDate = a.CompletedDate,
-                    Notes = a.Notes,
-                    EquipmentSummary = "Order details not available"
-                };
-
-                // Try to load staff
-                var staffMember = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.UserId == a.StaffId && !u.IsDelete);
-
-                if (staffMember != null)
-                {
-                    dto.StaffName = staffMember.Name;
-                }
-
-                // Try to load rent order and related entities
-                var rentOrder = await _unitOfWork.Repository<RentOrder>()
-                    .FindAsync(r => r.OrderId == a.OrderId && !r.IsDelete);
-
-                if (rentOrder != null)
-                {
-                    dto.RentalStartDate = rentOrder.RentalStartDate;
-                    dto.ExpectedReturnDate = rentOrder.ExpectedReturnDate;
-
-                    // Try to load order
-                    var order = await _unitOfWork.Repository<Order>()
-                        .FindAsync(o => o.OrderId == rentOrder.OrderId && !o.IsDelete);
-
-                    if (order != null)
-                    {
-                        dto.OrderCode = order.OrderCode;
-
-                        // Try to load user
-                        var user = await _unitOfWork.Repository<User>()
-                            .FindAsync(u => u.UserId == order.UserId && !u.IsDelete);
-
-                        if (user != null)
-                        {
-                            dto.CustomerName = user.Name;
-                            dto.CustomerAddress = user.Address;
-                            dto.CustomerPhone = user.PhoneNumber;
-                        }
-                    }
-
-                    // Try to load rent order details using AsQueryable
-                    var detailsQuery = _unitOfWork.Repository<RentOrderDetail>()
-                        .AsQueryable(d => d.OrderId == rentOrder.OrderId && !d.IsDelete);
-
-                    var details = await detailsQuery.ToListAsync();
-
-                    if (details != null && details.Any())
-                    {
-                        // Load hotpot inventory and hotpot for each detail
-                        foreach (var detail in details)
-                        {
-                            if (detail.HotpotInventoryId.HasValue)
-                            {
-                                var inventory = await _unitOfWork.Repository<HotPotInventory>()
-                                    .FindAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId && !h.IsDelete);
-
-                                if (inventory != null)
-                                {
-                                    detail.HotpotInventory = inventory;
-
-                                    var hotpot = await _unitOfWork.Repository<Hotpot>()
-                                        .FindAsync(h => h.HotpotId == inventory.HotpotId && !h.IsDelete);
-
-                                    if (hotpot != null)
-                                    {
-                                        inventory.Hotpot = hotpot;
-                                    }
-                                }
-                            }
-                        }
-
-                        dto.EquipmentSummary = GetEquipmentSummary(details);
-                    }
-                }
-
-                assignmentDtos.Add(dto);
+                    CustomerName = a.CustomerName,
+                    CustomerAddress = a.CustomerAddress,
+                    CustomerPhone = a.CustomerPhone,
+                    OrderCode = a.OrderCode,
+                    RentalStartDate = a.RentalDetails?.RentalStartDate,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
+                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
+                }).ToList();
             }
-
-            return new PagedResult<StaffPickupAssignmentDto>
+            catch (Exception ex)
             {
-                Items = assignmentDtos,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+                _logger.LogError(ex, "Error getting pickup assignments for staff {StaffId}", staffId);
+                throw;
+            }
+        }
+
+        public async Task<PagedResult<StaffPickupAssignmentDto>> GetStaffAssignmentsPaginatedAsync(
+         int staffId, bool pendingOnly, int pageNumber, int pageSize)
+        {
+            try
+            {
+                _logger.LogInformation("Getting paginated pickup assignments for staff {StaffId}, pendingOnly {PendingOnly}",
+                    staffId, pendingOnly);
+
+                // Use the unified staff assignment service to get paginated assignments
+                var pagedAssignments = await _staffAssignmentService.GetStaffAssignmentsPaginatedAsync(
+                    staffId,
+                    StaffTaskType.Pickup,
+                    pendingOnly ? true : null, // Convert pendingOnly to activeOnly
+                    pageNumber,
+                    pageSize);
+
+                // Map to the old DTO format for backward compatibility
+                var mappedItems = pagedAssignments.Items.Select(a => new StaffPickupAssignmentDto
+                {
+                    AssignmentId = a.AssignmentId,
+                    OrderId = a.OrderId,
+                    StaffId = a.StaffId,
+                    StaffName = a.StaffName,
+                    AssignedDate = a.AssignedDate,
+                    CompletedDate = a.CompletedDate,
+                    CustomerName = a.CustomerName,
+                    CustomerAddress = a.CustomerAddress,
+                    CustomerPhone = a.CustomerPhone,
+                    OrderCode = a.OrderCode,
+                    RentalStartDate = a.RentalDetails?.RentalStartDate,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
+                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
+                }).ToList();
+
+                return new PagedResult<StaffPickupAssignmentDto>
+                {
+                    Items = mappedItems,
+                    TotalCount = pagedAssignments.TotalCount,
+                    PageNumber = pagedAssignments.PageNumber,
+                    PageSize = pagedAssignments.PageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated pickup assignments for staff {StaffId}", staffId);
+                throw;
+            }
         }
 
         public async Task<PagedResult<StaffPickupAssignmentDto>> GetAllCurrentAssignmentsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            // Log input parameters
-            Console.WriteLine($"Requested page: {pageNumber}, page size: {pageSize}");
-
-            // Get all current assignments (not completed)
-            var query = _unitOfWork.Repository<StaffPickupAssignment>()
-                .AsQueryable(a => a.CompletedDate == null && !a.IsDelete);
-
-            // Check basic count before includes
-            var basicCount = await query.CountAsync();
-            Console.WriteLine($"Basic count before includes: {basicCount}");
-
-            // Add includes
-            query = query.Include(a => a.Staff)
-                .Include(a => a.RentOrder)
-                    .ThenInclude(r => r.Order)
-                        .ThenInclude(o => o.User)
-                .Include(a => a.RentOrder.RentOrderDetails)
-                    .ThenInclude(d => d.HotpotInventory)
-                        .ThenInclude(h => h != null ? h.Hotpot : null);
-
-            // Get total count after includes
-            var totalCount = await query.CountAsync();
-            Console.WriteLine($"Total count after includes: {totalCount}");
-
-            // Check if pagination parameters are valid
-            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
-            Console.WriteLine($"Total pages: {totalPages}, requested page: {pageNumber}");
-
-            if (pageNumber > totalPages && totalCount > 0)
+            try
             {
-                Console.WriteLine("Warning: Requested page exceeds available pages");
-                // Option 1: Return empty result with correct metadata
-                // Option 2: Reset to page 1 (implemented below)
-                pageNumber = 1;
+                _logger.LogInformation("Getting all current pickup assignments");
+
+                // Use the unified staff assignment service to get all current assignments
+                var pagedAssignments = await _staffAssignmentService.GetAllCurrentAssignmentsAsync(
+                    StaffTaskType.Pickup,
+                    pageNumber,
+                    pageSize);
+
+                // Map to the old DTO format for backward compatibility
+                var mappedItems = pagedAssignments.Items.Select(a => new StaffPickupAssignmentDto
+                {
+                    AssignmentId = a.AssignmentId,
+                    OrderId = a.OrderId,
+                    StaffId = a.StaffId,
+                    StaffName = a.StaffName,
+                    AssignedDate = a.AssignedDate,
+                    CompletedDate = a.CompletedDate,
+                    CustomerName = a.CustomerName,
+                    CustomerAddress = a.CustomerAddress,
+                    CustomerPhone = a.CustomerPhone,
+                    OrderCode = a.OrderCode,
+                    RentalStartDate = a.RentalDetails?.RentalStartDate,
+                    ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
+                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details",
+                    // Map vehicle information
+                    VehicleId = a.RentalDetails?.VehicleId,
+                    VehicleName = a.RentalDetails?.VehicleName,
+                    VehicleType = a.RentalDetails?.VehicleType
+                }).ToList();
+
+                return new PagedResult<StaffPickupAssignmentDto>
+                {
+                    Items = mappedItems,
+                    TotalCount = pagedAssignments.TotalCount,
+                    PageNumber = pagedAssignments.PageNumber,
+                    PageSize = pagedAssignments.PageSize
+                };
             }
-
-            // Apply pagination with detailed logging
-            Console.WriteLine($"Applying pagination: Skip {(pageNumber - 1) * pageSize}, Take {pageSize}");
-            var assignments = await query
-                .OrderBy(a => a.AssignedDate)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            Console.WriteLine($"Retrieved {assignments.Count} assignments after pagination");
-
-            // Map to DTOs with null checks
-            var assignmentDtos = assignments.Select(a => new StaffPickupAssignmentDto
+            catch (Exception ex)
             {
-                AssignmentId = a.AssignmentId,
-                OrderId = a.OrderId,
-                StaffId = a.StaffId,
-                StaffName = a.Staff?.Name,
-                AssignedDate = a.AssignedDate,
-                CompletedDate = a.CompletedDate,
-                Notes = a.Notes,
-                CustomerName = a.RentOrder?.Order?.User?.Name,
-                CustomerAddress = a.RentOrder?.Order?.User?.Address,
-                CustomerPhone = a.RentOrder?.Order?.User?.PhoneNumber,
-                OrderCode = a.RentOrder?.Order?.OrderCode,
-                RentalStartDate = a.RentOrder?.RentalStartDate,
-                ExpectedReturnDate = a.RentOrder?.ExpectedReturnDate ?? DateTime.Now,
-                EquipmentSummary = GetEquipmentSummary(a.RentOrder?.RentOrderDetails)
-            }).ToList();
-
-            Console.WriteLine($"Mapped {assignmentDtos.Count} DTOs");
-
-            return new PagedResult<StaffPickupAssignmentDto>
-            {
-                Items = assignmentDtos,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-                // TotalPages is calculated automatically
-            };
+                _logger.LogError(ex, "Error getting all current pickup assignments");
+                throw;
+            }
         }
 
-
-        private string GetEquipmentSummary(ICollection<RentOrderDetail> details)
-        {
-            Console.WriteLine("GetEquipmentSummary called");
-
-            if (details == null)
-            {
-                Console.WriteLine("  Details collection is NULL");
-                return "No equipment";
-            }
-
-            if (!details.Any())
-            {
-                Console.WriteLine("  Details collection is empty");
-                return "No equipment";
-            }
-
-            Console.WriteLine($"  Processing {details.Count} details");
-            var equipmentCounts = new Dictionary<string, int>();
-            var skippedDetails = 0;
-
-            foreach (var detail in details.Where(d => !d.IsDelete))
-            {
-                Console.WriteLine($"  Detail {detail.RentOrderDetailId}: HotpotInventoryId={detail.HotpotInventoryId}");
-
-                string name;
-                if (detail.HotpotInventoryId.HasValue && detail.HotpotInventory?.Hotpot != null)
-                {
-                    name = detail.HotpotInventory.Hotpot.Name;
-                    Console.WriteLine($"    Found hotpot name: {name}");
-                }
-                else
-                {
-                    if (!detail.HotpotInventoryId.HasValue)
-                        Console.WriteLine("    Skipped: HotpotInventoryId is null");
-                    else if (detail.HotpotInventory == null)
-                        Console.WriteLine("    Skipped: HotpotInventory is null");
-                    else if (detail.HotpotInventory.Hotpot == null)
-                        Console.WriteLine("    Skipped: Hotpot is null");
-
-                    skippedDetails++;
-                    continue;
-                }
-
-                if (equipmentCounts.ContainsKey(name))
-                {
-                    equipmentCounts[name] += detail.Quantity;
-                    Console.WriteLine($"    Updated count for {name}: {equipmentCounts[name]}");
-                }
-                else
-                {
-                    equipmentCounts[name] = detail.Quantity;
-                    Console.WriteLine($"    Added new entry for {name}: {detail.Quantity}");
-                }
-            }
-
-            // Create a summary string
-            var summary = string.Join(", ", equipmentCounts.Select(kv => $"{kv.Value}x {kv.Key}"));
-
-            if (skippedDetails > 0)
-            {
-                Console.WriteLine($"  WARNING: Skipped {skippedDetails} details due to missing data");
-            }
-
-            Console.WriteLine($"  Final summary: {(string.IsNullOrEmpty(summary) ? "No equipment" : summary)}");
-            return string.IsNullOrEmpty(summary) ? "No equipment" : summary;
-        }
         // Helper method to check if a staff member is eligible for a specific task
         private bool IsStaffEligibleForTask(User staff, StaffTaskType taskType)
         {
-            if (staff == null)
-                return false;
+            var staffType = staff.StaffType ?? StaffType.Preparation;
 
-            // For preparation tasks, only preparation staff are eligible
-            if (taskType == StaffTaskType.Preparation)
-                return staff.StaffType == StaffType.Preparation;
+            return (taskType, staffType) switch
+            {
+                // Preparation staff can do all tasks
+                (_, StaffType.Preparation) => true,
 
-            // For shipping tasks, both preparation and shipping staff are eligible
-            if (taskType == StaffTaskType.Shipping)
-                return staff.StaffType == StaffType.Preparation || staff.StaffType == StaffType.Shipping;
+                // Shipping staff can only do shipping and pickup tasks
+                (StaffTaskType.Shipping, StaffType.Shipping) => true,
+                (StaffTaskType.Pickup, StaffType.Shipping) => true,
 
-            return false;
+                // All other combinations are not eligible
+                _ => false
+            };
         }
 
         // Helper method to map DayOfWeek to WorkDays enum
@@ -677,6 +505,88 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 DayOfWeek.Saturday => WorkDays.Saturday,
                 _ => WorkDays.None
             };
+        }
+        private async Task<int> GetCurrentManagerIdAsync()
+        {
+            try
+            {
+                // Get the current user
+                var currentUser = await _currentUserService.GetCurrentUserAsync();
+
+                // Verify the user is a manager
+                if (currentUser.RoleId != MANAGER_ROLE_ID)
+                {
+                    throw new UnauthorizedException("Current user is not authorized to make staff assignments");
+                }
+
+                return currentUser.UserId;
+            }
+            catch (UnauthorizedException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting current manager ID");
+                throw new UnauthorizedException("Failed to authenticate manager");
+            }
+        }
+        private bool IsStaffAvailableForMoreAssignments(
+    StaffType staffType,
+    List<StaffAssignment> currentAssignments,
+    TimeSpan timeframe)
+        {
+            // Define limits for different staff types and task combinations
+            const int MAX_PREPARATION_TASKS = 5;
+            const int MAX_SHIPPING_TASKS = 5;
+            const int MAX_PICKUP_TASKS = 5;
+            const int MAX_TOTAL_TASKS = 5;
+
+            // Get current time
+            var now = DateTime.UtcNow;
+
+            // Filter assignments to only those within the specified timeframe
+            var recentAssignments = currentAssignments
+                .Where(a => a.AssignedDate >= now.Subtract(timeframe))
+                .ToList();
+
+            // Get task types from recent assignments
+            var currentTaskTypes = recentAssignments.Select(a => a.TaskType).ToList();
+
+            // Check total assignment limit within timeframe
+            int assignmentCount = recentAssignments.Count;
+            if (assignmentCount >= MAX_TOTAL_TASKS)
+                return false;
+
+            // Check task-specific limits
+            int preparationCount = currentTaskTypes.Count(t => t == StaffTaskType.Preparation);
+            int shippingCount = currentTaskTypes.Count(t => t == StaffTaskType.Shipping);
+            int pickupCount = currentTaskTypes.Count(t => t == StaffTaskType.Pickup);
+
+            // Apply limits based on staff type
+            if (staffType == StaffType.Preparation)
+            {
+                // Preparation staff can do all tasks but with limits
+                if (preparationCount >= MAX_PREPARATION_TASKS)
+                    return false;
+
+                if (shippingCount >= MAX_SHIPPING_TASKS)
+                    return false;
+
+                if (pickupCount >= MAX_PICKUP_TASKS)
+                    return false;
+            }
+            else if (staffType == StaffType.Shipping)
+            {
+                // Shipping staff can only do shipping and pickup tasks
+                if (shippingCount >= MAX_SHIPPING_TASKS)
+                    return false;
+
+                if (pickupCount >= MAX_PICKUP_TASKS)
+                    return false;
+            }
+
+            return true;
         }
     }
 }

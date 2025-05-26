@@ -12,15 +12,13 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
     {
         public static ChatSessionDto ToDto(this ChatSession entity)
         {
-            if (entity == null) return null;
-
             return new ChatSessionDto
             {
                 ChatSessionId = entity.ChatSessionId,
                 CustomerId = entity.CustomerId,
-                CustomerName = entity.Customer?.Name,
+                CustomerName = entity.Customer?.Name ?? "Unknown",
                 ManagerId = entity.ManagerId,
-                ManagerName = entity.Manager?.Name,
+                ManagerName = entity.Manager?.Name ?? "Unassigned",
                 IsActive = entity.IsActive,
                 Topic = entity.Topic,
                 CreatedAt = entity.CreatedAt,
@@ -30,15 +28,13 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
 
         public static ChatSessionDetailDto ToDetailDto(this ChatSession entity)
         {
-            if (entity == null) return null;
-
             return new ChatSessionDetailDto
             {
                 ChatSessionId = entity.ChatSessionId,
                 CustomerId = entity.CustomerId,
-                CustomerName = entity.Customer?.Name,
+                CustomerName = entity.Customer?.Name ?? "Unknown",
                 ManagerId = entity.ManagerId,
-                ManagerName = entity.Manager?.Name,
+                ManagerName = entity.Manager?.Name ?? "Unassigned",
                 IsActive = entity.IsActive,
                 Topic = entity.Topic,
                 CreatedAt = entity.CreatedAt,
@@ -49,30 +45,29 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
 
         public static ChatMessageDto ToDto(this ChatMessage entity)
         {
-            if (entity == null) return null;
-
             return new ChatMessageDto
             {
                 ChatMessageId = entity.ChatMessageId,
                 SenderUserId = entity.SenderUserId,
-                SenderName = entity.SenderUser?.Name,
+                SenderName = entity.SenderUser?.Name ?? "Unknown",
                 ReceiverUserId = entity.ReceiverUserId,
-                ReceiverName = entity.ReceiverUser?.Name,
+                ReceiverName = entity.ReceiverUser?.Name ?? "Unknown",
+                ChatSessionId = entity.ChatSessionId,
                 Message = entity.Message,
-                IsRead = entity.IsRead,
-                CreatedAt = entity.CreatedAt
+                CreatedAt = entity.CreatedAt,
+                IsBroadcast = entity.IsBroadcast
+
             };
         }
 
         public static List<ChatSessionDto> ToDtoList(this IEnumerable<ChatSession> entities)
         {
-            return entities?.Select(e => e.ToDto()).ToList() ?? new List<ChatSessionDto>();
+            return entities.Select(e => e.ToDto()).ToList();
         }
 
         public static List<ChatMessageDto> ToDtoList(this IEnumerable<ChatMessage> entities)
         {
-            return entities?.Select(e => e.ToDto()).ToList() ?? new List<ChatMessageDto>();
+            return entities.Select(e => e.ToDto()).ToList();
         }
-
     }
 }

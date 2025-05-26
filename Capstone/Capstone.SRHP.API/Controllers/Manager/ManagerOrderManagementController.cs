@@ -27,70 +27,36 @@ namespace Capstone.HPTY.API.Controllers.Manager
             _logger = logger;
         }
 
-        [HttpPost("assign-staff")]
+        [HttpPost("assign-multiple-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<StaffAssignmentResponse>>> AssignStaffToOrder(
-    [FromBody] StaffAssignmentRequest request)
+        public async Task<ActionResult<ApiResponse<MultiStaffAssignmentResponse>>> AssignMultipleStaffToOrder(
+    [FromBody] MultiStaffAssignmentRequest request)
         {
             try
             {
-                var result = await _orderManagementService.AssignStaffToOrderAsync(
-                    request.OrderId,
-                    request.StaffId,
-                    request.TaskType,
+                var result = await _orderManagementService.AssignMultipleStaffToOrderAsync(
+                    request.OrderCode,
+                    request.PreparationStaffIds,
+                    request.ShippingStaffId,
                     request.VehicleId);
 
-                string successMessage = request.TaskType == StaffTaskType.Preparation
-                    ? "Preparation staff assigned successfully"
-                    : "Shipping staff assigned successfully";
-
-                return Ok(ApiResponse<StaffAssignmentResponse>.SuccessResponse(result, successMessage));
+                return Ok(ApiResponse<MultiStaffAssignmentResponse>.SuccessResponse(
+                    result, "Preparation and shipping staff assigned successfully"));
             }
             catch (NotFoundException ex)
             {
-                return NotFound(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
+                return NotFound(ApiResponse<MultiStaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
             catch (ValidationException ex)
             {
-                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
+                return BadRequest(ApiResponse<MultiStaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning staff to order");
-                return BadRequest(ApiResponse<StaffAssignmentResponse>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpGet("unallocated")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<UnallocatedOrderDTO>>>> GetUnallocatedOrders(
-             [FromQuery] OrderQueryParams queryParams = null)
-        {
-            // If no query params provided, create with defaults
-            queryParams ??= new OrderQueryParams { PageNumber = 1, PageSize = 10 };
-
-            var pagedOrders = await _orderManagementService.GetUnallocatedOrdersPaged(queryParams);
-
-            return Ok(ApiResponse<PagedResult<UnallocatedOrderDTO>>.SuccessResponse(
-                pagedOrders,
-                $"Unallocated orders retrieved successfully (Page {pagedOrders.PageNumber} of {pagedOrders.TotalPages})"));
-        }
-
-        [HttpGet("staff/{staffId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<IEnumerable<StaffShippingOrderDTO>>>> GetOrdersByStaff(int staffId)
-        {
-            try
-            {
-                var orders = await _orderManagementService.GetOrdersByStaff(staffId);
-                return Ok(ApiResponse<IEnumerable<StaffShippingOrderDTO>>.SuccessResponse(orders, $"Orders for staff {staffId} retrieved successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<IEnumerable<StaffShippingOrderDTO>>.ErrorResponse(ex.Message));
+                _logger.LogError(ex, "Error assigning multiple staff to order");
+                return BadRequest(ApiResponse<MultiStaffAssignmentResponse>.ErrorResponse(ex.Message));
             }
         }
 
@@ -181,20 +147,6 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
         }
 
-        [HttpGet("pending-deliveries")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<PagedResult<PendingDeliveryDTO>>>> GetPendingDeliveries(
-           [FromQuery] ShippingOrderQueryParams queryParams = null)
-        {
-            // If no query params provided, create with defaults
-            queryParams ??= new ShippingOrderQueryParams { PageNumber = 1, PageSize = 10 };
-
-            var pagedDeliveries = await _orderManagementService.GetPendingDeliveriesPaged(queryParams);
-
-            return Ok(ApiResponse<PagedResult<PendingDeliveryDTO>>.SuccessResponse(
-                pagedDeliveries,
-                $"Pending deliveries retrieved successfully (Page {pagedDeliveries.PageNumber} of {pagedDeliveries.TotalPages})"));
-        }
 
         [HttpPut("delivery/time/{shippingOrderId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -221,49 +173,18 @@ namespace Capstone.HPTY.API.Controllers.Manager
         }
 
 
-        [HttpPost("allocate-with-vehicle")]
+        [HttpGet("estimate-size/{orderCode}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<ShippingOrderAllocationDTO>>> AllocateOrderToStaffWithVehicle([FromBody] AllocateOrderWithVehicleRequest request)
+        public async Task<ActionResult<ApiResponse<OrderSizeDTO>>> EstimateOrderSize(string orderCode)
         {
             try
             {
-                var result = await _orderManagementService.AllocateOrderToStaffWithVehicle(
-                    request.OrderId,
-                    request.StaffId,
-                    request.VehicleId);
-
-                return Ok(ApiResponse<ShippingOrderAllocationDTO>.SuccessResponse(
-                    result,
-                    "Order allocated successfully with vehicle"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<ShippingOrderAllocationDTO>.ErrorResponse(ex.Message));
-            }
-        }
-
-        [HttpGet("estimate-size/{orderId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ApiResponse<OrderSizeDTO>>> EstimateOrderSize(int orderId)
-        {
-            try
-            {
-                var orderSize = await _orderManagementService.EstimateOrderSizeAsync(orderId);
+                var orderSize = await _orderManagementService.EstimateOrderSizeAsync(orderCode);
 
                 var result = new OrderSizeDTO
                 {
-                    OrderId = orderId,
+                    OrderCode = orderCode,
                     Size = orderSize,
                     SuggestedVehicleType = orderSize == OrderSize.Large ? VehicleType.Car : VehicleType.Scooter
                 };
@@ -278,7 +199,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderId);
+                _logger.LogError(ex, "Error estimating size for order {OrderId}", orderCode);
                 return StatusCode(500, ApiResponse<OrderSizeDTO>.ErrorResponse($"An error occurred: {ex.Message}"));
             }
         }

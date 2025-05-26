@@ -63,7 +63,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized(new { message = "Invalid user identification" });
+                    // This returns UnauthorizedObjectResult
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
                 }
 
                 // Determine if pagination is requested
@@ -118,7 +119,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving user orders");
-                return StatusCode(500, new { message = "An error occurred while retrieving orders" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách đơn hàng" });
             }
         }
 
@@ -145,7 +146,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin đơn hàng" });
             }
         }
 
@@ -159,7 +160,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
                     _logger.LogError("User ID claim not found in token");
-                    return Unauthorized(new { message = "User ID not found in token" });
+                    return Unauthorized(new { message = "Không tìm thấy ID người dùng trong token" });
                 }
 
                 var userId = int.Parse(userIdClaim);
@@ -176,7 +177,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating order");
-                return StatusCode(500, new { message = "An error occurred while creating the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo đơn hàng" });
             }
         }
 
@@ -191,19 +192,19 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var userIdClaim = User.FindFirstValue("id");
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized(new { message = "Invalid user identification" });
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
                 }
 
                 if (request.Items == null || !request.Items.Any())
                 {
-                    return BadRequest(new { message = "No items to update" });
+                    return BadRequest(new { message = "Không có sản phẩm nào để cập nhật" });
                 }
 
                 var updatedCart = await _orderService.UpdateCartItemsQuantityAsync(userId, request.Items);
 
                 if (updatedCart == null)
                 {
-                    return Ok(new { message = "Cart is now empty" });
+                    return Ok(new { message = "Giỏ hàng hiện đang trống" });
                 }
 
                 var cartResponse = MapOrderToResponse(updatedCart);
@@ -220,7 +221,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating cart items");
-                return StatusCode(500, new { message = "An error occurred while updating the cart" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật giỏ hàng" });
             }
         }
 
@@ -253,7 +254,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật đơn hàng" });
             }
         }
 
@@ -263,6 +264,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
+                var userIdClaim = User.FindFirstValue("id");
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    // This returns UnauthorizedObjectResult
+                    return Unauthorized(new { message = "Thông tin xác thực người dùng không hợp lệ" });
+                }
+
                 var updatedOrder = await _orderService.UpdateStatusAsync(id, request.Status);
                 var orderResponse = MapOrderToResponse(updatedOrder);
                 return Ok(orderResponse);
@@ -278,7 +286,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the order status" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng" });
             }
         }
 
@@ -308,7 +316,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting order {OrderId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the order" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa đơn hàng" });
             }
         }
 
@@ -412,6 +420,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     string itemName = "Unknown";
                     string imageUrl = null;
                     int? itemId = null;
+                    string formattedQuantity = "";
 
                     if (detail.IngredientId.HasValue && detail.Ingredient != null)
                     {
@@ -419,6 +428,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Ingredient.Name;
                         imageUrl = detail.Ingredient.ImageURL;
                         itemId = detail.IngredientId;
+                        formattedQuantity = FormatQuantity(detail.Ingredient.MeasurementValue, detail.Ingredient.Unit);
                     }
                     else if (detail.UtensilId.HasValue && detail.Utensil != null)
                     {
@@ -450,6 +460,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         ItemType = itemType,
                         ItemName = itemName,
                         ImageUrl = imageUrl,
+                        FormattedQuantity = formattedQuantity,
                         ItemId = itemId,
                         IsSellable = true
                     });
@@ -578,6 +589,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = mainPayment.PaymentId,
+                            TransactionCode = mainPayment.TransactionCode,
                             Type = mainPayment.Type.ToString(),
                             Status = mainPayment.Status.ToString(),
                             Amount = mainPayment.Price,
@@ -595,6 +607,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         response.Payment = new PaymentInfo
                         {
                             PaymentId = firstPayment.PaymentId,
+                            TransactionCode = firstPayment.TransactionCode,
                             Type = firstPayment.Type.ToString(),
                             Status = firstPayment.Status.ToString(),
                             Amount = firstPayment.Price,
@@ -614,6 +627,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     response.AdditionalPayments.Add(new PaymentInfo
                     {
                         PaymentId = payment.PaymentId,
+                        TransactionCode = payment.TransactionCode,
                         Type = payment.Type.ToString(),
                         Status = payment.Status.ToString(),
                         Amount = payment.Price,
@@ -629,6 +643,14 @@ namespace Capstone.HPTY.API.Controllers.Customer
         private decimal CalculateDiscountAmount(decimal totalPrice, decimal discountPercent)
         {
             return totalPrice * (discountPercent / 100);
+        }
+
+        private string FormatQuantity(double quantity, string unit)
+        {
+            if (string.IsNullOrEmpty(unit))
+                return quantity.ToString("0.##");
+
+            return $"{quantity.ToString("0.##")} {unit}";
         }
     }
 }

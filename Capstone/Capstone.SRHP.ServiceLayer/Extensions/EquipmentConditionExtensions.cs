@@ -1,8 +1,7 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
-using System.Collections.Generic;
-using System.Linq;
+
 
 namespace Capstone.HPTY.ServiceLayer.Extensions
 {
@@ -21,7 +20,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 Status = entity.Status,
                 LoggedDate = entity.LoggedDate,
                 EquipmentId = entity.HotPotInventoryId ?? 0,
-                EquipmentName = entity.HotPotInventory?.Hotpot?.Name ?? "Unknown HotPot"
+                EquipmentName = entity.HotPotInventory?.Hotpot?.Name ?? $"HotPot #{entity.HotPotInventoryId}"
             };
         }
 
@@ -48,7 +47,6 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
                 EquipmentSerialNumber = entity.HotPotInventoryId.HasValue
                     ? entity.HotPotInventory?.SeriesNumber
                     : null,
-                MaintenanceNotes = null // Add this if you have maintenance notes in your entity
             };
         }
 

@@ -117,17 +117,19 @@ namespace Capstone.HPTY.API.Controllers.Staff
         [HttpGet("available-staff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ApiResponse<List<StaffAvailableDto>>>> GetAvailableStaff([FromQuery] StaffTaskType? taskType = null)
+        public async Task<ActionResult<List<StaffAvailableDto>>> GetAvailableStaff(
+            [FromQuery] StaffTaskType? taskType = null,
+            [FromQuery] int? orderId = null)
         {
             try
             {
-                var result = await _staffService.GetAvailableStaffForTaskAsync(taskType);
+                var availableStaff = await _staffService.GetAvailableStaffForTaskAsync(taskType, orderId);
 
                 string message = taskType.HasValue
                     ? $"Available staff for {taskType} tasks retrieved successfully"
                     : "All available staff retrieved successfully";
 
-                return Ok(ApiResponse<List<StaffAvailableDto>>.SuccessResponse(result, message));
+                return Ok(ApiResponse<List<StaffAvailableDto>>.SuccessResponse(availableStaff, message));
             }
             catch (Exception ex)
             {

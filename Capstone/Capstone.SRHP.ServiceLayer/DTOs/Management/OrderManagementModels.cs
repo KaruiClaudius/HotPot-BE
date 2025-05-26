@@ -13,7 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
     public class StaffAssignmentRequest
     {
         [Required]
-        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
 
         [Required]
         public int StaffId { get; set; }
@@ -43,47 +43,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public DateTime DeliveryTime { get; set; }
     }
 
-    public class UnallocatedOrderDTO
-    {
-        public int OrderId { get; set; }
-        public string OrderCode { get; set; }
-        public string Address { get; set; }
-        public string Notes { get; set; }
-        public decimal TotalPrice { get; set; }
-        public OrderStatus Status { get; set; }
-
-        // User information
-        public int UserId { get; set; }
-        public string UserName { get; set; }
-
-        // Order type indicators
-        public bool HasSellItems { get; set; }
-        public bool HasRentItems { get; set; }
-
-    }
-
-    public class PendingDeliveryDTO
-    {
-        public int ShippingOrderId { get; set; }
-        public string OrderId { get; set; }
-        public DateTime? DeliveryTime { get; set; }
-        public string DeliveryNotes { get; set; }
-
-        // Order information
-        public string Address { get; set; }
-        public string Notes { get; set; }
-        public decimal TotalPrice { get; set; }
-        public OrderStatus Status { get; set; }
-
-        // Customer information
-        public int UserId { get; set; }
-        public string UserName { get; set; }
-
-        // Vehicle information
-        public VehicleInfoDto VehicleInfo { get; set; }
-
-    }
-
     public class OrderWithDetailsDTO
     {
         public string OrderId { get; set; }
@@ -98,28 +57,26 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public int UserId { get; set; }
         public string UserName { get; set; }
 
-        // Shipping information (if available)
+        // Staff assignment status
+        public bool IsPreparationStaffAssigned { get; set; }
+        public bool IsShippingStaffAssigned { get; set; }
+
+        // Staff assignments (simplified for list view)
+        public List<StaffAssignmentSummaryDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
+        public StaffAssignmentSummaryDTO ShippingAssignment { get; set; }
+
+        // Shipping information
         public ShippingInfoDTO ShippingInfo { get; set; }
 
         // Vehicle Information
         public VehicleInfoDto VehicleInfo { get; set; }
-
     }
 
-    public class ShippingOrderAllocationDTO
+    public class StaffAssignmentSummaryDTO
     {
-        public int ShippingOrderId { get; set; }
-        public int OrderId { get; set; }
-        public string OrderCode { get; set; }
         public int StaffId { get; set; }
         public string StaffName { get; set; }
-        public int? VehicleId { get; set; }
-        public string VehicleName { get; set; }
-        public VehicleType? VehicleType { get; set; }
-        public bool IsDelivered { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public OrderSize OrderSize { get; set; }
-
+        public DateTime AssignedDate { get; set; }
     }
 
     public class ShippingInfoDTO
@@ -139,12 +96,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
     public class StaffAssignmentResponse
     {
+        // Common properties
+        public int AssignmentId { get; set; }
         public int OrderId { get; set; }
         public string OrderCode { get; set; }
         public int StaffId { get; set; }
         public string StaffName { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime AssignedAt { get; set; }
+        public StaffTaskType TaskType { get; set; }
 
         // Shipping-specific properties
         public int? ShippingOrderId { get; set; }
@@ -154,34 +114,57 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public VehicleType? VehicleType { get; set; }
         public OrderSize? OrderSize { get; set; }
 
-        // Task type that was performed
-        public StaffTaskType TaskType { get; set; }
+        // Pickup-specific properties
+        public DateTime? RentalStartDate { get; set; }
+        public DateTime? ExpectedReturnDate { get; set; }
     }
 
-    public class StaffShippingOrderDTO
+
+    public class StaffAssignmentDto
+    {
+        // Assignment properties
+        public int AssignmentId { get; set; }
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public OrderStatus OrderStatus { get; set; }
+        public int StaffId { get; set; }
+        public string StaffName { get; set; }
+        public int ManagerId { get; set; }
+        public string ManagerName { get; set; }
+        public StaffTaskType TaskType { get; set; }
+        public DateTime AssignedDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
+        public bool IsActive { get; set; }
+
+        // Customer properties
+        public string CustomerName { get; set; }
+        public string CustomerAddress { get; set; }
+        public string CustomerPhone { get; set; }
+
+        // Task-specific details
+        public ShippingDetailsDto ShippingDetails { get; set; }
+        public RentalDetailsDto RentalDetails { get; set; }
+    }
+    public class ShippingDetailsDto
     {
         public int ShippingOrderId { get; set; }
-        public string OrderId { get; set; }
-        public DateTime? DeliveryTime { get; set; }
-        public string DeliveryNotes { get; set; }
         public bool IsDelivered { get; set; }
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public VehicleType? VehicleType { get; set; }
+        public OrderSize OrderSize { get; set; }
+    }
 
-        // Order information
-        public string Address { get; set; }
-        public string Notes { get; set; }
-        public decimal TotalPrice { get; set; }
-        public OrderStatus Status { get; set; }
+    public class RentalDetailsDto
+    {
+        public DateTime RentalStartDate { get; set; }
+        public DateTime ExpectedReturnDate { get; set; }
+        public string EquipmentSummary { get; set; }
 
-        // Customer information
-        public int CustomerId { get; set; }
-        public string CustomerName { get; set; }
-
-        // Order type indicators
-        public bool HasSellItems { get; set; }
-        public bool HasRentItems { get; set; }
-
-        // Order details summary
-
+        // Vehicle information
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public string VehicleType { get; set; }
     }
     public class OrderStatusUpdateDTO
     {
@@ -207,6 +190,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public string UserName { get; set; }
         public string UserPhone { get; set; }
 
+        // Staff assignments
+        public List<StaffAssignmentDTO> PreparationAssignments { get; set; } = new List<StaffAssignmentDTO>();
+        public StaffAssignmentDTO ShippingAssignment { get; set; }
+
         // Shipping information
         public ShippingDetailDTO ShippingInfo { get; set; }
 
@@ -217,6 +204,15 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
 
         public RentalInfoDTO RentalInfo { get; set; }
         public VehicleInfoDto VehicleInfo { get; set; }
+    }
+    public class StaffAssignmentDTO
+    {
+        public int AssignmentId { get; set; }
+        public int StaffId { get; set; }
+        public string StaffName { get; set; }
+        public StaffTaskType TaskType { get; set; }
+        public DateTime AssignedDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
     }
 
     public class OrderItemDTO
@@ -265,15 +261,38 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         public DateTime UpdatedAt { get; set; }
     }
 
-    public class OrderCountsDTO
+    public class MultiStaffAssignmentRequest
     {
-        public int PendingCount { get; set; }
-        public int ProcessingCount { get; set; }
-        public int ShippedCount { get; set; }
-        public int DeliveredCount { get; set; }
-        public int CancelledCount { get; set; }
-        public int ReturningCount { get; set; }
-        public int CompletedCount { get; set; }
-        public int TotalCount { get; set; }
+        [Required]
+        public string OrderCode { get; set; }
+
+        public List<int>? PreparationStaffIds { get; set; }
+
+        public int? ShippingStaffId { get; set; }
+
+        public int? VehicleId { get; set; }
     }
+    public class MultiStaffAssignmentResponse
+    {
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; }
+        public OrderStatus Status { get; set; }
+
+        // Preparation details
+        // Replace single preparation staff properties with a collection
+        public List<StaffAssignmentSummaryDTO> PreparationStaffAssignments { get; set; } = new List<StaffAssignmentSummaryDTO>();
+
+        // Shipping details
+        public int? ShippingStaffId { get; set; }
+        public string ShippingStaffName { get; set; }
+        public int? ShippingAssignmentId { get; set; }
+        public DateTime? ShippingAssignedAt { get; set; }
+        public int? ShippingOrderId { get; set; }
+        public bool IsDelivered { get; set; }
+        public int? VehicleId { get; set; }
+        public string VehicleName { get; set; }
+        public VehicleType? VehicleType { get; set; }
+        public OrderSize OrderSize { get; set; }
+    }
+
 }

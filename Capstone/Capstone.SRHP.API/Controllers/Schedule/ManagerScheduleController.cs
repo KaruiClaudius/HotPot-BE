@@ -1,11 +1,8 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Enum;
+﻿using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
-using Capstone.HPTY.ServiceLayer.DTOs.User;
-// Use the fully qualified name for System.Security.Claims.ClaimTypes
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
-using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ScheduleService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Mapster;
@@ -251,33 +248,33 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 string workDaysText = GetWorkDaysText(staff.WorkDays.GetValueOrDefault());
 
                 // Notify the staff member about their schedule update
-                await _notificationService.NotifyUser(
+                await _notificationService.NotifyUserAsync(
                     staff.UserId,
                     "ScheduleUpdate",
-                    "Your Work Days Updated",
-                    $"Your work days have been updated: {workDaysText}",
+                    "Lịch làm việc của bạn đã được cập nhật",
+                    $"Lịch của bạn đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>
                     {
                 { "StaffId", staff.UserId },
                 { "WorkDays", staff.WorkDays },
                 { "WorkDaysText", workDaysText },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "WorkDaysAssigned" }
                     });
 
                 // Notify managers about the staff schedule update
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ScheduleUpdate",
-                    "Staff Work Days Updated",
-                    $"Work days for {staff.Name} have been updated: {workDaysText}",
+                    "Lịch của nhân viên mới được cập nhật",
+                    $"Lịch của {staff.Name} đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>
                     {
                 { "StaffId", staff.UserId },
                 { "StaffName", staff.Name },
                 { "WorkDays", staff.WorkDays },
                 { "WorkDaysText", workDaysText },
-                { "UpdatedAt", DateTime.UtcNow },
+                { "UpdatedAt", DateTime.UtcNow.AddHours(7) },
                 { "Action", "StaffWorkDaysAssigned" }
                     });
 
@@ -311,13 +308,29 @@ namespace Capstone.HPTY.API.Controllers.Schedule
 
             var days = new List<string>();
 
-            if (workDays.HasFlag(WorkDays.Monday)) days.Add("Monday");
-            if (workDays.HasFlag(WorkDays.Tuesday)) days.Add("Tuesday");
-            if (workDays.HasFlag(WorkDays.Wednesday)) days.Add("Wednesday");
-            if (workDays.HasFlag(WorkDays.Thursday)) days.Add("Thursday");
-            if (workDays.HasFlag(WorkDays.Friday)) days.Add("Friday");
-            if (workDays.HasFlag(WorkDays.Saturday)) days.Add("Saturday");
-            if (workDays.HasFlag(WorkDays.Sunday)) days.Add("Sunday");
+            // Using a switch expression to check each flag
+            foreach (WorkDays day in Enum.GetValues(typeof(WorkDays)))
+            {
+                if (day == WorkDays.None) continue;
+
+                if (workDays.HasFlag(day))
+                {
+                    string dayName = day switch
+                    {
+                        WorkDays.Monday => "Monday",
+                        WorkDays.Tuesday => "Tuesday",
+                        WorkDays.Wednesday => "Wednesday",
+                        WorkDays.Thursday => "Thursday",
+                        WorkDays.Friday => "Friday",
+                        WorkDays.Saturday => "Saturday",
+                        WorkDays.Sunday => "Sunday",
+                        _ => string.Empty
+                    };
+
+                    if (!string.IsNullOrEmpty(dayName))
+                        days.Add(dayName);
+                }
+            }
 
             return string.Join(", ", days);
         }

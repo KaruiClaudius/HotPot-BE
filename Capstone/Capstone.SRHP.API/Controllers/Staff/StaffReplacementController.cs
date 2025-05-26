@@ -1,10 +1,10 @@
-﻿using Capstone.HPTY.API.Hubs;
-using Capstone.HPTY.ModelLayer.Entities;
+﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Equipment;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.ReplacementService;
 using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 using Microsoft.AspNetCore.Authorization;
@@ -163,7 +163,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 string equipmentName = dto.EquipmentName;
 
                 // Notify managers about the verification
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementVerified",
                     $"Equipment Verified as {verificationResult.ToUpper()}",
@@ -177,7 +177,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 { "VerificationNotes", verifyDto.VerificationNotes },
                 { "VerifiedBy", staff.UserId },
                 { "VerifierName", staff.Name },
-                { "VerificationDate", DateTime.UtcNow },
+                { "VerificationDate", DateTime.UtcNow.AddHours(7) },
                 { "Status", dto.Status },
                 { "NextSteps", verifyDto.IsFaulty ?
                     "The replacement process will continue." :
@@ -187,7 +187,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementVerified",
                         $"Your Equipment was Verified as {verificationResult.ToUpper()}",
@@ -199,7 +199,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     { "IsFaulty", verifyDto.IsFaulty },
                     { "VerificationNotes", verifyDto.VerificationNotes },
                     { "VerifierName", staff.Name },
-                    { "VerificationDate", DateTime.UtcNow },
+                    { "VerificationDate", DateTime.UtcNow.AddHours(7) },
                     { "Status", dto.Status },
                     { "NextSteps", verifyDto.IsFaulty ?
                         "We will proceed with the replacement process." :
@@ -262,7 +262,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 string equipmentName = dto.EquipmentName;
 
                 // Notify managers about the completion
-                await _notificationService.NotifyRole(
+                await _notificationService.NotifyRoleAsync(
                     "Managers",
                     "ReplacementCompleted",
                     "Replacement Request Completed",
@@ -275,7 +275,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 { "CompletionNotes", completeDto.CompletionNotes },
                 { "CompletedBy", staff.UserId },
                 { "CompleterName", staff.Name },
-                { "CompletionDate", DateTime.UtcNow },
+                { "CompletionDate", DateTime.UtcNow.AddHours(7) },
                 { "Status", dto.Status },
                 { "RequestReason", dto.RequestReason }
                     });
@@ -283,7 +283,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                 // Notify the customer if applicable
                 if (dto.CustomerId != 0 && dto.CustomerId.HasValue)
                 {
-                    await _notificationService.NotifyUser(
+                    await _notificationService.NotifyUserAsync(
                         dto.CustomerId.Value,
                         "ReplacementCompleted",
                         "Your Replacement Request is Complete",
@@ -294,7 +294,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
                     { "EquipmentName", equipmentName },
                     { "CompletionNotes", completeDto.CompletionNotes },
                     { "CompleterName", staff.Name },
-                    { "CompletionDate", DateTime.UtcNow },
+                    { "CompletionDate", DateTime.UtcNow.AddHours(7) },
                     { "Status", dto.Status },
                     { "FeedbackPrompt", "Please let us know if you're satisfied with the replacement." }
                         });

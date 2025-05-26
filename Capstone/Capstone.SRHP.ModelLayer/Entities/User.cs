@@ -68,9 +68,6 @@ namespace Capstone.HPTY.ModelLayer.Entities
         public virtual ICollection<Feedback>? Feedbacks { get; set; }
         public virtual ICollection<Order>? Orders { get; set; }
 
-        [InverseProperty("ApprovedByUser")]
-        public virtual ICollection<Feedback>? ApprovedFeedbacks { get; set; }
-
         //customer
         public virtual ICollection<ReplacementRequest>? CustomerReplacementRequests { get; set; }
 
@@ -87,5 +84,12 @@ namespace Capstone.HPTY.ModelLayer.Entities
         //manager
         [InverseProperty("Managers")]
         public virtual ICollection<WorkShift>? MangerWorkShifts { get; set; } = new List<WorkShift>();
+
+        // Add these navigation properties
+        public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
+        public virtual ICollection<StaffAssignment> ManagedAssignments { get; set; } = new List<StaffAssignment>();
+
+        [InverseProperty("User")]
+        public virtual ICollection<UserNotification> Notifications { get; set; } = new List<UserNotification>();
     }
 }

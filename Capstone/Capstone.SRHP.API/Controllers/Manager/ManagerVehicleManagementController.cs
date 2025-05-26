@@ -33,7 +33,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
             try
             {
                 var vehicles = await _vehicleService.GetAllVehiclesAsync(queryParams);
-                return Ok(ApiResponse<ActionResult<PagedResult<VehicleDTO>>>.SuccessResponse(vehicles, "Vehicles retrieved successfully"));
+                return Ok(ApiResponse<PagedResult<VehicleDTO>>.SuccessResponse(vehicles, "Vehicles retrieved successfully"));
             }
             catch (Exception ex)
             {

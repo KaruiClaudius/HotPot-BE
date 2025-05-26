@@ -149,7 +149,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     .FirstOrDefaultAsync(d => d.DamageDeviceId == id && !d.IsDelete);
 
                 if (damageDevice == null)
-                    throw new NotFoundException($"Damage device with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy thiết bị hư hỏng với ID {id}");
 
                 return damageDevice;
             }
@@ -170,22 +170,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             {
                 // Validate basic properties
                 if (string.IsNullOrWhiteSpace(entity.Name))
-                    throw new ValidationException("Device name cannot be empty");
+                    throw new ValidationException("Tên thiết bị không được để trống");
 
                 // Validate that HotPotInventoryId is provided
                 if (!entity.HotPotInventoryId.HasValue)
-                    throw new ValidationException("HotPotInventoryId must be provided");
+                    throw new ValidationException("Phải cung cấp HotPotInventoryId");
 
                 // Validate HotPotInventory exists
                 var hotpot = await _unitOfWork.Repository<HotPotInventory>()
                     .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
 
                 if (hotpot == null)
-                    throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
+                    throw new ValidationException($"Không tìm thấy HotPotInventory với ID {entity.HotPotInventoryId.Value}");
 
                 // Set logged date if not set
                 if (entity.LoggedDate == default)
-                    entity.LoggedDate = DateTime.UtcNow;
+                    entity.LoggedDate = DateTime.UtcNow.AddHours(7);
 
                 // Update the hotpot inventory status to Damaged
                 hotpot.Status = HotpotStatus.Damaged;
@@ -214,15 +214,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             {
                 var existingDevice = await GetByIdAsync(id);
                 if (existingDevice == null)
-                    throw new NotFoundException($"Damage device with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy thiết bị hư hỏng với ID {id}");
 
                 // Validate basic properties
                 if (string.IsNullOrWhiteSpace(entity.Name))
-                    throw new ValidationException("Device name cannot be empty");
+                    throw new ValidationException("Tên thiết bị không được để trống");
 
                 // Validate that HotPotInventoryId is provided
                 if (!entity.HotPotInventoryId.HasValue)
-                    throw new ValidationException("HotPotInventoryId must be provided");
+                    throw new ValidationException("Phải cung cấp HotPotInventoryId");
 
                 // Check if HotPotInventoryId has changed
                 bool hotpotChanged = entity.HotPotInventoryId != existingDevice.HotPotInventoryId;
@@ -235,7 +235,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
 
                     if (hotpot == null)
-                        throw new ValidationException($"HotPotInventory with ID {entity.HotPotInventoryId.Value} not found");
+                        throw new ValidationException($"Không tìm thấy HotPotInventory với ID {entity.HotPotInventoryId.Value}");
                 }
 
                 // Update the entity
@@ -307,14 +307,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             {
                 var device = await GetByIdAsync(id);
                 if (device == null)
-                    throw new NotFoundException($"Damage device with ID {id} not found");
+                    throw new NotFoundException($"Không tìm thấy thiết bị hư hỏng với ID {id}");
 
                 // Check if there are any active replacement requests
                 var hasActiveRequests = await _unitOfWork.Repository<ReplacementRequest>()
                     .AnyAsync(r => r.DamageDeviceId == id && !r.IsDelete && r.Status != ReplacementRequestStatus.Completed);
 
                 if (hasActiveRequests)
-                    throw new ValidationException("Cannot delete device with active replacement requests");
+                    throw new ValidationException("Không thể xóa thiết bị có yêu cầu thay thế đang hoạt động");
 
                 // If this is the only damage report for the hotpot, update the hotpot status
                 if (device.HotPotInventoryId.HasValue)

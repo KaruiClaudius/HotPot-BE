@@ -27,28 +27,28 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<PagedResult<Discount>> GetDiscountsAsync(
-            string searchTerm = null,
-            decimal? minDiscountPercentage = null,
-            decimal? maxDiscountPercentage = null,
-            double? minPointCost = null,
-            double? maxPointCost = null,
-            DateTime? startDateFrom = null,
-            DateTime? startDateTo = null,
-            DateTime? endDateFrom = null,
-            DateTime? endDateTo = null,
-            bool? isActive = null,
-            bool? isUpcoming = null,
-            bool? isExpired = null,
-            int pageNumber = 1,
-            int pageSize = 10,
-            string sortBy = "CreatedAt",
-            bool ascending = false)
+               string searchTerm = null,
+               decimal? minDiscountPercentage = null,
+               decimal? maxDiscountPercentage = null,
+               double? minPointCost = null,
+               double? maxPointCost = null,
+               DateTime? startDateFrom = null,
+               DateTime? startDateTo = null,
+               DateTime? endDateFrom = null,
+               DateTime? endDateTo = null,
+               bool? isActive = null,
+               bool? isUpcoming = null,
+               bool? isExpired = null,
+               int pageNumber = 1,
+               int pageSize = 10,
+               string sortBy = "CreatedAt",
+               bool ascending = false)
         {
             try
             {
                 // Start with base query
                 var query = _unitOfWork.Repository<Discount>()
-                    .Include(d => d.Order)
+                    .Include(d => d.Orders)
                     .Where(d => !d.IsDelete);
 
                 // Apply search filter
@@ -72,15 +72,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     query = query.Where(d => d.DiscountPercentage <= maxDiscountPercentage.Value);
                 }
 
-                // Apply point cost filters
+                // Apply point cost filters - modified to handle null values
                 if (minPointCost.HasValue)
                 {
-                    query = query.Where(d => d.PointCost >= minPointCost.Value);
+                    query = query.Where(d => d.PointCost.HasValue && d.PointCost >= minPointCost.Value);
                 }
 
                 if (maxPointCost.HasValue)
                 {
-                    query = query.Where(d => d.PointCost <= maxPointCost.Value);
+                    query = query.Where(d => d.PointCost.HasValue && d.PointCost <= maxPointCost.Value);
                 }
 
                 // Apply date filters
@@ -96,30 +96,35 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (endDateFrom.HasValue)
                 {
-                    query = query.Where(d => d.Duration >= endDateFrom.Value);
+                    // Only filter discounts with non-null Duration
+                    query = query.Where(d => d.Duration.HasValue && d.Duration >= endDateFrom.Value);
                 }
 
                 if (endDateTo.HasValue)
                 {
-                    query = query.Where(d => d.Duration <= endDateTo.Value);
+                    // Only filter discounts with non-null Duration
+                    query = query.Where(d => d.Duration.HasValue && d.Duration <= endDateTo.Value);
                 }
 
                 // Apply status filters
-                var now = DateTime.UtcNow;
+                var now = DateTime.UtcNow.AddHours(7);
 
                 if (isActive.HasValue && isActive.Value)
                 {
-                    query = query.Where(d => d.Date <= now && d.Duration >= now);
+                    // Active discounts: started and either not ended (null Duration) or not yet reached end date
+                    query = query.Where(d => d.Date <= now && (!d.Duration.HasValue || d.Duration >= now));
                 }
 
                 if (isUpcoming.HasValue && isUpcoming.Value)
                 {
+                    // Upcoming discounts: not yet started
                     query = query.Where(d => d.Date > now);
                 }
 
                 if (isExpired.HasValue && isExpired.Value)
                 {
-                    query = query.Where(d => d.Duration < now);
+                    // Expired discounts: have a non-null Duration that's in the past
+                    query = query.Where(d => d.Duration.HasValue && d.Duration < now);
                 }
 
                 // Get total count before applying pagination
@@ -193,7 +198,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         public async Task<Discount?> GetByIdAsync(int id)
         {
             return await _unitOfWork.Repository<Discount>()
-                .Include(d => d.Order)
+                .Include(d => d.Orders)
                 .FirstOrDefaultAsync(d => d.DiscountId == id && !d.IsDelete);
         }
 
@@ -201,16 +206,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             // Validate basic properties
             if (string.IsNullOrWhiteSpace(entity.Title))
-                throw new ValidationException("Discount title cannot be empty");
+                throw new ValidationException("Tiêu đề mã giảm giá không được để trống");
 
             if (entity.DiscountPercentage < 0 || entity.DiscountPercentage > 100)
-                throw new ValidationException("Discount percentage must be between 0 and 100");
+                throw new ValidationException("Phần trăm giảm giá phải nằm trong khoảng từ 0 đến 100");
 
             if (entity.PointCost < 0)
-                throw new ValidationException("Point cost cannot be negative");
+                throw new ValidationException("Chi phí điểm không được là số âm");
 
             if (entity.Date >= entity.Duration)
-                throw new ValidationException("Start date must be before duration end date");
+                throw new ValidationException("Ngày bắt đầu phải trước ngày kết thúc thời gian hiệu lực");
+
 
             // Check if discount exists (including soft-deleted)
             var existingDiscount = await _unitOfWork.Repository<Discount>()
@@ -220,7 +226,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             {
                 if (!existingDiscount.IsDelete)
                 {
-                    throw new ValidationException($"Discount with title {entity.Title} already exists");
+                    throw new ValidationException($"Giảm giá với tiêu đề {entity.Title} đã tồn tại");
                 }
                 else
                 {
@@ -246,18 +252,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var existingDiscount = await GetByIdAsync(id);
             if (existingDiscount == null)
-                throw new NotFoundException($"Discount with ID {id} not found");
+                throw new NotFoundException($"Không tìm thấy mã giảm giá với ID {id}");
 
-            // Validate basic properties
+
             ValidateDiscount(entity);
 
-            // Additional validation for dates
-            if (entity.Date >= entity.Duration)
-                throw new ValidationException("Start date must be before end date");
 
-            // Check if discount is already in use
-            if (existingDiscount.Order != null)
-                throw new ValidationException("Cannot update discount that is already in use");
+            if (entity.Date >= entity.Duration)
+                throw new ValidationException("Ngày bắt đầu phải trước ngày kết thúc");
+
+            if (existingDiscount.Orders != null)
+                throw new ValidationException("Không thể cập nhật mã giảm giá đã được sử dụng");
 
             entity.SetUpdateDate();
             await _unitOfWork.Repository<Discount>().Update(entity, id);
@@ -268,11 +273,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             var discount = await GetByIdAsync(id);
             if (discount == null)
-                throw new NotFoundException($"Discount with ID {id} not found");
+                throw new NotFoundException($"Không tìm thấy mã giảm giá với ID {id}");
 
-            // Check if discount is in use
-            if (discount.Order != null)
-                throw new ValidationException("Cannot delete discount that is in use");
+            if (discount.Orders != null)
+                throw new ValidationException("Không thể xóa mã giảm giá đang được sử dụng");
+
 
             discount.SoftDelete();
             await _unitOfWork.CommitAsync();
@@ -280,7 +285,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<IEnumerable<Discount>> GetActiveDiscountsAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
             return await _unitOfWork.Repository<Discount>()
                 .FindAll(d => !d.IsDelete &&
                              d.Date <= now &&
@@ -290,7 +295,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<IEnumerable<Discount>> GetUpcomingDiscountsAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
             return await _unitOfWork.Repository<Discount>()
                 .FindAll(d => !d.IsDelete && d.Date > now)
                 .ToListAsync();
@@ -298,7 +303,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<IEnumerable<Discount>> GetExpiredDiscountsAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
             return await _unitOfWork.Repository<Discount>()
                 .FindAll(d => !d.IsDelete && d.Duration < now)
                 .ToListAsync();
@@ -311,10 +316,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             if (discount == null)
                 return false;
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
             return discount.Date <= now &&
                    discount.Duration >= now &&
-                   discount.Order == null;
+                   discount.Orders == null;
         }
 
         public async Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice)
@@ -329,11 +334,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             return originalPrice * discount.DiscountPercentage / 100;
         }
 
-        public async Task<bool> HasSufficientPointsAsync(int discountId, double userPoints)
+        public async Task<bool> HasSufficientPointsAsync(int discountId, double? userPoints)
         {
             var discount = await GetByIdAsync(discountId);
             if (discount == null)
                 throw new NotFoundException($"Discount with ID {discountId} not found");
+
+            if (discount.PointCost == null)
+                return true; // No point cost, so no need for user points
+            else if (userPoints == null)
+                return false;
 
             return userPoints >= discount.PointCost;
         }
@@ -365,25 +375,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         private void ValidateDiscount(Discount discount)
-        {
-            if (string.IsNullOrWhiteSpace(discount.Title))
-                throw new ValidationException("Discount title cannot be empty");
+            {
+                if (string.IsNullOrWhiteSpace(discount.Title))
+                    throw new ValidationException("Discount title cannot be empty");
 
-            if (string.IsNullOrWhiteSpace(discount.Description))
-                throw new ValidationException("Discount description cannot be empty");
+                if (string.IsNullOrWhiteSpace(discount.Description))
+                    throw new ValidationException("Discount description cannot be empty");
 
-            if (discount.DiscountPercentage < 0 || discount.DiscountPercentage > 100)
-                throw new ValidationException("Discount percentage must be between 0 and 100");
+                if (discount.DiscountPercentage < 0 || discount.DiscountPercentage > 100)
+                    throw new ValidationException("Discount percentage must be between 0 and 100");
 
-            if (discount.PointCost < 0)
-                throw new ValidationException("Point cost cannot be negative");
+                // Allow null or zero PointCost (free for anyone)
+                if (discount.PointCost.HasValue && discount.PointCost < 0)
+                    throw new ValidationException("Point cost cannot be negative");
 
-            if (discount.Date == default)
-                throw new ValidationException("Start date must be set");
+                if (discount.Date == default)
+                    throw new ValidationException("Start date must be set");
 
-            if (discount.Duration == default)
-                throw new ValidationException("End date must be set");
-        }
+                // Duration can be null (never expires)
+                if (discount.Duration.HasValue && discount.Date >= discount.Duration.Value)
+                    throw new ValidationException("Start date must be before end date");
+            }
 
         public Task<IEnumerable<Discount>> GetAllAsync()
         {

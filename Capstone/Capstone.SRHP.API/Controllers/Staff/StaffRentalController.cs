@@ -28,7 +28,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
             _rentOrderService = rentOrderService;
             _staffService = staffService;
             _equipmentReturnService = equipmentReturnService;
-            
+
         }
 
         [HttpGet("my-assignments")]
@@ -60,52 +60,52 @@ namespace Capstone.HPTY.API.Controllers.Staff
         }
 
 
-        [HttpGet("listings")]
-        public async Task<ActionResult<PagedResult<RentalListingDto>>> GetRentalListings(
-                   [FromQuery] string type = "pending",
-                   [FromQuery] int pageNumber = 1,
-                   [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (type.Equals("pending", StringComparison.OrdinalIgnoreCase))
-                {
-                    var pendingPickups = await _rentOrderService.GetPendingPickupsAsync(pageNumber, pageSize);
-                    return Ok(pendingPickups);
-                }
-                else if (type.Equals("overdue", StringComparison.OrdinalIgnoreCase))
-                {
-                    var overdueRentals = await _rentOrderService.GetOverdueRentalsAsync(pageNumber, pageSize);
-                    return Ok(overdueRentals);
-                }
-                else
-                {
-                    return BadRequest(new { message = "Invalid type. Please specify 'pending' or 'overdue'." });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //[HttpGet("listings")]
+        //public async Task<ActionResult<PagedResult<RentalListingDto>>> GetRentalListings(
+        //           [FromQuery] string type = "pending",
+        //           [FromQuery] int pageNumber = 1,
+        //           [FromQuery] int pageSize = 10)
+        //{
+        //    try
+        //    {
+        //        if (type.Equals("pending", StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            var pendingPickups = await _rentOrderService.GetPendingPickupsAsync(pageNumber, pageSize);
+        //            return Ok(pendingPickups);
+        //        }
+        //        else if (type.Equals("overdue", StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            var overdueRentals = await _rentOrderService.GetOverdueRentalsAsync(pageNumber, pageSize);
+        //            return Ok(overdueRentals);
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new { message = "Invalid type. Please specify 'pending' or 'overdue'." });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
-        [HttpGet("order/{id}")]
-        public async Task<IActionResult> GetRentOrder(int id)
-        {
-            try
-            {
-                var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
-                return Ok(rentOrder);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
+        //[HttpGet("order/{id}")]
+        //public async Task<IActionResult> GetRentOrder(int id)
+        //{
+        //    try
+        //    {
+        //        var rentOrder = await _equipmentReturnService.GetRentOrderAsync(id);
+        //        return Ok(rentOrder);
+        //    }
+        //    catch (NotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { message = ex.Message });
+        //    }
+        //}
 
         [HttpPost("record-return")]
         public async Task<ActionResult<ApiResponse<bool>>> RecordReturn([FromBody] UnifiedReturnRequestDto request)
@@ -146,13 +146,7 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
                     // Process the assignment completion
                     result = await _equipmentReturnService.CompletePickupAssignmentAsync(
-                        request.AssignmentId.Value,
-                        equipmentReturnRequest);
-                }
-                else if (request.RentOrderId.HasValue)
-                {
-                    // Process direct order return (new primary method)
-                    result = await _equipmentReturnService.ProcessEquipmentReturnAsync(equipmentReturnRequest);
+                        request.AssignmentId.Value);
                 }
                 else
                 {

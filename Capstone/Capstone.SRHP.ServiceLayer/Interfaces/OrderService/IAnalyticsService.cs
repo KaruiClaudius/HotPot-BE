@@ -16,6 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
             string productType = null,
             bool? hasHotpot = null,
             string paymentStatus = null,
-            int topProductsLimit = 5);
+            int topProductsLimit = 5,
+            int? year = null);
     }
 }
