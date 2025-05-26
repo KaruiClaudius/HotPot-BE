@@ -962,7 +962,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // Count available inventory
                 int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
-                    new List<HotpotStatus> { HotpotStatus.Available });
+                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
 
                 // Update hotpot quantity
                 hotpot.Quantity = availableCount;
@@ -1084,7 +1084,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     // Count available hotpots of this type
                     var availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
-                        new List<HotpotStatus> { HotpotStatus.Available });
+                        new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
 
                     if (availableCount < requiredCount)
                     {

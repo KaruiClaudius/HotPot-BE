@@ -1415,6 +1415,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 // Update hotpot status to Available after maintenance
                                 hotpotInventory.Status = HotpotStatus.Available;
+                                hotpotInventory.Hotpot.Quantity = await CountHotpotInventoryByStatusAsync(hotpotInventory.Hotpot.HotpotId, 
+                                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
                                 // Update last maintain date on the hotpot itself
                                 if (hotpotInventory.Hotpot != null)
                                 {
@@ -1451,14 +1453,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 {
                     if (order.RentOrder != null)
                     {
+                        order.RentOrder.ExpectedReturnDate = DateTime.UtcNow.AddHours(7);
                         foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
                         {
+                            
                             var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
                                 .GetById(detail.HotpotInventoryId.Value);
 
                             if (hotpotInventory != null)
                             {
-                                hotpotInventory.Status = HotpotStatus.Preparing; // Set to maintenance
+                                hotpotInventory.Status = HotpotStatus.Preparing; 
                                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
                                 await _unitOfWork.CommitAsync();
                             }
@@ -1757,6 +1761,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             Ingredient,
             Utensil,
             Hotpot
+        }
+
+        private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
+        {
+            try
+            {
+                // Query for the specific hotpot type with the given statuses
+                var count = await _unitOfWork.Repository<HotPotInventory>()
+                    .CountAsync(h => h.HotpotId == hotpotId &&
+                                   statuses.Contains(h.Status) &&
+                                   !h.IsDelete);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting hotpot inventory for hotpot ID {HotpotId}", hotpotId);
+                return 0; // Return 0 on error to be safe
+            }
         }
 
 

@@ -117,7 +117,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return BadRequest(new ApiErrorResponse
                 {
                     Status = "Error",
-                    Message = "Failed to retrieve utensil"
+                    Message = "Không thể lấy dụng cụ"
                 });
             }
         }

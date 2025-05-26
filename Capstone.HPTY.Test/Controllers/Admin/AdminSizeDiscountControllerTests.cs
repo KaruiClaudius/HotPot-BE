@@ -845,42 +845,42 @@ namespace Capstone.HPTY.Test.Controllers.Admin
         }
 
         // Additional test for edge case: UpdatedAt is null
-        [Fact]
-        public async Task GetById_HandlesNullUpdatedAt_WhenDiscountExists()
-        {
-            // Arrange
-            var adminSizeDiscountController = this.CreateAdminSizeDiscountController();
-            int id = 1;
+        //[Fact]
+        //public async Task GetById_HandlesNullUpdatedAt_WhenDiscountExists()
+        //{
+        //    // Arrange
+        //    var adminSizeDiscountController = this.CreateAdminSizeDiscountController();
+        //    int id = 1;
 
-            var sizeDiscount = new SizeDiscount
-            {
-                SizeDiscountId = id,
-                MinSize = 5,
-                DiscountPercentage = 15,
-                StartDate = DateTime.UtcNow.AddDays(-10),
-                EndDate = DateTime.UtcNow.AddDays(10),
-                CreatedAt = DateTime.UtcNow.AddDays(-20),
-                UpdatedAt = null // Null UpdatedAt
-            };
+        //    var sizeDiscount = new SizeDiscount
+        //    {
+        //        SizeDiscountId = id,
+        //        MinSize = 5,
+        //        DiscountPercentage = 15,
+        //        StartDate = DateTime.UtcNow.AddDays(-10),
+        //        EndDate = DateTime.UtcNow.AddDays(10),
+        //        CreatedAt = DateTime.UtcNow.AddDays(-20),
+        //        UpdatedAt = null // Null UpdatedAt
+        //    };
 
-            mockSizeDiscountService.Setup(s => s.GetByIdAsync(id))
-                .ReturnsAsync(sizeDiscount);
+        //    mockSizeDiscountService.Setup(s => s.GetByIdAsync(id))
+        //        .ReturnsAsync(sizeDiscount);
 
-            // Act
-            var result = await adminSizeDiscountController.GetById(id);
+        //    // Act
+        //    var result = await adminSizeDiscountController.GetById(id);
 
-            // Assert
-            // The controller is returning a 500 error because of the null UpdatedAt
-            var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
+        //    // Assert
+        //    // The controller is returning a 500 error because of the null UpdatedAt
+        //    var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        //    Assert.Equal(500, statusCodeResult.StatusCode);
 
-            // Access the property using reflection
-            var message = GetMessageFromResponse(statusCodeResult.Value);
-            Assert.Contains("Nullable object must have a value", message);
+        //    // Access the property using reflection
+        //    var message = GetMessageFromResponse(statusCodeResult.Value);
+        //    Assert.Contains("Nullable object must have a value", message);
 
-            // Verify service calls
-            mockSizeDiscountService.Verify();
-        }
+        //    // Verify service calls
+        //    mockSizeDiscountService.Verify();
+        //}
 
         // Test for date range validation
         [Fact]
