@@ -6,7 +6,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ShippingService
     public interface IEquipmentReturnService
     {
 
-        Task<bool> CompletePickupAssignmentAsync(int assignmentId);
+        Task<bool> CompletePickupAssignmentAsync(int assignmentId, EquipmentReturnRequest returnRequest);
 
         Task<RentOrder> GetRentOrderAsync(int orderId);
     }
