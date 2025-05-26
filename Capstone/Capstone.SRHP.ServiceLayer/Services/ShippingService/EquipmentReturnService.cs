@@ -36,10 +36,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             {
                 _logger.LogInformation("Completing pickup assignment {AssignmentId}", assignmentId);
 
-                // Save the return request first
-                await _unitOfWork.Repository<EquipmentReturnRequest>().InsertAsync(returnRequest);
-                await _unitOfWork.CommitAsync();
-
                 // Use the unified staff assignment service to complete the assignment
                 return await _staffAssignmentService.CompleteAssignmentAsync(assignmentId);
             }
