@@ -88,7 +88,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
             var feedback = new Feedback
             {
                 Comment = request.Comment,
-                ImageURLs = request.ImageURLs,
                 OrderId = request.OrderId,
                 UserId = request.UserId,
                 CreatedAt = DateTime.UtcNow.AddHours(7),

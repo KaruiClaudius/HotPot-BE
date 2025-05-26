@@ -16,16 +16,17 @@ namespace Capstone.HPTY.API.Controllers.Staff
 
     public class StaffRentalController : ControllerBase
     {
-        private readonly IRentOrderService _rentOrderService;
+        //private readonly IRentOrderService _rentOrderService;
         private readonly IStaffService _staffService;
         private readonly IEquipmentReturnService _equipmentReturnService;
 
-        public StaffRentalController(IRentOrderService rentOrderService,
+        public StaffRentalController(
+            //IRentOrderService rentOrderService,
             IStaffService staffService,
             IEquipmentReturnService equipmentReturnService
             )
         {
-            _rentOrderService = rentOrderService;
+            //_rentOrderService = rentOrderService;
             _staffService = staffService;
             _equipmentReturnService = equipmentReturnService;
 

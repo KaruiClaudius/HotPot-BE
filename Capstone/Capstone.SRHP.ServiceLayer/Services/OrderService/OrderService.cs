@@ -1273,37 +1273,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
         #endregion
 
-        // Helper method for processing utensil updates
-        //private async Task ProcessUtensilUpdate(Order pendingOrder, CartItemUpdate update, RentOrderDetail detail)
-        //{
-        //    // Handle item removal (quantity = 0)
-        //    if (update.NewQuantity == 0)
-        //    {
-        //        // Return inventory
-        //        await _utensilService.UpdateUtensilQuantityAsync(
-        //            detail.UtensilId.Value, detail.Quantity);
-
-        //        // Soft delete the detail
-        //        detail.SoftDelete();
-        //    }
-        //    else
-        //    {
-        //        // Update inventory
-        //        int quantityDifference = update.NewQuantity - detail.Quantity;
-
-        //        if (quantityDifference != 0)
-        //        {
-        //            await _utensilService.UpdateUtensilQuantityAsync(
-        //                detail.UtensilId.Value, -quantityDifference);
-        //        }
-
-        //        // Update quantity
-        //        detail.Quantity = update.NewQuantity;
-        //    }
-
-        //    // Update the detail in the database
-        //    await _unitOfWork.Repository<RentOrderDetail>().Update(detail, detail.RentOrderDetailId);
-        //}
 
 
         public async Task<Order> UpdateAsync(int id, UpdateOrderRequest request)
@@ -1670,52 +1639,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 throw;
             }
         }
-
-        //public async Task CleanupAbandonedCartsAsync(TimeSpan abandonThreshold)
-        //{
-        //    try
-        //    {
-        //        // Find all pending orders older than the threshold
-        //        var cutoffDate = DateTime.Now.Subtract(abandonThreshold);
-
-        //        var abandonedOrders = await _unitOfWork.Repository<Order>()
-        //            .IncludeNested(query =>
-        //                query.Include(o => o.SellOrder)
-        //                     .ThenInclude(so => so.SellOrderDetails)
-        //                     .Include(o => o.RentOrder)
-        //                     .ThenInclude(ro => ro.RentOrderDetails))
-        //            .Where(o => o.Status == OrderStatus.Pending &&
-        //                          o.CreatedAt < cutoffDate &&
-        //                          !o.IsDelete)
-        //            .ToListAsync();
-
-        //        foreach (var order in abandonedOrders)
-        //        {
-        //            // Release all inventory reservations
-        //            await ReleaseInventoryReservation(order);
-
-        //            // Soft delete the order
-        //            order.SoftDelete();
-        //            await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
-
-        //            // Cancel any pending payments
-        //            var payment = await _paymentService.GetPaymentByOrderIdAsync(order.OrderId);
-        //            if (payment != null && payment.Status == PaymentStatus.Pending)
-        //            {
-        //                await _paymentService.UpdatePaymentStatusAsync(payment.PaymentId, PaymentStatus.Cancelled);
-        //            }
-        //        }
-
-        //        await _unitOfWork.CommitAsync();
-
-        //        _logger.LogInformation("Cleaned up {Count} abandoned carts", abandonedOrders.Count);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error cleaning up abandoned carts");
-        //        throw;
-        //    }
-        //}
 
         // Helper methods
         private void ValidateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
