@@ -1,18 +1,19 @@
-﻿using Capstone.HPTY.ModelLayer.Entities;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Capstone.HPTY.ServiceLayer.Services.StaffService
 {
@@ -21,15 +22,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
         private readonly IUnitOfWork _unitOfWork;
         private readonly IStaffAssignmentService _staffAssignmentService;
         private readonly ILogger<StaffOrderService> _logger;
+        private readonly INotificationService _notificationService;
 
         public StaffOrderService(
             IUnitOfWork unitOfWork,
             IStaffAssignmentService staffAssignmentService,
-            ILogger<StaffOrderService> logger)
+            ILogger<StaffOrderService> logger,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _staffAssignmentService = staffAssignmentService;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         //    public async Task<IEnumerable<StaffAssignedOrderBaseDto>> GetAssignedOrdersAsync(
@@ -316,6 +320,53 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 }
 
                 await _unitOfWork.CommitAsync();
+
+                // After successful commit, send notification if status is Processed
+                if (newStatus == OrderStatus.Processed)
+                {
+                    try
+                    {
+                        // Get shipping staff assignment for this order
+                        var shippingAssignment = await _unitOfWork.Repository<StaffAssignment>()
+                            .GetAll(a => a.OrderId == orderId &&
+                                       a.TaskType == StaffTaskType.Shipping &&
+                                       !a.IsDelete)
+                            .FirstOrDefaultAsync();
+
+                        if (shippingAssignment != null)
+                        {
+                            // Get shipping staff ID
+                            int shippingStaffId = shippingAssignment.StaffId;
+
+                            // Send notification to shipping staff
+                            await _notificationService.NotifyUserAsync(
+                                shippingStaffId,
+                                "ShipOrder",
+                                "Đơn Hàng Sẵn Sàng Để Giao",
+                                $"Đơn hàng #{order.OrderId} đã được xử lý và sẵn sàng để giao.",
+                                new Dictionary<string, object>
+                                {
+                            { "OrderId", order.OrderId },
+                            { "OrderCode", order.OrderCode },
+                            { "ProcessedTime", DateTime.Now.ToString("dd/MM/yyyy HH:mm") },
+                            { "Instructions", "Vui lòng kiểm tra đơn hàng trước khi giao và đảm bảo đầy đủ các sản phẩm." }
+                                });
+
+                            _logger.LogInformation("Shipping staff {StaffId} notified about processed order {OrderId}",
+                                shippingStaffId, orderId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("No shipping staff assigned to order {OrderId}, notification skipped", orderId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error but don't fail the status update
+                        _logger.LogError(ex, "Failed to send notification to shipping staff for order {OrderId}", orderId);
+                    }
+                }
+
                 return await GetOrderWithDetailsAsync(orderId);
             }
             catch (Exception ex)

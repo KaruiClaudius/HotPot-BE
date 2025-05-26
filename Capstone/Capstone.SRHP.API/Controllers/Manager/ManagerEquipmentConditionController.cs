@@ -45,7 +45,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify administrators about the new condition log
                 await _notificationService.NotifyRoleAsync(
                       "Admin",
-                      "ConditionIssue",
+                      "EquipmentCondition",
                       "Vấn Đề Mới Về Tình Trạng Nồi Lẩu",
                       $"Vấn đề mới được báo cáo cho {equipmentName}: {request.Name}",
                       new Dictionary<string, object>
@@ -133,7 +133,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify administrators about the status update using the simplified notification service
                 await _notificationService.NotifyRoleAsync(
                      "Admin",
-                     "EquipmentStatusUpdate",
+                     "EquipmentCondition",
                      "Đã Cập Nhật Trạng Thái Thiết Bị",
                      $"Trạng thái đã được cập nhật thành {request.Status} cho {result.EquipmentName}: {result.Name}",
                      new Dictionary<string, object>

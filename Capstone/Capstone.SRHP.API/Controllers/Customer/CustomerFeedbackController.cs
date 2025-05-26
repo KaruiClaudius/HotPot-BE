@@ -65,8 +65,21 @@ namespace Capstone.HPTY.API.Controllers.Customer
 
                 // Notify admins about the new feedback that needs approval
                 await _notificationService.NotifyRoleAsync(
-                    "Admins",
-                    "NewFeedback",
+                    "Admin",
+                    "Feedback",
+                    "Nhận phản hồi mới",
+                    $"Phản hồi mới từ: {customerName}",
+                    new Dictionary<string, object>
+                    {
+                { "FeedbackId", feedback.FeedbackId },
+                { "CustomerName", customerName },
+                { "SubmissionDate", feedback.CreatedAt },
+                    });
+
+                // Notify managers about the new feedback that needs approval
+                await _notificationService.NotifyRoleAsync(
+                    "Managers",
+                    "Feedback",
                     "Nhận phản hồi mới",
                     $"Phản hồi mới từ: {customerName}",
                     new Dictionary<string, object>

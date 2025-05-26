@@ -149,7 +149,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                         // Notify each staff member about their schedule update
                         await _notificationService.NotifyUserAsync(
                             staff.UserId,
-                            "ScheduleUpdate",
+                            "Schedule",
                             "Cập nhật ca làm việc",
                             $"Ca làm việc của bạn '{updatedShift.ShiftName}' đã được cập nhật thành: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
                             new Dictionary<string, object>
@@ -167,7 +167,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify all managers about the schedule update
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Cập nhật ca làm việc",
                     $"Ca '{updatedShift.ShiftName}' đã được cập nhật thành: {updatedShift.ShiftStartTime} - {updatedShift.ShiftEndTime}",
                     new Dictionary<string, object>
@@ -225,7 +225,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                     {
                         await _notificationService.NotifyUserAsync(
                             staff.UserId,
-                            "ScheduleUpdate",
+                            "Schedule",
                             "Đã xóa ca làm việc",
                             $"Ca làm việc của bạn '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) đã bị xóa",
                             new Dictionary<string, object>
@@ -243,7 +243,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify all managers about the schedule update
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Đã xóa ca làm việc",
                     $"Ca '{shift.ShiftName}' ({shift.ShiftStartTime} - {shift.ShiftEndTime}) đã bị xóa",
                     new Dictionary<string, object>
@@ -307,7 +307,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify the manager about their schedule update
                 await _notificationService.NotifyUserAsync(
                     manager.UserId,
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch làm việc của bạn đã được cập nhật",
                     $"Lịch làm việc của bạn đã được cập nhật: {workDaysText}, Shifts: {shiftSummary}",
                     new Dictionary<string, object>
@@ -324,7 +324,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify all other managers about the schedule update
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch trình của Quản lý được cập nhật",
                     $"Lịch cho {manager.Name} đã được cập nhật: {workDaysText}, ca: {shiftSummary}",
                     new Dictionary<string, object>
