@@ -250,7 +250,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify the staff member about their schedule update
                 await _notificationService.NotifyUserAsync(
                     staff.UserId,
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch làm việc của bạn đã được cập nhật",
                     $"Lịch của bạn đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>
@@ -265,7 +265,7 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 // Notify managers about the staff schedule update
                 await _notificationService.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch của nhân viên mới được cập nhật",
                     $"Lịch của {staff.Name} đã được cập nhật thành: {workDaysText}",
                     new Dictionary<string, object>

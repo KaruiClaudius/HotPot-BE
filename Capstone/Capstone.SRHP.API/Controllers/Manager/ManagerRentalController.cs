@@ -86,7 +86,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 // Notify the staff member about the new assignment
                 await _notificationService.NotifyUserAsync(
                     request.StaffId,
-                    "NewAssignment",
+                    "RentOrder",
                     "Nhiệm Vụ Thu Hồi Mới",
                     $"Bạn đã được phân công thu hồi thiết bị từ {orderDetail.CustomerName}",
                     new Dictionary<string, object>

@@ -74,6 +74,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                 _logger.LogInformation("Found {Count} pending payments to check", pendingPayments.Count);
 
+                // Clean up monitoring dictionary - remove payments that are no longer pending
+                var paymentIdsToRemove = _monitoredPayments.Keys
+                    .Where(id => !pendingPayments.Any(p => p.PaymentId == id))
+                    .ToList();
+
+                foreach (var id in paymentIdsToRemove)
+                {
+                    _monitoredPayments.Remove(id);
+                    _logger.LogInformation("Removed payment {PaymentId} from monitoring as it's no longer pending", id);
+                }
+
                 foreach (var payment in pendingPayments)
                 {
                     if (stoppingToken.IsCancellationRequested)
@@ -96,8 +107,65 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             continue;
                         }
 
+                        // Check the payment status with PayOS first
+                        var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                        var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+
+                        _logger.LogInformation("Payment {TransactionCode} status check result: {Status}, Message: {Message}",
+                                                payment.TransactionCode,
+                                                response.error == 0 ? "Success" : "Failed",
+                                                response.message);
+
+                        // If payment is successful according to PayOS, update our system
+                        if (response.error == 0 && response.message == "Hoàn thành giao dịch")
+                        {
+                            payment.Status = PaymentStatus.Success;
+                            payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                            await unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+                            await unitOfWork.CommitAsync();
+
+                            _monitoredPayments.Remove(payment.PaymentId);
+                            _logger.LogInformation("Payment {TransactionCode} marked as successful", payment.TransactionCode);
+                            continue;
+                        }
+
+                        // If payment is cancelled according to PayOS, update our system
+                        if (response.error == 0 && response.message == "Huỷ giao dịch")
+                        {
+                            payment.Status = PaymentStatus.Cancelled;
+                            payment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                            await unitOfWork.Repository<Payment>().Update(payment, payment.PaymentId);
+
+                            // Get the order and release inventory
+                            if (payment.OrderId.HasValue)
+                            {
+                                var order = await unitOfWork.Repository<Order>().GetById(payment.OrderId.Value);
+                                if (order != null)
+                                {
+                                    // Call method to release inventory reservations
+                                    await ReleaseInventoryReservation(order);
+                                }
+                            }
+
+                            await unitOfWork.CommitAsync();
+
+                            _monitoredPayments.Remove(payment.PaymentId);
+                            _logger.LogInformation("Payment {TransactionCode} marked as cancelled", payment.TransactionCode);
+                            continue;
+                        }
+
+                        // Only timeout payments that are still pending after checking with PayOS
                         if (monitoringTime > _paymentTimeout)
                         {
+                            // Double-check the payment is still pending in our database
+                            var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                            if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                            {
+                                _monitoredPayments.Remove(payment.PaymentId);
+                                _logger.LogInformation("Payment {PaymentId} is no longer pending, removing from monitoring", payment.PaymentId);
+                                continue;
+                            }
+
                             _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes} minutes. Cancelling...",
                                 payment.TransactionCode,
                                 monitoringTime.TotalMinutes);
@@ -116,30 +184,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                     // Call method to release inventory reservations
                                     await ReleaseInventoryReservation(order);
                                 }
-
                             }
 
                             await unitOfWork.CommitAsync();
 
                             // Remove from monitoring
-                            _monitoredPayments.Remove(payment.PaymentId);
-
-                            continue;
-                        }
-
-                        // Check the payment status with PayOS
-                        var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                        var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
-
-                        _logger.LogInformation("Payment {TransactionCode} status check result: {Status}",
-                                                payment.TransactionCode,
-                                                response.error == 0 ? "Success" : "Failed");
-
-                        // If payment is no longer pending, remove from monitoring
-                        if (response.error == 0 &&
-                            (response.message == "Hoàn thành giao dịch" ||
-                             response.message == "Huỷ giao dịch"))
-                        {
                             _monitoredPayments.Remove(payment.PaymentId);
                         }
                     }
