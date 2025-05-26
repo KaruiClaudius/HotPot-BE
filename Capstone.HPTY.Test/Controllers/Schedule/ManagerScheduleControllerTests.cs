@@ -661,7 +661,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -670,7 +670,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -697,14 +697,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
 
             this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
-                "ScheduleUpdate",
+                "Schedule",
                 "Lịch làm việc của bạn đã được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
-                "ScheduleUpdate",
+                "Schedule",
                 "Lịch của nhân viên mới được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
@@ -736,7 +736,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -745,7 +745,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -1168,7 +1168,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyUserAsync(
                     assignDto.StaffId,
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch làm việc của bạn đã được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -1177,7 +1177,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             this.mockNotificationService
                 .Setup(n => n.NotifyRoleAsync(
                     "Managers",
-                    "ScheduleUpdate",
+                    "Schedule",
                     "Lịch của nhân viên mới được cập nhật",
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, object>>()))
@@ -1203,14 +1203,14 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
 
             this.mockNotificationService.Verify(n => n.NotifyUserAsync(
                 assignDto.StaffId,
-                "ScheduleUpdate",
+                "Schedule",
                 "Lịch làm việc của bạn đã được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
 
             this.mockNotificationService.Verify(n => n.NotifyRoleAsync(
                 "Managers",
-                "ScheduleUpdate",
+                "Schedule",
                 "Lịch của nhân viên mới được cập nhật",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
