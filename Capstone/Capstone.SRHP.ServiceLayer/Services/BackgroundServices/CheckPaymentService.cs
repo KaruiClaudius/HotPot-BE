@@ -19,6 +19,7 @@ using Net.payOS;
 using static System.Formats.Asn1.AsnWriter;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
+using Capstone.HPTY.ServiceLayer.Services.OrderService;
 
 namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
@@ -265,6 +266,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
             var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            var discountService = scope.ServiceProvider.GetRequiredService<IDiscountService>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
             try
@@ -308,6 +310,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             return false;
                         }
 
+                        if (order.DiscountId != null)
+                        {
+                            if (await discountService.HasSufficientPointsAsync((int)order.DiscountId, user.LoyatyPoint))
+                            {
+                                var newPoint = user.LoyatyPoint - (await discountService.GetByIdAsync((int)order.DiscountId)).PointCost;
+                                user.LoyatyPoint = newPoint;
+                                await unitOfWork.Repository<User>().Update(user, user.UserId);
+                            }
+                        }
+                        else
+                        {
+                            user.LoyatyPoint = (double)(order.TotalPrice * 0.0001m);
+                            await unitOfWork.Repository<User>().Update(user, user.UserId);
+                        }
 
                         var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
                         if (freshOrder == null)
