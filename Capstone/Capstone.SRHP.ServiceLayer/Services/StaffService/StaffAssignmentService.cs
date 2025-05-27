@@ -367,7 +367,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                         // Notify manager about damaged hotpot
                                         var notificationData = new Dictionary<string, object>
                                         {
-                                            { "hotpotInventoryId", hotpotInventory.SeriesNumber },
+                                            { "seriesNumber", hotpotInventory.SeriesNumber },
                                             { "hotpotName", hotpotInventory.Hotpot?.Name ?? "Không xác định" },
                                             { "damageDescription", returnRequest.ReturnCondition }
                                         };
