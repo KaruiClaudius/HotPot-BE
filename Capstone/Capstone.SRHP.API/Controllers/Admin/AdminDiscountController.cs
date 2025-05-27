@@ -412,8 +412,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 Description = discount.Description,
                 DiscountPercentage = discount.DiscountPercentage,
                 Date = discount.Date,
-                Duration = discount.Duration, // Now nullable
-                PointCost = discount.PointCost, // Now nullable
+                Duration = discount.Duration, 
+                PointCost = discount.PointCost, 
                 CreatedAt = discount.CreatedAt,
                 UpdatedAt = discount.UpdatedAt,
                 IsActive = isActive,
