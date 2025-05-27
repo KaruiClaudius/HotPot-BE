@@ -816,14 +816,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<IEnumerable<Payment>> GetPaymentsByUserIdAsync(int userId)
+        public async Task<Payment> GetPaymentByUserIdAsync(int userId)
         {
             try
             {
                 return await _unitOfWork.Repository<Payment>()
                     .FindAll(p => p.UserId == userId)
                     .Include(p => p.Order)
-                    .ToListAsync();
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
