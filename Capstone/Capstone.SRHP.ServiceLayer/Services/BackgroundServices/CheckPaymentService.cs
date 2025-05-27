@@ -8,11 +8,17 @@ using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Net.payOS.Types;
+using Net.payOS;
+using static System.Formats.Asn1.AsnWriter;
+using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
+using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 
 namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
@@ -252,5 +258,433 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                 }
             }
         }
+        private async Task<Response> CheckOrder(CheckOrderRequest request, string userPhone)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var orderService = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
+            var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            try
+            {
+                // Get user information
+                var user = await unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
+                if (user == null)
+                {
+                    return new Response(-1, "Không tìm thấy người dùng", null);
+                }
+
+                // Get payment information from PayOS (external call, outside transaction)
+                PaymentLinkInformation paymentLinkInformation = await payOS.getPaymentLinkInformation(request.OrderCode);
+                if (paymentLinkInformation == null)
+                {
+                    return new Response(-1, "thông tin thanh toán không thấy", null);
+                }
+
+                // Get payment transaction
+                var paymentTransaction = await unitOfWork.Repository<Payment>()
+                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
+                if (paymentTransaction == null)
+                {
+                    return new Response(-1, "Không tìm thấy giao dịch", null);
+                }
+
+                // Get the order (outside transaction to avoid long-running transaction)
+                var order = await orderService.GetByIdAsync(paymentTransaction.OrderId.Value);
+
+                // Process based on payment status
+                if (paymentLinkInformation.status == "PAID")
+                {
+                    // Execute all database operations in a single transaction
+                    var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
+                    {
+                        // Get fresh copies of the entities within the transaction
+                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
+                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                        {
+                            // Payment already processed or deleted
+                            return false;
+                        }
+
+
+                        var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
+                        if (freshOrder == null)
+                        {
+                            // Order not found
+                            return false;
+                        }
+
+                        // Update transaction
+                        freshPayment.Status = PaymentStatus.Success;
+                        freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                        await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
+
+                        // Finalize inventory deduction
+                        await FinalizeInventoryDeduction(freshOrder);
+
+                        // Update order status to Pending
+                        freshOrder.Status = OrderStatus.Pending;
+                        freshOrder.SetUpdateDate();
+                        await unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
+
+                        return true; // Transaction successful
+                    },
+                    ex =>
+                    {
+                        _logger.LogError(ex, "Error in transaction while processing successful payment for order {OrderCode}", request.OrderCode);
+                    });
+
+                    // If transaction was successful, send notifications
+                    if (result)
+                    {
+                        var updatedUserInfo = new
+                        {
+                            user.UserId,
+                            user.Name,
+                            user.PhoneNumber,
+                        };
+
+                        await notificationService.NotifyUserAsync(
+                            user.UserId,
+                            "Order",
+                            "Thanh Toán Thành Công",
+                            $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
+                            new Dictionary<string, object>
+                            {
+                        { "OrderId", order.OrderId },
+                        { "Amount", paymentLinkInformation.amount },
+                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                        { "Status", "Đang xử lý" },
+                        { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
+                            });
+
+                        string orderType = order.HasRentItems && order.HasSellItems
+                           ? "Thuê và Mua"
+                           : (order.HasRentItems ? "Thuê" : "Mua");
+
+                        // Format the amount as currency
+                        var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
+
+                        // Send notification to managers
+                        await notificationService.NotifyRoleAsync(
+                            "Manager",
+                            "Order",
+                            "Thanh Toán Thành Công",
+                            $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
+                            new Dictionary<string, object>
+                            {
+                        { "OrderId", order.OrderId },
+                        { "Amount", formattedAmount },
+                        { "CustomerName", user.Name },
+                        { "CustomerPhone", user.PhoneNumber },
+                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                        { "OrderType", orderType },
+                        { "TransactionId", paymentLinkInformation.id }
+                            });
+
+                        return new Response(0, "Hoàn thành giao dịch",
+                            new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                    }
+                    else
+                    {
+                        // Transaction failed or payment already processed
+                        return new Response(-1, "Không thể xử lý giao dịch", null);
+                    }
+                }
+                else if (paymentLinkInformation.status == "CANCELLED")
+                {
+                    // Execute all database operations in a single transaction
+                    var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
+                    {
+                        // Get fresh copies of the entities within the transaction
+                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
+                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                        {
+                            // Payment already processed or deleted
+                            return false;
+                        }
+
+                        var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
+                        if (freshOrder == null)
+                        {
+                            // Order not found
+                            return false;
+                        }
+
+                        // Update transaction
+                        freshPayment.Status = PaymentStatus.Cancelled;
+                        freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                        await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
+
+                        // Release inventory reservations
+                        await ReleaseInventoryReservation(freshOrder);
+
+                        return true; // Transaction successful
+                    },
+                    ex =>
+                    {
+                        _logger.LogError(ex, "Error in transaction while processing cancelled payment for order {OrderCode}", request.OrderCode);
+                    });
+
+                    if (result)
+                    {
+                        var updatedUserInfo = new
+                        {
+                            user.UserId,
+                            user.Name,
+                            user.PhoneNumber,
+                        };
+
+                        return new Response(0, "Huỷ giao dịch",
+                            new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                    }
+                    else
+                    {
+                        // Transaction failed or payment already processed
+                        return new Response(-1, "Không thể xử lý giao dịch", null);
+                    }
+                }
+                else
+                {
+                    return new Response(0, "Giao dịch chưa hoàn thành",
+                        new { paymentInfo = paymentLinkInformation });
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error checking order {OrderCode}", request.OrderCode);
+                return new Response(-1, "fail", null);
+            }
+        }
+
+        private async Task FinalizeInventoryDeduction(Order order)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var ingredientService = scope.ServiceProvider.GetRequiredService<IIngredientService>();
+            var comboService = scope.ServiceProvider.GetRequiredService<IComboService>();
+            var customizationService = scope.ServiceProvider.GetRequiredService<ICustomizationService>();
+            var utensilService = scope.ServiceProvider.GetRequiredService<IUtensilService>();
+            var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+
+            // This method actually deducts inventory quantities after payment is confirmed
+            if (order.SellOrder != null)
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.IngredientId.HasValue)
+                    {
+                        try
+                        {
+                            // Use the updated ConsumeIngredientAsync method
+                            int consumed = await ingredientService.ConsumeIngredientAsync(
+                                detail.IngredientId.Value,
+                                detail.Quantity,
+                                order.OrderId,
+                                detail.SellOrderDetailId);
+
+                            if (consumed < detail.Quantity)
+                            {
+                                // Log a warning if we couldn't consume the full amount
+                                _logger.LogWarning(
+                                    "Could not consume full quantity for ingredient ID {IngredientId}. Requested: {Requested}, Consumed: {Consumed}",
+                                    detail.IngredientId.Value,
+                                    detail.Quantity,
+                                    consumed);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the error but continue processing other items
+                            _logger.LogError(ex,
+                                "Error consuming ingredient ID {IngredientId} with quantity {Quantity}",
+                                detail.IngredientId.Value,
+                                detail.Quantity);
+                        }
+                    }
+                    else if (detail.ComboId.HasValue)
+                    {
+                        // For combos, we need to get the ingredients and consume them
+                        var combo = await comboService.GetByIdAsync(detail.ComboId.Value);
+                        if (combo != null && combo.ComboIngredients != null)
+                        {
+                            foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
+                            {
+                                try
+                                {
+                                    // Calculate quantity needed based on order size
+                                    int quantityNeeded = comboIngredient.Quantity * detail.Quantity;
+
+                                    // Consume the ingredient
+                                    int consumed = await ingredientService.ConsumeIngredientAsync(
+                                        comboIngredient.IngredientId,
+                                        quantityNeeded,
+                                        order.OrderId,
+                                        detail.SellOrderDetailId,
+                                        detail.ComboId);
+
+                                    if (consumed < quantityNeeded)
+                                    {
+                                        _logger.LogWarning(
+                                            "Could not consume full quantity for ingredient ID {IngredientId} in combo {ComboId}. Requested: {Requested}, Consumed: {Consumed}",
+                                            comboIngredient.IngredientId,
+                                            detail.ComboId.Value,
+                                            quantityNeeded,
+                                            consumed);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex,
+                                        "Error consuming ingredient ID {IngredientId} for combo {ComboId}",
+                                        comboIngredient.IngredientId,
+                                        detail.ComboId.Value);
+                                }
+                            }
+                        }
+                    }
+                    else if (detail.CustomizationId.HasValue)
+                    {
+                        // For customizations, we need to get the ingredients and consume them
+                        var customization = await customizationService.GetByIdAsync(detail.CustomizationId.Value);
+                        if (customization != null && customization.CustomizationIngredients != null)
+                        {
+                            foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
+                            {
+                                try
+                                {
+                                    // Calculate quantity needed based on order size
+                                    int quantityNeeded = customizationIngredient.Quantity * detail.Quantity;
+
+                                    // Consume the ingredient
+                                    int consumed = await ingredientService.ConsumeIngredientAsync(
+                                        customizationIngredient.IngredientId,
+                                        quantityNeeded,
+                                        order.OrderId,
+                                        detail.SellOrderDetailId,
+                                        null,
+                                        detail.CustomizationId);
+
+                                    if (consumed < quantityNeeded)
+                                    {
+                                        _logger.LogWarning(
+                                            "Could not consume full quantity for ingredient ID {IngredientId} in customization {CustomizationId}. Requested: {Requested}, Consumed: {Consumed}",
+                                            customizationIngredient.IngredientId,
+                                            detail.CustomizationId.Value,
+                                            quantityNeeded,
+                                            consumed);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex,
+                                        "Error consuming ingredient ID {IngredientId} for customization {CustomizationId}",
+                                        customizationIngredient.IngredientId,
+                                        detail.CustomizationId.Value);
+                                }
+                            }
+                        }
+                    }
+                    else if (detail.UtensilId.HasValue)
+                    {
+                        var utensil = await utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
+                        if (utensil != null)
+                        {
+                            // Deduct from inventory
+                            utensil.Quantity -= detail.Quantity;
+                            await unitOfWork.Repository<Utensil>().Update(utensil, utensil.UtensilId);
+                        }
+                    }
+                }
+            }
+
+            // For hotpots, we update their status to Rented
+            if (order.RentOrder != null)
+            {
+                // Track which hotpot types need quantity updates
+                var hotpotIdsToUpdate = new HashSet<int>();
+
+                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.HotpotInventoryId.HasValue)
+                    {
+                        var hotpotInventory = await unitOfWork.Repository<HotPotInventory>()
+                            .IncludeNested(query => query.Include(h => h.Hotpot))
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
+
+                        if (hotpotInventory != null)
+                        {
+                            // Add the hotpot ID to the set of IDs to update
+                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+
+                            // Update the inventory status
+                            hotpotInventory.Status = HotpotStatus.Rented;
+                            await unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                        }
+                    }
+                }
+
+                // Update the quantity for each affected hotpot type
+                foreach (var hotpotId in hotpotIdsToUpdate)
+                {
+                    await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                }
+            }
+        }
+        //public async Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId)
+        //{
+        //    using var scope = _serviceProvider.CreateScope();
+        //    var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        //    try
+        //    {
+        //        // Get the hotpot
+        //        var hotpot = await unitOfWork.Repository<Hotpot>().GetById(hotpotId);
+        //        if (hotpot == null)
+        //        {
+        //            _logger.LogWarning("Cannot update quantity for non-existent hotpot ID {HotpotId}", hotpotId);
+        //            return false;
+        //        }
+
+        //        // Count available inventory
+        //        int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
+        //            new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
+
+        //        // Update hotpot quantity
+        //        hotpot.Quantity = availableCount;
+        //        hotpot.SetUpdateDate();
+
+        //        await unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
+
+        //        _logger.LogInformation("Updated hotpot {HotpotId} quantity to {Quantity} based on inventory count",
+        //            hotpotId, availableCount);
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error updating hotpot quantity from inventory for hotpot ID {HotpotId}", hotpotId);
+        //        return false;
+        //    }
+        //}
+
+        //private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
+        //{
+        //    try
+        //    {
+        //        // Query for the specific hotpot type with the given statuses
+        //        var count = await _unitOfWork.Repository<HotPotInventory>()
+        //            .CountAsync(h => h.HotpotId == hotpotId &&
+        //                           statuses.Contains(h.Status) &&
+        //                           !h.IsDelete);
+
+        //        return count;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error counting hotpot inventory for hotpot ID {HotpotId}", hotpotId);
+        //        return 0; // Return 0 on error to be safe
+        //    }
+        //}
     }
 }
