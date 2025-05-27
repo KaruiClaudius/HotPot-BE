@@ -144,7 +144,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                             // Check the payment status with PayOS
                             var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                            var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+                            var response = await CheckOrder(checkRequest, user.PhoneNumber);
 
                             _logger.LogInformation("Payment {TransactionCode} status check result: {Status}, Message: {Message}",
                                                     payment.TransactionCode,
