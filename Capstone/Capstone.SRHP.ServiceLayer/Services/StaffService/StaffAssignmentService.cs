@@ -5,6 +5,7 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Capstone.HPTY.ServiceLayer.Interfaces.StaffService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,14 +16,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<StaffAssignmentService> _logger;
+        private readonly INotificationService _notificationService;
         private const int STAFF_ROLE_ID = 3; // Staff role ID
 
         public StaffAssignmentService(
             IUnitOfWork unitOfWork,
-            ILogger<StaffAssignmentService> logger)
+            ILogger<StaffAssignmentService> logger,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public async Task<StaffAssignmentResponse> AssignStaffToTaskAsync(
@@ -360,6 +364,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                     {
                                         // Set to Damaged if return condition indicates damage
                                         hotpotInventory.Status = HotpotStatus.Damaged;
+                                        // Notify manager about damaged hotpot
+                                        var notificationData = new Dictionary<string, object>
+                                        {
+                                            { "hotpotInventoryId", hotpotInventory.SeriesNumber },
+                                            { "hotpotName", hotpotInventory.Hotpot?.Name ?? "Không xác định" },
+                                            { "damageDescription", returnRequest.ReturnCondition }
+                                        };
+
+                                        await _notificationService.NotifyRoleAsync(
+                                            "Manager",
+                                            "hotpotDamage",
+                                            "Thiết bị nồi lẩu bị hư hỏng",
+                                            $"Nồi lẩu {hotpotInventory.Hotpot?.Name ?? "Không xác định"} đã được trả về trong tình trạng hư hỏng và cần sửa chữa.",
+                                            notificationData);
                                     }
                                     else
                                     {
