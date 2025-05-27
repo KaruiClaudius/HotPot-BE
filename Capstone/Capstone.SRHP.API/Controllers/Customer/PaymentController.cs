@@ -241,31 +241,15 @@ namespace Capstone.HPTY.API.Controllers.Customer
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue("id"));
                 var currentUserPhone = User.FindFirstValue("phone");
-                var payment = await _paymentService.GetPaymentByUserIdAsync(userId);
-                if (payment.Status == PaymentStatus.Pending)
+                var response = await _paymentService.CheckOrder(request, currentUserPhone);
+                if (response.error == 0)
                 {
-                    if(payment.Order.Status == OrderStatus.Cart)
-                    {
-                        var response = await _paymentService.CheckOrder(request, currentUserPhone);
-                        if (response.error == 0)
-                        {
-                            return Ok(response);
-                        }
+                    return Ok(response);
+                }
 
-                        _logger.LogError("Failed to check order {OrderCode}: {Message}", request.OrderCode, response.message);
-                        return BadRequest(new { response.message });
-                    }
-                    else
-                    {
-                        return BadRequest(new { message = "Đơn hàng đã được thanh toán hoặc không còn trong giỏ hàng" });
-                    }
-                }
-                else 
-                {
-                    return BadRequest(new { message = "Đơn hàng đã được thanh toán hoặc huỷ" });
-                }
+                _logger.LogError("Failed to check order {OrderCode}: {Message}", request.OrderCode, response.message);
+                return BadRequest(new { response.message });
             }
             catch (Exception ex)
             {
