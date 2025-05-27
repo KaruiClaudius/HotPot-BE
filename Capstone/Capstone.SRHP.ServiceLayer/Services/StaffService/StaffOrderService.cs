@@ -657,6 +657,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 UpdatedAt = order.UpdatedAt,
                 DeliveryTime = order.DeliveryTime,
 
+                // Add vehicle information
+                Vehicle = MapToVehicleInfoDto(order.ShippingOrder?.Vehicle),
+
                 // Order details
                 OrderDetails = order.SellOrder?.SellOrderDetails?.Select(MapToOrderDetailDto).ToList() ?? new List<OrderDetailDto>(),
                 RentalDetails = order.RentOrder?.RentOrderDetails?.Select(MapToRentalDetailDto).ToList() ?? new List<RentalDetailDto>(),
@@ -903,6 +906,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             }
 
             return dto;
+        }
+
+        private VehicleInfoDto MapToVehicleInfoDto(Vehicle vehicle)
+        {
+            if (vehicle == null) return null;
+
+            return new VehicleInfoDto
+            {
+                VehicleId = vehicle.VehicleId,
+                VehicleName = vehicle.Name,
+                LicensePlate = vehicle.LicensePlate,
+            };
         }
     }
 }
