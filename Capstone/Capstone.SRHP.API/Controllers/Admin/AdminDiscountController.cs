@@ -421,6 +421,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 IsNeverExpiring = !discount.Duration.HasValue,
                 IsFreeForAll = !discount.PointCost.HasValue || discount.PointCost.Value == 0,
                 OrderCount = discount.Orders != null ? 1 : 0
+                
             };
         }
     }

@@ -318,8 +318,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             var now = DateTime.UtcNow.AddHours(7);
             return discount.Date <= now &&
-                   discount.Duration >= now &&
-                   discount.Orders == null;
+                   discount.Duration >= now;
         }
 
         public async Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice)
