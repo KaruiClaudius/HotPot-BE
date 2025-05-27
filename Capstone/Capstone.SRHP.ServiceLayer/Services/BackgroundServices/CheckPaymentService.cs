@@ -73,8 +73,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
                 var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
 
                 // Get all pending payments
                 var pendingPayments = await unitOfWork.Repository<Payment>()
@@ -106,7 +106,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         {
                             firstSeenTime = DateTime.UtcNow.AddHours(7);
                             _monitoredPayments[payment.PaymentId] = firstSeenTime;
-                            _logger.LogInformation("Started monitoring payment {PaymentId}", payment.PaymentId);
+                            _logger.LogInformation("Started monitoring payment {PaymentId} ({TransactionCode})",
+                                payment.PaymentId, payment.TransactionCode);
                         }
 
                         var monitoringTime = DateTime.UtcNow.AddHours(7) - firstSeenTime;
@@ -124,6 +125,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         // Only check with PayOS if the payment has been pending for a while or has timed out
                         if (isTimedOut || monitoringTime > TimeSpan.FromMinutes(1))
                         {
+                            // Get the order to check if it's still in Cart status
+                            var order = await unitOfWork.Repository<Order>().GetById(payment.OrderId.Value);
+                            if (order == null)
+                            {
+                                _logger.LogWarning("Order not found for payment {PaymentId}", payment.PaymentId);
+                                continue;
+                            }
+
+                            // If order is no longer in Cart status, it means it's already been processed
+                            if (order.Status != OrderStatus.Cart)
+                            {
+                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                _logger.LogInformation("Order {OrderId} is no longer in Cart status, removing payment {PaymentId} from monitoring",
+                                    order.OrderId, payment.PaymentId);
+                                continue;
+                            }
+
                             var user = await unitOfWork.Repository<User>().GetById(payment.UserId);
                             if (user == null)
                             {
@@ -140,75 +158,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 continue;
                             }
 
-                            _logger.LogInformation("Background service checking payment {PaymentId} after {Minutes:N1} minutes",
-                                payment.PaymentId, monitoringTime.TotalMinutes);
+                            _logger.LogInformation("Background service checking payment {PaymentId} ({TransactionCode}) after {Minutes:N1} minutes",
+                                payment.PaymentId, payment.TransactionCode, monitoringTime.TotalMinutes);
 
-                            // Check the payment status with PayOS
-                            var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                            var response = await CheckOrder(checkRequest, user.PhoneNumber);
-
-                            _logger.LogInformation("Payment {TransactionCode} status check result: {Status}, Message: {Message}",
-                                                    payment.TransactionCode,
-                                                    response.error == 0 ? "Success" : "Failed",
-                                                    response.message);
-
-                            // If the payment has timed out and is still pending according to PayOS, cancel it
-                            if (isTimedOut && response.error == 0 && response.message != "Hoàn thành giao dịch" && response.message != "Huỷ giao dịch")
+                            // Check directly with PayOS
+                            try
                             {
-                                _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes. Cancelling...",
-                                    payment.TransactionCode,
-                                    monitoringTime.TotalMinutes);
+                                var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
 
-                                // Get a fresh copy of the payment again to ensure it's still pending
-                                freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
+                                if (paymentInfo == null)
                                 {
-                                    var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
-                                    {
-                                        // Get the most up-to-date payment record within the transaction
-                                        var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                        if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
-                                        {
-                                            // Payment was already processed by another thread
-                                            return false;
-                                        }
+                                    _logger.LogWarning("Could not get payment information from PayOS for {TransactionCode}",
+                                        payment.TransactionCode);
+                                    continue;
+                                }
 
-                                        // Cancel the payment in our system
-                                        transactionPayment.Status = PaymentStatus.Cancelled;
-                                        transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                                        await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
+                                _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
+                                    payment.TransactionCode, paymentInfo.status);
 
-                                        // Get the order and release inventory
-                                        if (transactionPayment.OrderId.HasValue)
-                                        {
-                                            var order = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
-                                            if (order != null)
-                                            {
-                                                // Call method to release inventory reservations
-                                                await ReleaseInventoryReservation(order);
-                                            }
-                                        }
-
-                                        return true; // Transaction success
-                                    },
-                                    ex =>
-                                    {
-                                        _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId}", payment.PaymentId);
-                                    });
-
+                                // Process based on PayOS status
+                                if (paymentInfo.status == "PAID")
+                                {
+                                    // Process successful payment
+                                    var success = await ProcessSuccessfulPayment(payment, order, user, paymentInfo);
                                     if (success)
                                     {
-                                        // Remove from monitoring
                                         _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                        _logger.LogInformation("Payment {PaymentId} cancelled and removed from monitoring", payment.PaymentId);
+                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) processed successfully and removed from monitoring",
+                                            payment.PaymentId, payment.TransactionCode);
                                     }
                                 }
+                                else if (paymentInfo.status == "CANCELLED")
+                                {
+                                    // Process cancelled payment
+                                    var success = await ProcessCancelledPayment(payment, order);
+                                    if (success)
+                                    {
+                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled and removed from monitoring",
+                                            payment.PaymentId, payment.TransactionCode);
+                                    }
+                                }
+                                else if (isTimedOut && (paymentInfo.status == "PENDING" || paymentInfo.status == "CREATED"))
+                                {
+                                    // If the payment has timed out and is still pending according to PayOS, cancel it
+                                    _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
+                                        payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
+
+                                    var success = await ProcessCancelledPayment(payment, order);
+                                    if (success)
+                                    {
+                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
+                                            payment.PaymentId, payment.TransactionCode);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error checking payment status with PayOS for {TransactionCode}", payment.TransactionCode);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error checking payment {PaymentId}", payment.PaymentId);
+                        _logger.LogError(ex, "Error processing payment {PaymentId} ({TransactionCode})",
+                            payment.PaymentId, payment.TransactionCode);
                         // Continue with the next payment
                     }
                 }
@@ -217,6 +232,179 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             {
                 _logger.LogError(ex, "Error in CheckPendingPaymentsAsync");
             }
+        }
+        private async Task<bool> ProcessSuccessfulPayment(Payment payment, Order order, User user, PaymentLinkInformation paymentInfo)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var discountService = scope.ServiceProvider.GetRequiredService<IDiscountService>();
+            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+            // Execute all database operations in a single transaction
+            var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Get fresh copies of the entities within the transaction
+                var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                if (freshPayment == null)
+                {
+                    return false;
+                }
+
+                // If payment is already successful, don't process again
+                if (freshPayment.Status == PaymentStatus.Success)
+                {
+                    return false;
+                }
+
+                var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
+                if (freshOrder == null)
+                {
+                    return false;
+                }
+
+                // If order is no longer in Cart status, it means it's already been processed
+                if (freshOrder.Status != OrderStatus.Cart)
+                {
+                    return false;
+                }
+
+                // Process loyalty points
+                if (freshOrder.DiscountId != null)
+                {
+                    if (await discountService.HasSufficientPointsAsync((int)freshOrder.DiscountId, user.LoyatyPoint))
+                    {
+                        var newPoint = user.LoyatyPoint - (await discountService.GetByIdAsync((int)freshOrder.DiscountId)).PointCost;
+                        user.LoyatyPoint = newPoint;
+                        await unitOfWork.Repository<User>().Update(user, user.UserId);
+                    }
+                }
+                else
+                {
+                    user.LoyatyPoint = (double)(freshOrder.TotalPrice * 0.0001m);
+                    await unitOfWork.Repository<User>().Update(user, user.UserId);
+                }
+
+                // Update transaction
+                freshPayment.Status = PaymentStatus.Success;
+                freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
+
+                // Finalize inventory deduction
+                await FinalizeInventoryDeduction(freshOrder);
+
+                // Update order status to Pending
+                freshOrder.Status = OrderStatus.Pending;
+                freshOrder.SetUpdateDate();
+                await unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
+
+                return true; // Transaction successful
+            },
+            ex =>
+            {
+                _logger.LogError(ex, "Error in transaction while processing successful payment for order {OrderId}", order.OrderId);
+            });
+
+            // If transaction was successful, send notifications
+            if (result)
+            {
+                try
+                {
+                    await notificationService.NotifyUserAsync(
+                        user.UserId,
+                        "Order",
+                        "Thanh Toán Thành Công",
+                        $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
+                        new Dictionary<string, object>
+                        {
+                        { "OrderId", order.OrderId },
+                        { "Amount", paymentInfo.amount },
+                        { "PaymentTime", DateTime.Parse(paymentInfo.createdAt) },
+                        { "Status", "Đang xử lý" },
+                        { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
+                        });
+
+                    string orderType = order.HasRentItems && order.HasSellItems
+                       ? "Thuê và Mua"
+                       : (order.HasRentItems ? "Thuê" : "Mua");
+
+                    // Format the amount as currency
+                    var formattedAmount = string.Format("{0:N0} VND", paymentInfo.amount);
+
+                    // Send notification to managers
+                    await notificationService.NotifyRoleAsync(
+                        "Manager",
+                        "Order",
+                        "Thanh Toán Thành Công",
+                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
+                        new Dictionary<string, object>
+                        {
+                        { "OrderId", order.OrderId },
+                        { "Amount", formattedAmount },
+                        { "CustomerName", user.Name },
+                        { "CustomerPhone", user.PhoneNumber },
+                        { "PaymentTime", DateTime.Parse(paymentInfo.createdAt) },
+                        { "OrderType", orderType },
+                        { "TransactionId", paymentInfo.id }
+                        });
+                }
+                catch (Exception ex)
+                {
+                    // Log notification errors but don't fail the operation
+                    _logger.LogError(ex, "Error sending notifications for successful payment {OrderId}", order.OrderId);
+                }
+            }
+
+            return result;
+        }
+        private async Task<bool> ProcessCancelledPayment(Payment payment, Order order)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            // Execute all database operations in a single transaction
+            var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Get fresh copies of the entities within the transaction
+                var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                if (freshPayment == null)
+                {
+                    return false;
+                }
+
+                // If payment is already cancelled, don't process again
+                if (freshPayment.Status == PaymentStatus.Cancelled)
+                {
+                    return false;
+                }
+
+                var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
+                if (freshOrder == null)
+                {
+                    return false;
+                }
+
+                // If order is no longer in Cart status, it means it's already been processed
+                if (freshOrder.Status != OrderStatus.Cart)
+                {
+                    return false;
+                }
+
+                // Update transaction
+                freshPayment.Status = PaymentStatus.Cancelled;
+                freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
+
+                // Release inventory reservations
+                await ReleaseInventoryReservation(freshOrder);
+
+                return true; // Transaction successful
+            },
+            ex =>
+            {
+                _logger.LogError(ex, "Error in transaction while processing cancelled payment for order {OrderId}", order.OrderId);
+            });
+
+            return result;
         }
 
         private async Task ReleaseInventoryReservation(Order order)
@@ -259,221 +447,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                 }
             }
         }
-        private async Task<Response> CheckOrder(CheckOrderRequest request, string userPhone)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var orderService = scope.ServiceProvider.GetRequiredService<IOrderService>();
-            var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
-            var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
-            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-            var discountService = scope.ServiceProvider.GetRequiredService<IDiscountService>();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-            try
-            {
-                // Get user information
-                var user = await unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
-                if (user == null)
-                {
-                    return new Response(-1, "Không tìm thấy người dùng", null);
-                }
-
-                // Get payment information from PayOS (external call, outside transaction)
-                PaymentLinkInformation paymentLinkInformation = await payOS.getPaymentLinkInformation(request.OrderCode);
-                if (paymentLinkInformation == null)
-                {
-                    return new Response(-1, "thông tin thanh toán không thấy", null);
-                }
-
-                // Get payment transaction
-                var paymentTransaction = await unitOfWork.Repository<Payment>()
-                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
-                if (paymentTransaction == null)
-                {
-                    return new Response(-1, "Không tìm thấy giao dịch", null);
-                }
-
-                // Get the order (outside transaction to avoid long-running transaction)
-                var order = await orderService.GetByIdAsync(paymentTransaction.OrderId.Value);
-
-                // Process based on payment status
-                if (paymentLinkInformation.status == "PAID")
-                {
-                    // Execute all database operations in a single transaction
-                    var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
-                    {
-                        // Get fresh copies of the entities within the transaction
-                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
-                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
-                        {
-                            // Payment already processed or deleted
-                            return false;
-                        }
-
-                        if (order.DiscountId != null)
-                        {
-                            if (await discountService.HasSufficientPointsAsync((int)order.DiscountId, user.LoyatyPoint))
-                            {
-                                var newPoint = user.LoyatyPoint - (await discountService.GetByIdAsync((int)order.DiscountId)).PointCost;
-                                user.LoyatyPoint = newPoint;
-                                await unitOfWork.Repository<User>().Update(user, user.UserId);
-                            }
-                        }
-                        else
-                        {
-                            user.LoyatyPoint = (double)(order.TotalPrice * 0.0001m);
-                            await unitOfWork.Repository<User>().Update(user, user.UserId);
-                        }
-
-                        var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
-                        if (freshOrder == null)
-                        {
-                            // Order not found
-                            return false;
-                        }
-
-                        // Update transaction
-                        freshPayment.Status = PaymentStatus.Success;
-                        freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                        await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
-
-                        // Finalize inventory deduction
-                        await FinalizeInventoryDeduction(freshOrder);
-
-                        // Update order status to Pending
-                        freshOrder.Status = OrderStatus.Pending;
-                        freshOrder.SetUpdateDate();
-                        await unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
-
-                        return true; // Transaction successful
-                    },
-                    ex =>
-                    {
-                        _logger.LogError(ex, "Error in transaction while processing successful payment for order {OrderCode}", request.OrderCode);
-                    });
-
-                    // If transaction was successful, send notifications
-                    if (result)
-                    {
-                        var updatedUserInfo = new
-                        {
-                            user.UserId,
-                            user.Name,
-                            user.PhoneNumber,
-                        };
-
-                        await notificationService.NotifyUserAsync(
-                            user.UserId,
-                            "Order",
-                            "Thanh Toán Thành Công",
-                            $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
-                            new Dictionary<string, object>
-                            {
-                        { "OrderId", order.OrderId },
-                        { "Amount", paymentLinkInformation.amount },
-                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
-                        { "Status", "Đang xử lý" },
-                        { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
-                            });
-
-                        string orderType = order.HasRentItems && order.HasSellItems
-                           ? "Thuê và Mua"
-                           : (order.HasRentItems ? "Thuê" : "Mua");
-
-                        // Format the amount as currency
-                        var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
-
-                        // Send notification to managers
-                        await notificationService.NotifyRoleAsync(
-                            "Manager",
-                            "Order",
-                            "Thanh Toán Thành Công",
-                            $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
-                            new Dictionary<string, object>
-                            {
-                        { "OrderId", order.OrderId },
-                        { "Amount", formattedAmount },
-                        { "CustomerName", user.Name },
-                        { "CustomerPhone", user.PhoneNumber },
-                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
-                        { "OrderType", orderType },
-                        { "TransactionId", paymentLinkInformation.id }
-                            });
-
-                        return new Response(0, "Hoàn thành giao dịch",
-                            new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
-                    }
-                    else
-                    {
-                        // Transaction failed or payment already processed
-                        return new Response(-1, "Không thể xử lý giao dịch", null);
-                    }
-                }
-                else if (paymentLinkInformation.status == "CANCELLED")
-                {
-                    // Execute all database operations in a single transaction
-                    var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
-                    {
-                        // Get fresh copies of the entities within the transaction
-                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
-                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
-                        {
-                            // Payment already processed or deleted
-                            return false;
-                        }
-
-                        var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
-                        if (freshOrder == null)
-                        {
-                            // Order not found
-                            return false;
-                        }
-
-                        // Update transaction
-                        freshPayment.Status = PaymentStatus.Cancelled;
-                        freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                        await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
-
-                        // Release inventory reservations
-                        await ReleaseInventoryReservation(freshOrder);
-
-                        return true; // Transaction successful
-                    },
-                    ex =>
-                    {
-                        _logger.LogError(ex, "Error in transaction while processing cancelled payment for order {OrderCode}", request.OrderCode);
-                    });
-
-                    if (result)
-                    {
-                        var updatedUserInfo = new
-                        {
-                            user.UserId,
-                            user.Name,
-                            user.PhoneNumber,
-                        };
-
-                        return new Response(0, "Huỷ giao dịch",
-                            new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
-                    }
-                    else
-                    {
-                        // Transaction failed or payment already processed
-                        return new Response(-1, "Không thể xử lý giao dịch", null);
-                    }
-                }
-                else
-                {
-                    return new Response(0, "Giao dịch chưa hoàn thành",
-                        new { paymentInfo = paymentLinkInformation });
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error checking order {OrderCode}", request.OrderCode);
-                return new Response(-1, "fail", null);
-            }
-        }
 
         private async Task FinalizeInventoryDeduction(Order order)
         {
@@ -649,58 +623,5 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                 }
             }
         }
-        //public async Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId)
-        //{
-        //    using var scope = _serviceProvider.CreateScope();
-        //    var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        //    try
-        //    {
-        //        // Get the hotpot
-        //        var hotpot = await unitOfWork.Repository<Hotpot>().GetById(hotpotId);
-        //        if (hotpot == null)
-        //        {
-        //            _logger.LogWarning("Cannot update quantity for non-existent hotpot ID {HotpotId}", hotpotId);
-        //            return false;
-        //        }
-
-        //        // Count available inventory
-        //        int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
-        //            new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
-
-        //        // Update hotpot quantity
-        //        hotpot.Quantity = availableCount;
-        //        hotpot.SetUpdateDate();
-
-        //        await unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
-
-        //        _logger.LogInformation("Updated hotpot {HotpotId} quantity to {Quantity} based on inventory count",
-        //            hotpotId, availableCount);
-        //        return true;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error updating hotpot quantity from inventory for hotpot ID {HotpotId}", hotpotId);
-        //        return false;
-        //    }
-        //}
-
-        //private async Task<int> CountHotpotInventoryByStatusAsync(int hotpotId, List<HotpotStatus> statuses)
-        //{
-        //    try
-        //    {
-        //        // Query for the specific hotpot type with the given statuses
-        //        var count = await _unitOfWork.Repository<HotPotInventory>()
-        //            .CountAsync(h => h.HotpotId == hotpotId &&
-        //                           statuses.Contains(h.Status) &&
-        //                           !h.IsDelete);
-
-        //        return count;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error counting hotpot inventory for hotpot ID {HotpotId}", hotpotId);
-        //        return 0; // Return 0 on error to be safe
-        //    }
-        //}
     }
 }

@@ -19,6 +19,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments.Admin;
 using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
+using System.Net.WebSockets;
 
 namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 {
@@ -387,7 +388,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy người dùng", null);
                 }
 
-                // Get payment information from PayOS (external call, outside transaction)
+                // Get payment information from PayOS
                 PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
                 if (paymentLinkInformation == null)
                 {
@@ -402,10 +403,54 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy giao dịch", null);
                 }
 
-                // Get the order (outside transaction to avoid long-running transaction)
+                // Get the order
                 var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
+                if (order == null)
+                {
+                    return new Response(-1, "Không tìm thấy đơn hàng", null);
+                }
 
-                // Process based on payment status
+                // If payment is already processed, return appropriate response
+                if (paymentTransaction.Status == PaymentStatus.Success)
+                {
+                    var updatedUserInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    return new Response(0, "Hoàn thành giao dịch",
+                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                }
+                else if (paymentTransaction.Status == PaymentStatus.Cancelled)
+                {
+                    var updatedUserInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    return new Response(0, "Huỷ giao dịch",
+                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                }
+
+                // If order is no longer in Cart status, it means it's already been processed
+                if (order.Status != OrderStatus.Cart)
+                {
+                    var updatedUserInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    return new Response(0, "Đơn hàng đã được xử lý",
+                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                }
+
+                // Process based on payment status from PayOS
                 if (paymentLinkInformation.status == "PAID")
                 {
                     // Execute all database operations in a single transaction
@@ -413,33 +458,42 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     {
                         // Get fresh copies of the entities within the transaction
                         var freshPayment = await _unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
-                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                        if (freshPayment == null)
                         {
-                            // Payment already processed or deleted
-                            return false;
+                            return new { Success = false, Message = "Không tìm thấy giao dịch" };
                         }
 
-                        if (order.DiscountId != null)
+                        // If payment is already successful, don't process again
+                        if (freshPayment.Status == PaymentStatus.Success)
                         {
-                            if (await _discountService.HasSufficientPointsAsync((int)order.DiscountId, user.LoyatyPoint))
+                            return new { Success = true, Message = "Giao dịch đã được xử lý trước đó" };
+                        }
+
+                        var freshOrder = await _unitOfWork.Repository<Order>().GetById(order.OrderId);
+                        if (freshOrder == null)
+                        {
+                            return new { Success = false, Message = "Không tìm thấy đơn hàng" };
+                        }
+
+                        // If order is no longer in Cart status, it means it's already been processed
+                        if (freshOrder.Status != OrderStatus.Cart)
+                        {
+                            return new { Success = true, Message = "Đơn hàng đã được xử lý trước đó" };
+                        }
+
+                        // Process loyalty points
+                        if (freshOrder.DiscountId != null)
+                        {
+                            if (await _discountService.HasSufficientPointsAsync((int)freshOrder.DiscountId, user.LoyatyPoint))
                             {
-                                var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)order.DiscountId)).PointCost;
-                                user.LoyatyPoint = newPoint;
+                                user.LoyatyPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)freshOrder.DiscountId)).PointCost;
                                 await _unitOfWork.Repository<User>().Update(user, user.UserId);
                             }
                         }
                         else
                         {
-                            user.LoyatyPoint = (double)(order.TotalPrice * 0.0001m);
+                            user.LoyatyPoint += Math.Round((double)freshOrder.TotalPrice / 10000, 2);
                             await _unitOfWork.Repository<User>().Update(user, user.UserId);
-                        }
-                       
-
-                        var freshOrder = await _unitOfWork.Repository<Order>().GetById(order.OrderId);
-                        if (freshOrder == null)
-                        {
-                            // Order not found
-                            return false;
                         }
 
                         // Update transaction
@@ -455,15 +509,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         freshOrder.SetUpdateDate();
                         await _unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
 
-                        return true; // Transaction successful
+                        return new { Success = true, Message = "Hoàn thành giao dịch" };
                     },
                     ex =>
                     {
                         _logger.LogError(ex, "Error in transaction while processing successful payment for order {OrderCode}", request.OrderCode);
                     });
 
-                    // If transaction was successful, send notifications
-                    if (result)
+                    // If transaction was successful or payment was already processed, send notifications
+                    if (result != null && result.Success)
                     {
                         var updatedUserInfo = new
                         {
@@ -472,71 +526,93 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             user.PhoneNumber,
                         };
 
-                        await _notificationService.NotifyUserAsync(
-                            user.UserId,
-                            "Order",
-                            "Thanh Toán Thành Công",
-                            $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
-                            new Dictionary<string, object>
+                        // Only send notifications if this is the first time we're processing this payment
+                        if (result.Message == "Hoàn thành giao dịch")
+                        {
+                            try
                             {
-                        { "OrderId", order.OrderId },
-                        { "Amount", paymentLinkInformation.amount },
-                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
-                        { "Status", "Đang xử lý" },
-                        { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
-                            });
+                                await _notificationService.NotifyUserAsync(
+                                    user.UserId,
+                                    "Order",
+                                    "Thanh Toán Thành Công",
+                                    $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
+                                    new Dictionary<string, object>
+                                    {
+                                { "OrderId", order.OrderId },
+                                { "Amount", paymentLinkInformation.amount },
+                                { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                                { "Status", "Đang xử lý" },
+                                { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
+                                    });
 
-                        string orderType = order.HasRentItems && order.HasSellItems
-                           ? "Thuê và Mua"
-                           : (order.HasRentItems ? "Thuê" : "Mua");
+                                string orderType = order.HasRentItems && order.HasSellItems
+                                   ? "Thuê và Mua"
+                                   : (order.HasRentItems ? "Thuê" : "Mua");
 
-                        // Format the amount as currency
-                        var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
+                                // Format the amount as currency
+                                var formattedAmount = string.Format("{0:N0} VND", paymentLinkInformation.amount);
 
-                        // Send notification to managers
-                        await _notificationService.NotifyRoleAsync(
-                            "Manager",
-                            "Order",
-                            "Thanh Toán Thành Công",
-                            $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
-                            new Dictionary<string, object>
+                                // Send notification to managers
+                                await _notificationService.NotifyRoleAsync(
+                                    "Manager",
+                                    "Order",
+                                    "Thanh Toán Thành Công",
+                                    $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
+                                    new Dictionary<string, object>
+                                    {
+                                { "OrderId", order.OrderId },
+                                { "Amount", formattedAmount },
+                                { "CustomerName", user.Name },
+                                { "CustomerPhone", user.PhoneNumber },
+                                { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
+                                { "OrderType", orderType },
+                                { "TransactionId", paymentLinkInformation.id }
+                                    });
+                            }
+                            catch (Exception ex)
                             {
-                        { "OrderId", order.OrderId },
-                        { "Amount", formattedAmount },
-                        { "CustomerName", user.Name },
-                        { "CustomerPhone", user.PhoneNumber },
-                        { "PaymentTime", DateTime.Parse(paymentLinkInformation.createdAt) },
-                        { "OrderType", orderType },
-                        { "TransactionId", paymentLinkInformation.id }
-                            });
+                                // Log notification errors but don't fail the operation
+                                _logger.LogError(ex, "Error sending notifications for successful payment {OrderCode}", request.OrderCode);
+                            }
+                        }
 
                         return new Response(0, "Hoàn thành giao dịch",
                             new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
                     }
                     else
                     {
-                        // Transaction failed or payment already processed
-                        return new Response(-1, "Không thể xử lý giao dịch", null);
+                        // Transaction failed
+                        return new Response(-1, result?.Message ?? "Lỗi xử lý giao dịch", null);
                     }
                 }
-                else if(paymentLinkInformation.status == "CANCELLED")
+                else if (paymentLinkInformation.status == "CANCELLED")
                 {
                     // Execute all database operations in a single transaction
                     var result = await _unitOfWork.ExecuteInTransactionAsync(async () =>
                     {
                         // Get fresh copies of the entities within the transaction
                         var freshPayment = await _unitOfWork.Repository<Payment>().GetById(paymentTransaction.PaymentId);
-                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                        if (freshPayment == null)
                         {
-                            // Payment already processed or deleted
-                            return false;
+                            return new { Success = false, Message = "Không tìm thấy giao dịch" };
+                        }
+
+                        // If payment is already cancelled, don't process again
+                        if (freshPayment.Status == PaymentStatus.Cancelled)
+                        {
+                            return new { Success = true, Message = "Giao dịch đã được hủy trước đó" };
                         }
 
                         var freshOrder = await _unitOfWork.Repository<Order>().GetById(order.OrderId);
                         if (freshOrder == null)
                         {
-                            // Order not found
-                            return false;
+                            return new { Success = false, Message = "Không tìm thấy đơn hàng" };
+                        }
+
+                        // If order is no longer in Cart status, it means it's already been processed
+                        if (freshOrder.Status != OrderStatus.Cart)
+                        {
+                            return new { Success = true, Message = "Đơn hàng đã được xử lý trước đó" };
                         }
 
                         // Update transaction
@@ -547,14 +623,14 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         // Release inventory reservations
                         await ReleaseInventoryReservation(freshOrder);
 
-                        return true; // Transaction successful
+                        return new { Success = true, Message = "Huỷ giao dịch" };
                     },
                     ex =>
                     {
                         _logger.LogError(ex, "Error in transaction while processing cancelled payment for order {OrderCode}", request.OrderCode);
                     });
 
-                    if (result)
+                    if (result != null && result.Success)
                     {
                         var updatedUserInfo = new
                         {
@@ -568,8 +644,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
                     else
                     {
-                        // Transaction failed or payment already processed
-                        return new Response(-1, "Không thể xử lý giao dịch", null);
+                        // Transaction failed
+                        return new Response(-1, result?.Message ?? "Lỗi xử lý giao dịch", null);
                     }
                 }
                 else
@@ -580,7 +656,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error checking order {OrderCode}", request.OrderCode);
+                _logger.LogError(exception, "Error checking order {OrderCode}: {Message}", request.OrderCode, exception.Message);
                 return new Response(-1, "fail", null);
             }
         }
