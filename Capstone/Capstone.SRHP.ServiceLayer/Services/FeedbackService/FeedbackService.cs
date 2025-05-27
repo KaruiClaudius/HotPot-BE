@@ -61,6 +61,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
         {
             return await _unitOfWork.Repository<Feedback>()
                 .GetAll()
+                .Include(f => f.Order)
+                .Where(f => !f.IsDelete && f.Order != null && !f.Order.IsDelete)
                 .CountAsync();
         }
 
@@ -359,6 +361,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.FeedbackService
                 UserName = feedback.User?.Name ?? "Unknown",
                 OrderId = feedback.OrderId,
                 CreatedAt = feedback.CreatedAt,
+                Comment = feedback.Comment
             };
         }
 
