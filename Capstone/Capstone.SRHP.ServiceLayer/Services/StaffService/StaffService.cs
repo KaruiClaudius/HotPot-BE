@@ -534,7 +534,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
             TimeSpan timeframe)
         {
             // Get current time
-            var now = DateTime.UtcNow;
+            var now = DateTime.UtcNow.AddHours(7);
 
             // Filter assignments to only those within the specified timeframe
             var recentAssignments = currentAssignments
