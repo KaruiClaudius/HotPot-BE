@@ -156,17 +156,25 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
                                 if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
                                 {
-                                    await unitOfWork.ExecuteInTransactionAsync(async () =>
+                                    var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
                                     {
+                                        // Get the most up-to-date payment record within the transaction
+                                        var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                        if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
+                                        {
+                                            // Payment was already processed by another thread
+                                            return false;
+                                        }
+
                                         // Cancel the payment in our system
-                                        freshPayment.Status = PaymentStatus.Cancelled;
-                                        freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                                        await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
+                                        transactionPayment.Status = PaymentStatus.Cancelled;
+                                        transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                                        await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
 
                                         // Get the order and release inventory
-                                        if (freshPayment.OrderId.HasValue)
+                                        if (transactionPayment.OrderId.HasValue)
                                         {
-                                            var order = await unitOfWork.Repository<Order>().GetById(freshPayment.OrderId.Value);
+                                            var order = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
                                             if (order != null)
                                             {
                                                 // Call method to release inventory reservations
@@ -181,9 +189,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                         _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId}", payment.PaymentId);
                                     });
 
-                                    // Remove from monitoring
-                                    _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                    _logger.LogInformation("Payment {PaymentId} cancelled and removed from monitoring", payment.PaymentId);
+                                    if (success)
+                                    {
+                                        // Remove from monitoring
+                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                        _logger.LogInformation("Payment {PaymentId} cancelled and removed from monitoring", payment.PaymentId);
+                                    }
                                 }
                             }
                         }
