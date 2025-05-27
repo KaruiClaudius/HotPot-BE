@@ -48,19 +48,19 @@ namespace Capstone.HPTY.Test.Controllers.Manager
             var pagedResult = new PagedResult<VehicleDTO>
             {
                 Items = new List<VehicleDTO>
-        {
-            new VehicleDTO
-            {
-                VehicleId = 1,
-                Name = "Test Vehicle",
-                LicensePlate = "ABC123",
-                Type = VehicleType.Car,
-                Status = VehicleStatus.Available,
-                Notes = "Test notes",
-                CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow.AddDays(-5)
-            }
-        },
+                {
+                    new VehicleDTO
+                    {
+                        VehicleId = 1,
+                        Name = "Test Vehicle",
+                        LicensePlate = "ABC123",
+                        Type = VehicleType.Car,
+                        Status = VehicleStatus.Available,
+                        Notes = "Test notes",
+                        CreatedAt = DateTime.UtcNow.AddDays(-10),
+                        UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                    }
+                },
                 PageNumber = 1,
                 PageSize = 10,
                 TotalCount = 1

@@ -1480,10 +1480,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update delivery time if provided
                 if (request.DeliveryTime.HasValue)
                 {
-                    // Validate delivery time is in the future
-                    if (request.DeliveryTime.Value <= DateTime.UtcNow.AddHours(7))
+                    // Get current time in the appropriate time zone
+                    DateTime currentTime = DateTime.UtcNow.AddHours(7); // UTC+7 time zone
+
+                    // Add a small buffer time (e.g., 30 minutes) to ensure enough processing time
+                    DateTime minimumDeliveryTime = currentTime.AddMinutes(30);
+
+                    // Validate delivery time is in the future with sufficient buffer
+                    if (request.DeliveryTime.Value <= minimumDeliveryTime)
                     {
-                        throw new ValidationException("Thời gian giao hàng phải là thời gian trong tương lai");
+                        throw new ValidationException($"Thời gian giao hàng phải ít nhất là {minimumDeliveryTime.ToString("HH:mm dd/MM/yyyy")}");
                     }
 
                     order.DeliveryTime = request.DeliveryTime.Value;

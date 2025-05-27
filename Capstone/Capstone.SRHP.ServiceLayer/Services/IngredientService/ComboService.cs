@@ -554,28 +554,33 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
         public async Task ValidateAllowedIngredientTypesAsync(List<int> allowedTypeIds)
         {
+            // Remove duplicates for validation
+            var distinctTypeIds = allowedTypeIds.Distinct().ToList();
+
             // Get all ingredient types to validate they exist
             var ingredientTypes = await _unitOfWork.Repository<IngredientType>()
-                .FindAll(it => allowedTypeIds.Contains(it.IngredientTypeId) && !it.IsDelete)
+                .FindAll(it => distinctTypeIds.Contains(it.IngredientTypeId) && !it.IsDelete)
                 .ToListAsync();
 
             // Check if all requested types exist
-            if (ingredientTypes.Count != allowedTypeIds.Count)
+            var foundTypeIds = ingredientTypes.Select(it => it.IngredientTypeId).ToList();
+            var missingIds = distinctTypeIds.Except(foundTypeIds).ToList();
+
+            if (missingIds.Any())
             {
-                var missingIds = allowedTypeIds.Except(ingredientTypes.Select(it => it.IngredientTypeId));
                 throw new ValidationException($"Không tìm thấy loại nguyên liệu với ID: {string.Join(", ", missingIds)}");
             }
 
             // Check if broth type (ingredientTypeId = 1) is allowed
-            bool allowsBroth = allowedTypeIds.Contains(1);
+            bool allowsBroth = distinctTypeIds.Contains(1);
             if (!allowsBroth)
             {
                 throw new ValidationException("Combo tùy chỉnh phải cho phép loại nước lẩu (Nước Lẩu)");
             }
 
             // Check if both meat and seafood types are allowed
-            bool allowsMeat = allowedTypeIds.Contains(7);
-            bool allowsSeafood = allowedTypeIds.Contains(2);
+            bool allowsMeat = distinctTypeIds.Contains(7);
+            bool allowsSeafood = distinctTypeIds.Contains(2);
 
             if (allowsMeat && allowsSeafood)
             {
