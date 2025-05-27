@@ -21,6 +21,6 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Discount
         public bool IsNeverExpiring { get; set; } 
         public bool IsFreeForAll { get; set; }
         public int OrderCount { get; set; }
-        string durationText => Duration?.ToString() ?? "vô thời hạn";
+        public string durationText => Duration?.ToString() ?? "vô thời hạn";
     }
 }
