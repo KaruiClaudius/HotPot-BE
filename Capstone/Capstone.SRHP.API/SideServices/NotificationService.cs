@@ -265,12 +265,12 @@ namespace Capstone.HPTY.API.SideServices
             }
         }
 
-        public async Task MarkAsReadAsync(int userNotificationId, int userId)
+        public async Task MarkAsReadAsync(int notificationId, int userId)
         {
             try
             {
                 var userNotification = await _unitOfWork.Repository<UserNotification>()
-                    .FindAsync(un => un.UserNotificationId == userNotificationId && un.UserId == userId);
+                    .FindAsync(un => un.NotificationId == notificationId && un.UserId == userId);
 
                 if (userNotification != null && !userNotification.IsRead)
                 {
@@ -280,7 +280,7 @@ namespace Capstone.HPTY.API.SideServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error marking notification {userNotificationId} as read for user {userId}");
+                _logger.LogError(ex, $"Error marking notification {notificationId} as read for user {userId}");
                 throw;
             }
         }

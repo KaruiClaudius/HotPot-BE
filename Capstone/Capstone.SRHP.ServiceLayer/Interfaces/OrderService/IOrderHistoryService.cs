@@ -14,13 +14,5 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         /// Gets order history with optional filtering
         Task<PagedResult<OrderHistoryDto>> GetOrderHistoryAsync(OrderHistoryFilterRequest filter);
 
-        /// Gets details of a specific order
-        Task<OrderHistoryDto> GetOrderDetailsAsync(int orderId);
-
-        /// Gets orders by status
-        Task<PagedResult<OrderHistoryDto>> GetOrdersByStatusAsync(OrderStatus status, int pageNumber = 1, int pageSize = 10);
-
-        /// Gets orders by date range
-        Task<PagedResult<OrderHistoryDto>> GetOrdersByDateRangeAsync(DateTime startDate, DateTime endDate, int pageNumber = 1, int pageSize = 10);
     }
 }

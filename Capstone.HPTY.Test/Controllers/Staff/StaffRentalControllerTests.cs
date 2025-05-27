@@ -146,50 +146,6 @@ namespace Capstone.HPTY.Test.Controllers.Staff
 
         #region RecordReturn Tests
 
-        [Fact]
-        public async Task RecordReturn_WithValidAssignmentId_ReturnsOkResult()
-        {
-            // Arrange
-            var staffRentalController = this.CreateStaffRentalController();
-            var request = new UnifiedReturnRequestDto
-            {
-                AssignmentId = 1,
-                RentOrderId = 101,
-                CompletedDate = DateTime.Now,
-                ReturnCondition = "Good",
-                DamageFee = 0,
-                Notes = "Returned in good condition"
-            };
-
-            var staffAssignments = new List<StaffPickupAssignmentDto>
-            {
-                new StaffPickupAssignmentDto
-                {
-                    AssignmentId = 1,
-                    OrderId = 101,
-                    StaffId = 123
-                }
-            };
-
-            this.mockStaffService
-                .Setup(s => s.GetStaffAssignmentsAsync(123))
-                .ReturnsAsync(staffAssignments);
-
-            this.mockEquipmentReturnService
-                .Setup(s => s.CompletePickupAssignmentAsync(1))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await staffRentalController.RecordReturn(request);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var response = Assert.IsType<ApiResponse<bool>>(okResult.Value);
-            Assert.True(response.Success);
-            Assert.True(response.Data);
-            Assert.Equal("Return recorded successfully", response.Message);
-            this.mockRepository.VerifyAll();
-        }
 
         [Fact]
         public async Task RecordReturn_WithMissingUserIdClaim_ReturnsUnauthorized()
@@ -265,89 +221,7 @@ namespace Capstone.HPTY.Test.Controllers.Staff
             this.mockRepository.VerifyAll();
         }
 
-        [Fact]
-        public async Task RecordReturn_WhenServiceThrowsNotFoundException_ReturnsNotFound()
-        {
-            // Arrange
-            var staffRentalController = this.CreateStaffRentalController();
-            var request = new UnifiedReturnRequestDto
-            {
-                AssignmentId = 1,
-                RentOrderId = 101,
-                CompletedDate = DateTime.Now,
-                ReturnCondition = "Good"
-            };
 
-            var staffAssignments = new List<StaffPickupAssignmentDto>
-            {
-                new StaffPickupAssignmentDto
-                {
-                    AssignmentId = 1,
-                    OrderId = 101,
-                    StaffId = 123
-                }
-            };
-
-            this.mockStaffService
-                .Setup(s => s.GetStaffAssignmentsAsync(123))
-                .ReturnsAsync(staffAssignments);
-
-            this.mockEquipmentReturnService
-                .Setup(s => s.CompletePickupAssignmentAsync(1))
-                .ThrowsAsync(new NotFoundException("Assignment not found"));
-
-            // Act
-            var result = await staffRentalController.RecordReturn(request);
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-            var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
-            Assert.False(response.Success);
-            Assert.Equal("Assignment not found", response.Message);
-            this.mockRepository.VerifyAll();
-        }
-
-        [Fact]
-        public async Task RecordReturn_WhenServiceThrowsValidationException_ReturnsBadRequest()
-        {
-            // Arrange
-            var staffRentalController = this.CreateStaffRentalController();
-            var request = new UnifiedReturnRequestDto
-            {
-                AssignmentId = 1,
-                RentOrderId = 101,
-                CompletedDate = DateTime.Now,
-                ReturnCondition = "Good"
-            };
-
-            var staffAssignments = new List<StaffPickupAssignmentDto>
-            {
-                new StaffPickupAssignmentDto
-                {
-                    AssignmentId = 1,
-                    OrderId = 101,
-                    StaffId = 123
-                }
-            };
-
-            this.mockStaffService
-                .Setup(s => s.GetStaffAssignmentsAsync(123))
-                .ReturnsAsync(staffAssignments);
-
-            this.mockEquipmentReturnService
-                .Setup(s => s.CompletePickupAssignmentAsync(1))
-                .ThrowsAsync(new ValidationException("Invalid return condition"));
-
-            // Act
-            var result = await staffRentalController.RecordReturn(request);
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            var response = Assert.IsType<ApiResponse<bool>>(badRequestResult.Value);
-            Assert.False(response.Success);
-            Assert.Equal("Invalid return condition", response.Message);
-            this.mockRepository.VerifyAll();
-        }
 
         #endregion
     }

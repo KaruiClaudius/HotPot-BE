@@ -198,8 +198,8 @@ namespace Capstone.HPTY.Test.Controllers.Manager
 
             // Verify notification was sent with correct parameters
             _mockNotificationService.Verify(s => s.NotifyRoleAsync(
-                "Administrators",
-                "ConditionIssue",
+                "Admin",
+                "EquipmentCondition",
                 "Vấn Đề Mới Về Tình Trạng Nồi Lẩu",
                 $"Vấn đề mới được báo cáo cho {hotpot.Name}: {request.Name}", // Fix this line
                 It.Is<Dictionary<string, object>>(d =>

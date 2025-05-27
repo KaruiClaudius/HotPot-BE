@@ -5,6 +5,7 @@ using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
 using Capstone.HPTY.ServiceLayer.Interfaces.ManagerService;
+using Capstone.HPTY.ServiceLayer.Interfaces.Notification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,13 +19,15 @@ namespace Capstone.HPTY.API.Controllers.Manager
     {
         private readonly IOrderManagementService _orderManagementService;
         private readonly ILogger<ManagerOrderManagementController> _logger;
-
+        private readonly INotificationService _notificationService;
 
         public ManagerOrderManagementController(IOrderManagementService orderManagementService,
-            ILogger<ManagerOrderManagementController> logger)
+            ILogger<ManagerOrderManagementController> logger,
+            INotificationService notificationService)
         {
             _orderManagementService = orderManagementService;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         [HttpPost("assign-multiple-staff")]
@@ -32,7 +35,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ApiResponse<MultiStaffAssignmentResponse>>> AssignMultipleStaffToOrder(
-    [FromBody] MultiStaffAssignmentRequest request)
+      [FromBody] MultiStaffAssignmentRequest request)
         {
             try
             {
@@ -41,6 +44,29 @@ namespace Capstone.HPTY.API.Controllers.Manager
                     request.PreparationStaffIds,
                     request.ShippingStaffId,
                     request.VehicleId);
+
+                // Get order details for notification
+                var order = await _orderManagementService.GetOrderWithDetails(request.OrderCode);
+                if (order != null)
+                {
+                    // Notify each preparation staff member
+                    foreach (var staffId in request.PreparationStaffIds)
+                    {
+                        await _notificationService.NotifyUserAsync(
+                            staffId,
+                            "PrepOrder",
+                            "Phân Công Đơn Hàng Mới",
+                            $"Bạn đã được phân công chuẩn bị đơn hàng #{order.OrderId}.",
+                            new Dictionary<string, object>
+                            {
+                        { "OrderId", order.OrderId },
+                        { "OrderCode", order.OrderCode },
+                        { "AssignedTime", DateTime.Now.ToString("dd/MM/yyyy HH:mm") },
+                        { "Instructions", "Vui lòng chuẩn bị đơn hàng theo quy trình và đảm bảo chất lượng." },
+                        { "ContactInfo", "Nếu bạn cần hỗ trợ, vui lòng liên hệ với quản lý." }
+                            });
+                    }
+                }
 
                 return Ok(ApiResponse<MultiStaffAssignmentResponse>.SuccessResponse(
                     result, "Preparation and shipping staff assigned successfully"));

@@ -74,8 +74,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify administrators about the status change using the simplified notification service
                 await _notificationService.NotifyRoleAsync(
-                    "Administrators",
-                    "EquipmentStatusChange",
+                    "Admin",
+                    "EquipmentStock",
                     "Trạng Thái Nồi Lẩu Đã Thay Đổi",
                     $"Trạng thái của {equipmentName} đã thay đổi thành {result.Status}",
                     new Dictionary<string, object>
@@ -146,8 +146,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (result.Quantity <= DEFAULT_LOW_STOCK_THRESHOLD && result.Quantity > 0)
                 {
                     await _notificationService.NotifyRoleAsync(
-                        "Administrators",
-                        "LowStock",
+                        "Admin",
+                        "EquipmentStock",
                         "Cảnh Báo Dụng Cụ Sắp Hết Hàng",
                         $"Hàng tồn kho thấp cho {result.Name}: còn lại {result.Quantity} (ngưỡng: {DEFAULT_LOW_STOCK_THRESHOLD})",
                         new Dictionary<string, object>
@@ -167,7 +167,7 @@ namespace Capstone.HPTY.API.Controllers.Manager
                 if (result.Quantity == 0)
                 {
                     await _notificationService.NotifyRoleAsync(
-                  "Administrators",
+                  "Admin",
                   "OutOfStock",
                   "Dụng Cụ Đã Hết Hàng",
                   $"{result.Name} hiện đã hết hàng",
@@ -214,8 +214,8 @@ namespace Capstone.HPTY.API.Controllers.Manager
 
                 // Notify administrators about the status change
                 await _notificationService.NotifyRoleAsync(
-                    "Administrators",
-                    "EquipmentStatusChange",
+                    "Admin",
+                    "EquipmentStock",
                     "Utensil Status Changed",
                     $"{result.Name} status changed to {statusText}",
                     new Dictionary<string, object>

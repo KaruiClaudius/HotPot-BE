@@ -30,7 +30,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             _logger = logger;
         }
 
-        public async Task<bool> CompletePickupAssignmentAsync(int assignmentId)
+        public async Task<bool> CompletePickupAssignmentAsync(int assignmentId, EquipmentReturnRequest returnRequest)
         {
             try
             {

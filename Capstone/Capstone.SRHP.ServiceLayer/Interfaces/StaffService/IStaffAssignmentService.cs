@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Management;
+using Capstone.HPTY.ServiceLayer.DTOs.Shipping;
 
 namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
 {
@@ -19,7 +20,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.StaffService
                     StaffTaskType taskType,
                     int? vehicleId = null);
 
-        Task<bool> CompleteAssignmentAsync(int assignmentId);
+        Task<bool> CompleteAssignmentAsync(int assignmentId, EquipmentReturnRequest returnRequest = null);
 
         /// Gets all assignments for a specific staff member
         Task<List<StaffAssignmentDto>> GetStaffAssignmentsAsync(int staffId, StaffTaskType? taskType = null);
