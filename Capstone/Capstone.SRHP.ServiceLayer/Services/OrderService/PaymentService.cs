@@ -419,6 +419,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             return false;
                         }
 
+                        if (order.DiscountId != null)
+                        {
+                            if (await _discountService.HasSufficientPointsAsync((int)order.DiscountId, user.LoyatyPoint))
+                            {
+                                var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)order.DiscountId)).PointCost;
+                                user.LoyatyPoint = newPoint;
+                                await _unitOfWork.Repository<User>().Update(user, user.UserId);
+                            }
+                        }
+                        else
+                        {
+                            user.LoyatyPoint = (double)(order.TotalPrice * 0.0001m);
+                            await _unitOfWork.Repository<User>().Update(user, user.UserId);
+                        }
+                       
 
                         var freshOrder = await _unitOfWork.Repository<Order>().GetById(order.OrderId);
                         if (freshOrder == null)
