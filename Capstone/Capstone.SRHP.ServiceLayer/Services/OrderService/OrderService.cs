@@ -1429,25 +1429,29 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         }
                     }
                 }
-                // If order is delivered, update hotpot inventory status to InUse
-                else if (status == OrderStatus.Delivered)
-                {
-                    if (order.RentOrder != null)
-                    {
-                        foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
-                        {
-                            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
-                                .GetById(detail.HotpotInventoryId.Value);
+                //// If order is delivered, update hotpot inventory status to InUse
+                //else if (status == OrderStatus.Delivered)
+                //{
+                //    if (order.RentOrder != null)
+                //    {
+                //        foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
+                //        {
+                //            var hotpotInventory = await _unitOfWork.Repository<HotPotInventory>()
+                //                .GetById(detail.HotpotInventoryId.Value);
 
-                            if (hotpotInventory != null)
-                            {
-                                hotpotInventory.Status = HotpotStatus.Rented; // Set to in use
-                                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                                await _unitOfWork.CommitAsync();
-                            }
-                        }
-                    }
-                }
+                //            if (hotpotInventory != null)
+                //            {
+                //                hotpotInventory.Status = HotpotStatus.Rented; // Set to in use
+                //                await _unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                //                await _unitOfWork.CommitAsync();
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        order.Status = OrderStatus.Completed;
+                //    }
+                //}
                 // If order is returning, update hotpot inventory status to Maintenance
                 else if (status == OrderStatus.Returning)
                 {
@@ -1646,12 +1650,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             // Define valid status transitions
             bool isValidTransition = (currentStatus, newStatus) switch
             {
-                (OrderStatus.Cart, OrderStatus.Processing) => true,
+                (OrderStatus.Cart, OrderStatus.Pending) => true,
                 (OrderStatus.Cart, OrderStatus.Cancelled) => true,
                 (OrderStatus.Pending, OrderStatus.Processing) => true,
                 (OrderStatus.Processing, OrderStatus.Shipping) => true,
                 (OrderStatus.Processing, OrderStatus.Cancelled) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
+                (OrderStatus.Shipping, OrderStatus.Completed) => true,
                 (OrderStatus.Delivered, OrderStatus.Returning) => true,
                 (OrderStatus.Returning, OrderStatus.Completed) => true,
                 _ => false
@@ -1718,7 +1723,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private async Task FinalizeInventoryDeduction(Order order)
         {
             // This method actually deducts inventory quantities after payment is confirmed
-            if (order.SellOrder != null)
+            if (order.HasSellItems != null)
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
@@ -1736,7 +1741,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // For hotpots, we just need to update their status to Rented
-            if (order.RentOrder != null)
+            if (order.HasRentItems != null)
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {

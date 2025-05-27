@@ -232,14 +232,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     .AsQueryable()
                     .Include(o => o.ShippingOrder)
                         .ThenInclude(so => so != null ? so.Vehicle : null)
-                    .Include(o => o.RentOrder) // Include RentOrder to check if it exists
                     .FirstOrDefaultAsync(o => o.OrderId == orderId && !o.IsDelete);
 
                 if (order == null)
                     throw new NotFoundException($"Order with ID {orderId} not found");
 
                 // Special handling for Delivered status - auto transition to Completed if no rent order
-                if (newStatus == OrderStatus.Delivered && order.RentOrder == null)
+                if (newStatus == OrderStatus.Delivered && !order.HasRentItems)
                 {
                     _logger.LogInformation("Order {OrderId} has no rent order, automatically setting to Completed instead of Delivered", orderId);
                     newStatus = OrderStatus.Completed;
