@@ -143,16 +143,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         var newPoint = user.LoyatyPoint - (await _discountService.GetByIdAsync((int)discountId)).PointCost;
                         user.LoyatyPoint = newPoint;
                     }
-
-                    // Update the order details
-                    var updateRequest = new UpdateOrderRequest
+                    else
                     {
-                        Address = address,
-                        Notes = notes,
-                        DiscountId = discountId,
-                        ExpectedReturnDate = expectedReturnDate,
-                        DeliveryTime = deliveryTime
-                    };
+                        double result = (double)(order.TotalPrice * 0.0001m);
+                    }
+
+                        // Update the order details
+                        var updateRequest = new UpdateOrderRequest
+                        {
+                            Address = address,
+                            Notes = notes,
+                            DiscountId = discountId,
+                            ExpectedReturnDate = expectedReturnDate,
+                            DeliveryTime = deliveryTime
+                        };
 
                     // This will throw ValidationException if validation fails
                     await OrderUpdateAsync(orderId, updateRequest);
@@ -410,7 +414,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
 
                 // Process based on payment status
-                if (paymentLinkInformation.status == "PAID" && paymentTransaction.Status == PaymentStatus.Pending)
+                if (paymentLinkInformation.status == "PAID")
                 {
                     // Update transaction
                     paymentTransaction.Status = PaymentStatus.Success;
@@ -420,7 +424,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     // Finalize inventory deduction
                     await FinalizeInventoryDeduction(order);
 
-                    // Update order status to Processing
+                    // Update order status to Pending
                     order.Status = OrderStatus.Pending;
                     order.SetUpdateDate();
                     await _unitOfWork.Repository<Order>().Update(order, order.OrderId);
@@ -1480,19 +1484,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update delivery time if provided
                 if (request.DeliveryTime.HasValue)
                 {
-                    // Get current time in the appropriate time zone
-                    DateTime currentTime = DateTime.UtcNow.AddHours(7); // UTC+7 time zone
+                    // Get current time in UTC+7
+                    DateTime currentTimeUtc7 = DateTime.UtcNow.AddHours(7);
 
-                    // Add a small buffer time (e.g., 30 minutes) to ensure enough processing time
-                    DateTime minimumDeliveryTime = currentTime.AddMinutes(30);
+                    // Add buffer time
+                    DateTime minimumDeliveryTimeUtc7 = currentTimeUtc7.AddMinutes(30);
 
-                    // Validate delivery time is in the future with sufficient buffer
-                    if (request.DeliveryTime.Value <= minimumDeliveryTime)
+                    // Normalize the delivery time to UTC+7 if it's in UTC
+                    DateTime deliveryTimeUtc7;
+                    if (request.DeliveryTime.Value.Kind == DateTimeKind.Utc)
                     {
-                        throw new ValidationException($"Thời gian giao hàng phải ít nhất là {minimumDeliveryTime.ToString("HH:mm dd/MM/yyyy")}");
+                        // Convert from UTC to UTC+7
+                        deliveryTimeUtc7 = request.DeliveryTime.Value.AddHours(7);
+                    }
+                    else
+                    {
+                        // If it's not explicitly UTC, assume it's already in UTC+7 or local time
+                        deliveryTimeUtc7 = request.DeliveryTime.Value;
                     }
 
-                    order.DeliveryTime = request.DeliveryTime.Value;
+                    // Log values for debugging if needed
+                    Console.WriteLine($"Current time (UTC+7): {currentTimeUtc7:yyyy-MM-dd HH:mm:ss}");
+                    Console.WriteLine($"Minimum delivery time (UTC+7): {minimumDeliveryTimeUtc7:yyyy-MM-dd HH:mm:ss}");
+                    Console.WriteLine($"Requested delivery time (normalized to UTC+7): {deliveryTimeUtc7:yyyy-MM-dd HH:mm:ss}");
+
+                    // Compare times in the same time zone
+                    if (deliveryTimeUtc7 <= minimumDeliveryTimeUtc7)
+                    {
+                        throw new ValidationException($"Thời gian giao hàng phải ít nhất là {minimumDeliveryTimeUtc7.ToString("HH:mm dd/MM/yyyy")}");
+                    }
+
+                    // Store the delivery time in the database
+                    // You might want to standardize on UTC for storage
+                    order.DeliveryTime = deliveryTimeUtc7;
                 }
 
                 // Update rental dates if provided and order has rental items

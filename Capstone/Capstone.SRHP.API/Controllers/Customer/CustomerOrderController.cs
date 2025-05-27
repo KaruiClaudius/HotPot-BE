@@ -382,7 +382,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Items = new List<OrderItemResponse>(),
                 Discount = null,
                 Payment = null,
-                AdditionalPayments = new List<PaymentInfo>()
+                IsFeedbacked = order.Feedback != null,
+                AdditionalPayments = new List<PaymentInfo>(),
             };
 
             var addedSellDetailIds = new HashSet<int>();

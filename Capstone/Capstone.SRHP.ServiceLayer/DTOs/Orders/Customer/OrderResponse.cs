@@ -25,6 +25,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
 
         // Additional payments
         public List<PaymentInfo> AdditionalPayments { get; set; }
+        public bool IsFeedbacked { get; set; }
 
         // Rental-specific properties
         public DateTime? RentalStartDate { get; set; }
