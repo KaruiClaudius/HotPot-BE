@@ -13,6 +13,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Feedback
         public string UserName { get; set; }
         public int OrderId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string Comment { get; set; }
     }
     public class FeedbackDetailDto : FeedbackListDto
     {
