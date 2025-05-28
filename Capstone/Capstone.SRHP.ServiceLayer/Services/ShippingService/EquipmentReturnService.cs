@@ -36,8 +36,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.ShippingService
             {
                 _logger.LogInformation("Completing pickup assignment {AssignmentId}", assignmentId);
 
-                // Use the unified staff assignment service to complete the assignment
-                return await _staffAssignmentService.CompleteAssignmentAsync(assignmentId);
+                // Pass both parameters to the staff assignment service
+                return await _staffAssignmentService.CompleteAssignmentAsync(assignmentId, returnRequest);
             }
             catch (Exception ex)
             {
