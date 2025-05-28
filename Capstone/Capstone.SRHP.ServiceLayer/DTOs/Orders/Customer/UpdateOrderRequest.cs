@@ -21,5 +21,13 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         public DateTime? ExpectedReturnDate { get; set; }
 
         public DateTime? DeliveryTime { get; set; }
+
+    }    
+    public class SpecialUpdateOrderRequest : UpdateOrderRequest
+    {
+        public decimal TotalPrice { get; set; }
+
     }
+
+
 }
