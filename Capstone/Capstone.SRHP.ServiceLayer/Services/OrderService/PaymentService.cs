@@ -35,6 +35,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private readonly ICustomizationService _customizationService;
         private readonly INotificationService _notificationService;
 
+
         public PaymentService(
             PayOS payOS,
             IUnitOfWork unitOfWork,
@@ -58,7 +59,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         }
 
         public async Task<Response> ProcessOnlinePayment(int orderId, string address, string notes, int? discountId,
-    DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
+            DateTime? expectedReturnDate, DateTime? deliveryTime, CreatePaymentLinkRequest paymentRequest, int userId)
         {
             try
             {
@@ -72,16 +73,49 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, $"Một số mặt hàng trong giỏ hàng của bạn hiện không còn: {string.Join(", ", verificationResults.UnavailableItems)}", null);
                 }
 
+                DateTime currentTime = DateTime.UtcNow.AddHours(7);
+
+                // Calculate rental duration and adjust hotpot prices if needed
+                decimal originalTotalPrice = order.TotalPrice;
+                decimal newTotalPrice = originalTotalPrice;
+
                 if (order.HasRentItems)
                 {
-                    // Get current time with offset (local current time)
-                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
-
                     // Check if provided date is valid (future compared to current time)
                     if (!expectedReturnDate.HasValue || expectedReturnDate.Value <= currentTime)
                     {
                         throw new ValidationException("Ngày trả dự kiến phải là một thời điểm trong tương lai");
                     }
+
+                    // Calculate rental duration in days (round up to next day)
+                    int rentalDays = (int)Math.Ceiling((expectedReturnDate.Value - currentTime).TotalDays);
+                    if (rentalDays < 1) rentalDays = 1;
+
+                    // Get all hotpot items from the order
+                    decimal hotpotTotalOriginal = 0;
+                    decimal hotpotTotalAdjusted = 0;
+
+                    foreach (var orderItem in order.RentOrder.RentOrderDetails)
+                    {
+                        // Check if this is a hotpot item (you'll need to implement this logic based on your data model)
+                        // For example, you might have a category or product type field to identify hotpots
+                        if (IsHotpotItem(orderItem))
+                        {
+                            // Calculate original and new prices
+                            decimal originalItemPrice = orderItem.RentalPrice * orderItem.Quantity;
+                            hotpotTotalOriginal += originalItemPrice;
+
+                            // Calculate adjusted price based on rental days
+                            decimal adjustedItemPrice = originalItemPrice * rentalDays;
+                            hotpotTotalAdjusted += adjustedItemPrice;
+                        }
+                    }
+
+                    // Update the total price by replacing the original hotpot prices with the adjusted ones
+                    newTotalPrice = originalTotalPrice - hotpotTotalOriginal + hotpotTotalAdjusted;
+
+                    // Update the payment request price
+                    paymentRequest = paymentRequest with { price = (int)newTotalPrice };
                 }
 
                 // 3. Get user information (read operation, can be outside transaction)
@@ -142,14 +176,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     // Update the order details
-                    var updateRequest = new UpdateOrderRequest
+                    var updateRequest = new SpecialUpdateOrderRequest
                     {
                         Address = address,
                         Notes = notes,
                         DiscountId = discountId,
                         ExpectedReturnDate = expectedReturnDate,
-                        DeliveryTime = deliveryTime
+                        DeliveryTime = deliveryTime,
+                        TotalPrice = newTotalPrice
                     };
+
+
 
                     // This will throw ValidationException if validation fails
                     await OrderUpdateAsync(orderId, updateRequest);
@@ -202,6 +239,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 return new Response(-1, $"{exception.Message}", null);
             }
         }
+        private bool IsHotpotItem(RentOrderDetail product)
+        {
+            return product.HotpotInventoryId.HasValue;
+        }
 
         public async Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId,
       DateTime? expectedReturnDate, DateTime? deliveryTime, int userId)
@@ -244,7 +285,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // 5. Update the order details
-                var updateRequest = new UpdateOrderRequest
+                var updateRequest = new SpecialUpdateOrderRequest
                 {
                     Address = address,
                     Notes = notes,
@@ -469,7 +510,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             return new { Success = true, Message = "Giao dịch đã được xử lý trước đó" };
                         }
 
-                        var freshOrder = await _unitOfWork.Repository<Order>().GetById(order.OrderId);
+                        var freshOrder = await GetOrderByIdAsync(order.OrderId);
                         if (freshOrder == null)
                         {
                             return new { Success = false, Message = "Không tìm thấy đơn hàng" };
@@ -1611,7 +1652,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         /// <summary>
         /// Update order details
         /// </summary>
-        private async Task<Order> OrderUpdateAsync(int id, UpdateOrderRequest request)
+        private async Task<Order> OrderUpdateAsync(int id, SpecialUpdateOrderRequest request)
         {
             try
             {
@@ -1627,6 +1668,23 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 if (!string.IsNullOrWhiteSpace(request.Notes))
                     order.Notes = request.Notes;
+
+                // With this safer logic:
+                var totalPriceProp = request.GetType().GetProperty(nameof(request.TotalPrice));
+                if (totalPriceProp != null)
+                {
+                    var providedValue = totalPriceProp.GetValue(request);
+                    // Only update if the property is set and not null
+                    if (providedValue != null)
+                    {
+                        var price = (decimal)providedValue;
+                        if (price <= 0)
+                        {
+                            throw new ValidationException("Tổng tiền không hợp lệ (không thể là 0 hoặc nhỏ hơn 0). Vui lòng kiểm tra lại giá trị tổng tiền.");
+                        }
+                        order.TotalPrice = price;
+                    }
+                }
 
                 // Update delivery time if provided
                 if (request.DeliveryTime.HasValue)
@@ -1727,6 +1785,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     order.DiscountId = null;
                 }
+
 
 
                 // Update order
