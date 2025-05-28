@@ -176,41 +176,132 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
                                     payment.TransactionCode, paymentInfo.status);
 
-                                // Process based on PayOS status
+                                // CRITICAL: Process based on PayOS status
                                 if (paymentInfo.status == "PAID")
                                 {
+                                    _logger.LogInformation("Payment {TransactionCode} is PAID according to PayOS. Processing as successful payment.",
+                                        payment.TransactionCode);
+
                                     // Process successful payment
-                                    var success = await ProcessSuccessfulPayment(payment, order, user, paymentInfo);
-                                    if (success)
+                                    using var scope2 = _serviceProvider.CreateScope();
+                                    var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
+                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                                    var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+
+                                    _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
+                                        payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
+
+                                    if (response.error == 0)
                                     {
                                         _monitoredPayments.TryRemove(payment.PaymentId, out _);
                                         _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) processed successfully and removed from monitoring",
                                             payment.PaymentId, payment.TransactionCode);
                                     }
+                                    else
+                                    {
+                                        _logger.LogWarning("Failed to process successful payment {TransactionCode}: {Message}",
+                                            payment.TransactionCode, response.message);
+                                    }
                                 }
                                 else if (paymentInfo.status == "CANCELLED")
                                 {
+                                    _logger.LogInformation("Payment {TransactionCode} is CANCELLED according to PayOS. Processing as cancelled payment.",
+                                        payment.TransactionCode);
+
                                     // Process cancelled payment
-                                    var success = await ProcessCancelledPayment(payment, order);
-                                    if (success)
+                                    using var scope2 = _serviceProvider.CreateScope();
+                                    var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
+                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                                    var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+
+                                    _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
+                                        payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
+
+                                    if (response.error == 0)
                                     {
                                         _monitoredPayments.TryRemove(payment.PaymentId, out _);
                                         _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled and removed from monitoring",
                                             payment.PaymentId, payment.TransactionCode);
                                     }
-                                }
-                                else if (isTimedOut && (paymentInfo.status == "PENDING" || paymentInfo.status == "CREATED"))
-                                {
-                                    // If the payment has timed out and is still pending according to PayOS, cancel it
-                                    _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
-                                        payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
-
-                                    var success = await ProcessCancelledPayment(payment, order);
-                                    if (success)
+                                    else
                                     {
-                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
-                                            payment.PaymentId, payment.TransactionCode);
+                                        _logger.LogWarning("Failed to process cancelled payment {TransactionCode}: {Message}",
+                                            payment.TransactionCode, response.message);
+                                    }
+                                }
+                                else if (isTimedOut)
+                                {
+                                    // ONLY cancel if the payment has timed out AND is still in a pending-like state
+                                    if (paymentInfo.status == "PENDING" || paymentInfo.status == "CREATED")
+                                    {
+                                        _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
+                                            payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
+
+                                        // Get a fresh copy of the payment again to ensure it's still pending
+                                        freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                        if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
+                                        {
+                                            var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
+                                            {
+                                                // Get the most up-to-date payment record within the transaction
+                                                var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                                if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
+                                                {
+                                                    // Payment was already processed by another thread
+                                                    return false;
+                                                }
+
+                                                // Double-check with PayOS one more time before cancelling
+                                                var finalCheck = await payOS.getPaymentLinkInformation(payment.TransactionCode);
+                                                if (finalCheck != null && finalCheck.status == "PAID")
+                                                {
+                                                    _logger.LogWarning("Payment {TransactionCode} changed to PAID during cancellation. Aborting cancellation.",
+                                                        payment.TransactionCode);
+                                                    return false;
+                                                }
+
+                                                // Cancel the payment in our system
+                                                transactionPayment.Status = PaymentStatus.Cancelled;
+                                                transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                                                await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
+
+                                                // Get the order and release inventory
+                                                if (transactionPayment.OrderId.HasValue)
+                                                {
+                                                    var orderToCancel = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
+                                                    if (orderToCancel != null)
+                                                    {
+                                                        // Call method to release inventory reservations
+                                                        await ReleaseInventoryReservation(orderToCancel);
+                                                    }
+                                                }
+
+                                                return true; // Transaction success
+                                            },
+                                            ex =>
+                                            {
+                                                _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId} ({TransactionCode})",
+                                                    payment.PaymentId, payment.TransactionCode);
+                                            });
+
+                                            if (success)
+                                            {
+                                                // Remove from monitoring
+                                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                                _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
+                                                    payment.PaymentId, payment.TransactionCode);
+                                            }
+                                            else
+                                            {
+                                                _logger.LogWarning("Failed to cancel payment {PaymentId} ({TransactionCode}) - transaction failed or payment already processed",
+                                                    payment.PaymentId, payment.TransactionCode);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _logger.LogInformation("Payment {TransactionCode} has timed out but has status {Status} in PayOS. Not cancelling.",
+                                            payment.TransactionCode, paymentInfo.status);
                                     }
                                 }
                             }
@@ -233,179 +324,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                 _logger.LogError(ex, "Error in CheckPendingPaymentsAsync");
             }
         }
-        private async Task<bool> ProcessSuccessfulPayment(Payment payment, Order order, User user, PaymentLinkInformation paymentInfo)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var discountService = scope.ServiceProvider.GetRequiredService<IDiscountService>();
-            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-            // Execute all database operations in a single transaction
-            var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
-            {
-                // Get fresh copies of the entities within the transaction
-                var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                if (freshPayment == null)
-                {
-                    return false;
-                }
-
-                // If payment is already successful, don't process again
-                if (freshPayment.Status == PaymentStatus.Success)
-                {
-                    return false;
-                }
-
-                var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
-                if (freshOrder == null)
-                {
-                    return false;
-                }
-
-                // If order is no longer in Cart status, it means it's already been processed
-                if (freshOrder.Status != OrderStatus.Cart)
-                {
-                    return false;
-                }
-
-                // Process loyalty points
-                if (freshOrder.DiscountId != null)
-                {
-                    if (await discountService.HasSufficientPointsAsync((int)freshOrder.DiscountId, user.LoyatyPoint))
-                    {
-                        var newPoint = user.LoyatyPoint - (await discountService.GetByIdAsync((int)freshOrder.DiscountId)).PointCost;
-                        user.LoyatyPoint = newPoint;
-                        await unitOfWork.Repository<User>().Update(user, user.UserId);
-                    }
-                }
-                else
-                {
-                    user.LoyatyPoint = (double)(freshOrder.TotalPrice * 0.0001m);
-                    await unitOfWork.Repository<User>().Update(user, user.UserId);
-                }
-
-                // Update transaction
-                freshPayment.Status = PaymentStatus.Success;
-                freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
-
-                // Finalize inventory deduction
-                await FinalizeInventoryDeduction(freshOrder);
-
-                // Update order status to Pending
-                freshOrder.Status = OrderStatus.Pending;
-                freshOrder.SetUpdateDate();
-                await unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
-
-                return true; // Transaction successful
-            },
-            ex =>
-            {
-                _logger.LogError(ex, "Error in transaction while processing successful payment for order {OrderId}", order.OrderId);
-            });
-
-            // If transaction was successful, send notifications
-            if (result)
-            {
-                try
-                {
-                    await notificationService.NotifyUserAsync(
-                        user.UserId,
-                        "Order",
-                        "Thanh Toán Thành Công",
-                        $"Đơn hàng #{order.OrderId} của bạn đã được thanh toán thành công",
-                        new Dictionary<string, object>
-                        {
-                        { "OrderId", order.OrderId },
-                        { "Amount", paymentInfo.amount },
-                        { "PaymentTime", DateTime.Parse(paymentInfo.createdAt) },
-                        { "Status", "Đang xử lý" },
-                        { "NextSteps", "Đơn hàng của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn hàng được giao." }
-                        });
-
-                    string orderType = order.HasRentItems && order.HasSellItems
-                       ? "Thuê và Mua"
-                       : (order.HasRentItems ? "Thuê" : "Mua");
-
-                    // Format the amount as currency
-                    var formattedAmount = string.Format("{0:N0} VND", paymentInfo.amount);
-
-                    // Send notification to managers
-                    await notificationService.NotifyRoleAsync(
-                        "Manager",
-                        "Order",
-                        "Thanh Toán Thành Công",
-                        $"Khách hàng {user.Name} đã thanh toán thành công đơn hàng #{order.OrderCode}",
-                        new Dictionary<string, object>
-                        {
-                        { "OrderId", order.OrderId },
-                        { "Amount", formattedAmount },
-                        { "CustomerName", user.Name },
-                        { "CustomerPhone", user.PhoneNumber },
-                        { "PaymentTime", DateTime.Parse(paymentInfo.createdAt) },
-                        { "OrderType", orderType },
-                        { "TransactionId", paymentInfo.id }
-                        });
-                }
-                catch (Exception ex)
-                {
-                    // Log notification errors but don't fail the operation
-                    _logger.LogError(ex, "Error sending notifications for successful payment {OrderId}", order.OrderId);
-                }
-            }
-
-            return result;
-        }
-        private async Task<bool> ProcessCancelledPayment(Payment payment, Order order)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
-            // Execute all database operations in a single transaction
-            var result = await unitOfWork.ExecuteInTransactionAsync(async () =>
-            {
-                // Get fresh copies of the entities within the transaction
-                var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                if (freshPayment == null)
-                {
-                    return false;
-                }
-
-                // If payment is already cancelled, don't process again
-                if (freshPayment.Status == PaymentStatus.Cancelled)
-                {
-                    return false;
-                }
-
-                var freshOrder = await unitOfWork.Repository<Order>().GetById(order.OrderId);
-                if (freshOrder == null)
-                {
-                    return false;
-                }
-
-                // If order is no longer in Cart status, it means it's already been processed
-                if (freshOrder.Status != OrderStatus.Cart)
-                {
-                    return false;
-                }
-
-                // Update transaction
-                freshPayment.Status = PaymentStatus.Cancelled;
-                freshPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                await unitOfWork.Repository<Payment>().Update(freshPayment, freshPayment.PaymentId);
-
-                // Release inventory reservations
-                await ReleaseInventoryReservation(freshOrder);
-
-                return true; // Transaction successful
-            },
-            ex =>
-            {
-                _logger.LogError(ex, "Error in transaction while processing cancelled payment for order {OrderId}", order.OrderId);
-            });
-
-            return result;
-        }
 
         private async Task ReleaseInventoryReservation(Order order)
         {
@@ -449,179 +368,5 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
         }
 
 
-        private async Task FinalizeInventoryDeduction(Order order)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var ingredientService = scope.ServiceProvider.GetRequiredService<IIngredientService>();
-            var comboService = scope.ServiceProvider.GetRequiredService<IComboService>();
-            var customizationService = scope.ServiceProvider.GetRequiredService<ICustomizationService>();
-            var utensilService = scope.ServiceProvider.GetRequiredService<IUtensilService>();
-            var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
-
-            // This method actually deducts inventory quantities after payment is confirmed
-            if (order.SellOrder != null)
-            {
-                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
-                {
-                    if (detail.IngredientId.HasValue)
-                    {
-                        try
-                        {
-                            // Use the updated ConsumeIngredientAsync method
-                            int consumed = await ingredientService.ConsumeIngredientAsync(
-                                detail.IngredientId.Value,
-                                detail.Quantity,
-                                order.OrderId,
-                                detail.SellOrderDetailId);
-
-                            if (consumed < detail.Quantity)
-                            {
-                                // Log a warning if we couldn't consume the full amount
-                                _logger.LogWarning(
-                                    "Could not consume full quantity for ingredient ID {IngredientId}. Requested: {Requested}, Consumed: {Consumed}",
-                                    detail.IngredientId.Value,
-                                    detail.Quantity,
-                                    consumed);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log the error but continue processing other items
-                            _logger.LogError(ex,
-                                "Error consuming ingredient ID {IngredientId} with quantity {Quantity}",
-                                detail.IngredientId.Value,
-                                detail.Quantity);
-                        }
-                    }
-                    else if (detail.ComboId.HasValue)
-                    {
-                        // For combos, we need to get the ingredients and consume them
-                        var combo = await comboService.GetByIdAsync(detail.ComboId.Value);
-                        if (combo != null && combo.ComboIngredients != null)
-                        {
-                            foreach (var comboIngredient in combo.ComboIngredients.Where(ci => !ci.IsDelete))
-                            {
-                                try
-                                {
-                                    // Calculate quantity needed based on order size
-                                    int quantityNeeded = comboIngredient.Quantity * detail.Quantity;
-
-                                    // Consume the ingredient
-                                    int consumed = await ingredientService.ConsumeIngredientAsync(
-                                        comboIngredient.IngredientId,
-                                        quantityNeeded,
-                                        order.OrderId,
-                                        detail.SellOrderDetailId,
-                                        detail.ComboId);
-
-                                    if (consumed < quantityNeeded)
-                                    {
-                                        _logger.LogWarning(
-                                            "Could not consume full quantity for ingredient ID {IngredientId} in combo {ComboId}. Requested: {Requested}, Consumed: {Consumed}",
-                                            comboIngredient.IngredientId,
-                                            detail.ComboId.Value,
-                                            quantityNeeded,
-                                            consumed);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex,
-                                        "Error consuming ingredient ID {IngredientId} for combo {ComboId}",
-                                        comboIngredient.IngredientId,
-                                        detail.ComboId.Value);
-                                }
-                            }
-                        }
-                    }
-                    else if (detail.CustomizationId.HasValue)
-                    {
-                        // For customizations, we need to get the ingredients and consume them
-                        var customization = await customizationService.GetByIdAsync(detail.CustomizationId.Value);
-                        if (customization != null && customization.CustomizationIngredients != null)
-                        {
-                            foreach (var customizationIngredient in customization.CustomizationIngredients.Where(ci => !ci.IsDelete))
-                            {
-                                try
-                                {
-                                    // Calculate quantity needed based on order size
-                                    int quantityNeeded = customizationIngredient.Quantity * detail.Quantity;
-
-                                    // Consume the ingredient
-                                    int consumed = await ingredientService.ConsumeIngredientAsync(
-                                        customizationIngredient.IngredientId,
-                                        quantityNeeded,
-                                        order.OrderId,
-                                        detail.SellOrderDetailId,
-                                        null,
-                                        detail.CustomizationId);
-
-                                    if (consumed < quantityNeeded)
-                                    {
-                                        _logger.LogWarning(
-                                            "Could not consume full quantity for ingredient ID {IngredientId} in customization {CustomizationId}. Requested: {Requested}, Consumed: {Consumed}",
-                                            customizationIngredient.IngredientId,
-                                            detail.CustomizationId.Value,
-                                            quantityNeeded,
-                                            consumed);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex,
-                                        "Error consuming ingredient ID {IngredientId} for customization {CustomizationId}",
-                                        customizationIngredient.IngredientId,
-                                        detail.CustomizationId.Value);
-                                }
-                            }
-                        }
-                    }
-                    else if (detail.UtensilId.HasValue)
-                    {
-                        var utensil = await utensilService.GetUtensilByIdAsync(detail.UtensilId.Value);
-                        if (utensil != null)
-                        {
-                            // Deduct from inventory
-                            utensil.Quantity -= detail.Quantity;
-                            await unitOfWork.Repository<Utensil>().Update(utensil, utensil.UtensilId);
-                        }
-                    }
-                }
-            }
-
-            // For hotpots, we update their status to Rented
-            if (order.RentOrder != null)
-            {
-                // Track which hotpot types need quantity updates
-                var hotpotIdsToUpdate = new HashSet<int>();
-
-                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
-                {
-                    if (detail.HotpotInventoryId.HasValue)
-                    {
-                        var hotpotInventory = await unitOfWork.Repository<HotPotInventory>()
-                            .IncludeNested(query => query.Include(h => h.Hotpot))
-                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
-
-                        if (hotpotInventory != null)
-                        {
-                            // Add the hotpot ID to the set of IDs to update
-                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
-
-                            // Update the inventory status
-                            hotpotInventory.Status = HotpotStatus.Rented;
-                            await unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
-                        }
-                    }
-                }
-
-                // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
-            }
-        }
     }
 }
