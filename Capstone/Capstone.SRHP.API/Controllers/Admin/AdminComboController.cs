@@ -524,7 +524,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         IngredientName = ci.Ingredient?.Name ?? "Unknown",
                         Quantity = ci.Quantity,
                         ImageURL = ci.Ingredient?.ImageURL,
-                        TotalPrice = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result
+                        TotalPrice = _ingredientService.GetCurrentPriceAsync(ci.IngredientId).Result * ci.Quantity
                     })
                     .ToList() ?? new List<ComboIngredientDto>();
             }

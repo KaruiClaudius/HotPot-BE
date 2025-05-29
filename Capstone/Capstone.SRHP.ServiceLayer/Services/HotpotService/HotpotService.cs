@@ -479,6 +479,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 await SyncHotpotQuantityAsync(hotpotId);
+                await _unitOfWork.CommitAsync();
             },
             ex =>
             {

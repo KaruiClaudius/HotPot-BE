@@ -1092,11 +1092,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     basePrice += ingredientPrice * comboIngredient.Quantity;
                 }
 
-                // Calculate per-person base price
-                if (combo.Size > 0)
-                {
-                    basePrice = basePrice / combo.Size;
-                }
 
                 // Update base price
                 combo.BasePrice = basePrice;

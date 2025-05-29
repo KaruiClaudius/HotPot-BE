@@ -60,14 +60,84 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 var query = _unitOfWork.Repository<Order>()
                     .FindAll(o => !o.IsDelete && o.CreatedAt >= adjustedFromDate && o.CreatedAt <= toDate && o.Status != OrderStatus.Cart);
 
-                // Apply filters (existing code remains unchanged)
-                // ...
+                // Apply filters 
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
+                {
+                    query = query.Where(o => o.Status == orderStatus);
+                }
+
+                // Apply payment status filter
+                if (!string.IsNullOrWhiteSpace(paymentStatus) && Enum.TryParse<PaymentStatus>(paymentStatus, true, out var pmtStatus))
+                {
+                    query = query.Where(o => o.Payments.Any(p => p.Status == pmtStatus));
+                }
+
+                // Apply hotpot filter
+                if (hasHotpot.HasValue)
+                {
+                    if (hasHotpot.Value)
+                    {
+                        query = query.Where(o => o.RentOrder != null &&
+                            o.RentOrder.RentOrderDetails.Any(od => od.HotpotInventoryId.HasValue && !od.IsDelete));
+                    }
+                    else
+                    {
+                        query = query.Where(o => o.RentOrder == null ||
+                            !o.RentOrder.RentOrderDetails.Any(od => od.HotpotInventoryId.HasValue && !od.IsDelete));
+                    }
+                }
+
+                // Apply product type filter
+                if (!string.IsNullOrWhiteSpace(productType))
+                {
+                    productType = productType.ToLower();
+
+                    switch (productType)
+                    {
+                        case "ingredient":
+                            query = query.Where(o => o.SellOrder != null &&
+                                o.SellOrder.SellOrderDetails.Any(d => d.IngredientId.HasValue && !d.IsDelete));
+                            break;
+                        case "combo":
+                            query = query.Where(o => o.SellOrder != null &&
+                                o.SellOrder.SellOrderDetails.Any(d => d.ComboId.HasValue && !d.IsDelete));
+                            break;
+                        case "customization":
+                            query = query.Where(o => o.SellOrder != null &&
+                                o.SellOrder.SellOrderDetails.Any(d => d.CustomizationId.HasValue && !d.IsDelete));
+                            break;
+                        case "hotpot":
+                            query = query.Where(o => o.RentOrder != null &&
+                                o.RentOrder.RentOrderDetails.Any(d => d.HotpotInventoryId.HasValue && !d.IsDelete));
+                            break;
+                        case "utensil":
+                            query = query.Where(o => o.SellOrder != null &&
+                                o.SellOrder.SellOrderDetails.Any(d => d.UtensilId.HasValue && !d.IsDelete));
+                            break;
+                    }
+                }
 
                 // Include all necessary related entities (existing code remains unchanged)
                 var orders = await query
                     .Include(o => o.User)
                     .Include(o => o.Discount)
-                    // ... (rest of includes)
+                    .Include(o => o.Payments)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so != null ? so.SellOrderDetails : null)
+                            .ThenInclude(d => d.Ingredient)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so != null ? so.SellOrderDetails : null)
+                            .ThenInclude(d => d.Combo)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so != null ? so.SellOrderDetails : null)
+                            .ThenInclude(d => d.Customization)
+                    .Include(o => o.SellOrder)
+                        .ThenInclude(so => so != null ? so.SellOrderDetails : null)
+                            .ThenInclude(d => d.Utensil)
+                    .Include(o => o.RentOrder)
+                        .ThenInclude(ro => ro != null ? ro.RentOrderDetails : null)
+                            .ThenInclude(d => d.HotpotInventory)
+                                .ThenInclude(hi => hi != null ? hi.Hotpot : null)
                     .ToListAsync();
 
                 // Filter orders for the specified date range (fromDate to toDate)

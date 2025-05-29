@@ -97,16 +97,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     foreach (var orderItem in order.RentOrder.RentOrderDetails)
                     {
-                        // Check if this is a hotpot item (you'll need to implement this logic based on your data model)
-                        // For example, you might have a category or product type field to identify hotpots
                         if (IsHotpotItem(orderItem))
                         {
-                            // Calculate original and new prices
-                            decimal originalItemPrice = orderItem.RentalPrice * orderItem.Quantity;
-                            hotpotTotalOriginal += originalItemPrice;
+                            hotpotTotalOriginal += orderItem.RentalPrice;
 
                             // Calculate adjusted price based on rental days
-                            decimal adjustedItemPrice = originalItemPrice * rentalDays;
+                            decimal adjustedItemPrice = orderItem.RentalPrice * rentalDays;
                             hotpotTotalAdjusted += adjustedItemPrice;
                         }
                     }
@@ -116,6 +112,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                     // Update the payment request price
                     paymentRequest = paymentRequest with { price = (int)newTotalPrice };
+
                 }
 
                 // 3. Get user information (read operation, can be outside transaction)
