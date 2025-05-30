@@ -404,9 +404,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
                     EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details",
 
-                    VehicleId = a.RentalDetails?.VehicleId ?? a.ShippingDetails?.VehicleId,
-                    VehicleName = a.RentalDetails?.VehicleName ?? a.ShippingDetails?.VehicleName,
-                    VehicleType = a.RentalDetails?.VehicleType ?? a.ShippingDetails?.VehicleType?.ToString()
+                    VehicleId = a.RentalDetails?.VehicleId,
+                    VehicleName = a.RentalDetails?.VehicleName,
+                    LicensePlate = a.RentalDetails.LicensePlate,
+                    VehicleType = a.RentalDetails?.VehicleType
                 }).ToList();
 
                 return new PagedResult<StaffPickupAssignmentDto>

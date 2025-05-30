@@ -674,6 +674,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                             .Include(ro => ro.RentOrderDetails)
                                 .ThenInclude(d => d.HotpotInventory)
                                     .ThenInclude(h => h.Hotpot)
+                            .Include(ro => ro.Vehicle)
                             .FirstOrDefaultAsync();
 
                         dto.RentalDetails = new RentalDetailsDto
@@ -684,6 +685,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                             // Set vehicle properties if available
                             VehicleId = assignment.Order.RentOrder.VehicleId,
                             VehicleName = assignment.Order.RentOrder.Vehicle?.Name,
+                            LicensePlate = assignment.Order.RentOrder.Vehicle?.LicensePlate,
                             VehicleType = assignment.Order.RentOrder.Vehicle?.Type.ToString()
                         };
                     }
@@ -779,8 +781,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                 ShippingOrderId = shippingOrder.ShippingOrderId,
                                 IsDelivered = shippingOrder.IsDelivered,
                                 VehicleId = shippingOrder.VehicleId,
-                                VehicleName = shippingOrder.Vehicle?.Name,
-                                VehicleType = shippingOrder.Vehicle?.Type,
+                                VehicleName = shippingOrder.Vehicle.Name,
+                                VehicleType = shippingOrder.Vehicle.Type,
                                 OrderSize = shippingOrder.OrderSize
                             };
                         }
