@@ -20,7 +20,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId,
             DateTime? expectedReturnDate, DateTime? deliveryTime, int userId);  
         Task<Payment> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status);
-        Task<IEnumerable<Payment>> GetPaymentsByUserIdAsync(int userId);
+        Task<Payment> GetPaymentByUserIdAsync(int userId);
         Task<Payment> GetPaymentByOrderIdAsync(int orderId);
 
         Task<Payment> ProcessAdditionalFeePaymentAsync(int orderId, PaymentPurpose feeType, decimal amount, PaymentType paymentType, string notes = null);

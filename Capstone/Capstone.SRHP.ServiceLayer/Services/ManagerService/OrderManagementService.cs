@@ -42,10 +42,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
         // Order allocation
         public async Task<MultiStaffAssignmentResponse> AssignMultipleStaffToOrderAsync(
-    string orderCode,
-    List<int>? preparationStaffIds,
-    int? shippingStaffId,
-    int? vehicleId = null)
+            string orderCode,
+            List<int>? preparationStaffIds,
+            int? shippingStaffId,
+            int? vehicleId = null)
         {
             try
             {
