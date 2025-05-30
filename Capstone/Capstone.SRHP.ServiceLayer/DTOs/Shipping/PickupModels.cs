@@ -26,6 +26,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Shipping
         // Vehicle information
         public int? VehicleId { get; set; }
         public string VehicleName { get; set; }
+        public string LicensePlate { get; set; }
         public string VehicleType { get; set; }
     }
 

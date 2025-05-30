@@ -164,6 +164,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Management
         // Vehicle information
         public int? VehicleId { get; set; }
         public string VehicleName { get; set; }
+        public string LicensePlate { get; set; }
         public string VehicleType { get; set; }
     }
     public class OrderStatusUpdateDTO

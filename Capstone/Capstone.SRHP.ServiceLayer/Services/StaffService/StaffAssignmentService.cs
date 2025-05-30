@@ -254,6 +254,42 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     // Add rental details to response
                     response.RentalStartDate = rentOrder.RentalStartDate;
                     response.ExpectedReturnDate = rentOrder.ExpectedReturnDate;
+
+                    // Handle vehicle assignment for pickup
+                    if (vehicleId.HasValue)
+                    {
+                        // Validate vehicle if provided
+                        var vehicle = await _unitOfWork.Repository<Vehicle>()
+                            .FindAsync(v => v.VehicleId == vehicleId.Value && !v.IsDelete);
+
+                        if (vehicle == null)
+                            throw new NotFoundException($"Vehicle with ID {vehicleId.Value} not found");
+
+                        if (vehicle.Status != VehicleStatus.Available)
+                            throw new ValidationException($"Vehicle with ID {vehicleId.Value} is not available (current status: {vehicle.Status})");
+
+                        // Update RentOrder with vehicle information
+                        rentOrder.VehicleId = vehicleId;
+                        rentOrder.VehicleAssignedDate = DateTime.UtcNow.AddHours(7);
+
+                        // Estimate order size if needed
+                        if (!rentOrder.OrderSize.HasValue)
+                        {
+                            rentOrder.OrderSize = await EstimateOrderSizeAsync(order.OrderCode);
+                        }
+
+                        rentOrder.SetUpdateDate();
+
+                        // Update vehicle status
+                        vehicle.Status = VehicleStatus.InUse;
+                        vehicle.SetUpdateDate();
+
+                        // Add vehicle details to response
+                        response.VehicleId = vehicle.VehicleId;
+                        response.VehicleName = vehicle.Name;
+                        response.VehicleType = vehicle.Type;
+                        response.OrderSize = rentOrder.OrderSize;
+                    }
                 }
 
                 // Save all changes
@@ -336,11 +372,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                 {
                     // Handle pickup completion logic
                     var rentOrder = await _unitOfWork.Repository<RentOrder>()
-                        .FindAsync(ro => ro.OrderId == assignment.OrderId);
+                            .GetAll(ro => ro.OrderId == assignment.OrderId)
+                            .Include(ro => ro.Vehicle)
+                            .FirstOrDefaultAsync();
 
                     if (rentOrder != null)
                     {
                         rentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
+
+                        // Update vehicle return information
+                        if (rentOrder.VehicleId.HasValue)
+                        {
+                            rentOrder.VehicleReturnedDate = DateTime.UtcNow.AddHours(7);
+
+                            // Update vehicle status
+                            var vehicle = await _unitOfWork.Repository<Vehicle>()
+                                .FindAsync(v => v.VehicleId == rentOrder.VehicleId.Value);
+
+                            if (vehicle != null)
+                            {
+                                vehicle.Status = VehicleStatus.Available;
+                                vehicle.SetUpdateDate();
+                            }
+                        }
+
                         rentOrder.SetUpdateDate();
 
                         // Get all rent order details associated with this order
@@ -472,6 +527,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         CustomerName = assignment.Order?.User?.Name,
                         CustomerAddress = assignment.Order?.User?.Address,
                         CustomerPhone = assignment.Order?.User?.PhoneNumber
+
                     };
 
                     // Add task-specific details
@@ -612,22 +668,26 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     }
                     else if (assignment.TaskType == StaffTaskType.Pickup)
                     {
+
                         var rentOrder = await _unitOfWork.Repository<RentOrder>()
                             .GetAll(ro => ro.OrderId == assignment.OrderId && !ro.IsDelete)
                             .Include(ro => ro.RentOrderDetails)
                                 .ThenInclude(d => d.HotpotInventory)
                                     .ThenInclude(h => h.Hotpot)
+                            .Include(ro => ro.Vehicle)
                             .FirstOrDefaultAsync();
 
-                        if (rentOrder != null)
+                        dto.RentalDetails = new RentalDetailsDto
                         {
-                            dto.RentalDetails = new RentalDetailsDto
-                            {
-                                RentalStartDate = rentOrder.RentalStartDate,
-                                ExpectedReturnDate = rentOrder.ExpectedReturnDate,
-                                EquipmentSummary = GetEquipmentSummary(rentOrder.RentOrderDetails)
-                            };
-                        }
+                            RentalStartDate = rentOrder.RentalStartDate,
+                            ExpectedReturnDate = rentOrder.ExpectedReturnDate,
+                            EquipmentSummary = GetEquipmentSummary(rentOrder.RentOrderDetails),
+                            // Set vehicle properties if available
+                            VehicleId = assignment.Order.RentOrder.VehicleId,
+                            VehicleName = assignment.Order.RentOrder.Vehicle?.Name,
+                            LicensePlate = assignment.Order.RentOrder.Vehicle?.LicensePlate,
+                            VehicleType = assignment.Order.RentOrder.Vehicle?.Type.ToString()
+                        };
                     }
 
                     assignmentDtos.Add(dto);
@@ -721,8 +781,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                 ShippingOrderId = shippingOrder.ShippingOrderId,
                                 IsDelivered = shippingOrder.IsDelivered,
                                 VehicleId = shippingOrder.VehicleId,
-                                VehicleName = shippingOrder.Vehicle?.Name,
-                                VehicleType = shippingOrder.Vehicle?.Type,
+                                VehicleName = shippingOrder.Vehicle.Name,
+                                VehicleType = shippingOrder.Vehicle.Type,
                                 OrderSize = shippingOrder.OrderSize
                             };
                         }
