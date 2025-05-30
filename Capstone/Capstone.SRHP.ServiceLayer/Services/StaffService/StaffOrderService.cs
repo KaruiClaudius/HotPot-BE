@@ -277,7 +277,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                         // Mark all preparation assignments as completed
                         foreach (var assignment in allPreparationAssignments)
                         {
-                            assignment.CompletedDate = DateTime.UtcNow;
+                            assignment.CompletedDate = DateTime.UtcNow.AddHours(7);
                             assignment.SetUpdateDate();
                             _logger.LogInformation("Marked preparation assignment {AssignmentId} for staff {StaffId} as completed",
                                 assignment.StaffAssignmentId, assignment.StaffId);
