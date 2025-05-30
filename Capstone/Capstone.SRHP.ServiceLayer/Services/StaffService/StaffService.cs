@@ -402,7 +402,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     OrderCode = a.OrderCode,
                     RentalStartDate = a.RentalDetails?.RentalStartDate,
                     ExpectedReturnDate = a.RentalDetails?.ExpectedReturnDate ?? DateTime.UtcNow.AddHours(7),
-                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details"
+                    EquipmentSummary = a.RentalDetails?.EquipmentSummary ?? "No equipment details",
+
+                    VehicleId = a.RentalDetails?.VehicleId ?? a.ShippingDetails?.VehicleId,
+                    VehicleName = a.RentalDetails?.VehicleName ?? a.ShippingDetails?.VehicleName,
+                    VehicleType = a.RentalDetails?.VehicleType ?? a.ShippingDetails?.VehicleType?.ToString()
                 }).ToList();
 
                 return new PagedResult<StaffPickupAssignmentDto>
