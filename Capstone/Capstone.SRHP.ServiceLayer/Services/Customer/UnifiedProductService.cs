@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Capstone.HPTY.ModelLayer.Entities;
+using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
@@ -206,20 +207,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             var currentDate = DateTime.UtcNow.AddHours(7);
 
             // Hotpot query
-            var hotpotQuery = _unitOfWork.Repository<Hotpot>()
+            var hotpotQuery = await _unitOfWork.Repository<Hotpot>()
                 .AsQueryable()
-                .Where(h => !h.IsDelete);
+                .Include(h => h.InventoryUnits.Where(hi => !hi.IsDelete &&
+                    (hi.Status == HotpotStatus.Available || hi.Status == HotpotStatus.Reserved)))
+                .Where(h => !h.IsDelete)
+                .ToListAsync();
 
-            // Apply availability filter
+            // Then filter in memory
             if (onlyAvailable)
             {
-                hotpotQuery = hotpotQuery.Where(h => h.Quantity > 0);
+                hotpotQuery = hotpotQuery.Where(h => h.Quantity > 0).ToList();
             }
 
-            // Apply quantity filter
             if (minQuantity.HasValue)
             {
-                hotpotQuery = hotpotQuery.Where(h => h.Quantity >= minQuantity.Value);
+                hotpotQuery = hotpotQuery.Where(h => h.Quantity >= minQuantity.Value).ToList();
             }
 
             var hotpotDtoQuery = hotpotQuery.Select(h => new UnifiedProductDto
@@ -233,7 +236,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ProductType = "Hotpot",
                 Material = h.Material,
                 Size = h.Size,
-                Quantity = h.Quantity
+                Quantity = h.InventoryUnits.Count(i => !i.IsDelete && (i.Status == HotpotStatus.Available || i.Status == HotpotStatus.Reserved))
             });
 
             // Apply hotpot-specific filters
@@ -360,8 +363,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
                 ingredientQuery = ingredientQuery.Where(i => i.IngredientTypeId == typeId.Value);
             }
 
-            // Execute the database queries to get the results
-            var hotpots = await hotpotDtoQuery.ToListAsync();
+            var hotpots = hotpotDtoQuery.ToList();
             var utensils = await utensilDtoQuery.ToListAsync();
             var ingredients = await ingredientQuery.ToListAsync();
 
@@ -495,99 +497,106 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             // Start with base query
             var query = _unitOfWork.Repository<Hotpot>()
                 .AsQueryable()
+                .Include(h => h.InventoryUnits.Where(hi => hi.Status == HotpotStatus.Available || hi.Status == HotpotStatus.Reserved))
                 .Where(h => !h.IsDelete);
+
+            var hotpots = await query.ToListAsync();
+
+            var filteredHotpots = hotpots;
+
+            var totalCount = hotpots.Count;
 
             // Apply availability filter
             if (onlyAvailable)
             {
-                query = query.Where(h => h.Quantity > 0);
+                filteredHotpots = filteredHotpots.Where(h => h.Quantity > 0).ToList();
             }
 
             // Apply quantity filter
             if (minQuantity.HasValue)
             {
-                query = query.Where(h => h.Quantity >= minQuantity.Value);
+                filteredHotpots = filteredHotpots.Where(h => h.Quantity >= minQuantity.Value).ToList();
             }
 
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
-                query = query.Where(h =>
+                filteredHotpots = filteredHotpots.Where(h =>
                     h.Name.ToLower().Contains(searchTerm) ||
                     (h.Description != null && h.Description.ToLower().Contains(searchTerm)) ||
                     (h.Material != null && h.Material.ToLower().Contains(searchTerm)) ||
-                    (h.Size != null && h.Size.ToLower().Contains(searchTerm)));
+                    (h.Size != null && h.Size.ToLower().Contains(size))).ToList();
             }
-
             // Apply material filter
             if (!string.IsNullOrWhiteSpace(material))
             {
                 material = material.ToLower();
-                query = query.Where(h => h.Material.ToLower().Contains(material));
+                filteredHotpots = filteredHotpots.Where(h =>
+                    h.Material != null && h.Material.ToLower().Contains(material)).ToList();
             }
 
             // Apply size filter
             if (!string.IsNullOrWhiteSpace(size))
             {
                 size = size.ToLower();
-                query = query.Where(h => h.Size.ToLower().Contains(size));
+                filteredHotpots = filteredHotpots.Where(h =>
+                    h.Size != null && h.Size.ToLower().Contains(size)).ToList();
             }
 
             // Apply price filters
             if (minPrice.HasValue)
             {
-                query = query.Where(h => h.Price >= minPrice.Value);
+                filteredHotpots = filteredHotpots.Where(h => h.Price >= minPrice.Value).ToList();
             }
 
             if (maxPrice.HasValue)
             {
-                query = query.Where(h => h.Price <= maxPrice.Value);
+                filteredHotpots = filteredHotpots.Where(h => h.Price <= maxPrice.Value).ToList();
             }
 
-            // Get total count before applying pagination
-            var totalCount = await query.CountAsync();
 
             // Apply sorting
-            IOrderedQueryable<Hotpot> orderedQuery;
+            // Apply sorting in memory
+            IEnumerable<Hotpot> sortedHotpots;
 
             switch (sortBy?.ToLower())
             {
                 case "price":
-                    orderedQuery = ascending
-                        ? query.OrderBy(h => h.Price)
-                        : query.OrderByDescending(h => h.Price);
+                    sortedHotpots = ascending
+                        ? filteredHotpots.OrderBy(h => h.Price)
+                        : filteredHotpots.OrderByDescending(h => h.Price);
                     break;
                 case "material":
-                    orderedQuery = ascending
-                        ? query.OrderBy(h => h.Material).ThenBy(h => h.Name)
-                        : query.OrderByDescending(h => h.Material).ThenBy(h => h.Name);
+                    sortedHotpots = ascending
+                        ? filteredHotpots.OrderBy(h => h.Material).ThenBy(h => h.Name)
+                        : filteredHotpots.OrderByDescending(h => h.Material).ThenBy(h => h.Name);
                     break;
                 case "size":
-                    orderedQuery = ascending
-                        ? query.OrderBy(h => h.Size).ThenBy(h => h.Name)
-                        : query.OrderByDescending(h => h.Size).ThenBy(h => h.Name);
+                    sortedHotpots = ascending
+                        ? filteredHotpots.OrderBy(h => h.Size).ThenBy(h => h.Name)
+                        : filteredHotpots.OrderByDescending(h => h.Size).ThenBy(h => h.Name);
                     break;
                 case "quantity":
-                    orderedQuery = ascending
-                        ? query.OrderBy(h => h.Quantity).ThenBy(h => h.Name)
-                        : query.OrderByDescending(h => h.Quantity).ThenBy(h => h.Name);
+                    sortedHotpots = ascending
+                        ? filteredHotpots.OrderBy(h => h.Quantity).ThenBy(h => h.Name)
+                        : filteredHotpots.OrderByDescending(h => h.Quantity).ThenBy(h => h.Name);
                     break;
                 default: // Default to Name
-                    orderedQuery = ascending
-                        ? query.OrderBy(h => h.Name)
-                        : query.OrderByDescending(h => h.Name);
+                    sortedHotpots = ascending
+                        ? filteredHotpots.OrderBy(h => h.Name)
+                        : filteredHotpots.OrderByDescending(h => h.Name);
                     break;
             }
 
-            // Apply pagination
-            var hotpots = await orderedQuery
+            // Apply pagination in memory
+            var pagedHotpots = sortedHotpots
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToList();
 
             // Map to DTOs
-            var dtos = hotpots.Select(h => new UnifiedProductDto
+            var dtos = pagedHotpots.Select(h => new UnifiedProductDto
             {
                 Id = h.HotpotId,
                 Name = h.Name,
@@ -610,11 +619,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.Customer
             };
         }
 
-
         private async Task<UnifiedProductDto> GetHotpotByIdAsync(int id)
         {
             var hotpot = await _unitOfWork.Repository<Hotpot>()
-                .FindAsync(h => h.HotpotId == id && !h.IsDelete);
+                .Include(h => h.InventoryUnits.Where(hi => hi.Status == HotpotStatus.Available || hi.Status == HotpotStatus.Reserved))
+                .FirstOrDefaultAsync(h => h.HotpotId == id && !h.IsDelete);
 
             if (hotpot == null)
                 return null;

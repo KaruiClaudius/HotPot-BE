@@ -42,6 +42,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             {
                 // Start with base query
                 var query = _unitOfWork.Repository<Hotpot>().AsQueryable()
+                    .Include(h => h.InventoryUnits)
                     .Where(h => !h.IsDelete);
 
                 // Apply filters
@@ -248,17 +249,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 entity.LastMaintainDate = DateTime.UtcNow.AddHours(7);
 
                 // Set quantity based on series numbers
-                if (seriesNumbers != null && seriesNumbers.Length > 0)
-                {
-                    // Validate serial numbers
-                    await ValidateSerialNumbers(0, seriesNumbers); // Pass 0 for new hotpot
+                //if (seriesNumbers != null && seriesNumbers.Length > 0)
+                //{
+                //    // Validate serial numbers
+                //    await ValidateSerialNumbers(0, seriesNumbers); // Pass 0 for new hotpot
 
-                    entity.Quantity = seriesNumbers.Length;
-                }
-                else
-                {
-                    entity.Quantity = 0;
-                }
+                //    entity.Quantity = seriesNumbers.Length;
+                //}
+                //else
+                //{
+                //    entity.Quantity = 0;
+                //}
 
                 // Insert the hotpot
                 _unitOfWork.Repository<Hotpot>().Insert(entity);
@@ -304,22 +305,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     throw new ValidationException($"Nồi lẩu với tên '{entity.Name}' đã tồn tại");
 
                 // If series numbers are provided, update inventory items and quantity
-                if (seriesNumbers != null)
-                {
-                    await UpdateInventoryItems(id, seriesNumbers);
+                //if (seriesNumbers != null)
+                //{
+                //    await UpdateInventoryItems(id, seriesNumbers);
 
-                    // Update quantity to match the number of active inventory items
-                    var activeInventoryCount = await _unitOfWork.Repository<HotPotInventory>()
-                        .FindAll(i => i.HotpotId == id && !i.IsDelete)
-                        .CountAsync();
+                //    // Update quantity to match the number of active inventory items
+                //    var activeInventoryCount = await _unitOfWork.Repository<HotPotInventory>()
+                //        .FindAll(i => i.HotpotId == id && !i.IsDelete)
+                //        .CountAsync();
 
-                    entity.Quantity = activeInventoryCount;
-                }
-                else
-                {
-                    // Keep the existing quantity if no series numbers are provided
-                    entity.Quantity = existingHotpot.Quantity;
-                }
+                //    entity.Quantity = activeInventoryCount;
+                //}
+                //else
+                //{
+                //    // Keep the existing quantity if no series numbers are provided
+                //    entity.Quantity = existingHotpot.Quantity;
+                //}
 
                 // Update the hotpot basic properties
                 entity.SetUpdateDate();
@@ -457,15 +458,15 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     throw new NotFoundException($"Không tìm thấy mục kho với ID {inventoryId}");
 
                 // Update the status
-                inventoryItem.Status = newStatus;
-                if (newStatus == HotpotStatus.Available)
-                {
-                    inventoryItem.Hotpot.Quantity += 1; 
-                }
-                else 
-                {
-                    inventoryItem.Hotpot.Quantity -= 1;
-                }
+                //inventoryItem.Status = newStatus;
+                //if (newStatus == HotpotStatus.Available)
+                //{
+                //    inventoryItem.Hotpot.Quantity += 1; 
+                //}
+                //else 
+                //{
+                //    inventoryItem.Hotpot.Quantity -= 1;
+                //}
                 await _unitOfWork.Repository<HotPotInventory>().Update(inventoryItem, inventoryId);
 
                 // Update the parent hotpot's quantity if status changes to/from Available
@@ -506,7 +507,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 var hotpot = await _unitOfWork.Repository<Hotpot>().FindAsync(h => h.HotpotId == hotpotId && !h.IsDelete);
                 if (hotpot != null)
                 {
-                    hotpot.Quantity = availableInventoryCount;
+                    //hotpot.Quantity = availableInventoryCount;
                     await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
                     await _unitOfWork.CommitAsync(); // Commit the changes
                 }
@@ -544,7 +545,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     // Reactivate the soft-deleted inventory item
                     existingItem.IsDelete = false;
                     existingItem.Status = HotpotStatus.Available;
-                    existingItem.Hotpot.Quantity += 1; 
+                    //existingItem.Hotpot.Quantity += 1; 
                     existingItem.SetUpdateDate();
                     await _unitOfWork.Repository<HotPotInventory>().Update(existingItem, existingItem.HotPotInventoryId);
                     reactivatedItems.Add(existingItem);

@@ -189,7 +189,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 // Update the hotpot inventory status to Damaged
                 hotpot.Status = HotpotStatus.Damaged;
-                hotpot.Hotpot.Quantity -= 1; 
+                //hotpot.Hotpot.Quantity -= 1; 
                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
 
                 // Insert the damage device
@@ -286,7 +286,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         {
                             // Update hotpot status
                             hotpot.Status = HotpotStatus.Available;
-                            hotpot.Hotpot.Quantity += 1;
+                            //hotpot.Hotpot.Quantity += 1;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
                         }
                     }
@@ -312,7 +312,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                             {
                                 // Update old hotpot status
                                 oldHotpot.Status = HotpotStatus.Available;
-                                oldHotpot.Hotpot.Quantity += 1;
+                                //oldHotpot.Hotpot.Quantity += 1;
                             }
                         }
                     }
@@ -363,7 +363,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         if (!otherDamageReports)
                         {
                             hotpot.Status = HotpotStatus.Available;
-                            hotpot.Hotpot.Quantity += 1; // Restore the quantity
+                            //hotpot.Hotpot.Quantity += 1; // Restore the quantity
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
 
                             // Update the hotpot quantity
@@ -408,7 +408,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (!otherDamageReports)
                 {
                     hotpot.Status = HotpotStatus.Available;
-                    hotpot.Hotpot.Quantity += 1; // Restore the quantity
+                    //hotpot.Hotpot.Quantity += 1; // Restore the quantity
                     await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
 
                     // Update the hotpot quantity
@@ -419,7 +419,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             {
                 // If damage is pending or in progress, set hotpot to Damaged
                 hotpot.Status = HotpotStatus.Damaged;
-                hotpot.Hotpot.Quantity -= 1; // Decrease the quantity
+                //hotpot.Hotpot.Quantity -= 1; // Decrease the quantity
                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
 
                 // Update the hotpot quantity

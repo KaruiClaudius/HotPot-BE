@@ -438,7 +438,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                                     {
                                         // Set to Available if no damage reported
                                         hotpotInventory.Status = HotpotStatus.Available;
-                                        hotpotInventory.Hotpot.Quantity += 1; 
+                                        //hotpotInventory.Hotpot.Quantity += 1; 
                                     }
 
                                     // Update last maintain date on the hotpot itself
