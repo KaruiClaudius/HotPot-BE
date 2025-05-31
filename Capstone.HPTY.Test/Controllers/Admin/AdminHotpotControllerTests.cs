@@ -4,6 +4,7 @@ using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
+using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -92,11 +93,20 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 pageNumber, pageSize, sortBy, ascending))
                 .ReturnsAsync(pagedResult);
 
-            mockHotpotService.Setup(s => s.CountDamageDevice())
-                .ReturnsAsync(5);
+            // Setup the damage device service mock
+            var damageDevices = new PagedResult<DamageDevice>
+            {
+                TotalCount = 5,
+                Items = new List<DamageDevice>(),
+                PageNumber = 1,
+                PageSize = int.MaxValue
+            };
+
+            mockDamageDeviceService.Setup(s => s.GetAllAsync(It.IsAny<DamageDeviceFilterRequest>()))
+                .ReturnsAsync(damageDevices);
 
             // Act
-            var result = await adminHotpotController.GetHotpots(
+            var actionResult = await adminHotpotController.GetHotpots(
                 searchTerm,
                 isAvailable,
                 material,
@@ -110,7 +120,11 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ascending);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            // Check that we have an ActionResult<HotpotPagedResult>
+            var result = actionResult.Result;
+
+            // Check that it's an OkObjectResult (which is what the controller returns)
+            var okResult = Assert.IsType<OkObjectResult>(result);
             var hotpotPagedResult = Assert.IsType<HotpotPagedResult>(okResult.Value);
             Assert.Equal(1, hotpotPagedResult.TotalCount);
             Assert.Equal(5, hotpotPagedResult.DamageDeviceCount);
@@ -123,7 +137,12 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             Assert.Equal(50, items[0].Price);
 
             // Verify service calls
-            mockHotpotService.Verify();
+            mockHotpotService.Verify(s => s.GetHotpotsAsync(
+                searchTerm, isAvailable, material, size,
+                minPrice, maxPrice, minQuantity,
+                pageNumber, pageSize, sortBy, ascending), Times.Once);
+
+            mockDamageDeviceService.Verify(s => s.GetAllAsync(It.IsAny<DamageDeviceFilterRequest>()), Times.Once);
         }
 
         [Fact]

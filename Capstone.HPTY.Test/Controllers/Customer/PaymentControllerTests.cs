@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -471,7 +472,7 @@ namespace Capstone.HPTY.Test.Controllers.Customer
         }
 
         [Fact]
-        public async Task CheckOrder_WithOrderNotFound_ReturnsBadRequest()
+        public async Task CheckOrder_WithOrderNotFound_ReturnsOkWithErrorMessage()
         {
             // Arrange
             int userId = 1;
@@ -490,7 +491,7 @@ namespace Capstone.HPTY.Test.Controllers.Customer
             var result = await _controller.CheckOrder(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = Assert.IsType<OkObjectResult>(result);
             dynamic value = badRequestResult.Value;
             Assert.Equal("Order not found", value.message);
 

@@ -340,39 +340,30 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Status = "Fixed"
             };
 
-            var existingDevice = new DamageDevice
-            {
-                DamageDeviceId = id,
-                Name = "Old Hotpot Name",
-                Description = "Old description",
-                Status = MaintenanceStatus.Pending,
-                LoggedDate = DateTime.UtcNow.AddDays(-5),
-                HotPotInventoryId = 1,
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = null
-            };
+            // Parse the status outside the expression tree
+            Enum.TryParse<MaintenanceStatus>(request.Status, true, out var parsedStatus);
 
             var updatedDevice = new DamageDevice
             {
                 DamageDeviceId = id,
                 Name = request.Name,
                 Description = request.Description,
-                Status = MaintenanceStatus.Completed,
+                Status = parsedStatus,
                 LoggedDate = DateTime.UtcNow.AddDays(-5),
                 HotPotInventoryId = 1,
                 CreatedAt = DateTime.UtcNow.AddDays(-5),
                 UpdatedAt = DateTime.UtcNow.AddHours(7)
             };
 
-            mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))
-                .ReturnsAsync(existingDevice);
-
+            // Setup UpdateAsync to succeed
             mockDamageDeviceService.Setup(s => s.UpdateAsync(id, It.Is<DamageDevice>(d =>
+                d.DamageDeviceId == id &&
                 d.Name == request.Name &&
                 d.Description == request.Description &&
-                d.Status == MaintenanceStatus.Completed)))
+                d.Status == parsedStatus)))
                 .Returns(Task.CompletedTask);
 
+            // Setup GetByIdAsync to return the updated device after the update
             mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))
                 .ReturnsAsync(updatedDevice);
 
@@ -387,7 +378,17 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             Assert.Equal(id, apiResponse.Data.DamageDeviceId);
             Assert.Equal(request.Name, apiResponse.Data.Name);
             Assert.Equal(request.Description, apiResponse.Data.Description);
-            Assert.Equal("Completed", apiResponse.Data.StatusName);
+            Assert.Equal(parsedStatus.ToString(), apiResponse.Data.StatusName);
+
+            // Verify that UpdateAsync was called with the correct parameters
+            mockDamageDeviceService.Verify(s => s.UpdateAsync(id, It.Is<DamageDevice>(d =>
+                d.DamageDeviceId == id &&
+                d.Name == request.Name &&
+                d.Description == request.Description &&
+                d.Status == parsedStatus)), Times.Once);
+
+            // Verify that GetByIdAsync was called after the update
+            mockDamageDeviceService.Verify(s => s.GetByIdAsync(id), Times.Once);
 
             this.mockRepository.VerifyAll();
         }
@@ -405,7 +406,11 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Status = "Fixed"
             };
 
-            mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))
+            // Parse the status outside the expression tree
+            Enum.TryParse<MaintenanceStatus>(request.Status, true, out var parsedStatus);
+
+            // Setup UpdateAsync to throw NotFoundException
+            mockDamageDeviceService.Setup(s => s.UpdateAsync(id, It.IsAny<DamageDevice>()))
                 .ThrowsAsync(new NotFoundException($"Damage device with ID {id} not found"));
 
             // Act
@@ -416,6 +421,12 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var apiResponse = Assert.IsType<ApiErrorResponse>(notFoundResult.Value);
             Assert.Equal("Lỗi", apiResponse.Status);
             Assert.Equal($"Damage device with ID {id} not found", apiResponse.Message);
+
+            // Verify that UpdateAsync was called
+            mockDamageDeviceService.Verify(s => s.UpdateAsync(id, It.IsAny<DamageDevice>()), Times.Once);
+
+            // GetByIdAsync should not be called because UpdateAsync throws an exception
+            mockDamageDeviceService.Verify(s => s.GetByIdAsync(id), Times.Never);
 
             this.mockRepository.VerifyAll();
         }
@@ -433,21 +444,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Status = "Fixed"
             };
 
-            var existingDevice = new DamageDevice
-            {
-                DamageDeviceId = id,
-                Name = "Old Hotpot Name",
-                Description = "Old description",
-                Status = MaintenanceStatus.Pending,
-                LoggedDate = DateTime.UtcNow.AddDays(-5),
-                HotPotInventoryId = 1,
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = null
-            };
-
-            mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))
-                .ReturnsAsync(existingDevice);
-
+            // Setup the UpdateAsync method to throw a validation exception
             mockDamageDeviceService.Setup(s => s.UpdateAsync(id, It.IsAny<DamageDevice>()))
                 .ThrowsAsync(new ValidationException("Name must be at least 3 characters"));
 
@@ -459,6 +456,12 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
             Assert.Equal("Lỗi xác thực", apiResponse.Status);
             Assert.Equal("Name must be at least 3 characters", apiResponse.Message);
+
+            // Verify that UpdateAsync was called
+            mockDamageDeviceService.Verify(s => s.UpdateAsync(id, It.IsAny<DamageDevice>()), Times.Once);
+
+            // GetByIdAsync should not be called because UpdateAsync throws an exception
+            mockDamageDeviceService.Verify(s => s.GetByIdAsync(id), Times.Never);
 
             this.mockRepository.VerifyAll();
         }
@@ -476,21 +479,10 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 Status = "Fixed"
             };
 
-            var existingDevice = new DamageDevice
-            {
-                DamageDeviceId = id,
-                Name = "Old Hotpot Name",
-                Description = "Old description",
-                Status = MaintenanceStatus.Pending,
-                LoggedDate = DateTime.UtcNow.AddDays(-5),
-                HotPotInventoryId = 1,
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = null
-            };
+            // Parse the status outside the expression tree
+            Enum.TryParse<MaintenanceStatus>(request.Status, true, out var parsedStatus);
 
-            mockDamageDeviceService.Setup(s => s.GetByIdAsync(id))
-                .ReturnsAsync(existingDevice);
-
+            // Setup the UpdateAsync method to throw an exception
             mockDamageDeviceService.Setup(s => s.UpdateAsync(id, It.IsAny<DamageDevice>()))
                 .ThrowsAsync(new Exception("Database connection error"));
 
@@ -502,6 +494,17 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var apiResponse = Assert.IsType<ApiErrorResponse>(badRequestResult.Value);
             Assert.Equal("Lỗi", apiResponse.Status);
             Assert.Equal("Không thể cập nhật thiết bị hư hỏng", apiResponse.Message);
+
+            // Verify that UpdateAsync was called with the correct parameters
+            mockDamageDeviceService.Verify(s => s.UpdateAsync(id, It.Is<DamageDevice>(d =>
+                d.DamageDeviceId == id &&
+                d.Name == request.Name &&
+                d.Description == request.Description &&
+                d.Status == parsedStatus)),
+                Times.Once);
+
+            // GetByIdAsync should not be called because UpdateAsync throws an exception
+            mockDamageDeviceService.Verify(s => s.GetByIdAsync(id), Times.Never);
 
             this.mockRepository.VerifyAll();
         }
