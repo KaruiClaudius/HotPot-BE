@@ -4,6 +4,7 @@ using Capstone.HPTY.RepositoryLayer;
 using Capstone.HPTY.RepositoryLayer.Repositories;
 using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.Extensions;
+using Capstone.HPTY.ServiceLayer.Interfaces.BackgroundService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ChatService;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.Customer;
@@ -99,6 +100,11 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IPaymentService, PaymentService>();
 
+            // Fix for CS0311: Ensure that InMemoryLockService implements ILockService
+            // If InMemoryLockService does not implement ILockService, the following code will fail.
+            // Verify the implementation of InMemoryLockService and ensure it adheres to the ILockService interface.
+
+            services.AddSingleton<ILockService, InMemoryLockService>();
 
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
