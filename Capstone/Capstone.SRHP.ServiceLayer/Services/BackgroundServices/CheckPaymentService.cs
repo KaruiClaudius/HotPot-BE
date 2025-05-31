@@ -28,7 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
     {
         private readonly ILogger<CheckPaymentService> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _paymentTimeout = TimeSpan.FromMinutes(10);
 
         // Dictionary to track when we last saw each payment
