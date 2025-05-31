@@ -74,10 +74,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 DateTime currentTime = DateTime.UtcNow.AddHours(7);
+                int rentalDays = 1;
 
                 // Calculate rental duration and adjust hotpot prices if needed
                 decimal originalTotalPrice = order.TotalPrice;
-                decimal newTotalPrice = originalTotalPrice;
+                decimal calculatedPrice = originalTotalPrice;
 
                 if (order.HasRentItems)
                 {
@@ -88,7 +89,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     // Calculate rental duration in days (round up to next day)
-                    int rentalDays = (int)Math.Ceiling((expectedReturnDate.Value - currentTime).TotalDays);
+                    rentalDays = (int)Math.Ceiling((expectedReturnDate.Value - deliveryTime.Value).TotalDays);
                     if (rentalDays < 1) rentalDays = 1;
 
                     // Get all hotpot items from the order
@@ -105,15 +106,33 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             decimal adjustedItemPrice = orderItem.RentalPrice * rentalDays;
                             hotpotTotalAdjusted += adjustedItemPrice;
                         }
+                        // Update the total price by replacing the original hotpot prices with the adjusted ones
+                        calculatedPrice = originalTotalPrice - hotpotTotalOriginal + hotpotTotalAdjusted;
+                    }
+                }
+
+                if (discountId.HasValue)
+                {
+                    var discount = await _discountService.GetByIdAsync(discountId.Value);
+                    if (discount == null)
+                    {
+                        throw new ValidationException($"Không tìm thấy khuyến mãi với ID {discountId}");
                     }
 
-                    // Update the total price by replacing the original hotpot prices with the adjusted ones
-                    newTotalPrice = originalTotalPrice - hotpotTotalOriginal + hotpotTotalAdjusted;
+                    // Validate discount is still valid
+                    if (!await _discountService.IsDiscountValidAsync(discountId.Value))
+                    {
+                        throw new ValidationException("Khuyến mãi đã chọn không hợp lệ hoặc đã hết hạn");
+                    }
 
-                    // Update the payment request price
-                    paymentRequest = paymentRequest with { price = (int)newTotalPrice };
-
+                    // Apply discount to the calculated price
+                    decimal discountAmount = calculatedPrice * (decimal)(discount.DiscountPercentage / 100);
+                    calculatedPrice = calculatedPrice - discountAmount;
                 }
+
+                // Update the payment request price
+                paymentRequest = paymentRequest with { price = (int)calculatedPrice };
+
 
                 // 3. Get user information (read operation, can be outside transaction)
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == paymentRequest.buyerPhone);
@@ -173,14 +192,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     }
 
                     // Update the order details
-                    var updateRequest = new SpecialUpdateOrderRequest
+                    var updateRequest = new UpdateOrderRequest
                     {
                         Address = address,
                         Notes = notes,
                         DiscountId = discountId,
                         ExpectedReturnDate = expectedReturnDate,
-                        DeliveryTime = deliveryTime,
-                        TotalPrice = newTotalPrice
+                        DeliveryTime = deliveryTime
                     };
 
 
@@ -430,6 +448,95 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
                 if (paymentLinkInformation == null)
                 {
+                    return new Response(-1, "Thông tin thanh toán không tìm thấy", null);
+                }
+
+                // Get payment transaction
+                var paymentTransaction = await _unitOfWork.Repository<Payment>()
+                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
+                if (paymentTransaction == null)
+                {
+                    return new Response(-1, "Không tìm thấy giao dịch", null);
+                }
+
+                // Get the order
+                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
+                if (order == null)
+                {
+                    return new Response(-1, "Không tìm thấy đơn hàng", null);
+                }
+
+                // Prepare user info for response
+                var userInfo = new
+                {
+                    user.UserId,
+                    user.Name,
+                    user.PhoneNumber,
+                };
+                
+
+                // Return appropriate response based on current payment status in our system
+                if (paymentTransaction.Status == PaymentStatus.Success)
+                {
+                    return new Response(0, "Hoàn thành giao dịch",
+                        new { paymentInfo = paymentLinkInformation, userInfo });
+                }
+                else if (paymentTransaction.Status == PaymentStatus.Cancelled)
+                {
+                    return new Response(0, "Huỷ giao dịch",
+                        new { paymentInfo = paymentLinkInformation, userInfo });
+                }
+                else if (paymentTransaction.Status == PaymentStatus.Pending)
+                {
+                    // If PayOS shows PAID or CANCELLED but our system still shows PENDING,
+                    // trigger the background service to process it immediately
+                    if (paymentLinkInformation.status == "PAID" || paymentLinkInformation.status == "CANCELLED")
+                    {
+                        // Log this situation
+                        _logger.LogInformation("Payment {TransactionCode} is {Status} in PayOS but still PENDING in our system. Background service will process it.",
+                            request.OrderCode, paymentLinkInformation.status);
+
+                        paymentLinkInformation = paymentLinkInformation with { status = "PENDING" };
+
+                        // Return a message indicating the payment is being processed
+                        string message = paymentLinkInformation.status == "PAID"
+                            ? "Thanh toán đang được xử lý, vui lòng đợi trong giây lát"
+                            : "Giao dịch đang được hủy, vui lòng đợi trong giây lát";
+
+                        return new Response(0, message, new { paymentInfo = paymentLinkInformation, userInfo });
+                    }
+
+                    // For other statuses, just return the current status
+                    return new Response(0, "Giao dịch chưa hoàn thành",
+                        new { paymentInfo = paymentLinkInformation, userInfo });
+                }
+
+                // Fallback for any other payment status
+                return new Response(0, $"Trạng thái giao dịch: {paymentTransaction.Status}",
+                    new { paymentInfo = paymentLinkInformation, userInfo });
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error checking order {OrderCode}: {Message}", request.OrderCode, exception.Message);
+                return new Response(-1, "Lỗi khi kiểm tra đơn hàng", null);
+            }
+        }
+
+        public async Task<Response> ProcessOrder(CheckOrderRequest request, string userPhone)
+        {
+            try
+            {
+                // Get user information
+                var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
+                if (user == null)
+                {
+                    return new Response(-1, "Không tìm thấy người dùng", null);
+                }
+
+                // Get payment information from PayOS
+                PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
+                if (paymentLinkInformation == null)
+                {
                     return new Response(-1, "thông tin thanh toán không thấy", null);
                 }
 
@@ -448,44 +555,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     return new Response(-1, "Không tìm thấy đơn hàng", null);
                 }
 
+                var userInfo = new
+                {
+                    user.UserId,
+                    user.Name,
+                    user.PhoneNumber,
+                };
+
                 // If payment is already processed, return appropriate response
                 if (paymentTransaction.Status == PaymentStatus.Success)
                 {
-                    var updatedUserInfo = new
-                    {
-                        user.UserId,
-                        user.Name,
-                        user.PhoneNumber,
-                    };
-
                     return new Response(0, "Hoàn thành giao dịch",
-                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                        new { paymentInfo = paymentLinkInformation, userInfo });
                 }
                 else if (paymentTransaction.Status == PaymentStatus.Cancelled)
                 {
-                    var updatedUserInfo = new
-                    {
-                        user.UserId,
-                        user.Name,
-                        user.PhoneNumber,
-                    };
-
                     return new Response(0, "Huỷ giao dịch",
-                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                        new { paymentInfo = paymentLinkInformation, userInfo });
                 }
 
                 // If order is no longer in Cart status, it means it's already been processed
                 if (order.Status != OrderStatus.Cart)
-                {
-                    var updatedUserInfo = new
-                    {
-                        user.UserId,
-                        user.Name,
-                        user.PhoneNumber,
-                    };
-
+                { 
                     return new Response(0, "Đơn hàng đã được xử lý",
-                        new { paymentInfo = paymentLinkInformation, userInfo = updatedUserInfo });
+                        new { paymentInfo = paymentLinkInformation, userInfo });
                 }
 
                 // Process based on payment status from PayOS
@@ -518,6 +611,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                         {
                             return new { Success = true, Message = "Đơn hàng đã được xử lý trước đó" };
                         }
+
+                        freshOrder.TotalPrice = paymentLinkInformation.amount;
+                        await _unitOfWork.Repository<Order>().Update(freshOrder, freshOrder.OrderId);
 
                         // Process loyalty points
                         if (freshOrder.DiscountId != null)
@@ -1098,7 +1194,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             }
 
                             // Return hotpots to available
-                            if (order.RentOrder != null)
+                            if (order.HasRentItems)
                             {
                                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                                 {
@@ -1137,38 +1233,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
-        public async Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId)
-        {
-            try
-            {
-                // Get the hotpot
-                var hotpot = await _unitOfWork.Repository<Hotpot>().GetById(hotpotId);
-                if (hotpot == null)
-                {
-                    _logger.LogWarning("Cannot update quantity for non-existent hotpot ID {HotpotId}", hotpotId);
-                    return false;
-                }
-
-                // Count available inventory
-                int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
-                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
-
-                // Update hotpot quantity
-                hotpot.Quantity = availableCount;
-                hotpot.SetUpdateDate();
-
-                await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
-
-                _logger.LogInformation("Updated hotpot {HotpotId} quantity to {Quantity} based on inventory count",
-                    hotpotId, availableCount);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating hotpot quantity from inventory for hotpot ID {HotpotId}", hotpotId);
-                return false;
-            }
-        }
+        
 
 
         /// <summary>
@@ -1223,7 +1288,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // Check rent items (hotpots)
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Extract hotpot inventory IDs from the order
                 var hotpotInventoryIds = order.RentOrder.RentOrderDetails
@@ -1292,7 +1357,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private async Task FinalizeInventoryDeduction(Order order)
         {
             // This method actually deducts inventory quantities after payment is confirmed
-            if (order.SellOrder != null)
+            if (order.HasSellItems != null)
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
                 {
@@ -1423,7 +1488,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // For hotpots, we update their status to Rented
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Track which hotpot types need quantity updates
                 var hotpotIdsToUpdate = new HashSet<int>();
@@ -1456,6 +1521,39 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
         }
 
+        public async Task<bool> UpdateHotpotQuantityFromInventoryAsync(int hotpotId)
+        {
+            try
+            {
+                // Get the hotpot
+                var hotpot = await _unitOfWork.Repository<Hotpot>().GetById(hotpotId);
+                if (hotpot == null)
+                {
+                    _logger.LogWarning("Cannot update quantity for non-existent hotpot ID {HotpotId}", hotpotId);
+                    return false;
+                }
+
+                // Count available inventory
+                int availableCount = await CountHotpotInventoryByStatusAsync(hotpotId,
+                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
+
+                // Update hotpot quantity
+                hotpot.Quantity = availableCount;
+                hotpot.SetUpdateDate();
+
+                await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
+
+                _logger.LogInformation("Updated hotpot {HotpotId} quantity to {Quantity} based on inventory count",
+                    hotpotId, availableCount);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating hotpot quantity from inventory for hotpot ID {HotpotId}", hotpotId);
+                return false;
+            }
+        }
+
         /// <summary>
         /// Count hotpot inventory by status
         /// </summary>
@@ -1484,7 +1582,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         private async Task ReleaseInventoryReservation(Order order)
         {
             // For hotpots, we need to update their status back to Available
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Track which hotpot types need quantity updates
                 var hotpotIdsToUpdate = new HashSet<int>();
@@ -1613,7 +1711,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 decimal depositAmount = 0;
                 decimal depositRefunded = 0;
 
-                if (order.RentOrder != null)
+                if (order.HasRentItems)
                 {
                     depositAmount = order.RentOrder.SubTotal * 0.7m;
 
@@ -1649,7 +1747,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         /// <summary>
         /// Update order details
         /// </summary>
-        private async Task<Order> OrderUpdateAsync(int id, SpecialUpdateOrderRequest request)
+        private async Task<Order> OrderUpdateAsync(int id, UpdateOrderRequest request)
         {
             try
             {
@@ -1666,22 +1764,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 if (!string.IsNullOrWhiteSpace(request.Notes))
                     order.Notes = request.Notes;
 
-                // With this safer logic:
-                var totalPriceProp = request.GetType().GetProperty(nameof(request.TotalPrice));
-                if (totalPriceProp != null)
-                {
-                    var providedValue = totalPriceProp.GetValue(request);
-                    // Only update if the property is set and not null
-                    if (providedValue != null)
-                    {
-                        var price = (decimal)providedValue;
-                        if (price <= 0)
-                        {
-                            throw new ValidationException("Tổng tiền không hợp lệ (không thể là 0 hoặc nhỏ hơn 0). Vui lòng kiểm tra lại giá trị tổng tiền.");
-                        }
-                        order.TotalPrice = price;
-                    }
-                }
+                //// With this safer logic:
+                //var totalPriceProp = request.GetType().GetProperty(nameof(request.TotalPrice));
+                //if (totalPriceProp != null)
+                //{
+                //    var providedValue = totalPriceProp.GetValue(request);
+                //    // Only update if the property is set and not null
+                //    if (providedValue != null)
+                //    {
+                //        var price = (decimal)providedValue;
+                //        if (price <= 0)
+                //        {
+                //            throw new ValidationException("Tổng tiền không hợp lệ (không thể là 0 hoặc nhỏ hơn 0). Vui lòng kiểm tra lại giá trị tổng tiền.");
+                //        }
+                //        order.TotalPrice = price;
+                //    }
+                //}
 
                 // Update delivery time if provided
                 if (request.DeliveryTime.HasValue)
@@ -1722,7 +1820,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // Update rental dates if provided and order has rental items
-                if (order.RentOrder != null && request.ExpectedReturnDate.HasValue)
+                if (order.HasRentItems && request.ExpectedReturnDate.HasValue)
                 {
                     DateTime today = DateTime.UtcNow.AddHours(7);
                     order.RentOrder.RentalStartDate = today;
@@ -1754,32 +1852,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     if (!await _discountService.IsDiscountValidAsync(request.DiscountId.Value))
                         throw new ValidationException("Khuyến mãi đã chọn không hợp lệ hoặc đã hết hạn");
 
-                    // Calculate new total price with discount
-                    decimal basePrice = order.TotalPrice;
-                    if (order.DiscountId.HasValue)
-                    {
-                        // Remove old discount first
-                        var oldDiscount = await _discountService.GetByIdAsync(order.DiscountId.Value);
-                        if (oldDiscount != null)
-                        {
-                            basePrice = basePrice / (1 - (decimal)(oldDiscount.DiscountPercentage / 100));
-                        }
-                    }
-
-                    // Apply new discount
-                    order.TotalPrice = basePrice - (basePrice * (decimal)(discount.DiscountPercentage / 100));
+                    // Only update the discount ID, not the price
                     order.DiscountId = request.DiscountId;
                 }
                 else if (request.DiscountId == null && order.DiscountId.HasValue)
                 {
-                    // Remove discount
-                    var oldDiscount = await _discountService.GetByIdAsync(order.DiscountId.Value);
-                    if (oldDiscount != null)
-                    {
-                        // Restore original price
-                        order.TotalPrice = order.TotalPrice / (1 - (decimal)(oldDiscount.DiscountPercentage / 100));
-                    }
-
+                    // Remove discount ID, but don't change the price
                     order.DiscountId = null;
                 }
 

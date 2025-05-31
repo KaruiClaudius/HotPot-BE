@@ -308,7 +308,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                             _options.AdminRole,
                             "Ingredient", 
                             $"Cảnh báo tồn kho thấp: {ingredient.Name}",
-                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (Minimum: {ingredient.MinStockLevel} phần)",
+                            $"{ingredient.Name} đang sắp hết. Tồn kho hiện tại:{ingredient.Quantity} (tối thiểu: {ingredient.MinStockLevel} phần)",
                             notificationData);
 
                         _logger.LogInformation(

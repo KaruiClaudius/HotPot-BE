@@ -14,6 +14,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         public string Notes { get; set; }
         public decimal TotalPrice { get; set; }
         public string Status { get; set; }
+        public DateTime? DeliveryDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public UserInfo User { get; set; }
@@ -28,6 +29,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         public bool IsFeedbacked { get; set; }
 
         // Rental-specific properties
+
         public DateTime? RentalStartDate { get; set; }
         public DateTime? ExpectedReturnDate { get; set; }
         public DateTime? ActualReturnDate { get; set; }

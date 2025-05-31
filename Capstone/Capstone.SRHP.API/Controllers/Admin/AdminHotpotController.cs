@@ -5,12 +5,14 @@ using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.RepositoryLayer.Utils;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Hotpot;
+using Capstone.HPTY.ServiceLayer.DTOs.MaintenanceLog;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
+using DamageDeviceDto = Capstone.HPTY.ServiceLayer.DTOs.Hotpot.DamageDeviceDto;
 
 namespace Capstone.HPTY.API.Controllers.Admin
 {
@@ -20,12 +22,14 @@ namespace Capstone.HPTY.API.Controllers.Admin
     public class AdminHotpotController : ControllerBase
     {
         private readonly IHotpotService _hotpotService;
+        private readonly IDamageDeviceService _damageDeviceService;
         private readonly ILogger<AdminHotpotController> _logger;
 
-        public AdminHotpotController(IHotpotService hotpotService, ILogger<AdminHotpotController> logger)
+        public AdminHotpotController(IHotpotService hotpotService, ILogger<AdminHotpotController> logger, IDamageDeviceService damageDeviceService)
         {
             _hotpotService = hotpotService;
             _logger = logger;
+            _damageDeviceService = damageDeviceService;
         }
 
         // GET: api/Hotpot
@@ -51,15 +55,27 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     minPrice, maxPrice, minQuantity,
                     pageNumber, pageSize, sortBy, ascending);
 
-                var damageCount = await _hotpotService.CountDamageDevice();
+                DamageDeviceFilterRequest damageDeviceFilterRequest = new DamageDeviceFilterRequest
+                {
+                    SearchTerm = searchTerm,
+                    Status = MaintenanceStatus.Pending, 
+                    HotPotInventoryId = null, // Not filtering by inventory ID here
+                    FromDate = null, // No date filtering
+                    ToDate = null, // No date filtering
+                    SortBy = "LoggedDate", // Default sort by logged date
+                    Ascending = false, // Default descending order
+                    PageNumber = 1, // Single page for count
+                    PageSize = int.MaxValue // Get all for count
+                };
 
+                var damageDevices = await _damageDeviceService.GetAllAsync(damageDeviceFilterRequest);
                 var pagedResult = new HotpotPagedResult
                 {
                     Items = result.Items.Select(MapToHotpotDto).ToList(),
                     TotalCount = result.TotalCount,
                     PageNumber = result.PageNumber,
                     PageSize = result.PageSize,
-                    DamageDeviceCount = damageCount
+                    DamageDeviceCount = damageDevices.TotalCount
                 };
 
                 return Ok(pagedResult);

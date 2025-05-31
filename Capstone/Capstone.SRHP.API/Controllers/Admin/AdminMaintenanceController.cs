@@ -199,15 +199,26 @@ namespace Capstone.HPTY.API.Controllers.Admin
             {
                 _logger.LogInformation("Admin updating damage device with ID: {DeviceId}", id);
 
-                var existingDevice = await _damageDeviceService.GetByIdAsync(id);
+                // Get the existing device to ensure it exists and to get current values
+                var partialUpdate = new DamageDevice
+                {
+                    DamageDeviceId = id // Include the ID for reference
+                };
 
-                // Update only the properties that are provided
-                if (request.Name != null) existingDevice.Name = request.Name;
-                if (request.Description != null) existingDevice.Description = request.Description;
+               
+                if (request.Name != null)
+                    partialUpdate.Name = request.Name;
+
+                if (request.Description != null)
+                    partialUpdate.Description = request.Description;
+
                 if (request.Status != null && Enum.TryParse(request.Status, true, out MaintenanceStatus status))
-                    existingDevice.Status = status;
+                    partialUpdate.Status = status;
 
-                await _damageDeviceService.UpdateAsync(id, existingDevice);
+                // Pass the new entity to the service
+                await _damageDeviceService.UpdateAsync(id, partialUpdate);
+
+                // Get the updated entity
                 var updatedDevice = await _damageDeviceService.GetByIdAsync(id);
                 var deviceDto = MapToDamageDeviceDto(updatedDevice);
 

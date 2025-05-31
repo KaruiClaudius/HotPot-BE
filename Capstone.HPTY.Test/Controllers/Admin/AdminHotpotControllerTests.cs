@@ -20,12 +20,15 @@ namespace Capstone.HPTY.Test.Controllers.Admin
     {
         private MockRepository mockRepository;
         private Mock<IHotpotService> mockHotpotService;
+        private Mock<IDamageDeviceService> mockDamageDeviceService;
         private Mock<ILogger<AdminHotpotController>> mockLogger;
 
         public AdminHotpotControllerTests()
         {
             this.mockRepository = new MockRepository(MockBehavior.Strict);
             this.mockHotpotService = this.mockRepository.Create<IHotpotService>();
+            this.mockDamageDeviceService = this.mockRepository.Create<IDamageDeviceService>();
+
 
             // Create logger with loose behavior
             this.mockLogger = new Mock<ILogger<AdminHotpotController>>(MockBehavior.Loose);
@@ -34,8 +37,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
         private AdminHotpotController CreateAdminHotpotController()
         {
             return new AdminHotpotController(
-                this.mockHotpotService.Object,
-                this.mockLogger.Object);
+                this.mockHotpotService.Object,                
+                this.mockLogger.Object,
+                this.mockDamageDeviceService.Object);
         }
 
         [Fact]

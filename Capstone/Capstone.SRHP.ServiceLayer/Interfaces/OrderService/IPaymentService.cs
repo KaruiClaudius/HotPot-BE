@@ -17,6 +17,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.OrderService
         Task<Response> CancelOrder(int orderCode, string reason);
         Task<Response> ConfirmWebhook(ConfirmWebhook body);
         Task<Response> CheckOrder(CheckOrderRequest request, string userPhone);
+        Task<Response> ProcessOrder(CheckOrderRequest request, string userPhone);
         Task<Payment> ProcessCashPayment(int orderId, string address, string notes, int? discountId,
             DateTime? expectedReturnDate, DateTime? deliveryTime, int userId);  
         Task<Payment> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status);
