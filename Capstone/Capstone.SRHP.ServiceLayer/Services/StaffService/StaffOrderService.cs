@@ -844,7 +844,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.StaffService
                     }
                     : null,
                 OrderItems = new List<OrderItemSummaryDto>(),
-                HotpotItems = new List<HotpotSummaryDto>()
+                HotpotItems = new List<HotpotSummaryDto>(),
+                HasSellItems = order.HasSellItems,
+                HasRentItems = order.HasRentItems
             };
 
             // Add sell order items

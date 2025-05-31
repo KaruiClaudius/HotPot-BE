@@ -106,6 +106,8 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders
         public VehicleInfoDto Vehicle { get; set; }
         public OrderSize OrderSize { get; set; }
         public bool IsDelivered { get; set; }
+        public bool HasSellItems { get; set; }
+        public bool HasRentItems { get; set; }
     }
 
     // Summary DTO for order items (ingredients, combos, etc.)
