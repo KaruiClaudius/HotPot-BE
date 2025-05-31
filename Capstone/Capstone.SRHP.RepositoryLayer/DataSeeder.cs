@@ -152,7 +152,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Size = "M",
                     Description = "Nồi lẩu đồng truyền thống với hệ thống đốt than.",
                     ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noilaudongcodien.jpg?alt=media&token=6f345d27-7ff9-43e6-8beb-e50f29578436"],
-                    Price = 730000m, // ~29.99 USD
+                    Price = 73000m, // ~29.99 USD
                     BasePrice = 2200000m, // ~89.99 USD
                     Quantity = 5,
                 },
@@ -164,7 +164,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Size = "L",
                     Description = "Nồi lẩu điện với điều khiển nhiệt độ và lớp phủ chống dính.",
                     ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noi-lau-dien-sunhouse-shd4523-gia-re.jpg?alt=media&token=2d6c1dd9-c484-4dde-94a2-bdf52e511d0b"],
-                    Price = 1460000m, // ~59.99 USD
+                    Price = 146000m, // ~59.99 USD
                     BasePrice = 3170000m, // ~129.99 USD
                     Quantity = 2,
                 },
@@ -176,7 +176,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Size = "S",
                     Description = "Nồi lẩu nhỏ gọn di động hoàn hảo cho du lịch hoặc các buổi tụ họp nhỏ.",
                     ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/noi-lau-mini-lebenlang-lbec0808-shr-1000x1000.jpg?alt=media&token=92f6bcd1-169c-43c0-8e73-013cb8a68637"],
-                    Price = 490000m, // ~19.99 USD
+                    Price = 49000m, // ~19.99 USD
                     BasePrice = 1710000m, // ~69.99 USD
                     Quantity = 2,
                 },
@@ -188,7 +188,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Size = "L",
                     Description = "Nồi lẩu đa ngăn cho phép nấu nhiều loại nước lẩu khác nhau trong một nồi.",
                     ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-hai-ngan.jpg?alt=media%token=4c530d54-dafd-45fe-8d77-7b6c45a81b5a"],
-                    Price = 1710000m, // ~69.99 USD
+                    Price = 171000m, // ~69.99 USD
                     BasePrice = 3660000m, // ~149.99 USD
                     Quantity = 2,
                 },
@@ -201,9 +201,9 @@ namespace Capstone.HPTY.RepositoryLayer
                     Description = "Nồi lẩu gốm truyền thống giữ nhiệt cực tốt.",
                     ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau%20inox.jpg?alt=media&token=e4963f3f-5130-4485-9932-39cecd7a98af",
                                 "https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau%20inox%202.jpg?alt=media&token=4dda3d4c-3ba3-4cd0-96fc-d4ff505c5887"],
-                    Price = 980000m, // ~39.99 USD
+                    Price = 98000m, // ~39.99 USD
                     BasePrice = 1950000m, // ~79.99 USD
-                    Quantity = 4,
+                    Quantity = 3,
                 }
             );
         }

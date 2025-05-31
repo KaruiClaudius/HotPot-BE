@@ -20,6 +20,7 @@ using static System.Formats.Asn1.AsnWriter;
 using Capstone.HPTY.ServiceLayer.Interfaces.ComboService;
 using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
+using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 
 namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
@@ -114,73 +115,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         // Check if this payment has timed out
                         bool isTimedOut = monitoringTime > _paymentTimeout;
 
-                        // Only check with PayOS if the payment has been pending for a while or has timed out
-                        if (isTimedOut || monitoringTime > TimeSpan.FromMinutes(1))
+                        var order = await unitOfWork.Repository<Order>().GetById(payment.OrderId.Value);
+                        if (order == null)
                         {
-                            // Get the order to check if it's still in Cart status
-                            var order = await unitOfWork.Repository<Order>().GetById(payment.OrderId.Value);
-                            if (order == null)
+                            _logger.LogWarning("Order not found for payment {PaymentId}", payment.PaymentId);
+                            continue;
+                        }
+
+                        // If order is no longer in Cart status, it means it's already been processed
+                        if (order.Status != OrderStatus.Cart)
+                        {
+                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                            _logger.LogInformation("Order {OrderId} is no longer in Cart status, removing payment {PaymentId} from monitoring",
+                                order.OrderId, payment.PaymentId);
+                            continue;
+                        }
+
+                        var user = await unitOfWork.Repository<User>().GetById(payment.UserId);
+                        if (user == null)
+                        {
+                            _logger.LogWarning("User not found for payment {PaymentId}", payment.PaymentId);
+                            continue;
+                        }
+
+                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
+                        {
+                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                            _logger.LogInformation("Payment {PaymentId} is no longer pending, removing from monitoring", payment.PaymentId);
+                            continue;
+                        }
+
+                        _logger.LogInformation("Background service checking payment {PaymentId} ({TransactionCode}) after {Minutes:N1} minutes",
+                            payment.PaymentId, payment.TransactionCode, monitoringTime.TotalMinutes);
+
+
+
+                        // Check directly with PayOS
+                        try
+                        {
+                            var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
+
+                            if (paymentInfo == null)
                             {
-                                _logger.LogWarning("Order not found for payment {PaymentId}", payment.PaymentId);
+                                _logger.LogWarning("Could not get payment information from PayOS for {TransactionCode}",
+                                    payment.TransactionCode);
                                 continue;
                             }
 
-                            // If order is no longer in Cart status, it means it's already been processed
-                            if (order.Status != OrderStatus.Cart)
+                            _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
+                                payment.TransactionCode, paymentInfo.status);
+
+                            // CRITICAL: Process based on PayOS status
+                            if (paymentInfo.status == "PAID")
                             {
-                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                _logger.LogInformation("Order {OrderId} is no longer in Cart status, removing payment {PaymentId} from monitoring",
-                                    order.OrderId, payment.PaymentId);
-                                continue;
-                            }
+                                _logger.LogInformation("Payment {TransactionCode} is PAID according to PayOS. Processing as successful payment.",
+                                    payment.TransactionCode);
 
-                            var user = await unitOfWork.Repository<User>().GetById(payment.UserId);
-                            if (user == null)
-                            {
-                                _logger.LogWarning("User not found for payment {PaymentId}", payment.PaymentId);
-                                continue;
-                            }
-
-                            // Double-check the payment is still pending in our database before proceeding
-                            var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                            if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
-                            {
-                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                _logger.LogInformation("Payment {PaymentId} is no longer pending, removing from monitoring", payment.PaymentId);
-                                continue;
-                            }
-
-                            _logger.LogInformation("Background service checking payment {PaymentId} ({TransactionCode}) after {Minutes:N1} minutes",
-                                payment.PaymentId, payment.TransactionCode, monitoringTime.TotalMinutes);
-
-                            // Check directly with PayOS
-                            try
-                            {
-                                var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
-
-                                if (paymentInfo == null)
+                                // Process successful payment
+                                using var scope2 = _serviceProvider.CreateScope();
+                                var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
+                                var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                                try
                                 {
-                                    _logger.LogWarning("Could not get payment information from PayOS for {TransactionCode}",
-                                        payment.TransactionCode);
-                                    continue;
-                                }
-
-                                _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
-                                    payment.TransactionCode, paymentInfo.status);
-
-                                // CRITICAL: Process based on PayOS status
-                                if (paymentInfo.status == "PAID")
-                                {
-                                    _logger.LogInformation("Payment {TransactionCode} is PAID according to PayOS. Processing as successful payment.",
-                                        payment.TransactionCode);
-
-                                    // Process successful payment
-                                    using var scope2 = _serviceProvider.CreateScope();
-                                    var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
-                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
                                     var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
 
-                                    _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
+                                    _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
                                         payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
 
                                     if (response.error == 0)
@@ -195,18 +195,27 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                             payment.TransactionCode, response.message);
                                     }
                                 }
-                                else if (paymentInfo.status == "CANCELLED")
+                                catch (Exception ex)
                                 {
-                                    _logger.LogInformation("Payment {TransactionCode} is CANCELLED according to PayOS. Processing as cancelled payment.",
-                                        payment.TransactionCode);
+                                    _logger.LogError(ex, "Exception in ProcessOrder for PAID payment {TransactionCode}", payment.TransactionCode);
+                                }
+                            }
 
-                                    // Process cancelled payment
-                                    using var scope2 = _serviceProvider.CreateScope();
-                                    var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
-                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                            else if (paymentInfo.status == "CANCELLED")
+                            {
+                                _logger.LogInformation("Payment {TransactionCode} is CANCELLED according to PayOS. Processing as cancelled payment.",
+                                    payment.TransactionCode);
+
+                                // Process cancelled payment
+                                using var scope2 = _serviceProvider.CreateScope();
+                                var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
+                                var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+
+                                try
+                                {
                                     var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
 
-                                    _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
+                                    _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
                                         payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
 
                                     if (response.error == 0)
@@ -221,87 +230,93 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                             payment.TransactionCode, response.message);
                                     }
                                 }
-                                else if (isTimedOut)
+                                catch (Exception ex)
                                 {
-                                    // ONLY cancel if the payment has timed out AND is still in a pending-like state
-                                    if (paymentInfo.status == "PENDING")
-                                    {
-                                        _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
-                                            payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
-
-                                        // Get a fresh copy of the payment again to ensure it's still pending
-                                        freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                        if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
-                                        {
-                                            var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
-                                            {
-                                                // Get the most up-to-date payment record within the transaction
-                                                var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                                if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
-                                                {
-                                                    // Payment was already processed by another thread
-                                                    return false;
-                                                }
-
-                                                // Double-check with PayOS one more time before cancelling
-                                                var finalCheck = await payOS.getPaymentLinkInformation(payment.TransactionCode);
-                                                if (finalCheck != null && finalCheck.status == "PAID")
-                                                {
-                                                    _logger.LogWarning("Payment {TransactionCode} changed to PAID during cancellation. Aborting cancellation.",
-                                                        payment.TransactionCode);
-                                                    return false;
-                                                }
-
-                                                // Cancel the payment in our system
-                                                transactionPayment.Status = PaymentStatus.Cancelled;
-                                                transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                                                await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
-
-                                                // Get the order and release inventory
-                                                if (transactionPayment.OrderId.HasValue)
-                                                {
-                                                    var orderToCancel = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
-                                                    if (orderToCancel != null)
-                                                    {
-                                                        // Call method to release inventory reservations
-                                                        await ReleaseInventoryReservation(orderToCancel);
-                                                    }
-                                                }
-
-                                                return true; // Transaction success
-                                            },
-                                            ex =>
-                                            {
-                                                _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId} ({TransactionCode})",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            });
-
-                                            if (success)
-                                            {
-                                                // Remove from monitoring
-                                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                                _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            }
-                                            else
-                                            {
-                                                _logger.LogWarning("Failed to cancel payment {PaymentId} ({TransactionCode}) - transaction failed or payment already processed",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _logger.LogInformation("Payment {TransactionCode} has timed out but has status {Status} in PayOS. Not cancelling.",
-                                            payment.TransactionCode, paymentInfo.status);
-                                    }
+                                    _logger.LogError(ex, "Exception in ProcessOrder for CANCELLED payment {TransactionCode}", payment.TransactionCode);
                                 }
                             }
-                            catch (Exception ex)
+
+                            else if (isTimedOut)
                             {
-                                _logger.LogError(ex, "Error checking payment status with PayOS for {TransactionCode}", payment.TransactionCode);
+                                // ONLY cancel if the payment has timed out AND is still in a pending-like state
+                                if (paymentInfo.status == "PENDING")
+                                {
+                                    _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
+                                        payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
+
+                                    // Get a fresh copy of the payment again to ensure it's still pending
+                                    freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                    if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
+                                    {
+                                        var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
+                                        {
+                                            // Get the most up-to-date payment record within the transaction
+                                            var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                            if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
+                                            {
+                                                // Payment was already processed by another thread
+                                                return false;
+                                            }
+
+                                            // Double-check with PayOS one more time before cancelling
+                                            var finalCheck = await payOS.getPaymentLinkInformation(payment.TransactionCode);
+                                            if (finalCheck != null && finalCheck.status == "PAID")
+                                            {
+                                                _logger.LogWarning("Payment {TransactionCode} changed to PAID during cancellation. Aborting cancellation.",
+                                                    payment.TransactionCode);
+                                                return false;
+                                            }
+
+                                            // Cancel the payment in our system
+                                            transactionPayment.Status = PaymentStatus.Cancelled;
+                                            transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                                            await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
+
+                                            // Get the order and release inventory
+                                            if (transactionPayment.OrderId.HasValue)
+                                            {
+                                                var orderToCancel = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
+                                                if (orderToCancel != null)
+                                                {
+                                                    // Call method to release inventory reservations
+                                                    await ReleaseInventoryReservation(orderToCancel);
+                                                }
+                                            }
+
+                                            return true; // Transaction success
+                                        },
+                                        ex =>
+                                        {
+                                            _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId} ({TransactionCode})",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        });
+
+                                        if (success)
+                                        {
+                                            // Remove from monitoring
+                                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                            _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        }
+                                        else
+                                        {
+                                            _logger.LogWarning("Failed to cancel payment {PaymentId} ({TransactionCode}) - transaction failed or payment already processed",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogInformation("Payment {TransactionCode} has timed out but has status {Status} in PayOS. Not cancelling.",
+                                        payment.TransactionCode, paymentInfo.status);
+                                }
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error checking payment status with PayOS for {TransactionCode}", payment.TransactionCode);
+                        }
+
                     }
                     catch (Exception ex)
                     {
@@ -320,45 +335,62 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
         private async Task ReleaseInventoryReservation(Order order)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
-            // For hotpots, we need to update their status back to Available
-            if (order.HasRentItems)
+            try
             {
-                // Track which hotpot types need quantity updates
-                var hotpotIdsToUpdate = new HashSet<int>();
+                using var scope = _serviceProvider.CreateScope();
+                var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-                foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
+                // For hotpots, we need to update their status back to Available
+                if (order.RentOrder != null)
                 {
-                    if (detail.HotpotInventoryId.HasValue)
+                    // Track which hotpot types need quantity updates
+                    var hotpotIdsToUpdate = new HashSet<int>();
+
+                    foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                     {
-                        var hotpotInventory = await unitOfWork.Repository<HotPotInventory>()
-                            .IncludeNested(query => query.Include(h => h.Hotpot))
-                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
-
-                        if (hotpotInventory != null &&
-                            (hotpotInventory.Status == HotpotStatus.Reserved || hotpotInventory.Status == HotpotStatus.Rented))
+                        if (detail.HotpotInventoryId.HasValue)
                         {
-                            // Add the hotpot ID to the set of IDs to update
-                            hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+                            var hotpotInventory = await unitOfWork.Repository<HotPotInventory>()
+                                .IncludeNested(query => query.Include(h => h.Hotpot))
+                                .FirstOrDefaultAsync(h => h.HotPotInventoryId == detail.HotpotInventoryId);
 
-                            // Update the inventory status
-                            hotpotInventory.Status = HotpotStatus.Available;
-                            await unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+                            if (hotpotInventory != null &&
+                                (hotpotInventory.Status == HotpotStatus.Reserved || hotpotInventory.Status == HotpotStatus.Rented))
+                            {
+                                // Add the hotpot ID to the set of IDs to update
+                                hotpotIdsToUpdate.Add(hotpotInventory.HotpotId);
+
+                                // Update the inventory status
+                                hotpotInventory.Status = HotpotStatus.Available;
+                                await unitOfWork.Repository<HotPotInventory>().Update(hotpotInventory, hotpotInventory.HotPotInventoryId);
+
+                                _logger.LogInformation("Released hotpot inventory item {InventoryId} for hotpot {HotpotId}",
+                                    hotpotInventory.HotPotInventoryId, hotpotInventory.HotpotId);
+                            }
+                        }
+                    }
+
+                    // Update the quantity for each affected hotpot type
+                    foreach (var hotpotId in hotpotIdsToUpdate)
+                    {
+                        try
+                        {
+                            await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                            _logger.LogInformation("Updated quantity for hotpot {HotpotId}", hotpotId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error updating quantity for hotpot {HotpotId}", hotpotId);
                         }
                     }
                 }
-
-                // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ReleaseInventoryReservation for order {OrderId}", order.OrderId);
+                // Don't rethrow - we want to continue processing even if this fails
             }
         }
-
-
     }
 }
