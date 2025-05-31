@@ -1416,8 +1416,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             {
                                 // Update hotpot status to Available after maintenance
                                 hotpotInventory.Status = HotpotStatus.Available;
-                                hotpotInventory.Hotpot.Quantity = await CountHotpotInventoryByStatusAsync(hotpotInventory.Hotpot.HotpotId, 
-                                    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
+                                //hotpotInventory.Hotpot.Quantity = await CountHotpotInventoryByStatusAsync(hotpotInventory.Hotpot.HotpotId, 
+                                //    new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
                                 // Update last maintain date on the hotpot itself
                                 if (hotpotInventory.Hotpot != null)
                                 {

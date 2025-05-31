@@ -99,6 +99,7 @@ namespace Capstone.HPTY.API.AppStarts
             services.AddScoped<IUtensilService, UtensilService>();
             services.AddScoped<IPaymentService, PaymentService>();
 
+
             // Manager Services
             services.AddScoped<IOrderManagementService, OrderManagementService>();
             services.AddScoped<IChatService, ChatService>();

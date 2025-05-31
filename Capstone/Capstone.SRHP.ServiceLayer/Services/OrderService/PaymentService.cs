@@ -1025,10 +1025,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 await _unitOfWork.Repository<Order>().Update(order, orderId);
 
                 // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
+                //foreach (var hotpotId in hotpotIdsToUpdate)
+                //{
+                //    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                //}
 
                 await _unitOfWork.CommitAsync();
 
@@ -1514,10 +1514,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
+                //foreach (var hotpotId in hotpotIdsToUpdate)
+                //{
+                //    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                //}
             }
         }
 
@@ -1538,7 +1538,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                     new List<HotpotStatus> { HotpotStatus.Available, HotpotStatus.Reserved });
 
                 // Update hotpot quantity
-                hotpot.Quantity = availableCount;
+                // hotpot.Quantity = availableCount;
                 hotpot.SetUpdateDate();
 
                 await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
@@ -1611,10 +1611,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 // Update the quantity for each affected hotpot type
-                foreach (var hotpotId in hotpotIdsToUpdate)
-                {
-                    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                }
+                //foreach (var hotpotId in hotpotIdsToUpdate)
+                //{
+                //    await UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                //}
             }
 
             // For ingredients and utensils, we don't need to do anything since we didn't deduct them yet

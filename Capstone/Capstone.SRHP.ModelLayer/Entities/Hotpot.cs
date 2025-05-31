@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
+using Capstone.HPTY.ModelLayer.Enum;
 
 namespace Capstone.HPTY.ModelLayer.Entities
 {
@@ -71,9 +72,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [Range(0, double.MaxValue)]
         public decimal BasePrice { get; set; }
 
-        [Required]
-        [Range(0, int.MaxValue)]
-        public int Quantity { get; set; }
+        [NotMapped]
+        public int Quantity => InventoryUnits?.Count(i => !i.IsDelete) ?? 0;
 
         [Required]
         public DateTime LastMaintainDate { get; set; }

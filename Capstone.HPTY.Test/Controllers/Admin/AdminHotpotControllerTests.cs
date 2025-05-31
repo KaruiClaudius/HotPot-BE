@@ -72,7 +72,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                     ImageURLs = new[] { "image1.jpg", "image2.jpg" },
                     Price = 50,
                     BasePrice = 30,
-                    Quantity = 10,
+                    //Quantity = 10,
                     LastMaintainDate = DateTime.UtcNow.AddDays(-30),
                     CreatedAt = DateTime.UtcNow.AddDays(-60),
                     UpdatedAt = DateTime.UtcNow.AddDays(-15)
@@ -213,7 +213,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ImageURLs = new[] { "image1.jpg", "image2.jpg" },
                 Price = 50,
                 BasePrice = 30,
-                Quantity = 10,
+                //Quantity = 10,
                 LastMaintainDate = DateTime.UtcNow.AddDays(-30),
                 CreatedAt = DateTime.UtcNow.AddDays(-60),
                 UpdatedAt = DateTime.UtcNow.AddDays(-15),
@@ -458,7 +458,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ImageURLs = request.ImageURLs,
                 Price = request.Price,
                 BasePrice = request.BasePrice,
-                Quantity = 2, // Based on the number of series numbers
+                //Quantity = 2, // Based on the number of series numbers
                 LastMaintainDate = DateTime.UtcNow.AddHours(7),
                 CreatedAt = DateTime.UtcNow.AddHours(7)
             };
@@ -599,7 +599,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ImageURLs = new[] { "original1.jpg", "original2.jpg" },
                 Price = 75,
                 BasePrice = 50,
-                Quantity = 2,
+                //Quantity = 2,
                 LastMaintainDate = DateTime.UtcNow.AddHours(7).AddDays(-30),
                 CreatedAt = DateTime.UtcNow.AddDays(-60),
                 UpdatedAt = null

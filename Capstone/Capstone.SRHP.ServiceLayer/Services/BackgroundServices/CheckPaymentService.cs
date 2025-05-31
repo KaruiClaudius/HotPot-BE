@@ -28,7 +28,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
     {
         private readonly ILogger<CheckPaymentService> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(15);
+        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(5);
         private readonly TimeSpan _paymentTimeout = TimeSpan.FromMinutes(10);
 
         // Dictionary to track when we last saw each payment
@@ -372,18 +372,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                     }
 
                     // Update the quantity for each affected hotpot type
-                    foreach (var hotpotId in hotpotIdsToUpdate)
-                    {
-                        try
-                        {
-                            await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
-                            _logger.LogInformation("Updated quantity for hotpot {HotpotId}", hotpotId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error updating quantity for hotpot {HotpotId}", hotpotId);
-                        }
-                    }
+                    //foreach (var hotpotId in hotpotIdsToUpdate)
+                    //{
+                    //    try
+                    //    {
+                    //        await paymentService.UpdateHotpotQuantityFromInventoryAsync(hotpotId);
+                    //        _logger.LogInformation("Updated quantity for hotpot {HotpotId}", hotpotId);
+                    //    }
+                    //    catch (Exception ex)
+                    //    {
+                    //        _logger.LogError(ex, "Error updating quantity for hotpot {HotpotId}", hotpotId);
+                    //    }
+                    //}
                 }
             }
             catch (Exception ex)
