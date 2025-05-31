@@ -29,6 +29,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
     {
         private readonly ILogger<CheckPaymentService> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILockService _lockService;
         private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _paymentTimeout = TimeSpan.FromMinutes(10);
 
