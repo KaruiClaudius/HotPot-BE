@@ -593,7 +593,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             var addedRentDetailIds = new HashSet<int>();
 
             // Add hotpot deposit from RentOrder if available
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;

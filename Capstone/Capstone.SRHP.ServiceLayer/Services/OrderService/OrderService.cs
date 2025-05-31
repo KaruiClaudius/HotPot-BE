@@ -816,7 +816,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             }
 
             // Calculate rent order subtotal
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Get distinct details to avoid counting duplicates
                 var distinctDetails = order.RentOrder.RentOrderDetails
@@ -1400,7 +1400,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is completed, update hotpot inventory status
                 else if (status == OrderStatus.Completed)
                 {
-                    if (order.RentOrder != null)
+                    if (order.HasRentItems)
                     {
                         // Update ActualReturnDate in RentOrder
                         order.RentOrder.ActualReturnDate = DateTime.UtcNow.AddHours(7);
@@ -1456,7 +1456,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // If order is returning, update hotpot inventory status to Maintenance
                 else if (status == OrderStatus.Returning)
                 {
-                    if (order.RentOrder != null)
+                    if (order.HasRentItems)
                     {
                         order.RentOrder.ExpectedReturnDate = DateTime.UtcNow.AddHours(7);
                         foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete && d.HotpotInventoryId.HasValue))
@@ -1700,7 +1700,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         {
             // This method releases all reservations for an order
             // For hotpots, we need to update their status back to Available
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 foreach (var detail in order.RentOrder.RentOrderDetails.Where(d => !d.IsDelete))
                 {

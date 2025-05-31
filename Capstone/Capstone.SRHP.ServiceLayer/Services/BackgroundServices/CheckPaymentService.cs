@@ -27,9 +27,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
     {
         private readonly ILogger<CheckPaymentService> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _paymentTimeout = TimeSpan.FromMinutes(10);
-        private readonly TimeSpan _apiCheckGracePeriod = TimeSpan.FromSeconds(30);
 
         // Dictionary to track when we last saw each payment
         private readonly ConcurrentDictionary<int, DateTime> _monitoredPayments = new();
@@ -112,13 +111,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                         var monitoringTime = DateTime.UtcNow.AddHours(7) - firstSeenTime;
 
-                        // Skip payments that haven't been pending long enough to warrant intervention
-                        if (monitoringTime < _apiCheckGracePeriod)
-                        {
-                            _logger.LogDebug("Payment {PaymentId} is still within grace period, skipping", payment.PaymentId);
-                            continue;
-                        }
-
                         // Check if this payment has timed out
                         bool isTimedOut = monitoringTime > _paymentTimeout;
 
@@ -186,7 +178,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                     using var scope2 = _serviceProvider.CreateScope();
                                     var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
                                     var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                                    var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+                                    var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
 
                                     _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
                                         payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
@@ -212,7 +204,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                     using var scope2 = _serviceProvider.CreateScope();
                                     var paymentService = scope2.ServiceProvider.GetRequiredService<IPaymentService>();
                                     var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                                    var response = await paymentService.CheckOrder(checkRequest, user.PhoneNumber);
+                                    var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
 
                                     _logger.LogInformation("Payment {TransactionCode} CheckOrder result: {Status}, Message: {Message}",
                                         payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
@@ -232,7 +224,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 else if (isTimedOut)
                                 {
                                     // ONLY cancel if the payment has timed out AND is still in a pending-like state
-                                    if (paymentInfo.status == "PENDING" || paymentInfo.status == "CREATED")
+                                    if (paymentInfo.status == "PENDING")
                                     {
                                         _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
                                             payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
@@ -333,7 +325,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
             // For hotpots, we need to update their status back to Available
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Track which hotpot types need quantity updates
                 var hotpotIdsToUpdate = new HashSet<int>();

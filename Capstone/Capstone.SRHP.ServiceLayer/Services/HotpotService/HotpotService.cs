@@ -458,10 +458,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 // Update the status
                 inventoryItem.Status = newStatus;
+                if (newStatus == HotpotStatus.Available)
+                {
+                    inventoryItem.Hotpot.Quantity += 1; 
+                }
+                else 
+                {
+                    inventoryItem.Hotpot.Quantity -= 1;
+                }
                 await _unitOfWork.Repository<HotPotInventory>().Update(inventoryItem, inventoryId);
 
                 // Update the parent hotpot's quantity if status changes to/from Available
-                await SyncHotpotQuantityAsync(inventoryItem.HotpotId);
+                //await SyncHotpotQuantityAsync(inventoryItem.HotpotId);
 
                 await _unitOfWork.CommitAsync();
             },
@@ -476,28 +484,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
         public async Task UpdateQuantityAsync(int hotpotId)
         {
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
                 await SyncHotpotQuantityAsync(hotpotId);
-                await _unitOfWork.CommitAsync();
-            },
-            ex =>
+            }
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating hotpot quantity for ID {HotpotId}", hotpotId);
-            });
+                throw;
+            }
         }
 
         private async Task SyncHotpotQuantityAsync(int hotpotId)
         {
-            var availableInventoryCount = await _unitOfWork.Repository<HotPotInventory>()
-                .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && i.Status == HotpotStatus.Available)
-                .CountAsync();
-
-            var hotpot = await _unitOfWork.Repository<Hotpot>().FindAsync(h => h.HotpotId == hotpotId && !h.IsDelete);
-            if (hotpot != null)
+            try
             {
-                hotpot.Quantity = availableInventoryCount;
-                await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
+                var availableInventoryCount = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAll(i => i.HotpotId == hotpotId && !i.IsDelete && i.Status == HotpotStatus.Available)
+                    .CountAsync();
+
+                var hotpot = await _unitOfWork.Repository<Hotpot>().FindAsync(h => h.HotpotId == hotpotId && !h.IsDelete);
+                if (hotpot != null)
+                {
+                    hotpot.Quantity = availableInventoryCount;
+                    await _unitOfWork.Repository<Hotpot>().Update(hotpot, hotpotId);
+                    await _unitOfWork.CommitAsync(); // Commit the changes
+                }
+                else
+                {
+                    _logger.LogWarning("Hotpot with ID {HotpotId} not found or is deleted", hotpotId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in SyncHotpotQuantityAsync for hotpot ID {HotpotId}", hotpotId);
+                throw;
             }
         }
 
@@ -523,6 +544,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     // Reactivate the soft-deleted inventory item
                     existingItem.IsDelete = false;
                     existingItem.Status = HotpotStatus.Available;
+                    existingItem.Hotpot.Quantity += 1; 
                     existingItem.SetUpdateDate();
                     await _unitOfWork.Repository<HotPotInventory>().Update(existingItem, existingItem.HotPotInventoryId);
                     reactivatedItems.Add(existingItem);
@@ -535,6 +557,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
             // Add new inventory items
             var inventoryItems = new List<HotPotInventory>();
+
             foreach (var seriesNumber in newSeriesNumbers)
             {
                 var inventoryItem = new HotPotInventory
@@ -548,10 +571,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 inventoryItems.Add(inventoryItem);
             }
 
+
             await _unitOfWork.CommitAsync();
 
             // Update the hotpot quantity to reflect the new inventory items
-            await SyncHotpotQuantityAsync(hotpotId);
+            //await SyncHotpotQuantityAsync(hotpotId);
 
             // Combine reactivated and new items
             inventoryItems.AddRange(reactivatedItems);

@@ -372,6 +372,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
+                DeliveryDate = order.DeliveryTime,
                 User = order.User != null ? new UserInfo
                 {
                     UserId = order.User.UserId,
@@ -390,7 +391,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
             var addedRentDetailIds = new HashSet<int>();
 
             // Add hotpot deposit from RentOrder if available
-            if (order.RentOrder != null)
+            if (order.HasRentItems)
             {
                 // Add rental dates to the response
                 response.RentalStartDate = order.RentOrder.RentalStartDate;

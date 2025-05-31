@@ -189,6 +189,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                 // Update the hotpot inventory status to Damaged
                 hotpot.Status = HotpotStatus.Damaged;
+                hotpot.Hotpot.Quantity -= 1; 
                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
 
                 // Insert the damage device
@@ -196,7 +197,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 await _unitOfWork.CommitAsync();
 
                 // Update the hotpot quantity
-                await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                
 
                 return entity;
             },
@@ -212,60 +213,89 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var existingDevice = await GetByIdAsync(id);
-                if (existingDevice == null)
+                var originalEntity = await _unitOfWork.Repository<DamageDevice>()
+                    .FindAsync(d => d.DamageDeviceId == id && !d.IsDelete);
+
+                if (originalEntity == null)
                     throw new NotFoundException($"Không tìm thấy thiết bị hư hỏng với ID {id}");
 
-                // Validate basic properties
-                if (string.IsNullOrWhiteSpace(entity.Name))
+                // Store original values for comparison
+                var originalStatus = originalEntity.Status;
+                var originalHotpotId = originalEntity.HotPotInventoryId;
+
+                if (!string.IsNullOrWhiteSpace(entity.Name))
+                    originalEntity.Name = entity.Name;
+
+                if (entity.Description != null) // Allow empty description
+                    originalEntity.Description = entity.Description;
+
+                // Only update status if it's different
+                if (entity.Status != default && entity.Status != originalEntity.Status)
+                    originalEntity.Status = entity.Status;
+
+                // Only update hotpot if it's provided and different
+                if (entity.HotPotInventoryId.HasValue && entity.HotPotInventoryId != originalEntity.HotPotInventoryId)
+                    originalEntity.HotPotInventoryId = entity.HotPotInventoryId;
+
+                // Validate after updates
+                if (string.IsNullOrWhiteSpace(originalEntity.Name))
                     throw new ValidationException("Tên thiết bị không được để trống");
 
-                // Validate that HotPotInventoryId is provided
-                if (!entity.HotPotInventoryId.HasValue)
+                if (!originalEntity.HotPotInventoryId.HasValue)
                     throw new ValidationException("Phải cung cấp HotPotInventoryId");
 
                 // Check if HotPotInventoryId has changed
-                bool hotpotChanged = entity.HotPotInventoryId != existingDevice.HotPotInventoryId;
-                bool statusChanged = entity.Status != existingDevice.Status;
+                bool hotpotChanged = originalEntity.HotPotInventoryId != originalHotpotId;
+                bool statusChanged = originalEntity.Status != originalStatus;
+
+                // Handle status changes
+                if (statusChanged || hotpotChanged)
+                {
+                    _logger.LogInformation(
+                        "Updating damage device {Id}: Status changed from {OldStatus} to {NewStatus}, " +
+                        "Hotpot changed from {OldHotpot} to {NewHotpot}",
+                        id, originalStatus, originalEntity.Status,
+                        originalHotpotId, originalEntity.HotPotInventoryId);
+                }
 
                 // Validate HotPotInventory exists if changed
                 if (hotpotChanged)
                 {
                     var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                        .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
+                        .FindAsync(h => h.HotPotInventoryId == originalEntity.HotPotInventoryId.Value && !h.IsDelete);
 
                     if (hotpot == null)
-                        throw new ValidationException($"Không tìm thấy HotPotInventory với ID {entity.HotPotInventoryId.Value}");
+                        throw new ValidationException($"Không tìm thấy HotPotInventory với ID {originalEntity.HotPotInventoryId.Value}");
                 }
 
                 // Update the entity
-                entity.SetUpdateDate();
-                await _unitOfWork.Repository<DamageDevice>().Update(entity, id);
+                originalEntity.SetUpdateDate();
+                await _unitOfWork.Repository<DamageDevice>().Update(originalEntity, id);
 
                 // Handle status changes
                 if (statusChanged || hotpotChanged)
                 {
                     // If status changed to Completed, update the hotpot inventory status
-                    if (entity.Status == MaintenanceStatus.Completed)
+                    if (originalEntity.Status == MaintenanceStatus.Completed)
                     {
                         var hotpot = await _unitOfWork.Repository<HotPotInventory>()
-                            .FindAsync(h => h.HotPotInventoryId == entity.HotPotInventoryId.Value && !h.IsDelete);
+                            .Include(h => h.Hotpot)
+                            .FirstOrDefaultAsync(h => h.HotPotInventoryId == originalEntity.HotPotInventoryId.Value && !h.IsDelete);
 
                         if (hotpot != null)
                         {
+                            // Update hotpot status
                             hotpot.Status = HotpotStatus.Available;
+                            hotpot.Hotpot.Quantity += 1;
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
-
-                            // Update the hotpot quantity
-                            await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
                         }
                     }
 
                     // If the hotpot changed, update the old hotpot's status if no other damage reports exist
-                    if (hotpotChanged && existingDevice.HotPotInventoryId.HasValue)
+                    if (hotpotChanged && originalHotpotId.HasValue)
                     {
                         var oldHotpot = await _unitOfWork.Repository<HotPotInventory>()
-                            .FindAsync(h => h.HotPotInventoryId == existingDevice.HotPotInventoryId.Value && !h.IsDelete);
+                            .FindAsync(h => h.HotPotInventoryId == originalHotpotId.Value && !h.IsDelete);
 
                         if (oldHotpot != null)
                         {
@@ -280,16 +310,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
 
                             if (!otherDamageReports)
                             {
+                                // Update old hotpot status
                                 oldHotpot.Status = HotpotStatus.Available;
-                                await _unitOfWork.Repository<HotPotInventory>().Update(oldHotpot, oldHotpot.HotPotInventoryId);
-
-                                // Update the old hotpot's quantity
-                                await _hotpotService.UpdateQuantityAsync(oldHotpot.HotpotId);
+                                oldHotpot.Hotpot.Quantity += 1;
                             }
                         }
                     }
                 }
-
                 await _unitOfWork.CommitAsync();
             },
             ex =>
@@ -336,10 +363,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                         if (!otherDamageReports)
                         {
                             hotpot.Status = HotpotStatus.Available;
+                            hotpot.Hotpot.Quantity += 1; // Restore the quantity
                             await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpot.HotPotInventoryId);
 
                             // Update the hotpot quantity
-                            await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                            //await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
                         }
                     }
                 }
@@ -380,20 +408,22 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                 if (!otherDamageReports)
                 {
                     hotpot.Status = HotpotStatus.Available;
+                    hotpot.Hotpot.Quantity += 1; // Restore the quantity
                     await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
 
                     // Update the hotpot quantity
-                    await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                    //await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
                 }
             }
             else if (damageStatus == MaintenanceStatus.Pending || damageStatus == MaintenanceStatus.InProgress)
             {
                 // If damage is pending or in progress, set hotpot to Damaged
                 hotpot.Status = HotpotStatus.Damaged;
+                hotpot.Hotpot.Quantity -= 1; // Decrease the quantity
                 await _unitOfWork.Repository<HotPotInventory>().Update(hotpot, hotpotInventoryId);
 
                 // Update the hotpot quantity
-                await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
+                //await _hotpotService.UpdateQuantityAsync(hotpot.HotpotId);
             }
         }
 

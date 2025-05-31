@@ -243,13 +243,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
             {
                 var currentUserPhone = User.FindFirstValue("phone");
                 var response = await _paymentService.CheckOrder(request, currentUserPhone);
-                if (response.error == 0)
-                {
-                    return Ok(response);
-                }
 
-                _logger.LogError("Failed to check order {OrderCode}: {Message}", request.OrderCode, response.message);
-                return BadRequest(new { response.message });
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
