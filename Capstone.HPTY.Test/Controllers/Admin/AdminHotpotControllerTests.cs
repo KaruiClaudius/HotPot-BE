@@ -448,6 +448,25 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 SeriesNumbers = new[] { "HP-123456", "HP-789012" }
             };
 
+            // Create inventory units for the hotpot
+            var inventoryUnits = new List<HotPotInventory>
+            {
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 1,
+                    SeriesNumber = "HP-123456",
+                    Status = HotpotStatus.Available,
+                    IsDelete = false
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 2,
+                    SeriesNumber = "HP-789012",
+                    Status = HotpotStatus.Available,
+                    IsDelete = false
+                }
+            };
+
             var createdHotpot = new Hotpot
             {
                 HotpotId = 1,
@@ -458,9 +477,9 @@ namespace Capstone.HPTY.Test.Controllers.Admin
                 ImageURLs = request.ImageURLs,
                 Price = request.Price,
                 BasePrice = request.BasePrice,
-                //Quantity = 2, // Based on the number of series numbers
                 LastMaintainDate = DateTime.UtcNow.AddHours(7),
-                CreatedAt = DateTime.UtcNow.AddHours(7)
+                CreatedAt = DateTime.UtcNow.AddHours(7),
+                InventoryUnits = inventoryUnits 
             };
 
             mockHotpotService.Setup(s => s.CreateAsync(
@@ -486,12 +505,11 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             Assert.Equal(request.Material, hotpotDto.Material);
             Assert.Equal(request.Size, hotpotDto.Size);
             Assert.Equal(request.Price, hotpotDto.Price);
-            Assert.Equal(2, hotpotDto.Quantity);
+            Assert.Equal(2, hotpotDto.Quantity); 
 
             // Verify service calls
             mockHotpotService.Verify();
         }
-
         [Fact]
         public async Task Create_ReturnsBadRequest_WhenValidationFails()
         {
