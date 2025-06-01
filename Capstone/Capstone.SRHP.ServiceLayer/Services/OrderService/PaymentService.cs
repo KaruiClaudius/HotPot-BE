@@ -547,7 +547,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _logger.LogInformation("ProcessOrder called for {TransactionCode}", request.OrderCode);
             try
             {
-                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(2)))
+                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(5)))
                 {
                     try
                     {
