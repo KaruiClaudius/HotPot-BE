@@ -69,7 +69,7 @@ namespace Capstone.HPTY.RepositoryLayer
         private static void SeedUsers(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = 1, PhoneNumber = "987654321", Name = "Admin", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
+                new User { UserId = 1, PhoneNumber = "987654321", Name = "Owner", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
 
                 new User { UserId = 2, PhoneNumber = "999999999", Name = "Nguyễn Văn Quân", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
                 new User { UserId = 3, PhoneNumber = "888888888", Name = "Trần Thị Thu", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
