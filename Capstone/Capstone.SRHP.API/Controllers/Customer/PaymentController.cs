@@ -1,13 +1,10 @@
 ﻿using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
-using Capstone.HPTY.RepositoryLayer.UnitOfWork;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
-using Capstone.HPTY.ServiceLayer.Interfaces.BackgroundService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Net.payOS;
 using Net.payOS.Types;
 using System.Security.Claims;
 
@@ -20,15 +17,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
     {
         private readonly IOrderService _orderService;
         private readonly IPaymentService _paymentService;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<PaymentController> _logger;
 
-        public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger, IOrderService orderService, IServiceProvider serviceProvider)
+        public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger, IOrderService orderService)
         {
             _paymentService = paymentService;
             _logger = logger;
             _orderService = orderService;
-            _serviceProvider = serviceProvider;
         }
 
         [HttpPost("process-online-payment")]
@@ -244,103 +239,16 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [Authorize]
         public async Task<IActionResult> CheckOrder([FromBody] CheckOrderRequest request)
         {
-            var correlationId = Guid.NewGuid().ToString();
-            _logger.LogInformation("[{CorrelationId}] Received check-order request for {TransactionCode}",
-                correlationId, request.OrderCode);
-
             try
             {
-                // Check if the payment is being processed by the background service
-
-                // Use a read-only transaction with a very short timeout
-                using var scope = _serviceProvider.CreateScope();
-                var lockService = scope.ServiceProvider.GetRequiredService<ILockService>();
-                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
-
-                string processLockKey = $"process_payment_{request.OrderCode}";
-                if (lockService.IsLocked(processLockKey))
-                {
-                    _logger.LogInformation("[{CorrelationId}] Payment {TransactionCode} is currently being processed by background service",
-                        correlationId, request.OrderCode);
-                    return Ok(new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null));
-                }
-
-                // Get payment status from database
                 var currentUserPhone = User.FindFirstValue("phone");
+                var response = await _paymentService.CheckOrder(request, currentUserPhone);
 
-
-
-                // Get payment transaction
-                var paymentTransaction = await unitOfWork.Repository<Payment>()
-                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
-
-                if (paymentTransaction == null)
-                {
-                    return Ok(new Response(-1, "Không tìm thấy giao dịch", null));
-                }
-
-                // Get payment info from PayOS
-                var paymentInfo = await payOS.getPaymentLinkInformation(request.OrderCode);
-                if (paymentInfo == null)
-                {
-                    return Ok(new Response(-1, "Thông tin thanh toán không tìm thấy", null));
-                }
-
-                // Get user
-                var user = await unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == currentUserPhone);
-                if (user == null)
-                {
-                    return Ok(new Response(-1, "Không tìm thấy người dùng", null));
-                }
-
-                // Prepare user info for response
-                var userInfo = new
-                {
-                    user.UserId,
-                    user.Name,
-                    user.PhoneNumber,
-                };
-
-                // If payment is pending in our system but PAID/CANCELLED in PayOS,
-                // let the user know it's being processed and trigger background service
-                if (paymentTransaction.Status == PaymentStatus.Pending &&
-                    (paymentInfo.status == "PAID" || paymentInfo.status == "CANCELLED"))
-                {
-                    string message = paymentInfo.status == "PAID"
-                        ? "Thanh toán đang được xử lý, vui lòng đợi trong giây lát"
-                        : "Giao dịch đang được hủy, vui lòng đợi trong giây lát";
-
-                    _logger.LogInformation("[{CorrelationId}] Payment {TransactionCode} is {Status} in PayOS but PENDING in our system",
-                        correlationId, request.OrderCode, paymentInfo.status);
-
-                    return Ok(new Response(0, message, new { paymentInfo, userInfo }));
-                }
-
-                // For other statuses, just return the current status
-                string statusMessage;
-                switch (paymentTransaction.Status)
-                {
-                    case PaymentStatus.Success:
-                        statusMessage = "Hoàn thành giao dịch";
-                        break;
-                    case PaymentStatus.Cancelled:
-                        statusMessage = "Huỷ giao dịch";
-                        break;
-                    case PaymentStatus.Pending:
-                        statusMessage = "Giao dịch chưa hoàn thành";
-                        break;
-                    default:
-                        statusMessage = $"Trạng thái giao dịch: {paymentTransaction.Status}";
-                        break;
-                }
-
-                return Ok(new Response(0, statusMessage, new { paymentInfo, userInfo }));
+                return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{CorrelationId}] Error checking order status for {TransactionCode}",
-                    correlationId, request.OrderCode);
+                _logger.LogError(ex, "Error checking order status");
                 return StatusCode(500, new { message = "Đã xảy ra lỗi khi kiểm tra trạng thái đơn hàng" });
             }
         }
