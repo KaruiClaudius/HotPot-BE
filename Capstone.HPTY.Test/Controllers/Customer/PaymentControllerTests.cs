@@ -22,7 +22,6 @@ namespace Capstone.HPTY.Test.Controllers.Customer
         private readonly Mock<IPaymentService> _mockPaymentService;
         private readonly Mock<ILogger<PaymentController>> _mockLogger;
         private readonly Mock<IOrderService> _mockOrderService; 
-        private readonly Mock<ILockService> _mockLockService; 
         private readonly PaymentController _controller;
 
         public PaymentControllerTests()
@@ -30,13 +29,11 @@ namespace Capstone.HPTY.Test.Controllers.Customer
             _mockPaymentService = new Mock<IPaymentService>(MockBehavior.Strict);
             _mockLogger = new Mock<ILogger<PaymentController>>(MockBehavior.Loose); // Use Loose for logger to avoid having to set up all logging calls
             _mockOrderService = new Mock<IOrderService>(MockBehavior.Strict);
-            _mockLockService = new Mock<ILockService>(MockBehavior.Strict);
 
             _controller = new PaymentController(
                 _mockPaymentService.Object,
                 _mockLogger.Object,
-                _mockOrderService.Object,
-                _mockLockService.Object);
+                _mockOrderService.Object);
         }
 
         private void SetupUserIdentity(int userId, string name = "Test User", string phone = "1234567890", string role = "Customer")
