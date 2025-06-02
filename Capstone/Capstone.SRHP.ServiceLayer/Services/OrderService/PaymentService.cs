@@ -72,6 +72,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                 // 2. Verify inventory availability (read operation, can be outside transaction)
                 var verificationResults = await VerifyCartItemsAvailabilityAsync(order);
+
                 if (!verificationResults.AllItemsAvailable)
                 {
                     return new Response(-1, $"Một số mặt hàng trong giỏ hàng của bạn hiện không còn: {string.Join(", ", verificationResults.UnavailableItems)}", null);
@@ -439,20 +440,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<Response> CheckOrder(CheckOrderRequest request, string userPhone)
         {
-            // Create a unique lock key for this transaction
-            string processLockKey = $"process_payment_{request.OrderCode}";
-
             try
             {
-                // Check if ProcessOrder is currently running for this transaction
-                if (_lockService.IsLocked(processLockKey))
-                {
-                    _logger.LogInformation("Payment {TransactionCode} is being processed by background service, returning wait message",
-                        request.OrderCode);
-                    return new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null);
-                }
-
-
                 // Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
                 if (user == null)
@@ -547,7 +536,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _logger.LogInformation("ProcessOrder called for {TransactionCode}", request.OrderCode);
             try
             {
-                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(5)))
+                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(8)))
                 {
                     try
                     {
@@ -1820,39 +1809,18 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Update delivery time if provided
                 if (request.DeliveryTime.HasValue)
                 {
-                    // Get current time in UTC+7
-                    DateTime currentTimeUtc7 = DateTime.UtcNow.AddHours(7);
+                    DateTime currentTime = DateTime.UtcNow.AddHours(7);
+                    DateTime deliveryTime = request.DeliveryTime.Value;
 
-                    // Add buffer time
-                    DateTime minimumDeliveryTimeUtc7 = currentTimeUtc7.AddMinutes(30);
-
-                    // Normalize the delivery time to UTC+7 if it's in UTC
-                    DateTime deliveryTimeUtc7;
-                    if (request.DeliveryTime.Value.Kind == DateTimeKind.Utc)
+                    // Validate expected return date is after rental start date
+                    if (deliveryTime <= currentTime)
                     {
-                        // Convert from UTC to UTC+7
-                        deliveryTimeUtc7 = request.DeliveryTime.Value.AddHours(7);
-                    }
-                    else
-                    {
-                        // If it's not explicitly UTC, assume it's already in UTC+7 or local time
-                        deliveryTimeUtc7 = request.DeliveryTime.Value;
+                        throw new ValidationException("Ngày giao phải là ngày trong tương lai");
                     }
 
-                    // Log values for debugging if needed
-                    Console.WriteLine($"Current time (UTC+7): {currentTimeUtc7:yyyy-MM-dd HH:mm:ss}");
-                    Console.WriteLine($"Minimum delivery time (UTC+7): {minimumDeliveryTimeUtc7:yyyy-MM-dd HH:mm:ss}");
-                    Console.WriteLine($"Requested delivery time (normalized to UTC+7): {deliveryTimeUtc7:yyyy-MM-dd HH:mm:ss}");
-
-                    // Compare times in the same time zone
-                    if (deliveryTimeUtc7 <= minimumDeliveryTimeUtc7)
-                    {
-                        throw new ValidationException($"Thời gian giao hàng phải ít nhất là {minimumDeliveryTimeUtc7.ToString("HH:mm dd/MM/yyyy")}");
-                    }
-
-                    // Store the delivery time in the database
-                    // You might want to standardize on UTC for storage
-                    order.DeliveryTime = deliveryTimeUtc7;
+                    // Store the exact delivery time as provided
+                    order.DeliveryTime = request.DeliveryTime.Value;
+                    await _unitOfWork.Repository<RentOrder>().Update(order.RentOrder, order.RentOrder.OrderId);
                 }
 
                 // Update rental dates if provided and order has rental items
