@@ -77,7 +77,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                 var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                 var payOS = scope.ServiceProvider.GetRequiredService<PayOS>();
                 var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
-                var lockService = scope.ServiceProvider.GetRequiredService<ILockService>();
+                // var lockService = scope.ServiceProvider.GetRequiredService<ILockService>();
 
                 // Get all pending payments
                 var pendingPayments = await unitOfWork.Repository<Payment>()
@@ -173,12 +173,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 string processLockKey = $"process_payment_{payment.TransactionCode}";
 
                                 // Check if this payment is already being processed
-                                if (lockService.IsLocked(processLockKey))
-                                {
-                                    _logger.LogInformation("Payment {TransactionCode} is already being processed, skipping",
-                                        payment.TransactionCode);
-                                    continue;
-                                }
+                                //if (lockService.IsLocked(processLockKey))
+                                //{
+                                //    _logger.LogInformation("Payment {TransactionCode} is already being processed, skipping",
+                                //        payment.TransactionCode);
+                                //    continue;
+                                //}
                                 _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
                                 payment.TransactionCode, paymentInfo.status);
 
