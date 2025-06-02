@@ -445,10 +445,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             try
             {
 
-                //if (_lockService.IsLocked(processLockKey))
-                //{
-                //    return new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null);
-                //}
+                if (_lockService.IsLocked(processLockKey))
+                {
+                    return new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null);
+                }
 
                 // Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
