@@ -2,7 +2,6 @@
 using Capstone.HPTY.ModelLayer.Enum;
 using Capstone.HPTY.ModelLayer.Exceptions;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
-using Capstone.HPTY.ServiceLayer.Interfaces.BackgroundService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +17,13 @@ namespace Capstone.HPTY.API.Controllers.Customer
     {
         private readonly IOrderService _orderService;
         private readonly IPaymentService _paymentService;
-        private readonly ILockService _lockService;
         private readonly ILogger<PaymentController> _logger;
 
-        public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger, IOrderService orderService, ILockService lockService )
+        public PaymentController(IPaymentService paymentService, ILogger<PaymentController> logger, IOrderService orderService)
         {
             _paymentService = paymentService;
             _logger = logger;
             _orderService = orderService;
-            _lockService = lockService;
         }
 
         [HttpPost("process-online-payment")]
@@ -242,16 +239,8 @@ namespace Capstone.HPTY.API.Controllers.Customer
         [Authorize]
         public async Task<IActionResult> CheckOrder([FromBody] CheckOrderRequest request)
         {
-            string processLockKey = $"process_payment_{request.OrderCode}";
             try
             {
-                if (_lockService.IsLocked(processLockKey))
-                {
-                    _logger.LogInformation("Payment {TransactionCode} is being processed by background service, returning wait message",
-                        request.OrderCode);
-                    return Ok(new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null));
-                }
-
                 var currentUserPhone = User.FindFirstValue("phone");
                 var response = await _paymentService.CheckOrder(request, currentUserPhone);
 
