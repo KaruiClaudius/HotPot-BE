@@ -886,6 +886,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     .AsQueryable()
                     .Where(o => o.OrderCode == orderCode && !o.IsDelete)
                     .Include(o => o.SellOrder.SellOrderDetails)
+                        .ThenInclude(d => d.Combo) // Include Combo to access its size
                     .Include(o => o.RentOrder.RentOrderDetails)
                     .FirstOrDefaultAsync();
 
@@ -898,12 +899,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                 // Rule 1: If order has more than 2 rental items, it's considered large
                 if (order.HasRentItems &&
                     order.RentOrder?.RentOrderDetails?.Any() == true &&
-                    order.RentOrder.RentOrderDetails.Count() > 5)
+                    order.RentOrder.RentOrderDetails.Count() >= 4)
                 {
                     isLarge = true;
                 }
 
-                // Rule 2: If order has at least 10 total sell items AND at least 2 combo items, it's considered large
+                // Rule 2: If order has at least 10 total sell items AND at least 4 combo items, it's considered large
                 const int LARGE_ORDER_ITEM_THRESHOLD = 10;
 
                 if (order.HasSellItems &&
@@ -912,7 +913,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     // Check if total quantity is at least 10
                     int totalQuantity = order.SellOrder.SellOrderDetails.Sum(d => d.Quantity);
 
-                    // Check if there are at least 2 combo items
+                    // Check if there are at least 4 combo items
                     int comboItemCount = order.SellOrder.SellOrderDetails
                         .Where(d => d.ComboId.HasValue)
                         .Sum(d => d.Quantity);
@@ -920,6 +921,24 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     if (totalQuantity >= LARGE_ORDER_ITEM_THRESHOLD && comboItemCount >= 4)
                     {
                         isLarge = true;
+                    }
+
+                    // Rule 3: If any combo has size > 8 OR combined combo size > 8, it's considered large
+                    var comboDetails = order.SellOrder.SellOrderDetails
+                        .Where(d => d.ComboId.HasValue && d.Combo != null);
+
+                    if (comboDetails.Any())
+                    {
+                        // Check if any single combo has size > 8
+                        bool hasLargeCombo = comboDetails.Any(d => d.Combo.Size >= 8);
+
+                        // Calculate combined size of all combos
+                        int totalComboSize = comboDetails.Sum(d => d.Combo.Size * d.Quantity);
+
+                        if (hasLargeCombo || totalComboSize >= 8)
+                        {
+                            isLarge = true;
+                        }
                     }
                 }
 
