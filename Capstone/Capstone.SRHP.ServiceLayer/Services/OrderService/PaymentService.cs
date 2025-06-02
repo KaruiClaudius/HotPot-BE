@@ -384,8 +384,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<Response> CancelOrder(int orderCode, string reason)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
-            {
+            //return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
+            //{
                 var paymentTransaction = await _unitOfWork.Repository<Payment>()
                     .FindAsync(pt => pt.TransactionCode == orderCode);
 
@@ -413,12 +413,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 return new Response(0, "Ok", paymentLinkInformation);
-            },
-            ex =>
-            {
-                _logger.LogError(ex, "Error cancelling order {OrderCode}", orderCode);
+            //},
+            //ex =>
+            //{
+            //    _logger.LogError(ex, "Error cancelling order {OrderCode}", orderCode);
                 
-            });
+            //});
         }
 
         public async Task<Response> ConfirmWebhook(ConfirmWebhook body)
