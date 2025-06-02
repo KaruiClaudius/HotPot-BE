@@ -99,24 +99,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                 foreach (var payment in pendingPayments)
                 {
-                    if (stoppingToken.IsCancellationRequested)
-                        break;
+                    string lockKey = $"process_payment_{payment.TransactionCode}";
+
+                    // SKIP IF ALREADY PROCESSING
+                    if (_monitoredPayments.ContainsKey(payment.PaymentId))
+                    {
+                        _logger.LogInformation("Skipping already processing payment {0}", payment.TransactionCode);
+                        continue;
+                    }
+
+                    // ADD TO PROCESSING TRACKER
+                    if (!_monitoredPayments.TryAdd(payment.PaymentId, DateTime.UtcNow))
+                    {
+                        _logger.LogWarning("Failed to add payment {0} to monitoring", payment.TransactionCode);
+                        continue;
+                    }
 
                     try
                     {
-                        // Add payment to monitoring if not already tracked
-                        if (!_monitoredPayments.TryGetValue(payment.PaymentId, out var firstSeenTime))
+                        // SKIP IF LOCKED (API PROCESSING)
+                        if (lockService.IsLocked(lockKey))
                         {
-                            firstSeenTime = DateTime.UtcNow.AddHours(7);
-                            _monitoredPayments[payment.PaymentId] = firstSeenTime;
-                            _logger.LogInformation("Started monitoring payment {PaymentId} ({TransactionCode})",
-                                payment.PaymentId, payment.TransactionCode);
+                            _logger.LogInformation("Skipping locked payment {0}", payment.TransactionCode);
+                            continue;
                         }
-
-                        var monitoringTime = DateTime.UtcNow.AddHours(7) - firstSeenTime;
-
-                        // Check if this payment has timed out
-                        bool isTimedOut = monitoringTime > _paymentTimeout;
 
                         var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
 
@@ -133,14 +139,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         if (paymentInfo.status == "PAID" || paymentInfo.status == "CANCELLED" || isTimedOut)
                         {
                             string processLockKey = $"process_payment_{payment.TransactionCode}";
-
-                            // Check if this payment is already being processed
-                            if (lockService.IsLocked(processLockKey))
-                            {
-                                _logger.LogInformation("Payment {TransactionCode} is already being processed, skipping",
-                                    payment.TransactionCode);
-                                continue;
-                            }
 
                             _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
                             payment.TransactionCode, paymentInfo.status);
@@ -178,6 +176,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                             payment.TransactionCode, response.message);
                                     }
                                 }
+
                                 catch (Exception ex)
                                 {
                                     _logger.LogError(ex, "Exception in ProcessOrder for PAID payment {TransactionCode}", payment.TransactionCode);
@@ -292,6 +291,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                                 }
                             }
                         }
+
 
                     }
                     catch (Exception ex)

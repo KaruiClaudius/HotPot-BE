@@ -444,92 +444,92 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
             try
             {
-                // Check if ProcessOrder is currently running for this transaction
-                if (_lockService.IsLocked(processLockKey))
-                {
-                    _logger.LogInformation("Payment {TransactionCode} is being processed by background service, returning wait message",
-                        request.OrderCode);
-                    return new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null);
-                }
 
-
-                // Get user information
-                var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
-                if (user == null)
+                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromMilliseconds(10)))
                 {
-                    return new Response(-1, "Không tìm thấy người dùng", null);
-                }
-
-                // Get payment information from PayOS
-                PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
-                if (paymentLinkInformation == null)
-                {
-                    return new Response(-1, "Thông tin thanh toán không tìm thấy", null);
-                }
-
-                // Get payment transaction
-                var paymentTransaction = await _unitOfWork.Repository<Payment>()
-                    .FindAsync(pt => pt.TransactionCode == request.OrderCode);
-                if (paymentTransaction == null)
-                {
-                    return new Response(-1, "Không tìm thấy giao dịch", null);
-                }
-
-                // Get the order
-                var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
-                if (order == null)
-                {
-                    return new Response(-1, "Không tìm thấy đơn hàng", null);
-                }
-
-                // Prepare user info for response
-                var userInfo = new
-                {
-                    user.UserId,
-                    user.Name,
-                    user.PhoneNumber,
-                };
-
-                // Return appropriate response based on current payment status in our system
-                if (paymentTransaction.Status == PaymentStatus.Success)
-                {
-                    return new Response(0, "Hoàn thành giao dịch",
-                        new { paymentInfo = paymentLinkInformation, userInfo });
-                }
-                else if (paymentTransaction.Status == PaymentStatus.Cancelled)
-                {
-                    return new Response(0, "Huỷ giao dịch",
-                        new { paymentInfo = paymentLinkInformation, userInfo });
-                }
-                else if (paymentTransaction.Status == PaymentStatus.Pending)
-                {
-                    // If PayOS shows PAID or CANCELLED but our system still shows PENDING,
-                    // trigger the background service to process it immediately
-                    if (paymentLinkInformation.status == "PAID" || paymentLinkInformation.status == "CANCELLED")
+                    // Get user information
+                    var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
+                    if (user == null)
                     {
-                        // Log this situation
-                        _logger.LogInformation("Payment {TransactionCode} is {Status} in PayOS but still PENDING in our system. Background service will process it.",
-                            request.OrderCode, paymentLinkInformation.status);
-
-
-                        // paymentLinkInformation = paymentLinkInformation with { status = "PENDING" };
-
-                        // Return a message indicating the payment is being processed
-                        string message = paymentLinkInformation.status == "PAID"
-                            ? "Thanh toán đang được xử lý, vui lòng đợi trong giây lát"
-                            : "Giao dịch đang được hủy, vui lòng đợi trong giây lát";
-
-                        return new Response(0, message, new { paymentInfo = paymentLinkInformation, userInfo });
+                        return new Response(-1, "Không tìm thấy người dùng", null);
                     }
 
-                    // For other statuses, just return the current status
-                    return new Response(0, "Giao dịch chưa hoàn thành",
-                        new { paymentInfo = paymentLinkInformation, userInfo });
-                }
+                    // Get payment information from PayOS
+                    PaymentLinkInformation paymentLinkInformation = await _payOS.getPaymentLinkInformation(request.OrderCode);
+                    if (paymentLinkInformation == null)
+                    {
+                        return new Response(-1, "Thông tin thanh toán không tìm thấy", null);
+                    }
 
-                // Fallback for any other payment status
-                return new Response(0, $"Trạng thái giao dịch: {paymentTransaction.Status}",
-                    new { paymentInfo = paymentLinkInformation, userInfo });
+                    // Get payment transaction
+                    var paymentTransaction = await _unitOfWork.Repository<Payment>()
+                        .FindAsync(pt => pt.TransactionCode == request.OrderCode);
+                    if (paymentTransaction == null)
+                    {
+                        return new Response(-1, "Không tìm thấy giao dịch", null);
+                    }
+
+                    // Get the order
+                    var order = await GetOrderByIdAsync(paymentTransaction.OrderId.Value);
+                    if (order == null)
+                    {
+                        return new Response(-1, "Không tìm thấy đơn hàng", null);
+                    }
+
+                    // Prepare user info for response
+                    var userInfo = new
+                    {
+                        user.UserId,
+                        user.Name,
+                        user.PhoneNumber,
+                    };
+
+                    // Return appropriate response based on current payment status in our system
+                    if (paymentTransaction.Status == PaymentStatus.Success)
+                    {
+                        return new Response(0, "Hoàn thành giao dịch",
+                            new { paymentInfo = paymentLinkInformation, userInfo });
+                    }
+                    else if (paymentTransaction.Status == PaymentStatus.Cancelled)
+                    {
+                        return new Response(0, "Huỷ giao dịch",
+                            new { paymentInfo = paymentLinkInformation, userInfo });
+                    }
+                    else if (paymentTransaction.Status == PaymentStatus.Pending)
+                    {
+                        // If PayOS shows PAID or CANCELLED but our system still shows PENDING,
+                        // trigger the background service to process it immediately
+                        if (paymentLinkInformation.status == "PAID" || paymentLinkInformation.status == "CANCELLED")
+                        {
+                            // Log this situation
+                            _logger.LogInformation("Payment {TransactionCode} is {Status} in PayOS but still PENDING in our system. Background service will process it.",
+                                request.OrderCode, paymentLinkInformation.status);
+
+
+                            // paymentLinkInformation = paymentLinkInformation with { status = "PENDING" };
+
+                            // Return a message indicating the payment is being processed
+                            string message = paymentLinkInformation.status == "PAID"
+                                ? "Thanh toán đang được xử lý, vui lòng đợi trong giây lát"
+                                : "Giao dịch đang được hủy, vui lòng đợi trong giây lát";
+
+                            return new Response(0, message, new { paymentInfo = paymentLinkInformation, userInfo });
+                        }
+
+                        // For other statuses, just return the current status
+                        return new Response(0, "Giao dịch chưa hoàn thành",
+                            new { paymentInfo = paymentLinkInformation, userInfo });
+                    }
+
+                    // Fallback for any other payment status
+                    return new Response(0, $"Trạng thái giao dịch: {paymentTransaction.Status}",
+                        new { paymentInfo = paymentLinkInformation, userInfo });
+
+                }
+            }
+            catch (TimeoutException)
+            {
+                return new Response(0, "Hệ thống đang bận", null);
             }
             catch (Exception exception)
             {
@@ -547,7 +547,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             _logger.LogInformation("ProcessOrder called for {TransactionCode}", request.OrderCode);
             try
             {
-                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(5)))
+                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(10)))
                 {
                     try
                     {
