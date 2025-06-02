@@ -227,93 +227,247 @@ namespace Capstone.HPTY.RepositoryLayer
                 new HotPotInventory
                 {
                     HotPotInventoryId = 3,
-                    SeriesNumber = "EL-2023-0001",
-                    HotpotId = 2,
-                    Status = HotpotStatus.Available,
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 4,
-                    SeriesNumber = "EL-2023-0002",
-                    HotpotId = 2,
-                    Status = HotpotStatus.Available,
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 5,
-                    SeriesNumber = "PT-2023-0001",
-                    HotpotId = 3,
-                    Status = HotpotStatus.Available,
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 6,
-                    SeriesNumber = "MC-2023-0001",
-                    HotpotId = 4,
-                    Status = HotpotStatus.Available,
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 7,
-                    SeriesNumber = "CR-2023-0001",
-                    HotpotId = 5,
-                    Status = HotpotStatus.Available,
-                },
-                new HotPotInventory
-                {
-                    HotPotInventoryId = 8,
                     SeriesNumber = "CP-2023-0003",
                     HotpotId = 1,
                     Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
-                    HotPotInventoryId = 9,
+                    HotPotInventoryId = 4,
                     SeriesNumber = "CP-2023-0004",
                     HotpotId = 1,
-                    Status = HotpotStatus.Damaged,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 5,
+                    SeriesNumber = "CP-2023-0005",
+                    HotpotId = 1,
+                    Status = HotpotStatus.Available
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 6,
+                    SeriesNumber = "CP-2023-0006",
+                    HotpotId = 1,
+                    Status = HotpotStatus.Available
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 7,
+                    SeriesNumber = "CP-2023-0007",
+                    HotpotId = 1,
+                    Status = HotpotStatus.Available
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 8,
+                    SeriesNumber = "CP-2023-0008",
+                    HotpotId = 1,
+                    Status = HotpotStatus.Available
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 9,
+                    SeriesNumber = "CP-2023-0009",
+                    HotpotId = 1,
+                    Status = HotpotStatus.Available
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 10,
-                    SeriesNumber = "CP-2023-0005",
+                    SeriesNumber = "CP-2023-0010",
                     HotpotId = 1,
-                    Status = HotpotStatus.Damaged
+                    Status = HotpotStatus.Available
                 },
                 new HotPotInventory
                 {
                     HotPotInventoryId = 11,
+                    SeriesNumber = "EL-2023-0001",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 12,
+                    SeriesNumber = "EL-2023-0002",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 13,
+                    SeriesNumber = "EL-2023-0003",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 14,
+                    SeriesNumber = "EL-2023-0004",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 15,
+                    SeriesNumber = "EL-2023-0005",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 16,
+                    SeriesNumber = "EL-2023-0002",
+                    HotpotId = 2,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 17,
+                    SeriesNumber = "PT-2023-0001",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 18,
                     SeriesNumber = "PT-2023-0002",
                     HotpotId = 3,
                     Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
-                    HotPotInventoryId = 12,
+                    HotPotInventoryId = 19,
+                    SeriesNumber = "PT-2023-0003",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 20,
+                    SeriesNumber = "PT-2023-0004",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 21,
+                    SeriesNumber = "PT-2023-0005",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 22,
+                    SeriesNumber = "PT-2023-0006",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 23,
+                    SeriesNumber = "PT-2023-0007",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 24,
+                    SeriesNumber = "PT-2023-0008",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 25,
+                    SeriesNumber = "PT-2023-0009",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 26,
+                    SeriesNumber = "PT-2023-0010",
+                    HotpotId = 3,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 27,
+                    SeriesNumber = "MC-2023-0001",
+                    HotpotId = 4,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 28,
                     SeriesNumber = "MC-2023-0002",
                     HotpotId = 4,
                     Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
-                    HotPotInventoryId = 13,
+                    HotPotInventoryId = 29,
+                    SeriesNumber = "MC-2023-0003",
+                    HotpotId = 4,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 30,
+                    SeriesNumber = "MC-2023-0004",
+                    HotpotId = 4,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 31,
+                    SeriesNumber = "MC-2023-0005",
+                    HotpotId = 4,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 32,
+                    SeriesNumber = "CR-2023-0001",
+                    HotpotId = 5,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 33,
                     SeriesNumber = "CR-2023-0002",
                     HotpotId = 5,
                     Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
-                    HotPotInventoryId = 14,
+                    HotPotInventoryId = 34,
                     SeriesNumber = "CR-2023-0003",
                     HotpotId = 5,
                     Status = HotpotStatus.Available,
                 },
                 new HotPotInventory
                 {
-                    HotPotInventoryId = 15,
+                    HotPotInventoryId = 35,
                     SeriesNumber = "CR-2023-0004",
                     HotpotId = 5,
                     Status = HotpotStatus.Damaged,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 36,
+                    SeriesNumber = "CR-2023-0005",
+                    HotpotId = 5,
+                    Status = HotpotStatus.Available,
+                },
+                new HotPotInventory
+                {
+                    HotPotInventoryId = 37,
+                    SeriesNumber = "CR-2023-0006",
+                    HotpotId = 5,
+                    Status = HotpotStatus.Available,
                 }
             );
         }
