@@ -384,7 +384,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<Response> CancelOrder(int orderCode, string reason)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync<Response>(async () =>
+            try
             {
                 var paymentTransaction = await _unitOfWork.Repository<Payment>()
                     .FindAsync(pt => pt.TransactionCode == orderCode);
@@ -405,6 +405,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 // Release inventory reservations
                 await ReleaseInventoryReservation(order);
 
+                await _unitOfWork.CommitAsync();
+
                 // Cancel the payment link in PayOS
                 PaymentLinkInformation paymentLinkInformation = null;
                 if (paymentTransaction.Type == PaymentType.Online)
@@ -413,12 +415,12 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                 }
 
                 return new Response(0, "Ok", paymentLinkInformation);
-            },
-            ex =>
+            }
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error cancelling order {OrderCode}", orderCode);
-                
-            });
+                _logger.LogError(exception, "Error cancelling order {OrderCode}", orderCode);
+                return new Response(-1, "fail", null);
+            }
         }
 
         public async Task<Response> ConfirmWebhook(ConfirmWebhook body)
