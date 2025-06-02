@@ -445,7 +445,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
             try
             {
 
-                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromMilliseconds(10)))
+                using (await _lockService.AcquireLockAsync(processLockKey, TimeSpan.FromSeconds(10)))
                 {
                     // Get user information
                     var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
