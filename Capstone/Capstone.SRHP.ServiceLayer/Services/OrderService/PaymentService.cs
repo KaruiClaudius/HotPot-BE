@@ -440,20 +440,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
         public async Task<Response> CheckOrder(CheckOrderRequest request, string userPhone)
         {
-            // Create a unique lock key for this transaction
-            string processLockKey = $"process_payment_{request.OrderCode}";
-
             try
             {
-                // Check if ProcessOrder is currently running for this transaction
-                if (_lockService.IsLocked(processLockKey))
-                {
-                    _logger.LogInformation("Payment {TransactionCode} is being processed by background service, returning wait message",
-                        request.OrderCode);
-                    return new Response(0, "Đơn hàng đang được xử lý, vui lòng đợi trong giây lát", null);
-                }
-
-
                 // Get user information
                 var user = await _unitOfWork.Repository<User>().FindAsync(u => u.PhoneNumber == userPhone);
                 if (user == null)
