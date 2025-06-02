@@ -143,8 +143,7 @@ namespace Capstone.HPTY.API.AppStarts
 
             // background hosting service
             services.AddSingleton<IHostedService, IngredientMonitorService>();
-            services.AddSingleton<IHostedService, OrderReturnReminderService>();
-            //services.AddSingleton<IHostedService, CheckPaymentService>();
+            services.AddHostedService<OrderReturnReminderService>();
             services.AddHostedService<CheckPaymentService>();
 
             // Shipping Services
