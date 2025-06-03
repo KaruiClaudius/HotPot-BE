@@ -103,27 +103,8 @@ namespace Capstone.HPTY.RepositoryLayer
                     .HasForeignKey(u => u.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                //entity.HasOne(u => u.Customer)
-                //    .WithOne(c => c.User)
-                //    .HasForeignKey<Customer>(c => c.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
-
-                //entity.HasOne(u => u.Staff)
-                //    .WithOne(s => s.User)
-                //    .HasForeignKey<Staff>(s => s.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
-
-                //entity.HasOne(u => u.Manager)
-                //    .WithOne(m => m.User)
-                //    .HasForeignKey<Manager>(m => m.UserId)
-                //    .OnDelete(DeleteBehavior.Restrict);
             });
 
-            //modelBuilder.Entity<Customer>(entity =>
-            //{
-            //    entity.Property(c => c.LoyatyPoint)
-            //        .HasDefaultValue(0);
-            //});
 
             modelBuilder.Entity<User>()
                 .HasMany(u => u.StaffWorkShifts)

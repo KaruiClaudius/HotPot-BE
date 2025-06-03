@@ -55,8 +55,17 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                 // Check if user exists (including soft-deleted)
                 var existingUser = await _unitOfWork.Repository<User>()
-                    .FindAsync(u => u.PhoneNumber == normalizedPhoneNumber);
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhoneNumber);
 
+                // If user exists and is deleted, treat it as a banned account
+                if (existingUser != null && existingUser.IsDelete)
+                {
+                    _logger.LogWarning("Attempt to register with banned phone number: {PhoneNumber}", normalizedPhoneNumber);
+                    throw new ValidationException("Tài khoản của bạn đã bị cấm. Vui lòng liên hệ với quản trị viên để biết thêm chi tiết.");
+                }
+
+                // If user exists and is not deleted, it's already in use
                 if (existingUser != null && !existingUser.IsDelete)
                 {
                     throw new ValidationException("SĐT đã được sử dụng");
@@ -67,62 +76,38 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
 
                 // Get Customer role
                 var customerRole = await _unitOfWork.Repository<Role>()
-                    .FindAsync(r => r.Name == "Customer");
+            .FindAsync(r => r.Name == "Customer");
                 if (customerRole == null)
                     throw new ValidationException("Role Customer không tìm thấy");
 
-                User resultUser;
-
-                if (existingUser != null)
+                // Create new user with Customer role
+                var newUser = new User
                 {
-                    // Only reactivate if the existing user was a Customer
-                    if (existingUser.RoleId != customerRole.RoleId)
-                    {
-                        throw new ValidationException("SĐT đã được sử dụng cho 1 vai trò khác");
-                    }
+                    Password = hashedPassword,
+                    Name = request.Name,
+                    PhoneNumber = normalizedPhoneNumber,
+                    RoleId = customerRole.RoleId, // Always set to Customer role
+                    LoyatyPoint = 0, // Initialize loyalty points for new customers
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
+                    UpdatedAt = DateTime.UtcNow.AddHours(7)
+                };
 
-                    // Reactivate soft-deleted user
-                    existingUser.IsDelete = false;
-                    existingUser.Name = request.Name;
-                    existingUser.PhoneNumber = normalizedPhoneNumber;
-                    existingUser.Password = hashedPassword; // Update password
-                    existingUser.SetUpdateDate();
-                    await _unitOfWork.CommitAsync();
+                await _unitOfWork.Repository<User>().InsertAsync(newUser);
+                await _unitOfWork.CommitAsync();
 
-                    resultUser = existingUser;
-                }
-                else
-                {
-                    // Create new user with Customer role
-                    var newUser = new User
-                    {
-                        Password = hashedPassword,
-                        Name = request.Name,
-                        PhoneNumber = normalizedPhoneNumber,
-                        RoleId = customerRole.RoleId, // Always set to Customer role
-                        LoyatyPoint = 0, // Initialize loyalty points for new customers
-                        CreatedAt = DateTime.UtcNow.AddHours(7),
-                        UpdatedAt = DateTime.UtcNow.AddHours(7)
-                    };
+                _logger.LogInformation("New user created successfully: {UserId}", newUser.UserId);
 
-                    _unitOfWork.Repository<User>().Insert(newUser);
-                    await _unitOfWork.CommitAsync();
-
-                    resultUser = newUser;
-                }
-
-                // Commit the transaction
-
-                return await GenerateAuthResponseAsync(resultUser);
+                // Generate auth response
+                return await GenerateAuthResponseAsync(newUser);
             },
-        ex =>
-        {
-            // Only log for exceptions that aren't validation or not found
-            if (!(ex is NotFoundException || ex is ValidationException))
+            ex =>
             {
-                _logger.LogError(ex, "Đăng ký gặp trục trặc", ex);
-            }
-        });
+                // Only log for exceptions that aren't validation or not found
+                if (!(ex is NotFoundException || ex is ValidationException))
+                {
+                    _logger.LogError(ex, "Đăng ký gặp trục trặc", ex);
+                }
+            });
         }
 
         private string NormalizePhoneNumber(string phoneNumber)
