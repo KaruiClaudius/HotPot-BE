@@ -47,10 +47,8 @@ namespace Capstone.HPTY.ModelLayer.Entities
 
         [Phone]
         [StringLength(15)]
-        public string? PhoneNumber
-        {
-            get; set;
-        }
+        public string? PhoneNumber { get; set; }
+
 
         [Range(0, double.MaxValue)]
         public double? LoyatyPoint { get; set; }
