@@ -36,11 +36,14 @@ namespace Capstone.HPTY.ModelLayer.Entities
         [StringLength(500)]
         public string? Address { get; set; }
 
-
+        private string? _phoneNumber;
         [Phone]
         [StringLength(15)]
-        public string? PhoneNumber { get; set; }
-
+        public string? PhoneNumber
+        {
+            get => _phoneNumber != null ? "0" + _phoneNumber : null;
+            set => _phoneNumber = value?.StartsWith("0") == true ? value.Substring(1) : value;
+        }
 
         [Range(0, double.MaxValue)]
         public double? LoyatyPoint { get; set; }
