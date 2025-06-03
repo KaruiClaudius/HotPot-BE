@@ -2,6 +2,7 @@
 using Capstone.HPTY.ModelLayer.Entities;
 using Capstone.HPTY.ServiceLayer.DTOs.Common;
 using Capstone.HPTY.ServiceLayer.DTOs.Payments;
+using Capstone.HPTY.ServiceLayer.Interfaces.BackgroundService;
 using Capstone.HPTY.ServiceLayer.Interfaces.OrderService;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +21,7 @@ namespace Capstone.HPTY.Test.Controllers.Customer
     {
         private readonly Mock<IPaymentService> _mockPaymentService;
         private readonly Mock<ILogger<PaymentController>> _mockLogger;
-        private readonly Mock<IOrderService> _mockOrderService;
+        private readonly Mock<IOrderService> _mockOrderService; 
         private readonly PaymentController _controller;
 
         public PaymentControllerTests()

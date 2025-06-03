@@ -16,8 +16,10 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer
         public string ItemName { get; set; }
         public string ImageUrl { get; set; }
         public string FormattedQuantity { get; set; }
+        public string tutorialVideoUrl { get; set; }
         public int? ItemId { get; set; }
         public bool IsSellable { get; set; }
+
 
         public List<int> RelatedDetailIds { get; set; } = new List<int>();
         public List<string> SerialNumbers { get; set; } = new List<string>();

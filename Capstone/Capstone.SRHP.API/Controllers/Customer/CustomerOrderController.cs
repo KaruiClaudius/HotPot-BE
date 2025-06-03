@@ -12,6 +12,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.UserService;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
 
@@ -406,7 +407,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
             }
 
             // Map sell order details
-            // Map sell order details
             if (order.SellOrder?.SellOrderDetails != null)
             {
                 foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
@@ -423,6 +423,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     string imageUrl = null;
                     int? itemId = null;
                     string formattedQuantity = "";
+                    string tutorialVideoUrl = "";
 
                     if (detail.IngredientId.HasValue && detail.Ingredient != null)
                     {
@@ -443,7 +444,9 @@ namespace Capstone.HPTY.API.Controllers.Customer
                     {
                         itemType = "Customization";
                         itemName = detail.Customization.Name;
+                        imageUrl = detail.Customization.ImageURL;
                         itemId = detail.CustomizationId;
+                        tutorialVideoUrl = detail.Combo.TurtorialVideo.VideoURL;
                     }
                     else if (detail.ComboId.HasValue && detail.Combo != null)
                     {
@@ -451,6 +454,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Combo.Name;
                         imageUrl = detail.Combo.ImageURL;
                         itemId = detail.ComboId;
+                        tutorialVideoUrl = detail.Combo.TurtorialVideo.VideoURL;
                     }
 
                     response.Items.Add(new OrderItemResponse
@@ -463,6 +467,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         ItemName = itemName,
                         ImageUrl = imageUrl,
                         FormattedQuantity = formattedQuantity,
+                        tutorialVideoUrl = tutorialVideoUrl,
                         ItemId = itemId,
                         IsSellable = true
                     });

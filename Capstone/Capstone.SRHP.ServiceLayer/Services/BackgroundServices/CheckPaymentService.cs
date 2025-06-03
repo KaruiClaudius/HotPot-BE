@@ -22,6 +22,7 @@ using Capstone.HPTY.ServiceLayer.Interfaces.HotpotService;
 using Capstone.HPTY.ServiceLayer.Services.OrderService;
 using Capstone.HPTY.ServiceLayer.DTOs.Orders.Customer;
 using Capstone.HPTY.ServiceLayer.Interfaces.BackgroundService;
+using Azure.Core;
 
 namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 {
@@ -29,7 +30,6 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
     {
         private readonly ILogger<CheckPaymentService> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ILockService _lockService;
         private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _paymentTimeout = TimeSpan.FromMinutes(10);
 
@@ -38,11 +38,9 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
         public CheckPaymentService(
             ILogger<CheckPaymentService> logger,
-            ILockService lockService,
             IServiceProvider serviceProvider)
         {
             _logger = logger;
-            _lockService = lockService;
             _serviceProvider = serviceProvider;
         }
 
@@ -102,13 +100,13 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
 
                 foreach (var payment in pendingPayments)
                 {
-
-
                     if (stoppingToken.IsCancellationRequested)
                         break;
 
+                    string processLockKey = $"process_payment_{payment.TransactionCode}";
                     try
                     {
+
                         // Add payment to monitoring if not already tracked
                         if (!_monitoredPayments.TryGetValue(payment.PaymentId, out var firstSeenTime))
                         {
@@ -123,224 +121,179 @@ namespace Capstone.HPTY.ServiceLayer.Services.BackgroundServices
                         // Check if this payment has timed out
                         bool isTimedOut = monitoringTime > _paymentTimeout;
 
-                        var order = await unitOfWork.Repository<Order>().GetById(payment.OrderId.Value);
-                        if (order == null)
+                        var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
+
+                        if (paymentInfo == null)
                         {
-                            _logger.LogWarning("Order not found for payment {PaymentId}", payment.PaymentId);
+                            _logger.LogWarning("Could not get payment information from PayOS for {TransactionCode}",
+                                payment.TransactionCode);
                             continue;
                         }
 
-                        // If order is no longer in Cart status, it means it's already been processed
-                        if (order.Status != OrderStatus.Cart)
+                        _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
+                            payment.TransactionCode, paymentInfo.status);
+
+                        if (paymentInfo.status == "PAID" || paymentInfo.status == "CANCELLED" || isTimedOut)
                         {
-                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                            _logger.LogInformation("Order {OrderId} is no longer in Cart status, removing payment {PaymentId} from monitoring",
-                                order.OrderId, payment.PaymentId);
-                            continue;
-                        }
-
-                        var user = await unitOfWork.Repository<User>().GetById(payment.UserId);
-                        if (user == null)
-                        {
-                            _logger.LogWarning("User not found for payment {PaymentId}", payment.PaymentId);
-                            continue;
-                        }
-
-                        var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                        if (freshPayment == null || freshPayment.Status != PaymentStatus.Pending)
-                        {
-                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                            _logger.LogInformation("Payment {PaymentId} is no longer pending, removing from monitoring", payment.PaymentId);
-                            continue;
-                        }
-
-                        _logger.LogInformation("Background service checking payment {PaymentId} ({TransactionCode}) after {Minutes:N1} minutes",
-                            payment.PaymentId, payment.TransactionCode, monitoringTime.TotalMinutes);
 
 
+                            _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
+                                payment.TransactionCode, paymentInfo.status);
 
-                        // Check directly with PayOS
-                        try
-                        {
-                            var paymentInfo = await payOS.getPaymentLinkInformation(payment.TransactionCode);
-
-                            if (paymentInfo == null)
+                            var user = await unitOfWork.Repository<User>().GetById(payment.UserId);
+                            if (user == null)
                             {
-                                _logger.LogWarning("Could not get payment information from PayOS for {TransactionCode}",
-                                    payment.TransactionCode);
+                                _logger.LogWarning("User not found for payment {PaymentId}", payment.PaymentId);
                                 continue;
                             }
 
-                            if (paymentInfo.status == "PAID" || paymentInfo.status == "CANCELLED" || isTimedOut)
+                            if (paymentInfo.status == "PAID")
                             {
-                                string processLockKey = $"process_payment_{payment.TransactionCode}";
+                                _logger.LogInformation("Payment {TransactionCode} is PAID according to PayOS. Processing as successful payment.",
+                                    payment.TransactionCode);
 
-                                // Check if this payment is already being processed
-                                if (lockService.IsLocked(processLockKey))
+                                // Process successful payment - ProcessOrder will acquire its own lock
+                                var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                                try
                                 {
-                                    _logger.LogInformation("Payment {TransactionCode} is already being processed, skipping",
-                                        payment.TransactionCode);
-                                    continue;
-                                }
-                                _logger.LogInformation("Payment {TransactionCode} PayOS status: {Status}",
-                                payment.TransactionCode, paymentInfo.status);
+                                    var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
 
-                                // CRITICAL: Process based on PayOS status
-                                if (paymentInfo.status == "PAID")
-                                {
-                                    _logger.LogInformation("Payment {TransactionCode} is PAID according to PayOS. Processing as successful payment.",
-                                        payment.TransactionCode);
+                                    _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
+                                        payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
 
-                                    // Process successful payment
-                                    using var scope2 = _serviceProvider.CreateScope();
-                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-                                    try
+                                    if (response.error == 0)
                                     {
-                                        var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
-
-                                        _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
-                                            payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
-
-                                        if (response.error == 0)
-                                        {
-                                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                            _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) processed successfully and removed from monitoring",
-                                                payment.PaymentId, payment.TransactionCode);
-                                        }
-                                        else
-                                        {
-                                            _logger.LogWarning("Failed to process successful payment {TransactionCode}: {Message}",
-                                                payment.TransactionCode, response.message);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogError(ex, "Exception in ProcessOrder for PAID payment {TransactionCode}", payment.TransactionCode);
-                                    }
-                                }
-
-                                else if (paymentInfo.status == "CANCELLED")
-                                {
-                                    _logger.LogInformation("Payment {TransactionCode} is CANCELLED according to PayOS. Processing as cancelled payment.",
-                                        payment.TransactionCode);
-
-                                    // Process cancelled payment
-                                    using var scope2 = _serviceProvider.CreateScope();
-                                    var checkRequest = new CheckOrderRequest(payment.TransactionCode);
-
-                                    try
-                                    {
-                                        var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
-
-                                        _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
-                                            payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
-
-                                        if (response.error == 0)
-                                        {
-                                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                            _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled and removed from monitoring",
-                                                payment.PaymentId, payment.TransactionCode);
-                                        }
-                                        else
-                                        {
-                                            _logger.LogWarning("Failed to process cancelled payment {TransactionCode}: {Message}",
-                                                payment.TransactionCode, response.message);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogError(ex, "Exception in ProcessOrder for CANCELLED payment {TransactionCode}", payment.TransactionCode);
-                                    }
-                                }
-
-                                else if (isTimedOut)
-                                {
-                                    // ONLY cancel if the payment has timed out AND is still in a pending-like state
-                                    if (paymentInfo.status == "PENDING")
-                                    {
-                                        _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
-                                            payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
-
-                                        // Get a fresh copy of the payment again to ensure it's still pending
-                                        freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                        if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
-                                        {
-                                            var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
-                                            {
-                                                // Get the most up-to-date payment record within the transaction
-                                                var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
-                                                if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
-                                                {
-                                                    // Payment was already processed by another thread
-                                                    return false;
-                                                }
-
-                                                // Double-check with PayOS one more time before cancelling
-                                                var finalCheck = await payOS.getPaymentLinkInformation(payment.TransactionCode);
-                                                if (finalCheck != null && finalCheck.status == "PAID")
-                                                {
-                                                    _logger.LogWarning("Payment {TransactionCode} changed to PAID during cancellation. Aborting cancellation.",
-                                                        payment.TransactionCode);
-                                                    return false;
-                                                }
-
-                                                // Cancel the payment in our system
-                                                transactionPayment.Status = PaymentStatus.Cancelled;
-                                                transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
-                                                await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
-
-                                                // Get the order and release inventory
-                                                if (transactionPayment.OrderId.HasValue)
-                                                {
-                                                    var orderToCancel = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
-                                                    if (orderToCancel != null)
-                                                    {
-                                                        // Call method to release inventory reservations
-                                                        await ReleaseInventoryReservation(orderToCancel);
-                                                    }
-                                                }
-
-                                                return true; // Transaction success
-                                            },
-                                            ex =>
-                                            {
-                                                _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId} ({TransactionCode})",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            });
-
-                                            if (success)
-                                            {
-                                                // Remove from monitoring
-                                                _monitoredPayments.TryRemove(payment.PaymentId, out _);
-                                                _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            }
-                                            else
-                                            {
-                                                _logger.LogWarning("Failed to cancel payment {PaymentId} ({TransactionCode}) - transaction failed or payment already processed",
-                                                    payment.PaymentId, payment.TransactionCode);
-                                            }
-                                        }
+                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) processed successfully and removed from monitoring",
+                                            payment.PaymentId, payment.TransactionCode);
                                     }
                                     else
                                     {
-                                        _logger.LogInformation("Payment {TransactionCode} has timed out but has status {Status} in PayOS. Not cancelling.",
-                                            payment.TransactionCode, paymentInfo.status);
+                                        _logger.LogWarning("Failed to process successful payment {TransactionCode}: {Message}",
+                                            payment.TransactionCode, response.message);
                                     }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Exception in ProcessOrder for PAID payment {TransactionCode}", payment.TransactionCode);
+                                }
+                            }
+                            else if (paymentInfo.status == "CANCELLED")
+                            {
+                                _logger.LogInformation("Payment {TransactionCode} is CANCELLED according to PayOS. Processing as cancelled payment.",
+                                    payment.TransactionCode);
+
+                                // Process cancelled payment
+                                var checkRequest = new CheckOrderRequest(payment.TransactionCode);
+                                try
+                                {
+                                    var response = await paymentService.ProcessOrder(checkRequest, user.PhoneNumber);
+
+                                    _logger.LogInformation("Payment {TransactionCode} ProcessOrder result: {Status}, Message: {Message}",
+                                        payment.TransactionCode, response.error == 0 ? "Success" : "Failed", response.message);
+
+                                    if (response.error == 0)
+                                    {
+                                        _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                        _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled and removed from monitoring",
+                                            payment.PaymentId, payment.TransactionCode);
+                                    }
+                                    else
+                                    {
+                                        _logger.LogWarning("Failed to process cancelled payment {TransactionCode}: {Message}",
+                                            payment.TransactionCode, response.message);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Exception in ProcessOrder for CANCELLED payment {TransactionCode}", payment.TransactionCode);
+                                }
+                            }
+                            else if (isTimedOut)
+                            {
+                                // ONLY cancel if the payment has timed out AND is still in a pending-like state
+                                if (paymentInfo.status == "PENDING")
+                                {
+                                    _logger.LogInformation("Payment {TransactionCode} has timed out after {Minutes:N1} minutes and is still {Status} in PayOS. Cancelling...",
+                                        payment.TransactionCode, monitoringTime.TotalMinutes, paymentInfo.status);
+
+                                    // Get a fresh copy of the payment again to ensure it's still pending
+                                    var freshPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                    if (freshPayment != null && freshPayment.Status == PaymentStatus.Pending)
+                                    {
+                                        var success = await unitOfWork.ExecuteInTransactionAsync(async () =>
+                                        {
+                                            // Get the most up-to-date payment record within the transaction
+                                            var transactionPayment = await unitOfWork.Repository<Payment>().GetById(payment.PaymentId);
+                                            if (transactionPayment == null || transactionPayment.Status != PaymentStatus.Pending)
+                                            {
+                                                // Payment was already processed by another thread
+                                                return false;
+                                            }
+
+                                            // Double-check with PayOS one more time before cancelling
+                                            var finalCheck = await payOS.getPaymentLinkInformation(payment.TransactionCode);
+                                            if (finalCheck != null && finalCheck.status == "PAID")
+                                            {
+                                                _logger.LogWarning("Payment {TransactionCode} changed to PAID during cancellation. Aborting cancellation.",
+                                                    payment.TransactionCode);
+                                                return false;
+                                            }
+
+                                            // Cancel the payment in our system
+                                            transactionPayment.Status = PaymentStatus.Cancelled;
+                                            transactionPayment.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                                            await unitOfWork.Repository<Payment>().Update(transactionPayment, transactionPayment.PaymentId);
+
+                                            // Get the order and release inventory
+                                            if (transactionPayment.OrderId.HasValue)
+                                            {
+                                                var orderToCancel = await unitOfWork.Repository<Order>().GetById(transactionPayment.OrderId.Value);
+                                                if (orderToCancel != null)
+                                                {
+                                                    // Call method to release inventory reservations
+                                                    await ReleaseInventoryReservation(orderToCancel);
+                                                }
+                                            }
+
+                                            return true; // Transaction success
+                                        },
+                                        ex =>
+                                        {
+                                            _logger.LogError(ex, "Error in transaction while cancelling payment {PaymentId} ({TransactionCode})",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        });
+
+                                        if (success)
+                                        {
+                                            // Remove from monitoring
+                                            _monitoredPayments.TryRemove(payment.PaymentId, out _);
+                                            _logger.LogInformation("Payment {PaymentId} ({TransactionCode}) cancelled due to timeout and removed from monitoring",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        }
+                                        else
+                                        {
+                                            _logger.LogWarning("Failed to cancel payment {PaymentId} ({TransactionCode}) - transaction failed or payment already processed",
+                                                payment.PaymentId, payment.TransactionCode);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogInformation("Payment {TransactionCode} has timed out but has status {Status} in PayOS. Not cancelling.",
+                                        payment.TransactionCode, paymentInfo.status);
                                 }
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error checking payment status with PayOS for {TransactionCode}", payment.TransactionCode);
-                        }
+
                     }
-                    catch (Exception ex)
+                    catch (TimeoutException)
                     {
-                        _logger.LogError(ex, "Error processing payment {PaymentId} ({TransactionCode})",
+                        // Lock acquisition timed out, which means ProcessOrder is already running for this transaction
+                        _logger.LogWarning("Timeout occurred while acquiring lock for payment {PaymentId} ({TransactionCode})",
                             payment.PaymentId, payment.TransactionCode);
-                        // Continue with the next payment
                     }
+
                 }
             }
             catch (Exception ex)

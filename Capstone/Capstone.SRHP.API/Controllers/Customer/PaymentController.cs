@@ -244,7 +244,6 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 var currentUserPhone = User.FindFirstValue("phone");
                 var response = await _paymentService.CheckOrder(request, currentUserPhone);
 
-
                 return Ok(response);
             }
             catch (Exception ex)
