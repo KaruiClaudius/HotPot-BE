@@ -74,16 +74,104 @@ namespace Capstone.HPTY.RepositoryLayer
                 new User { UserId = 2, PhoneNumber = "999999999", Name = "Nguyễn Văn Quân", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
                 new User { UserId = 3, PhoneNumber = "888888888", Name = "Trần Thị Thu", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
 
-                new User { UserId = 4, PhoneNumber = "777777777", Name = "Lê Minh Hoàng", Email = "Staff1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 5, PhoneNumber = "666666666", Name = "Phạm Thị Hằng", Email = "Staff2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 6, PhoneNumber = "555555555", Name = "Ngô Văn Cường", Email = "Staff3@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
-                new User { UserId = 7, PhoneNumber = "444444444", Name = "Đinh Thị Hà", Email = "Staff4@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User
+                {
+                    UserId = 4,
+                    PhoneNumber = "777777777",
+                    Name = "Lê Minh Hoàng",
+                    Email = "Staff1@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Preparation,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 5,
+                    PhoneNumber = "666666666",
+                    Name = "Phạm Thị Hằng",
+                    Email = "Staff2@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Preparation,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 6,
+                    PhoneNumber = "555555555",
+                    Name = "Ngô Văn Cường",
+                    Email = "Staff3@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Shipping,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 7,
+                    PhoneNumber = "444444444",
+                    Name = "Đinh Thị Hà",
+                    Email = "Staff4@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Shipping,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
 
                 // New staff
-                new User { UserId = 18, PhoneNumber = "901234567", Name = "Võ Anh Dũng", Email = "Staff5@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 19, PhoneNumber = "907654321", Name = "Nguyễn Thị Mai", Email = "Staff6@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Preparation },
-                new User { UserId = 20, PhoneNumber = "912345678", Name = "Bùi Văn Hậu", Email = "Staff7@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
-                new User { UserId = 21, PhoneNumber = "918765432", Name = "Trương Thị Lan", Email = "Staff8@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 3, StaffType = StaffType.Shipping },
+                new User
+                {
+                    UserId = 18,
+                    PhoneNumber = "901234567",
+                    Name = "Võ Anh Dũng",
+                    Email = "Staff5@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Preparation,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 19,
+                    PhoneNumber = "907654321",
+                    Name = "Nguyễn Thị Mai",
+                    Email = "Staff6@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Preparation,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 20,
+                    PhoneNumber = "912345678",
+                    Name = "Bùi Văn Hậu",
+                    Email = "Staff7@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Shipping,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 21,
+                    PhoneNumber = "918765432",
+                    Name = "Trương Thị Lan",
+                    Email = "Staff8@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 3,
+                    StaffType = StaffType.Shipping,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
 
                 new User { UserId = 8, PhoneNumber = "333333333", Name = "Đặng Văn Nam", Email = "Customer1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
                 new User { UserId = 9, PhoneNumber = "222222222", Name = "Lý Thị Ngọc", Email = "Customer2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 4 },
