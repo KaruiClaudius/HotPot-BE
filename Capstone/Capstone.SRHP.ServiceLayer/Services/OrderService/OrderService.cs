@@ -289,7 +289,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                                 .Include(d => d.Ingredient)
                                 .Include(d => d.Utensil)
                                 .Include(d => d.Customization)
+                                    .ThenInclude(d => d.Combo)
+                                        .ThenInclude(d => d.TurtorialVideo)
                                 .Include(d => d.Combo)
+                                    .ThenInclude(d => d.TurtorialVideo)
                                 .Where(d => d.OrderId == existingPendingOrder.OrderId && !d.IsDelete)
                                 .ToListAsync();
 
