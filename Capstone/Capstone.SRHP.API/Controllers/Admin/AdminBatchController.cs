@@ -449,7 +449,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
 
                     // Calculate quantity based on total amount and measurement value
                     var remainder = item.TotalAmount % ingredient.MeasurementValue;
-                    int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
+                    int calculatedQuantity = (int)Math.Floor(item.TotalAmount / ingredient.MeasurementValue);
 
                     if (calculatedQuantity <= 0)
                     {
