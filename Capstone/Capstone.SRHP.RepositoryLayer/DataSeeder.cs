@@ -1496,7 +1496,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 2,
                     MinSize = 4,
-                    DiscountPercentage = 8.00m,
+                    DiscountPercentage = 6.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
@@ -1507,7 +1507,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 3,
                     MinSize = 6,
-                    DiscountPercentage = 12.00m,
+                    DiscountPercentage = 8.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
@@ -1518,7 +1518,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 4,
                     MinSize = 8,
-                    DiscountPercentage = 16.00m,
+                    DiscountPercentage = 10.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
@@ -1529,7 +1529,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 5,
                     MinSize = 10,
-                    DiscountPercentage = 20.00m,
+                    DiscountPercentage = 12.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
@@ -1540,7 +1540,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 6,
                     MinSize = 15,
-                    DiscountPercentage = 24.00m,
+                    DiscountPercentage = 15.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
@@ -1551,7 +1551,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 {
                     SizeDiscountId = 7,
                     MinSize = 20,
-                    DiscountPercentage = 28.00m,
+                    DiscountPercentage = 20.00m,
                     StartDate = new DateTime(2023, 1, 1),
                     EndDate = null, // No end date (ongoing)
                     CreatedAt = DateTime.UtcNow.AddHours(7),
