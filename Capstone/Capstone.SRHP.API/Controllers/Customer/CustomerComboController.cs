@@ -181,6 +181,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 BasePrice = combo.BasePrice,
                 TotalPrice = combo.TotalPrice,
                 IsCustomizable = combo.IsCustomizable,
+                QuantitySell = await  _comboService.GetComboSalesCount(combo.ComboId), // Assuming this is a synchronous call for simplicity
                 ImageURLs = combo.ImageURLs ?? new string[0],
                 TurtorialVideoID = combo.TurtorialVideoId,
                 TutorialVideoName = combo.TurtorialVideo?.Name,
@@ -239,6 +240,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                 BasePrice = baseDto.BasePrice,
                 TotalPrice = baseDto.TotalPrice,
                 IsCustomizable = baseDto.IsCustomizable,
+                QuantitySell = await _comboService.GetComboSalesCount(combo.ComboId),
                 ImageURLs = baseDto.ImageURLs,
                 TurtorialVideoID = baseDto.TurtorialVideoID,
                 TutorialVideoName = baseDto.TutorialVideoName,

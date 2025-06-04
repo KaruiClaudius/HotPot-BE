@@ -43,5 +43,7 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
         Task<IEnumerable<ComboIngredient>> GetComboIngredientsAsync(int comboId);
         Task<string> GenerateGroupIdentifierAsync(string comboName);
         Task<IEnumerable<Combo>> GetCombosByGroupIdentifierAsync(string groupIdentifier);
+
+        Task<int> GetComboSalesCount(int comboId);
     }
 }

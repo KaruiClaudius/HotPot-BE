@@ -16,6 +16,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
         public string[] ImageURLs { get; set; }
+        
     }
     public class RegularComboDto : ComboDto
     {
