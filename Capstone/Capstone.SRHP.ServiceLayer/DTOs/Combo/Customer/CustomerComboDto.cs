@@ -15,6 +15,7 @@ namespace Capstone.HPTY.ServiceLayer.DTOs.Combo.customer
         public int Size { get; set; }
         public decimal BasePrice { get; set; }
         public decimal TotalPrice { get; set; }
+        public int QuantitySell { get; set; } 
         public bool IsCustomizable { get; set; }
         public string[] ImageURLs { get; set; }
 

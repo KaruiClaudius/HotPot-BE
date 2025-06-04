@@ -1123,6 +1123,30 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             }
         }
 
+        public async Task<int> GetComboSalesCount(int comboId)
+        {
+            var orderList = await _unitOfWork.Repository<Order>()
+                .AsQueryable()
+                .Include(o => o.SellOrder)
+                .ThenInclude(so => so.SellOrderDetails)
+                .ThenInclude(sod => sod.Combo)
+                .ThenInclude(sodc => sodc.ComboIngredients)
+                .ToListAsync();
 
+            int quantitySold = 0;
+
+            foreach (var order in orderList.Where(o => o.SellOrder?.SellOrderDetails != null))
+            {
+                foreach (var detail in order.SellOrder.SellOrderDetails.Where(d => !d.IsDelete))
+                {
+                    if (detail.ComboId.HasValue && detail.ComboId.Value == comboId)
+                    {
+                        quantitySold += detail.Quantity;
+                    }
+                }
+            }
+
+            return quantitySold;
+        }
     }
 }
