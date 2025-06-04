@@ -289,8 +289,11 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
-                // Calculate quantity based on total amount and measurement value
+
+                // Check if the total amount divides evenly by the measurement value
+                var remainder = request.TotalAmount % ingredient.MeasurementValue;
                 int calculatedQuantity = (int)Math.Floor(request.TotalAmount / ingredient.MeasurementValue);
+
 
                 if (calculatedQuantity <= 0)
                 {
@@ -300,6 +303,21 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         Message = "Số lượng tính toán phải lớn hơn 0. Kiểm tra tổng số tiền và giá trị đo lường của bạn."
                     });
                 }
+
+                if (remainder > 0)
+                {
+                    // Calculate the nearest valid amounts (lower and higher)
+                    var lowerValidAmount = calculatedQuantity * ingredient.MeasurementValue;
+                    var higherValidAmount = (calculatedQuantity + 1) * ingredient.MeasurementValue;
+
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Lỗi xác thực",
+                        Message = $"Số lượng {request.TotalAmount} {ingredient.Unit} không chia hết cho đơn vị đo {ingredient.MeasurementValue} {ingredient.Unit}. " +
+                                  $"Vui lòng sử dụng số lượng hợp lệ như {lowerValidAmount} {ingredient.Unit} hoặc {higherValidAmount} {ingredient.Unit}."
+                    });
+                }
+
 
                 // Add batch with calculated quantity (not an initial batch)
                 var batch = await _ingredientService.AddBatchAsync(
@@ -430,6 +448,7 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     }
 
                     // Calculate quantity based on total amount and measurement value
+                    var remainder = item.TotalAmount % ingredient.MeasurementValue;
                     int calculatedQuantity = (int)Math.Ceiling(item.TotalAmount / ingredient.MeasurementValue);
 
                     if (calculatedQuantity <= 0)
@@ -437,6 +456,19 @@ namespace Capstone.HPTY.API.Controllers.Admin
                         validationErrors.Add($"Số lượng tính toán phải lớn hơn 0 cho nguyên liệu '{ingredient.Name}' (ID: {item.IngredientId}). Kiểm tra tổng số tiền và giá trị đo lường của bạn.");
                         continue;
                     }
+
+                    if (remainder > 0)
+                    {
+                        // Calculate the nearest valid amounts (lower and higher)
+                        var lowerValidAmount = calculatedQuantity * ingredient.MeasurementValue;
+                        var higherValidAmount = (calculatedQuantity + 1) * ingredient.MeasurementValue;
+
+                        validationErrors.Add($"Số lượng {item.TotalAmount} {ingredient.Unit} cho nguyên liệu '{ingredient.Name}' không chia hết cho đơn vị đo {ingredient.MeasurementValue} {ingredient.Unit}. " +
+                                            $"Vui lòng sử dụng số lượng hợp lệ như {lowerValidAmount} {ingredient.Unit} hoặc {higherValidAmount} {ingredient.Unit}.");
+                        continue;
+                    }
+
+                    
 
                     batchItems.Add((item.IngredientId, calculatedQuantity, item.BestBeforeDate, item.ProvideCompany));
                 }
