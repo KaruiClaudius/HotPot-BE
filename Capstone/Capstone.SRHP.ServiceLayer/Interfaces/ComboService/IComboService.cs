@@ -36,8 +36,8 @@ namespace Capstone.HPTY.ServiceLayer.Interfaces.ComboService
              List<ComboAllowedIngredientType> allowedTypes = null);
         Task DeleteAsync(int id);
         Task<IEnumerable<ComboAllowedIngredientType>> GetAllowedIngredientTypesAsync(int comboId);
-        Task ValidateAllowedIngredientTypesAsync(List<int> allowedTypeIds);
-        Task ValidateComboIngredientsAsync(List<int> ingredientIds);
+        //Task ValidateAllowedIngredientTypesAsync(List<int> allowedTypeIds);
+        //Task ValidateComboIngredientsAsync(List<int> ingredientIds);
         Task<IEnumerable<Ingredient>> GetAvailableIngredientsForTypeAsync(int comboId, int ingredientTypeId);
         Task<decimal> CalculateTotalPriceAsync(int comboId, int size);
         Task<IEnumerable<ComboIngredient>> GetComboIngredientsAsync(int comboId);

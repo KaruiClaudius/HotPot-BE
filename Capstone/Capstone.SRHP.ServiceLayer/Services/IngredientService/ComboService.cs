@@ -311,17 +311,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     }
                 }
 
-                //validate types of ingredient given
+                // For regular combos
                 if (!combo.IsCustomizable && baseIngredients != null && baseIngredients.Count > 0)
                 {
-                    var ingredientIds = baseIngredients.Select(i => i.IngredientId).ToList();
-                    await ValidateComboIngredientsAsync(ingredientIds);
+                    await ValidateComboIngredientsAsync(baseIngredients, combo.Size);
                 }
 
+                // For customizable combos
                 if (combo.IsCustomizable && allowedTypes != null && allowedTypes.Count > 0)
                 {
-                    var allowedTypeIds = allowedTypes.Select(t => t.IngredientTypeId).ToList();
-                    await ValidateAllowedIngredientTypesAsync(allowedTypeIds);
+                    await ValidateAllowedIngredientTypesAsync(allowedTypes, combo.Size);
                 }
 
                 // If combo is customizable, ensure allowed types are provided
@@ -521,8 +520,16 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             await _unitOfWork.CommitAsync();
         }
 
-        public async Task ValidateComboIngredientsAsync(List<int> ingredientIds)
+        private async Task ValidateComboIngredientsAsync(List<ComboIngredient> comboIngredients, int comboSize)
         {
+            if (comboIngredients == null || comboIngredients.Count == 0)
+            {
+                throw new ValidationException("Combo phải có ít nhất một nguyên liệu");
+            }
+
+            // Extract ingredient IDs from the combo ingredients
+            var ingredientIds = comboIngredients.Select(ci => ci.IngredientId).ToList();
+
             // Get all ingredients to check their types
             var ingredients = await _unitOfWork.Repository<Ingredient>()
                 .FindAll(i => ingredientIds.Contains(i.IngredientId) && !i.IsDelete)
@@ -550,21 +557,70 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             {
                 throw new ValidationException("Combo không thể chứa cả thịt và hải sản cùng lúc");
             }
+
+            // Check minimum total ingredient count
+            int minTotalCount = Math.Max(5, comboSize * 2); // At least 5 ingredients total, or 2 per person
+            if (comboIngredients.Count < minTotalCount)
+            {
+                throw new ValidationException($"Combo kích thước {comboSize} cần ít nhất {minTotalCount} gói nguyên liệu");
+            }
+
+            // Check total quantity of ingredients
+            int totalQuantity = comboIngredients.Sum(ci => ci.Quantity);
+            int minTotalQuantity = comboSize * 3; // 3 packages per person
+            if (totalQuantity < minTotalQuantity)
+            {
+                throw new ValidationException($"Tổng số lượng gói nguyên liệu ({totalQuantity}) không đủ cho combo kích thước {comboSize}. Cần ít nhất {minTotalQuantity} gói");
+            }
+
+            // Check if broth quantity is sufficient
+            var brothIngredients = comboIngredients
+                .Where(ci => ingredients.Any(i => i.IngredientId == ci.IngredientId && i.IngredientTypeId == 1))
+                .ToList();
+
+            int brothQuantity = brothIngredients.Sum(ci => ci.Quantity);
+            int minBrothQuantity = Math.Max(1, comboSize / 2); // At least 1, or 1 per 2 people
+
+            if (brothQuantity < minBrothQuantity)
+            {
+                throw new ValidationException($"Lượng nước lẩu ({brothQuantity} gói) không đủ cho combo kích thước {comboSize}. Cần ít nhất {minBrothQuantity} gói");
+            }
+
+            // Check if vegetable quantity is sufficient
+            var vegetableIngredients = comboIngredients
+                .Where(ci => ingredients.Any(i => i.IngredientId == ci.IngredientId && i.IngredientTypeId == 3))
+                .ToList();
+
+            if (vegetableIngredients.Any())
+            {
+                int vegQuantity = vegetableIngredients.Sum(ci => ci.Quantity);
+                int minVegQuantity = Math.Max(1, comboSize / 2); // At least 1, or 1 per 2 people
+
+                if (vegQuantity < minVegQuantity)
+                {
+                    throw new ValidationException($"Lượng rau củ ({vegQuantity} gói) không đủ cho combo kích thước {comboSize}. Cần ít nhất {minVegQuantity} gói");
+                }
+            }
         }
 
-        public async Task ValidateAllowedIngredientTypesAsync(List<int> allowedTypeIds)
+        private async Task ValidateAllowedIngredientTypesAsync(List<ComboAllowedIngredientType> allowedTypes, int comboSize)
         {
-            // Remove duplicates for validation
-            var distinctTypeIds = allowedTypeIds.Distinct().ToList();
+            if (allowedTypes == null || allowedTypes.Count == 0)
+            {
+                throw new ValidationException("Combo tùy chỉnh phải có ít nhất một loại nguyên liệu được phép");
+            }
+
+            // Extract type IDs from the allowed types
+            var allowedTypeIds = allowedTypes.Select(at => at.IngredientTypeId).Distinct().ToList();
 
             // Get all ingredient types to validate they exist
             var ingredientTypes = await _unitOfWork.Repository<IngredientType>()
-                .FindAll(it => distinctTypeIds.Contains(it.IngredientTypeId) && !it.IsDelete)
+                .FindAll(it => allowedTypeIds.Contains(it.IngredientTypeId) && !it.IsDelete)
                 .ToListAsync();
 
             // Check if all requested types exist
             var foundTypeIds = ingredientTypes.Select(it => it.IngredientTypeId).ToList();
-            var missingIds = distinctTypeIds.Except(foundTypeIds).ToList();
+            var missingIds = allowedTypeIds.Except(foundTypeIds).ToList();
 
             if (missingIds.Any())
             {
@@ -572,19 +628,72 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             }
 
             // Check if broth type (ingredientTypeId = 1) is allowed
-            bool allowsBroth = distinctTypeIds.Contains(1);
+            bool allowsBroth = allowedTypeIds.Contains(1);
             if (!allowsBroth)
             {
                 throw new ValidationException("Combo tùy chỉnh phải cho phép loại nước lẩu (Nước Lẩu)");
             }
 
             // Check if both meat and seafood types are allowed
-            bool allowsMeat = distinctTypeIds.Contains(7);
-            bool allowsSeafood = distinctTypeIds.Contains(2);
+            bool allowsMeat = allowedTypeIds.Contains(7);
+            bool allowsSeafood = allowedTypeIds.Contains(2);
 
             if (allowsMeat && allowsSeafood)
             {
                 throw new ValidationException("Combo tùy chỉnh không thể cho phép cả thịt và hải sản cùng lúc");
+            }
+
+            // Check minimum quantities for broth
+            var brothTypes = allowedTypes.Where(at => at.IngredientTypeId == 1).ToList();
+            if (brothTypes.Any())
+            {
+                foreach (var brothType in brothTypes)
+                {
+                    int minBrothQuantity = Math.Max(1, comboSize / 2); // At least 1, or 1 per 2 people
+                    if (brothType.MinQuantity < minBrothQuantity)
+                    {
+                        throw new ValidationException($"Loại nguyên liệu Nước Lẩu cần có số lượng tối thiểu ít nhất {minBrothQuantity} gói cho combo kích thước {comboSize}");
+                    }
+                }
+            }
+
+            // Check minimum quantities for vegetables if included
+            var vegetableTypes = allowedTypes.Where(at => at.IngredientTypeId == 3).ToList();
+            if (vegetableTypes.Any())
+            {
+                foreach (var vegType in vegetableTypes)
+                {
+                    int minVegQuantity = Math.Max(1, comboSize / 2); // At least 1, or 1 per 2 people
+                    if (vegType.MinQuantity < minVegQuantity)
+                    {
+                        throw new ValidationException($"Loại nguyên liệu Rau Củ cần có số lượng tối thiểu ít nhất {minVegQuantity} gói cho combo kích thước {comboSize}");
+                    }
+                }
+            }
+
+            // Check total minimum quantity across all types
+            int totalMinQuantity = allowedTypes.Sum(at => at.MinQuantity);
+            int requiredMinTotal = comboSize * 3; // 3 per person
+
+            if (totalMinQuantity < requiredMinTotal)
+            {
+                throw new ValidationException($"Tổng số lượng tối thiểu của tất cả các loại nguyên liệu ({totalMinQuantity}) không đủ cho combo kích thước {comboSize}. Cần ít nhất {requiredMinTotal} gói");
+            }
+        }
+
+        private string GetIngredientTypeName(int typeId)
+        {
+            switch (typeId)
+            {
+                case 1: return "Nước Lẩu";
+                case 2: return "Hải Sản";
+                case 3: return "Rau Củ";
+                case 4: return "Mì";
+                case 5: return "Đậu Phụ";
+                case 6: return "Nấm";
+                case 7: return "Thịt";
+                case 8: return "Nước Chấm";
+                default: return $"Loại nguyên liệu {typeId}";
             }
         }
 

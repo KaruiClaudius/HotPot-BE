@@ -113,10 +113,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                // Validate ingredients using the service
-                var ingredientIds = request.Ingredients.Select(i => i.IngredientID).ToList();
-                await _comboService.ValidateComboIngredientsAsync(ingredientIds);
-
                 // Create tutorial video if provided
                 TurtorialVideo tutorialVideo = null;
                 if (request.TutorialVideo != null)
@@ -164,9 +160,6 @@ namespace Capstone.HPTY.API.Controllers.Admin
         {
             try
             {
-                // Validate allowed ingredient types using the service
-                var allowedTypeIds = request.AllowedIngredientTypes.Select(t => t.IngredientTypeId).ToList();
-                await _comboService.ValidateAllowedIngredientTypesAsync(allowedTypeIds);
 
                 string groupIdentifier = request.GroupIdentifier;
                 bool isFirstInGroup = string.IsNullOrEmpty(groupIdentifier);
