@@ -446,7 +446,7 @@ namespace Capstone.HPTY.API.Controllers.Customer
                         itemName = detail.Customization.Name;
                         imageUrl = detail.Customization.ImageURL;
                         itemId = detail.CustomizationId;
-                        tutorialVideoUrl = detail.Combo.TurtorialVideo.VideoURL;
+                        tutorialVideoUrl = detail.Customization.Combo.TurtorialVideo.VideoURL;
                     }
                     else if (detail.ComboId.HasValue && detail.Combo != null)
                     {
