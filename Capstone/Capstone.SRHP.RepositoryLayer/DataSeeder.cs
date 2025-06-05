@@ -20,6 +20,10 @@ namespace Capstone.HPTY.RepositoryLayer
             // Users
             SeedUsers(modelBuilder);
 
+            // WorkShifts
+            SeedWorkShifts(modelBuilder);
+            SeedManagerWorkShifts(modelBuilder);
+
             // Utensil Types
             SeedUtensilTypes(modelBuilder);
 
@@ -66,13 +70,71 @@ namespace Capstone.HPTY.RepositoryLayer
                 new Role { RoleId = 4, Name = "Customer" }
             );
         }
+        private static void SeedWorkShifts(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<WorkShift>().HasData(
+                new WorkShift
+                {
+                    WorkShiftId = 1,
+                    ShiftName = "Morning Shift",
+                    ShiftStartTime = new TimeSpan(8, 0, 0),  // 8:00 AM
+                    ShiftEndTime = new TimeSpan(12, 0, 0),   // 12:00 PM
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                },
+                new WorkShift
+                {
+                    WorkShiftId = 2,
+                    ShiftName = "Afternoon Shift",
+                    ShiftStartTime = new TimeSpan(13, 0, 0),  // 1:00 PM
+                    ShiftEndTime = new TimeSpan(20, 0, 0),    // 8:00 PM
+                    CreatedAt = DateTime.Now,
+                    IsDelete = false
+                }
+            );
+        }
+        private static void SeedManagerWorkShifts(ModelBuilder modelBuilder)
+        {
+            // Seed the join table for the many-to-many relationship
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.MangerWorkShifts)
+                .WithMany(w => w.Managers)
+                .UsingEntity(j => j.HasData(
+                    // Manager 1 (UserId = 2) works Morning Shift (WorkShiftId = 1)
+                    new { ManagersUserId = 2, MangerWorkShiftsWorkShiftId = 1 },
+                    //new { ManagersUserId = 2, MangerWorkShiftsWorkShiftId = 2 },
+                    //new { ManagersUserId = 3, MangerWorkShiftsWorkShiftId = 1 },
+                    new { ManagersUserId = 3, MangerWorkShiftsWorkShiftId = 2 }
+                ));
+        }
+
         private static void SeedUsers(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>().HasData(
                 new User { UserId = 1, PhoneNumber = "987654321", Name = "Owner", Email = "Admin@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 1 },
 
-                new User { UserId = 2, PhoneNumber = "999999999", Name = "Nguyễn Văn Quân", Email = "Manager1@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
-                new User { UserId = 3, PhoneNumber = "888888888", Name = "Trần Thị Thu", Email = "Manager2@gmail.com", Password = PasswordTools.HashPassword("123456"), RoleId = 2 },
+                new User
+                {
+                    UserId = 2,
+                    PhoneNumber = "999999999",
+                    Name = "Nguyễn Văn Quân",
+                    Email = "Manager1@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 2,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
+                new User
+                {
+                    UserId = 3,
+                    PhoneNumber = "888888888",
+                    Name = "Trần Thị Thu",
+                    Email = "Manager2@gmail.com",
+                    Password = PasswordTools.HashPassword("123456"),
+                    RoleId = 2,
+                    WorkDays = WorkDays.Sunday | WorkDays.Monday | WorkDays.Tuesday |
+           WorkDays.Wednesday | WorkDays.Thursday | WorkDays.Friday | WorkDays.Saturday
+                },
 
                 new User
                 {
@@ -1796,5 +1858,6 @@ namespace Capstone.HPTY.RepositoryLayer
                 }
             );
         }
+
     }
 }
