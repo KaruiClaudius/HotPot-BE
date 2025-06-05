@@ -268,6 +268,27 @@ namespace Capstone.HPTY.API.Controllers.Admin
             }
         }
 
+        // DELETE: api/Hotpot/inventory/{inventoryId}
+        // Handles: Deleting a hotpot inventory item
+        [HttpDelete("inventory/{inventoryId}")]
+        public async Task<ActionResult> DeleteHotpotInventory(int inventoryId)
+        {
+            try
+            {
+                await _hotpotService.DeleteHotpotInventory(inventoryId);
+                return NoContent();
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting hotpot inventory item with ID {InventoryId}", inventoryId);
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
         // GET: api/Hotpot/{id}/deposit/{quantity}
         // Handles: Calculating the deposit for a hotpot
         [HttpGet("{id}/deposit/{quantity}")]
@@ -297,6 +318,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
+
 
         // Helper methods for mapping entities to DTOs
         private HotpotDto MapToHotpotDto(Hotpot hotpot)

@@ -409,6 +409,41 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
             }
         }
 
+        public async Task DeleteHotpotInventory(int inventoryId)
+        {
+            try
+            {
+                var inventory = await _unitOfWork.Repository<HotPotInventory>()
+                    .FindAsync(i => i.HotPotInventoryId == inventoryId && !i.IsDelete);
+                if (inventory == null)
+                    throw new NotFoundException($"Không tìm thấy mục kho với ID {inventoryId}");
+
+                // Check if the inventory item is currently rented
+                if (inventory.Status == HotpotStatus.Rented)
+                {
+                    throw new ValidationException($"Không thể xóa mục kho nồi lẩu đang được thuê: {inventory.SeriesNumber}");
+                }
+                // Soft delete the inventory item
+                inventory.SoftDelete();
+                await _unitOfWork.Repository<HotPotInventory>().Update(inventory, inventoryId);
+                await _unitOfWork.CommitAsync();
+            }
+            catch (NotFoundException)
+            {
+                throw;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting hotpot inventory with ID {InventoryId}", inventoryId);
+                throw;
+            }
+            
+        }
+
         public async Task<bool> IsAvailableAsync(int id)
         {
             try
