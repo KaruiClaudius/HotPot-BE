@@ -305,22 +305,11 @@ namespace Capstone.HPTY.ServiceLayer.Services.HotpotService
                     throw new ValidationException($"Nồi lẩu với tên '{entity.Name}' đã tồn tại");
 
                 // If series numbers are provided, update inventory items and quantity
-                //if (seriesNumbers != null)
-                //{
-                //    await UpdateInventoryItems(id, seriesNumbers);
+                if (seriesNumbers != null)
+                {
+                    await UpdateInventoryItems(id, seriesNumbers);   
+                }
 
-                //    // Update quantity to match the number of active inventory items
-                //    var activeInventoryCount = await _unitOfWork.Repository<HotPotInventory>()
-                //        .FindAll(i => i.HotpotId == id && !i.IsDelete)
-                //        .CountAsync();
-
-                //    entity.Quantity = activeInventoryCount;
-                //}
-                //else
-                //{
-                //    // Keep the existing quantity if no series numbers are provided
-                //    entity.Quantity = existingHotpot.Quantity;
-                //}
 
                 // Update the hotpot basic properties
                 entity.SetUpdateDate();

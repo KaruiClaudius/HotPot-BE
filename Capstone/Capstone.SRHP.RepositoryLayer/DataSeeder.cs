@@ -275,7 +275,7 @@ namespace Capstone.HPTY.RepositoryLayer
                     Material = "Thép Không Gỉ",
                     Size = "L",
                     Description = "Nồi lẩu đa ngăn cho phép nấu nhiều loại nước lẩu khác nhau trong một nồi.",
-                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-hai-ngan.jpg?alt=media%token=4c530d54-dafd-45fe-8d77-7b6c45a81b5a"],
+                    ImageURLs = ["https://firebasestorage.googleapis.com/v0/b/foodshop-aa498.appspot.com/o/lau-hai-ngan.jpg?alt=media&token=4c530d54-dafd-45fe-8d77-7b6c45a81b5a"],
                     Price = 171000m, // ~69.99 USD
                     BasePrice = 3660000m, // ~149.99 USD
                     //Quantity = 2,
@@ -406,7 +406,7 @@ namespace Capstone.HPTY.RepositoryLayer
                 new HotPotInventory
                 {
                     HotPotInventoryId = 16,
-                    SeriesNumber = "EL-2023-0002",
+                    SeriesNumber = "EL-2023-0006",
                     HotpotId = 2,
                     Status = HotpotStatus.Available,
                 },
