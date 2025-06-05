@@ -229,6 +229,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
                                     .ThenInclude(sod => sod.Customization)
+                                        .ThenInclude(sod => sod.Combo)
+                                            .ThenInclude(cv => cv.TurtorialVideo)
                             .Include(o => o.SellOrder)
                                 .ThenInclude(so => so.SellOrderDetails)
                                     .ThenInclude(sod => sod.Combo)

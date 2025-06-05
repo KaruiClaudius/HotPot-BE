@@ -559,7 +559,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             }
 
             // Check minimum total ingredient count
-            int minTotalCount = Math.Max(5, comboSize * 2); // At least 5 ingredients total, or 2 per person
+            int minTotalCount = (int)Math.Max(5, Math.Ceiling((double)comboSize / 2)); // At least 5 ingredients total, or 1 per 2 people
             if (comboIngredients.Count < minTotalCount)
             {
                 throw new ValidationException($"Combo kích thước {comboSize} cần ít nhất {minTotalCount} gói nguyên liệu");
@@ -673,7 +673,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
             // Check total minimum quantity across all types
             int totalMinQuantity = allowedTypes.Sum(at => at.MinQuantity);
-            int requiredMinTotal = comboSize * 3; // 3 per person
+            int requiredMinTotal = comboSize * 2; // 2 per person
 
             if (totalMinQuantity < requiredMinTotal)
             {
@@ -681,21 +681,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
             }
         }
 
-        private string GetIngredientTypeName(int typeId)
-        {
-            switch (typeId)
-            {
-                case 1: return "Nước Lẩu";
-                case 2: return "Hải Sản";
-                case 3: return "Rau Củ";
-                case 4: return "Mì";
-                case 5: return "Đậu Phụ";
-                case 6: return "Nấm";
-                case 7: return "Thịt";
-                case 8: return "Nước Chấm";
-                default: return $"Loại nguyên liệu {typeId}";
-            }
-        }
+
 
         public async Task UpdateAsync(
              int id,

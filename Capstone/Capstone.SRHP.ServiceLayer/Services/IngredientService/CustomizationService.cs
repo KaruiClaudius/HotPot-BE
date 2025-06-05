@@ -169,6 +169,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                     .IncludeNested(q => q
                         .Include(c => c.User)
                         .Include(c => c.Combo)
+                        .ThenInclude(cc => cc.TurtorialVideo)
                         .Include(c => c.AppliedDiscount))
                     .FirstOrDefaultAsync(c => c.CustomizationId == id && !c.IsDelete);
 
