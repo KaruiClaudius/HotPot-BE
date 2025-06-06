@@ -904,7 +904,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                     isLarge = true;
                 }
 
-                // Rule 2: If order has at least 25 total sell items AND at least 4 combo items, it's considered large
+                // Rule 2: If order has at least 25 total sell items OR at least 4 combo items, it's considered large
                 const int LARGE_ORDER_ITEM_THRESHOLD = 25;
 
                 if (order.HasSellItems &&
@@ -923,7 +923,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
                         isLarge = true;
                     }
 
-                    // Rule 3: If any combo has size > 8 OR combined combo size > 8, it's considered large
+                    // Rule 3: If any combo has size >= 8 OR combined combo size >= 8, it's considered large
                     var comboDetails = order.SellOrder.SellOrderDetails
                         .Where(d =>
                             (d.ComboId.HasValue && d.Combo != null) ||
