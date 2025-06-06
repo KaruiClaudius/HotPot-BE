@@ -925,8 +925,10 @@ namespace Capstone.HPTY.ServiceLayer.Services.ManagerService
 
                     // Rule 3: If any combo has size > 8 OR combined combo size > 8, it's considered large
                     var comboDetails = order.SellOrder.SellOrderDetails
-                        .Where(d => d.ComboId.HasValue && d.Combo != null);
-
+                        .Where(d =>
+                            (d.ComboId.HasValue && d.Combo != null) ||
+                            (d.CustomizationId.HasValue && d.Customization != null)
+                        );
                     if (comboDetails.Any())
                     {
                         // Check if any single combo has size > 8
