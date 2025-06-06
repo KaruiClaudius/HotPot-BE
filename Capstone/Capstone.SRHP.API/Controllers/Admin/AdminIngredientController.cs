@@ -213,13 +213,41 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     });
                 }
 
+                // Check if the total amount divides evenly by the measurement value
+                var remainder = request.MinStockLevel % request.MeasurementValue;
+                int calculatedQuantity = (int)Math.Floor(request.MinStockLevel / request.MeasurementValue);
+
+
+                if (calculatedQuantity <= 0)
+                {
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Lỗi xác thực",
+                        Message = "Số lượng tính toán phải lớn hơn 0. Kiểm tra tổng số tiền và giá trị đo lường của bạn."
+                    });
+                }
+
+                if (remainder > 0)
+                {
+                    // Calculate the nearest valid amounts (lower and higher)
+                    var lowerValidAmount = calculatedQuantity * request.MeasurementValue;
+                    var higherValidAmount = (calculatedQuantity + 1) * request.MeasurementValue;
+
+                    return BadRequest(new ApiErrorResponse
+                    {
+                        Status = "Lỗi xác thực",
+                        Message = $"Số lượng tối thiểu {request.MinStockLevel} {request.Unit} không chia hết cho đơn vị đo {request.MeasurementValue} {request.Unit}. " +
+                                  $"Vui lòng sử dụng số lượng hợp lệ như {lowerValidAmount} {request.Unit} hoặc {higherValidAmount} {request.Unit}."
+                    });
+                }
+
                 // Create ingredient entity
                 var ingredient = new Ingredient
                 {
                     Name = request.Name,
                     Description = request.Description,
                     ImageURL = request.ImageURL,
-                    MinStockLevel = request.MinStockLevel,
+                    MinStockLevel = calculatedQuantity,
                     IngredientTypeId = request.IngredientTypeID,
                     Unit = request.Unit,
                     MeasurementValue = request.MeasurementValue
