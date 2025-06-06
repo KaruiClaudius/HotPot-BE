@@ -312,13 +312,21 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
         public async Task<bool> IsDiscountValidAsync(int discountId)
         {
             var discount = await _unitOfWork.Repository<Discount>()
-            .FindAsync(d => d.DiscountId == discountId && !d.IsDelete);
+                .FindAsync(d => d.DiscountId == discountId && !d.IsDelete);
+
             if (discount == null)
                 return false;
 
             var now = DateTime.UtcNow.AddHours(7);
-            return discount.Date <= now &&
-                   discount.Duration >= now;
+
+            // Check if the discount has started
+            bool hasStarted = discount.Date <= now;
+
+            // Check if the discount has expired
+            // If Duration is null, consider it as not expired (valid indefinitely)
+            bool hasNotExpired = discount.Duration == null || discount.Duration >= now;
+
+            return hasStarted && hasNotExpired;
         }
 
         public async Task<decimal> CalculateDiscountAmountAsync(int discountId, decimal originalPrice)
