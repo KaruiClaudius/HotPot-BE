@@ -208,7 +208,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
                 var existingCombo = await _unitOfWork.Repository<Combo>()
                     .FindAsync(c => c.Name == combo.Name);
 
-                if (existingCombo != null)
+                if (existingCombo != null && !combo.IsCustomizable)
                 {
                     if (!existingCombo.IsDelete && !combo.IsCustomizable)
                     {
