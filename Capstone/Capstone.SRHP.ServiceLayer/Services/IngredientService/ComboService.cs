@@ -567,7 +567,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
             // Check total quantity of ingredients
             int totalQuantity = comboIngredients.Sum(ci => ci.Quantity);
-            int minTotalQuantity = comboSize * 3; // 3 packages per person
+            int minTotalQuantity = comboSize * 2; 
             if (totalQuantity < minTotalQuantity)
             {
                 throw new ValidationException($"Tổng số lượng gói nguyên liệu ({totalQuantity}) không đủ cho combo kích thước {comboSize}. Cần ít nhất {minTotalQuantity} gói");
