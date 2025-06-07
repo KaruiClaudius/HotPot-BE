@@ -34,19 +34,20 @@ namespace Capstone.HPTY.ServiceLayer.Services.UserService
         }
 
         public async Task<PagedResult<User>> GetUsersAsync(
-     string searchTerm = null,
-     int? roleId = null,
-     bool? isActive = null,
-     DateTime? createdAfter = null,
-     DateTime? createdBefore = null,
-     int pageNumber = 1,
-     int pageSize = 10,
-     string sortBy = "Name",
-     bool ascending = true)
+             string searchTerm = null,
+             int? roleId = null,
+             bool? isActive = null,
+             DateTime? createdAfter = null,
+             DateTime? createdBefore = null,
+             int pageNumber = 1,
+             int pageSize = 10,
+             string sortBy = "Name",
+             bool ascending = true)
         {
             // Start with a base query that includes all related entities
             var query = _unitOfWork.Repository<User>()
                 .Include(u => u.Role)
+                .Where(u => u.RoleId != 1 && !u.IsDelete)
                 .AsQueryable();
 
             // Apply filters
