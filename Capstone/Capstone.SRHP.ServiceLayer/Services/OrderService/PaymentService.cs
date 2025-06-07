@@ -509,8 +509,8 @@ namespace Capstone.HPTY.ServiceLayer.Services.OrderService
 
                             // Return a message indicating the payment is being processed
                             string message = paymentLinkInformation.status == "PAID"
-                                ? "Thanh toán đang được xử lý, vui lòng đợi trong giây lát"
-                                : "Giao dịch đang được hủy, vui lòng đợi trong giây lát";
+                                ? "PENDING"
+                                : "CANCELLED";
 
                             return new Response(0, message, new { paymentInfo = paymentLinkInformation, userInfo });
                         }
