@@ -183,6 +183,9 @@ namespace Capstone.HPTY.API.Controllers.Admin
                     {
                         return BadRequest(new { message = $"Một combo với kích thước {request.Size} đã tồn tại trong nhóm này" });
                     }
+
+                    request.Name = existingGroupCombos.First().Name;
+                    request.ImageURLs = existingGroupCombos.First().ImageURLs;
                 }
 
                 TurtorialVideo tutorialVideo = null;
