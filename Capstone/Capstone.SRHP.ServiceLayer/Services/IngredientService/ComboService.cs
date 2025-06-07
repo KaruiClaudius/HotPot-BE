@@ -210,7 +210,7 @@ namespace Capstone.HPTY.ServiceLayer.Services.IngredientService
 
                 if (existingCombo != null)
                 {
-                    if (!existingCombo.IsDelete)
+                    if (!existingCombo.IsDelete && !existingCombo.IsCustomizable)
                     {
                         throw new ValidationException($"Combo với tên '{combo.Name}' đã tồn tại");
                     }
