@@ -27,7 +27,7 @@ namespace Capstone.HPTY.ServiceLayer.Extensions
         // Maximum days before expiry for each ingredient type
         private static readonly Dictionary<int, int> MaxExpiryDays = new Dictionary<int, int>
     {
-        { 1, 1 },  // Nước Lẩu - 1 year
+        { 1, 2 },  // Nước Lẩu - 1 year
         { 2, 30 },   // Hải Sản - 1 month (if frozen)
         { 3, 30 },   // Rau Củ - 1 month (if preserved)
         { 4, 365 },  // Mì - 1 year
