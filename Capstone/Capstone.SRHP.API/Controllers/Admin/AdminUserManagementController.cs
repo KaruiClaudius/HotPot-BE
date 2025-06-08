@@ -241,7 +241,8 @@ namespace Capstone.HPTY.API.Controllers.Admin
                 PhoneNumber = user.PhoneNumber,
                 Address = user.Address,
                 RoleName = user.Role?.Name ?? "Customer",
-                ImageURL = user.ImageURL ?? string.Empty
+                ImageURL = user.ImageURL ?? string.Empty,
+                LoyatyPoint = user.LoyatyPoint ?? 0,
             };
         }
 
