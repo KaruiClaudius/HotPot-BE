@@ -317,13 +317,13 @@ namespace Capstone.HPTY.API.Controllers.Schedule
                 {
                     string dayName = day switch
                     {
-                        WorkDays.Monday => "Monday",
-                        WorkDays.Tuesday => "Tuesday",
-                        WorkDays.Wednesday => "Wednesday",
-                        WorkDays.Thursday => "Thursday",
-                        WorkDays.Friday => "Friday",
-                        WorkDays.Saturday => "Saturday",
-                        WorkDays.Sunday => "Sunday",
+                        WorkDays.Monday => "Thứ 2",
+                        WorkDays.Tuesday => "Thứ 3",
+                        WorkDays.Wednesday => "Thứ 4",
+                        WorkDays.Thursday => "Thứ 5",
+                        WorkDays.Friday => "Thứ 6",
+                        WorkDays.Saturday => "Thứ 7",
+                        WorkDays.Sunday => "CN",
                         _ => string.Empty
                     };
 
