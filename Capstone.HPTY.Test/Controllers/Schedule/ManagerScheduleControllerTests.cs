@@ -947,7 +947,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             var result = methodInfo.Invoke(controller, new object[] { workDays }) as string;
 
             // Assert
-            Assert.Equal("Monday", result);
+            Assert.Equal("Thứ 2", result);
         }
 
         [Fact]
@@ -965,7 +965,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             var result = methodInfo.Invoke(controller, new object[] { workDays }) as string;
 
             // Assert
-            Assert.Equal("Monday, Wednesday, Friday", result);
+            Assert.Equal("Thứ 2, Thứ 4, Thứ 6", result);
         }
 
         [Fact]
@@ -984,7 +984,7 @@ namespace Capstone.HPTY.Test.Controllers.Schedule
             var result = methodInfo.Invoke(controller, new object[] { workDays }) as string;
 
             // Assert
-            Assert.Equal("Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday", result);
+            Assert.Equal("CN, Thứ 2, Thứ 3, Thứ 4, Thứ 5, Thứ 6, Thứ 7", result);
         }
 
         [Fact]
