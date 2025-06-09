@@ -1108,21 +1108,21 @@ namespace Capstone.HPTY.Test.Controllers.Admin
 
             var role = new Role { RoleId = 2, Name = "Customer" };
             var users = new List<User>
-    {
-        new User
-        {
-            UserId = 1,
-            Name = "Test User",
-            Email = "test@example.com",
-            PhoneNumber = "1234567890",
-            Address = "123 Test St",
-            Role = role,
-            ImageURL = "test.jpg",
-            LoyatyPoint = 110, // Set LoyaltyPoints
-            CreatedAt = DateTime.UtcNow.AddDays(-15),
-            UpdatedAt = DateTime.UtcNow.AddDays(-5)
-        }
-    };
+            {
+                new User
+                {
+                    UserId = 1,
+                    Name = "Test User",
+                    Email = "test@example.com",
+                    PhoneNumber = "1234567890",
+                    Address = "123 Test St",
+                    Role = role,
+                    ImageURL = "test.jpg",
+                    LoyatyPoint = 110, // Set LoyaltyPoints
+                    CreatedAt = DateTime.UtcNow.AddDays(-15),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                }
+            };
 
             var pagedResult = new PagedResult<User>
             {
@@ -1149,7 +1149,7 @@ namespace Capstone.HPTY.Test.Controllers.Admin
             var returnedPagedResult = apiResponse.Data;
             var items = returnedPagedResult.Items.ToList();
             Assert.Single(items);
-            Assert.Equal(0, items[0].LoyatyPoint); // The current implementation doesn't map LoyatyPoint
+            Assert.Equal(110, items[0].LoyatyPoint); // The current implementation doesn't map LoyatyPoint
 
             // Verify service calls
             mockUserService.Verify();
