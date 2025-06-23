@@ -4,14 +4,17 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
-# Copy solution and project files
-COPY ./Capstone.SRHP.API/Capstone.HPTY.API.csproj ./Capstone.SRHP.API/
+# Copy solution file first
+COPY Capstone.HPTY.sln ./
+
+# Copy project file
+COPY Capstone.SRHP.API/Capstone.HPTY.API.csproj ./Capstone.SRHP.API/
 
 # Restore dependencies
-RUN dotnet restore "./Capstone.SRHP.API/Capstone.HPTY.API.csproj"
+RUN dotnet restore "Capstone.SRHP.API/Capstone.HPTY.API.csproj"
 
 # Copy remaining source code
-COPY . .
+COPY Capstone.SRHP.API/ ./Capstone.SRHP.API/
 
 # Publish the project
 WORKDIR /src/Capstone.SRHP.API
