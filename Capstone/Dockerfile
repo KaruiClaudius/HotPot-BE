@@ -32,4 +32,4 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
 COPY --from=build /app .
 
 # Verify DLL name matches actual output
-ENTRYPOINT ["dotnet", "Capstone.SRHP.API.dll"]  # Fixed project name
+ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]  # Fixed project name
