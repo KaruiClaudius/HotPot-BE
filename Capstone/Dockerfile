@@ -5,10 +5,10 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
 WORKDIR /source
 
-# Copy solution and all project files
+# Copy entire repository
 COPY . .
 
-# Move to the Capstone directory
+# Move to the solution directory
 WORKDIR /source/Capstone
 
 # Restore dependencies for the solution
