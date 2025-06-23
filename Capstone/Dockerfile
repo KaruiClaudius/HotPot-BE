@@ -5,11 +5,7 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
 # Copy solution and project files
-COPY ./Capstone.HPTY.sln ./
 COPY ./Capstone.SRHP.API/Capstone.HPTY.API.csproj ./Capstone.SRHP.API/
-COPY ./Capstone.SRHP.ModelLayer/Capstone.HPTY.ModelLayer.csproj ./Capstone.SRHP.ModelLayer/
-COPY ./Capstone.SRHP.RepositoryLayer/Capstone.HPTY.RepositoryLayer.csproj ./Capstone.SRHP.RepositoryLayer/
-COPY ./Capstone.SRHP.ServiceLayer/Capstone.HPTY.ServiceLayer.csproj ./Capstone.SRHP.ServiceLayer/
 
 # Restore dependencies
 RUN dotnet restore "./Capstone.SRHP.API/Capstone.HPTY.API.csproj"
