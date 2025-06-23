@@ -2,16 +2,18 @@
 
 # Build stage
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
 
 # Copy ONLY project files first for efficient caching
-COPY ./Capstone.SRHP.API/*.csproj /source/Capstone.SRHP.API/
-WORKDIR /source/Capstone.SRHP.API
+WORKDIR /src
+COPY ./Capstone.SRHP.API/*.csproj ./Capstone.SRHP.API/
+WORKDIR /src/Capstone.SRHP.API
 RUN dotnet restore
 
 # Copy remaining files and build
-COPY . /source/
-RUN dotnet publish -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app
+WORKDIR /src
+COPY . .
+WORKDIR /src/Capstone.SRHP.API
+RUN dotnet publish -c Release -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
@@ -30,4 +32,4 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
 COPY --from=build /app .
 
 # Verify DLL name matches actual output
-ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]  # Match Nixpacks' expected name
+ENTRYPOINT ["dotnet", "Capstone.SRHP.API.dll"]  # Fixed project name
