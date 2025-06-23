@@ -20,7 +20,6 @@ WORKDIR /source/Capstone.SRHP.API
 
 # This is the architecture you’re building for, which is passed in by the builder.
 # Placing it here allows the previous steps to be cached across architectures.
-ARG TARGETARCH
 
 # Build the application.
 # Leverage a cache mount to /root/.nuget/packages so that subsequent builds don't have to re-download packages.
