@@ -1,21 +1,22 @@
 # syntax=docker/dockerfile:1
 
-# Use the official .NET SDK image for building the app
+# Build stage
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
-# Set working directory and copy only the csproj file first (for caching)
-WORKDIR /source/Capstone.SRHP.API
+WORKDIR /source
 
-COPY Capstone.SRHP.API/*.csproj .
+# Copy solution and project files first for restore caching
+COPY Capstone.HPTY.sln .
+COPY Capstone.SRHP.API/*.csproj ./Capstone.SRHP.API/
 
 # Restore dependencies
 RUN dotnet restore
 
-# Copy the rest of the application code
-COPY Capstone.SRHP.API/. .
+# Copy the rest of the source code
+COPY Capstone.SRHP.API/. ./Capstone.SRHP.API/
 
-# Build and publish the app
-RUN dotnet publish -c Release -o /app
+# Build and publish
+RUN dotnet publish Capstone.SRHP.API/Capstone.HPTY.API.csproj -c Release -o /app
 
 ################################################################################
 # Runtime stage
@@ -23,15 +24,16 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
 
 WORKDIR /app
 
-# Install globalization dependencies
+# Install globalization support
 RUN apk add --no-cache tzdata icu-data-full icu-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 
-# Copy published output from the build stage
+# Copy published output
 COPY --from=build /app .
+
 # Run as non-root user
 USER $APP_UID
 
-# Start the app
+# Entry point
 ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]
