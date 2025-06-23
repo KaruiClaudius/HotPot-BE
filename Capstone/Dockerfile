@@ -5,18 +5,14 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
 WORKDIR /source
 
-# Copy solution and project files first for restore caching
-COPY Capstone/*.sln .
-COPY Capstone/Capstone.SRHP.API/*.csproj ./Capstone.SRHP.API/
-COPY Capstone/Capstone.SRHP.RepositoryLayer/*.csproj ./Capstone.SRHP.RepositoryLayer/
-COPY Capstone/Capstone.SRHP.ServiceLayer/*.csproj ./Capstone.SRHP.ServiceLayer/
-COPY Capstone/Capstone.SRHP.ModelLayer/*.csproj ./Capstone.SRHP.ModelLayer/
+# Copy solution and all project files
+COPY . .
 
-# Restore dependencies
-RUN dotnet restore
+# Move to the Capstone directory
+WORKDIR /source/Capstone
 
-# Copy the rest of the source code
-COPY Capstone/. .
+# Restore dependencies for the solution
+RUN dotnet restore Capstone.HPTY.sln
 
 # Build and publish API project
 RUN dotnet publish Capstone.SRHP.API/Capstone.HPTY.API.csproj -c Release -o /app
