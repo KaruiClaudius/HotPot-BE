@@ -2,18 +2,24 @@
 
 # Build stage
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /src
 
-# Copy ONLY project files first for efficient caching
-WORKDIR /source
-COPY ./Capstone.SRHP.API/*.csproj /source/Capstone.SRHP.API/
-WORKDIR /source/Capstone.SRHP.API
-RUN dotnet restore
+# Copy solution and project files
+COPY ./Capstone.HPTY.sln ./
+COPY ./Capstone.SRHP.API/Capstone.HPTY.API.csproj ./Capstone.SRHP.API/
+COPY ./Capstone.SRHP.ModelLayer/Capstone.HPTY.ModelLayer.csproj ./Capstone.SRHP.ModelLayer/
+COPY ./Capstone.SRHP.RepositoryLayer/Capstone.HPTY.RepositoryLayer.csproj ./Capstone.SRHP.RepositoryLayer/
+COPY ./Capstone.SRHP.ServiceLayer/Capstone.HPTY.ServiceLayer.csproj ./Capstone.SRHP.ServiceLayer/
 
-# Copy remaining files and build
-WORKDIR /source
+# Restore dependencies
+RUN dotnet restore "./Capstone.SRHP.API/Capstone.HPTY.API.csproj"
+
+# Copy remaining source code
 COPY . .
-WORKDIR /source/Capstone.SRHP.API
-RUN dotnet publish -c Release -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app
+
+# Publish the project
+WORKDIR /src/Capstone.SRHP.API
+RUN dotnet publish -c Release -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
@@ -25,11 +31,11 @@ RUN apk add --no-cache tzdata icu-data-full icu-libs
 # Configure environment
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     DOTNET_RUNNING_IN_CONTAINER=true \
-    Authentication__Google__ClientId="1029155011338-nk8lq065n5dcld8pojgqu9lfl3kbarh2.apps.googleusercontent.com" \
-    Authentication__Google__ClientSecret="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"
+    ASPNETCORE_URLS=http://+:8080 \
+    TZ=Asia/Ho_Chi_Minh
 
-# Copy build output
-COPY --from=build /app .
+# Copy published output
+COPY --from=build /app/publish .
 
-# Verify DLL name matches actual output
-ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]  # Fixed project name
+# Entrypoint - matches actual DLL name
+ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]
