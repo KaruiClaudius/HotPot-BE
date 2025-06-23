@@ -2,38 +2,32 @@
 
 # Build stage
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS final
 
-WORKDIR /source
+# Copy ONLY project files first for efficient caching
+COPY ./Capstone.SRHP.API/*.csproj /source/Capstone.SRHP.API/
+WORKDIR /source/Capstone.SRHP.API
+RUN dotnet restore
 
-# Copy entire repository
-COPY . .
+# Copy remaining files and build
+COPY . /source/
+RUN dotnet publish -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app
 
-# Move to the solution directory
-WORKDIR /source/Capstone
-
-# Restore dependencies for the solution
-RUN dotnet restore Capstone.HPTY.sln
-
-# Build and publish API project
-RUN dotnet publish Capstone.SRHP.API/Capstone.HPTY.API.csproj -c Release -o /app
-
-################################################################################
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
-
 WORKDIR /app
 
-# Install globalization support
+# Install dependencies
 RUN apk add --no-cache tzdata icu-data-full icu-libs
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-ENV DOTNET_RUNNING_IN_CONTAINER=true
 
-# Copy published output
+# Configure environment
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    Authentication__Google__ClientId="1029155011338-nk8lq065n5dcld8pojgqu9lfl3kbarh2.apps.googleusercontent.com" \
+    Authentication__Google__ClientSecret="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"
+
+# Copy build output
 COPY --from=build /app .
 
-# Run as non-root user
-RUN adduser -u 1000 --disabled-password --gecos "" appuser && chown -R appuser /app
-USER appuser
-
-# Entry point
-ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]
+# Verify DLL name matches actual output
+ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]  # Match Nixpacks' expected name
