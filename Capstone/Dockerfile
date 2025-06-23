@@ -1,55 +1,37 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
-################################################################################
-
-# Learn about building .NET container images:
-# https://github.com/dotnet/dotnet-docker/blob/main/samples/README.md
-
-# Create a stage for building the application.
+# Use the official .NET SDK image for building the app
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
-COPY . /source
-
+# Set working directory and copy only the csproj file first (for caching)
 WORKDIR /source/Capstone.SRHP.API
 
-# This is the architecture you’re building for, which is passed in by the builder.
-# Placing it here allows the previous steps to be cached across architectures.
+COPY Capstone.SRHP.API/*.csproj .
 
+# Restore dependencies
+RUN dotnet restore
 
-# If you need to enable globalization and time zones:
-# https://github.com/dotnet/dotnet-docker/blob/main/samples/enable-globalization.md
+# Copy the rest of the application code
+COPY Capstone.SRHP.API/. .
+
+# Build and publish the app
+RUN dotnet publish -c Release -o /app
+
 ################################################################################
-# Create a new stage for running the application that contains the minimal
-# runtime dependencies for the application. This often uses a different base
-# image from the build stage where the necessary files are copied from the build
-# stage.
-#
-# The example below uses an aspnet alpine image as the foundation for running the app.
-# It will also use whatever happens to be the most recent version of that tag when you
-# build your Dockerfile. If reproducibility is important, consider using a more specific
-# version (e.g., aspnet:7.0.10-alpine-3.18),
-# or SHA (e.g., mcr.microsoft.com/dotnet/aspnet@sha256:f3d99f54d504a21d38e4cc2f13ff47d67235efeeb85c109d3d1ff1808b38d034).
+# Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+
 WORKDIR /app
 
-RUN apk add --no-cache tzdata
-RUN apk add --no-cache icu-data-full icu-libs
+# Install globalization dependencies
+RUN apk add --no-cache tzdata icu-data-full icu-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_RUNNING_IN_CONTAINER=true
-ENV Authentication__Google__ClientId="1029155011338-nk8lq065n5dcld8pojgqu9lfl3kbarh2.apps.googleusercontent.com"
-ENV Authentication__Google__ClientSecret="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"
-# Copy everything needed to run the app from the "build" stage.
-COPY --from=build /app .
 
-# Switch to a non-privileged user (defined in the base image) that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
-# and https://github.com/dotnet/dotnet-docker/discussions/4764
+# Copy published output from the build stage
+COPY --from=build /app .
+# Run as non-root user
 USER $APP_UID
 
+# Start the app
 ENTRYPOINT ["dotnet", "Capstone.HPTY.API.dll"]
