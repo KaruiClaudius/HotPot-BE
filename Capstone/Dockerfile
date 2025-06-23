@@ -4,15 +4,15 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
 # Copy ONLY project files first for efficient caching
-WORKDIR /src
-COPY ./Capstone.SRHP.API/*.csproj ./Capstone.SRHP.API/
-WORKDIR /src/Capstone.SRHP.API
+WORKDIR /source
+COPY ./Capstone.SRHP.API/*.csproj /source/Capstone.SRHP.API/
+WORKDIR /source/Capstone.SRHP.API
 RUN dotnet restore
 
 # Copy remaining files and build
-WORKDIR /src
+WORKDIR /source
 COPY . .
-WORKDIR /src/Capstone.SRHP.API
+WORKDIR /source/Capstone.SRHP.API
 RUN dotnet publish -c Release -a ${TARGETARCH/amd64/x64} --use-current-runtime --self-contained false -o /app
 
 # Runtime stage
