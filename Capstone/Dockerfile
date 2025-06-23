@@ -2,7 +2,7 @@
 
 # Build stage
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
-FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
 
 # Copy ONLY project files first for efficient caching
 COPY ./Capstone.SRHP.API/*.csproj /source/Capstone.SRHP.API/
